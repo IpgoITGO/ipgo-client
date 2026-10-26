@@ -1,0 +1,43 @@
+:root {
+  --color-primary: #283862;
+  --color-primary-hover: #1b2850;
+  --color-primary-soft: #eef1f8;
+  --color-bg: #f2f4f6;
+  --color-card: #ffffff;
+  --color-border: #e5e8eb;
+  --color-input-border: #d1d6db;
+  --color-text: #191f28;
+  --color-text-2: #4e5968;
+  --color-text-3: #6b7684;
+  --color-success: #16883e;
+  --color-success-bg: #e9f7ee;
+  --color-warning: #b25e09;
+  --color-warning-bg: #fff4e5;
+  --color-danger: #d92d20;
+  --color-danger-bg: #fff0ef;
+
+  --radius-card: 28px;
+  --radius-input: 14px;
+  --radius-button: 14px;
+  --radius-chip: 999px;
+
+  --h-input: 50px;
+  --h-button: 56px;
+  --h-button-sub: 50px;
+
+  --text-title: 32px;
+  --text-section: 19px;
+  --text-body: 15px;
+  --text-caption: 13px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --w-content: 1240px;
+  --shadow-card: 0 12px 36px rgb(25 31 40 / 8%);
+}
