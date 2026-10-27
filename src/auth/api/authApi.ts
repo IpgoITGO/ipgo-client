@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from '../../shared/api/client'
+import { ApiError, apiRequest, resetCsrfToken } from '../../shared/api/client'
 
 // docs/design/api-spec.docx 3.1절 (A1~A7). 기본 경로 `/api`는 apiRequest가 붙입니다.
 
@@ -31,14 +31,27 @@ function postJson(body: unknown): RequestInit {
   }
 }
 
-// A2 로그인
-export function login(request: LoginRequest) {
-  return apiRequest<Me>('/auth/login', postJson(request))
+// A2 로그인. 서버는 form 방식으로 받고 성공하면 204(본문 없음)를 주므로,
+// 이어서 A4로 사용자 정보를 받아 돌려준다.
+export async function login(request: LoginRequest) {
+  await apiRequest<void>('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(request),
+  })
+  // 로그인하면 서버가 세션과 CSRF 토큰을 새로 발급하므로 토큰을 다시 받게 한다.
+  resetCsrfToken()
+
+  return apiRequest<Me>('/auth/me')
 }
 
 // A3 로그아웃
-export function logout() {
-  return apiRequest<void>('/auth/logout', { method: 'POST' })
+export async function logout() {
+  try {
+    await apiRequest<void>('/auth/logout', { method: 'POST' })
+  } finally {
+    resetCsrfToken()
+  }
 }
 
 // A4 내 정보. 로그인하지 않았으면 401이므로 null로 돌려준다.

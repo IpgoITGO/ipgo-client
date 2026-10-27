@@ -95,7 +95,7 @@ describe('SignUpPage', () => {
     expect(
       await screen.findByText('사용할 수 있는 이메일이에요.'),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
+    expect(await screen.findByLabelText('인증 코드')).toBeInTheDocument()
     expect(screen.getByLabelText('남은 시간')).toHaveTextContent(
       /^(10:00|09:59)$/,
     )

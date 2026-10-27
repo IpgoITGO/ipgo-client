@@ -11,6 +11,7 @@ const CODE_LIFETIME_MS = 10 * 60 * 1000
 const RESEND_INTERVAL_MS = 60 * 1000
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000
 const MAX_CODE_FAILURES = 5
+const CSRF_HEADER = 'X-CSRF-TOKEN'
 // 비밀번호: 8자 이상, 영문·숫자·특수문자를 모두 포함 (명세서 규칙 + 특수문자)
 const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,128}$/
 
@@ -40,13 +41,22 @@ let codes = new Map<
   { sentAt: number; expiresAt: number; failures: number }
 >()
 let tokens = new Map<string, { email: string; expiresAt: number }>()
+// 서버처럼 변경 요청에는 CSRF 토큰이 필요하고, 로그인·로그아웃 때 토큰이 새로 바뀝니다.
+let csrfToken = crypto.randomUUID()
 
 // 테스트 사이에 가짜 서버 상태를 처음으로 돌립니다.
 export function resetAuthMock() {
   users = seedUsers.map((user) => ({ ...user }))
   codes = new Map()
   tokens = new Map()
+  csrfToken = crypto.randomUUID()
   setSession(null)
+}
+
+function csrfDenied(request: Request) {
+  return request.headers.get(CSRF_HEADER) === csrfToken
+    ? null
+    : error(403, 'FORBIDDEN', '접근 권한 또는 CSRF 토큰을 확인해주세요.')
 }
 
 // 세션은 쿠키 하나로 흉내 냅니다. 서버는 세션 쿠키(JSESSIONID) 방식입니다.
@@ -105,12 +115,24 @@ function isName(value: unknown) {
 }
 
 export const authHandlers = [
-  // A2 로그인. 서버는 form 방식으로 받고 성공하면 204를 줍니다. (client는 이슈 #32에서 맞춤)
+  // CSRF 토큰 받기 (로그인 전에도 호출 가능)
+  http.get('/api/auth/csrf', () =>
+    HttpResponse.json({
+      headerName: CSRF_HEADER,
+      parameterName: '_csrf',
+      token: csrfToken,
+    }),
+  ),
+
+  // A2 로그인. 서버는 form 방식으로 받고 성공하면 204(본문 없음)를 줍니다.
   http.post('/api/auth/login', async ({ request }) => {
-    const body = (await request.json()) as { email?: string; password?: string }
-    const email = normalizeEmail(body.email)
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
+    const form = new URLSearchParams(await request.text())
+    const email = normalizeEmail(form.get('email'))
     const user = users.find(
-      (item) => item.email === email && item.password === body.password,
+      (item) => item.email === email && item.password === form.get('password'),
     )
 
     if (!user) {
@@ -122,12 +144,17 @@ export const authHandlers = [
     }
 
     setSession(user.email)
-    return HttpResponse.json(toMe(user))
+    csrfToken = crypto.randomUUID()
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // A3 로그아웃
-  http.post('/api/auth/logout', () => {
+  http.post('/api/auth/logout', ({ request }) => {
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
     setSession(null)
+    csrfToken = crypto.randomUUID()
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -157,6 +184,9 @@ export const authHandlers = [
 
   // A6 인증 코드 발송 · 다시 보내기 (10분 유효, 60초에 한 번)
   http.post('/api/auth/email-verifications', async ({ request }) => {
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
     const body = (await request.json()) as { email?: string }
     const email = normalizeEmail(body.email)
 
@@ -193,6 +223,9 @@ export const authHandlers = [
 
   // A7 인증 코드 확인 → 가입 토큰 (30분 유효, 5번 틀리면 그 코드는 무효)
   http.post('/api/auth/email-verifications/confirm', async ({ request }) => {
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
     const body = (await request.json()) as { email?: string; code?: string }
     const email = normalizeEmail(body.email)
 
@@ -230,6 +263,9 @@ export const authHandlers = [
 
   // A1 회원가입. 입력 오류는 칸 이름(details.field)을 하나 알려 줍니다. (이름순으로 첫 칸)
   http.post('/api/auth/signup', async ({ request }) => {
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
     const body = (await request.json()) as {
       companyName?: string
       businessRegNo?: string | null

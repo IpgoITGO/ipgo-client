@@ -171,6 +171,32 @@ describe('auth MSW handler (서버 인증 API 규칙)', () => {
     })
   })
 
+  it('변경 요청은 CSRF 토큰이 없으면 403이고, /auth/csrf에서 받은 토큰이면 통과한다', async () => {
+    const withoutToken = await fetch('/api/auth/logout', { method: 'POST' })
+    expect(withoutToken.status).toBe(403)
+    expect(await withoutToken.json()).toMatchObject({ code: 'FORBIDDEN' })
+
+    const { headerName, token } = await (await fetch('/api/auth/csrf')).json()
+    const withToken = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { [headerName]: token },
+    })
+    expect(withToken.status).toBe(204)
+  })
+
+  it('로그인하면 CSRF 토큰이 새로 바뀌어서 예전 토큰은 거절된다', async () => {
+    const before = await (await fetch('/api/auth/csrf')).json()
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+    const after = await (await fetch('/api/auth/csrf')).json()
+
+    expect(after.token).not.toBe(before.token)
+    const stale = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { [before.headerName]: before.token },
+    })
+    expect(stale.status).toBe(403)
+  })
+
   it('로그인 실패는 INVALID_CREDENTIALS, 로그인 전 내 정보는 null이다', async () => {
     await expect(
       login({ email: 'seller@a.com', password: 'wrong' }),
