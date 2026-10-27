@@ -2,11 +2,13 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 
+import { resetAuthMock } from '../auth/mocks/handlers'
 import { server } from '../mocks/server'
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   cleanup()
   server.resetHandlers()
+  resetAuthMock()
 })
 afterAll(() => server.close())

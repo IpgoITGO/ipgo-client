@@ -17,7 +17,7 @@ describe('AppLayout', () => {
       </AppProviders>,
     )
 
-    await user.click(screen.getByRole('button', { name: '로그인' }))
+    await user.click(await screen.findByRole('button', { name: '로그인' }))
 
     expect(
       await screen.findByRole('link', { name: '대시보드' }),

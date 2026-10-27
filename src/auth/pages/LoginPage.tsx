@@ -1,8 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { z } from 'zod'
 
+import { ApiError } from '../../shared/api/client'
+import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
 import { useAuth } from '../model/useAuth'
 import styles from './LoginPage.module.css'
@@ -14,16 +17,9 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
-type LocationState = {
-  from?: {
-    pathname?: string
-  }
-}
-
 export function LoginPage() {
   const { signIn } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -36,15 +32,23 @@ export function LoginPage() {
     },
   })
 
-  function onSubmit(values: LoginValues) {
-    const state = location.state as LocationState | null
-    signIn(values.email)
-    navigate(state?.from?.pathname ?? '/dashboard', { replace: true })
-  }
+  // 성공하면 PublicOnly가 원래 가려던 화면으로 보냅니다.
+  const { isPending, run } = useActionLock(async (values: LoginValues) => {
+    setSubmitError(null)
+    try {
+      await signIn(values)
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiError && error.code === 'LOGIN_FAILED'
+          ? '이메일 또는 비밀번호가 맞지 않아요.'
+          : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      )
+    }
+  })
 
   return (
     <main className={styles.page}>
-      <form className={styles.card} onSubmit={handleSubmit(onSubmit)}>
+      <form className={styles.card} onSubmit={handleSubmit(run)}>
         <div>
           <p className={styles.eyebrow}>Ipgo</p>
           <h1>로그인</h1>
@@ -72,7 +76,10 @@ export function LoginPage() {
             <small role="alert">{errors.password.message}</small>
           )}
         </label>
-        <Button type="submit">로그인</Button>
+        {submitError && <p role="alert">{submitError}</p>}
+        <Button loading={isPending} loadingLabel="로그인 중" type="submit">
+          로그인
+        </Button>
         <Link className={styles.link} to="/signup">
           회원가입
         </Link>
