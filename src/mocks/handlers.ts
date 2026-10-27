@@ -50,4 +50,39 @@ export const handlers = [
       ],
     })
   }),
+  http.get('/api/settings/inbound', () => {
+    return HttpResponse.json({
+      defaults: { leadTime: 5, orderCycle: 29, inboundUnit: 1 },
+      products: [
+        {
+          name: '케어트릿 120g',
+          barcode: '8800272420016',
+          leadTime: 5,
+          orderCycle: 29,
+          inboundUnit: 12,
+          cost: 1800,
+          overridden: true,
+        },
+        {
+          name: '케어트릿 8g 낱개',
+          barcode: '8800272420108',
+          leadTime: 7,
+          orderCycle: 29,
+          inboundUnit: 1,
+          cost: 300,
+          overridden: true,
+        },
+        {
+          name: '덴탈껌 S 10입',
+          barcode: '8800272421044',
+          leadTime: 5,
+          orderCycle: 29,
+          inboundUnit: 1,
+          cost: 1800,
+          overridden: false,
+        },
+      ],
+    })
+  }),
+  http.put('/api/settings/inbound', () => HttpResponse.json({ saved: true })),
 ]
