@@ -1,5 +1,7 @@
 import { env } from '../config/env'
 
+export const AUTH_EXPIRED_EVENT = 'ipgo:auth-expired'
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -29,6 +31,10 @@ export async function apiRequest<T>(
   })
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+    }
+
     const errorBody = await readJson<ErrorBody>(response)
     throw new ApiError(
       response.status,

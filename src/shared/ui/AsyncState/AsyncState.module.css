@@ -1,0 +1,63 @@
+.container {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  min-height: 240px;
+  padding: 48px var(--space-6);
+  text-align: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.container h2,
+.container p {
+  margin: 0;
+}
+
+.container p {
+  max-width: 520px;
+  color: var(--color-text-3);
+  line-height: 1.7;
+}
+
+.symbol {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: var(--color-primary);
+  font-size: 20px;
+  font-weight: 800;
+  background: var(--color-primary-soft);
+  border-radius: 16px;
+}
+
+.symbol[data-status='error'] {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.progress {
+  width: 96px;
+  height: 4px;
+  overflow: hidden;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-chip);
+}
+
+.progress::after {
+  display: block;
+  width: 45%;
+  height: 100%;
+  content: '';
+  background: var(--color-primary);
+  border-radius: inherit;
+  animation: progress 1s ease-in-out infinite alternate;
+}
+
+@keyframes progress {
+  to {
+    transform: translateX(122%);
+  }
+}
