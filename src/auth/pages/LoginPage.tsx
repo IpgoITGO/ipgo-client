@@ -41,7 +41,7 @@ export function LoginPage() {
       await signIn(values)
     } catch (error) {
       setSubmitError(
-        error instanceof ApiError && error.code === 'LOGIN_FAILED'
+        error instanceof ApiError && error.code === 'INVALID_CREDENTIALS'
           ? '이메일 또는 비밀번호가 맞지 않아요.'
           : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
       )

@@ -36,12 +36,11 @@ const signUpSchema = z
       ),
     managerName: name('담당자 이름'),
     email: z.email('올바른 이메일 주소를 입력해 주세요.'),
+    // 서버 규칙: 12~128자 (글자 종류 제한 없음)
     password: z
       .string()
-      .regex(
-        /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
-        '8자 이상, 영문과 숫자를 섞어 주세요.',
-      ),
+      .min(12, '12자 이상 입력해 주세요.')
+      .max(128, '128자까지 입력할 수 있어요.'),
     passwordConfirm: z.string(),
   })
   .refine((values) => values.password === values.passwordConfirm, {
@@ -283,7 +282,7 @@ export function SignUpPage() {
             />
           </div>
           {!errors.password && (
-            <p className={styles.note}>8자 이상, 영문과 숫자를 섞어 주세요.</p>
+            <p className={styles.note}>12자 이상으로 정해 주세요.</p>
           )}
         </section>
 

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
-// docs/design/api-spec.docx 3.1절의 요청·응답 모양을 따르는 MSW handler입니다.
+// ipgo-server의 인증 API 규칙(PR #7·#9·#13의 README)을 따르는 MSW handler입니다.
+// 오류 code 이름과 응답 모양은 서버 기준입니다. API 명세서와 다른 곳은 서버를 따릅니다.
 // 가입한 계정은 메모리에만 있어 브라우저를 새로고침하면 시험 계정만 남습니다.
 
 export const MOCK_VERIFICATION_CODE = '482915'
@@ -46,7 +47,7 @@ export function resetAuthMock() {
   setSession(null)
 }
 
-// 세션은 쿠키 하나로 흉내 냅니다. 실제 방식(세션/JWT)은 백엔드가 정합니다.
+// 세션은 쿠키 하나로 흉내 냅니다. 서버는 세션 쿠키(JSESSIONID) 방식입니다.
 function readSession() {
   const match = document.cookie.match(
     new RegExp(`(?:^|; )${SESSION_COOKIE}=([^;]*)`),
@@ -58,6 +59,11 @@ function setSession(email: string | null) {
   document.cookie = email
     ? `${SESSION_COOKIE}=${encodeURIComponent(email)}; path=/`
     : `${SESSION_COOKIE}=; path=/; max-age=0`
+}
+
+// 서버는 이메일을 소문자로 정규화합니다.
+function normalizeEmail(email: unknown) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : ''
 }
 
 function toMe(user: MockUser) {
@@ -73,13 +79,19 @@ function error(
   status: number,
   code: string,
   message: string,
-  details?: Record<string, unknown>,
+  details?: { field: string },
 ) {
   return HttpResponse.json({ code, message, details }, { status })
 }
 
+function invalidInput(field: string) {
+  return error(400, 'INVALID_INPUT', '입력값의 형식과 길이를 확인해주세요.', {
+    field,
+  })
+}
+
 function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
 function isName(value: unknown) {
@@ -91,15 +103,20 @@ function isName(value: unknown) {
 }
 
 export const authHandlers = [
-  // A2 로그인
+  // A2 로그인. 서버는 form 방식으로 받고 성공하면 204를 줍니다. (client는 이슈 #32에서 맞춤)
   http.post('/api/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string }
+    const email = normalizeEmail(body.email)
     const user = users.find(
-      (item) => item.email === body.email && item.password === body.password,
+      (item) => item.email === email && item.password === body.password,
     )
 
     if (!user) {
-      return error(401, 'LOGIN_FAILED', '이메일 또는 비밀번호가 맞지 않아요.')
+      return error(
+        401,
+        'INVALID_CREDENTIALS',
+        '이메일 또는 비밀번호를 확인해주세요.',
+      )
     }
 
     setSession(user.email)
@@ -117,7 +134,7 @@ export const authHandlers = [
     const user = users.find((item) => item.email === readSession())
 
     if (!user) {
-      return error(401, 'UNAUTHORIZED', '로그인이 필요해요.')
+      return error(401, 'UNAUTHENTICATED', '로그인이 필요합니다.')
     }
 
     return HttpResponse.json(toMe(user))
@@ -125,41 +142,46 @@ export const authHandlers = [
 
   // A5 이메일 중복 확인
   http.get('/api/auth/email-availability', ({ request }) => {
-    const email = new URL(request.url).searchParams.get('email') ?? ''
+    const email = normalizeEmail(
+      new URL(request.url).searchParams.get('email') ?? '',
+    )
 
-    if (!isEmail(email)) {
-      return error(400, 'INVALID_INPUT', '이메일 형식이 아니에요.', {
-        field: 'email',
-      })
-    }
+    if (!isEmail(email)) return invalidInput('email')
 
     return HttpResponse.json({
       available: !users.some((item) => item.email === email),
     })
   }),
 
-  // A6 인증 코드 발송 · 다시 보내기 (10분 유효, 1분에 1번)
+  // A6 인증 코드 발송 · 다시 보내기 (10분 유효, 60초에 한 번)
   http.post('/api/auth/email-verifications', async ({ request }) => {
-    const { email } = (await request.json()) as { email: string }
+    const body = (await request.json()) as { email?: string }
+    const email = normalizeEmail(body.email)
+
+    if (!isEmail(email)) return invalidInput('email')
 
     if (users.some((item) => item.email === email)) {
-      return error(409, 'EMAIL_EXISTS', '이미 가입한 이메일이에요.')
+      return error(409, 'DUPLICATE_EMAIL', '이미 가입된 이메일입니다.')
     }
 
     const previous = codes.get(email)
     if (previous && Date.now() - previous.sentAt < RESEND_INTERVAL_MS) {
       return error(
         429,
-        'TOO_MANY_REQUESTS',
-        '인증 메일은 1분에 한 번 보낼 수 있어요.',
+        'EMAIL_VERIFICATION_RATE_LIMITED',
+        '잠시 후 다시 요청해주세요.',
       )
     }
 
+    // 새로 보내면 이전 코드와 가입 토큰은 무효가 됩니다.
     codes.set(email, {
       sentAt: Date.now(),
       expiresAt: Date.now() + CODE_LIFETIME_MS,
       failures: 0,
     })
+    for (const [token, issued] of tokens) {
+      if (issued.email === email) tokens.delete(token)
+    }
     if (import.meta.env.MODE !== 'test') {
       console.info(`[MSW] ${email} 인증 코드: ${MOCK_VERIFICATION_CODE}`)
     }
@@ -167,41 +189,35 @@ export const authHandlers = [
     return HttpResponse.json({ expiresIn: 600 }, { status: 202 })
   }),
 
-  // A7 인증 코드 확인 → 인증 토큰 (30분 유효, 5번 틀리면 코드 무효)
+  // A7 인증 코드 확인 → 가입 토큰 (30분 유효, 5번 틀리면 그 코드는 무효)
   http.post('/api/auth/email-verifications/confirm', async ({ request }) => {
-    const { email, code } = (await request.json()) as {
-      email: string
-      code: string
+    const body = (await request.json()) as { email?: string; code?: string }
+    const email = normalizeEmail(body.email)
+
+    if (!isEmail(email)) return invalidInput('email')
+    if (typeof body.code !== 'string' || !/^\d{6}$/.test(body.code)) {
+      return invalidInput('code')
     }
+
     const issued = codes.get(email)
-
-    if (!issued || Date.now() > issued.expiresAt) {
-      return error(
-        400,
-        'VERIFICATION_EXPIRED',
-        '인증 코드 시간이 지났어요. 코드를 다시 받아 주세요.',
-      )
+    if (!issued || issued.failures >= MAX_CODE_FAILURES) {
+      return error(400, 'INVALID_EMAIL_CODE', '인증 코드가 올바르지 않습니다.')
     }
-
-    if (code !== MOCK_VERIFICATION_CODE) {
+    if (Date.now() > issued.expiresAt) {
+      return error(400, 'EMAIL_CODE_EXPIRED', '인증 코드가 만료되었습니다.')
+    }
+    if (body.code !== MOCK_VERIFICATION_CODE) {
       issued.failures += 1
-      if (issued.failures >= MAX_CODE_FAILURES) {
-        codes.delete(email)
-        return error(
-          400,
-          'VERIFICATION_FAILED',
-          '5번 틀려서 이 코드는 더 쓸 수 없어요. 코드를 다시 받아 주세요.',
-        )
-      }
-      return error(
-        400,
-        'VERIFICATION_FAILED',
-        `코드가 맞지 않아요. ${MAX_CODE_FAILURES - issued.failures}번 더 해 볼 수 있어요.`,
-      )
+      return error(400, 'INVALID_EMAIL_CODE', '인증 코드가 올바르지 않습니다.')
     }
 
     codes.delete(email)
-    const verificationToken = `vt_${crypto.randomUUID()}`
+    const verificationToken = Array.from(
+      crypto.getRandomValues(new Uint8Array(22)),
+      (byte) => byte.toString(16).padStart(2, '0'),
+    )
+      .join('')
+      .slice(0, 43)
     tokens.set(verificationToken, {
       email,
       expiresAt: Date.now() + TOKEN_LIFETIME_MS,
@@ -210,82 +226,59 @@ export const authHandlers = [
     return HttpResponse.json({ verificationToken })
   }),
 
-  // A1 회원가입
+  // A1 회원가입. 입력 오류는 칸 이름(details.field)을 하나 알려 줍니다. (이름순으로 첫 칸)
   http.post('/api/auth/signup', async ({ request }) => {
     const body = (await request.json()) as {
       companyName?: string
       businessRegNo?: string | null
       managerName?: string
-      email: string
-      password: string
+      email?: string
+      password?: string
       verificationToken?: string
     }
+    const email = normalizeEmail(body.email)
 
-    if (!body.verificationToken) {
-      return error(
-        400,
-        'VERIFICATION_REQUIRED',
-        '이메일 인증을 먼저 해 주세요.',
-      )
-    }
-
-    const token = tokens.get(body.verificationToken)
-    if (!token || token.email !== body.email || Date.now() > token.expiresAt) {
-      return error(
-        400,
-        'VERIFICATION_EXPIRED',
-        '인증 시간이 지났어요. 이메일 인증을 다시 해 주세요.',
-      )
-    }
-
-    if (users.some((item) => item.email === body.email)) {
-      return error(409, 'EMAIL_EXISTS', '이미 가입한 이메일이에요.')
-    }
-
-    if (!isName(body.companyName)) {
-      return error(400, 'INVALID_INPUT', '회사명은 1~50자로 입력해 주세요.', {
-        field: 'companyName',
-      })
-    }
-    if (!isName(body.managerName)) {
-      return error(
-        400,
-        'INVALID_INPUT',
-        '담당자 이름은 1~50자로 입력해 주세요.',
-        { field: 'managerName' },
-      )
-    }
+    const invalid: string[] = []
+    if (!isName(body.companyName)) invalid.push('companyName')
+    if (!isName(body.managerName)) invalid.push('managerName')
     if (body.businessRegNo != null && !/^\d{10}$/.test(body.businessRegNo)) {
-      return error(
-        400,
-        'INVALID_INPUT',
-        '사업자등록번호는 숫자 10자리로 입력해 주세요.',
-        { field: 'businessRegNo' },
-      )
+      invalid.push('businessRegNo')
     }
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(body.password)) {
+    if (!isEmail(email)) invalid.push('email')
+    if (
+      typeof body.password !== 'string' ||
+      body.password.length < 12 ||
+      body.password.length > 128
+    ) {
+      invalid.push('password')
+    }
+    if (!body.verificationToken) invalid.push('verificationToken')
+    if (invalid.length > 0) return invalidInput(invalid.sort()[0])
+
+    const token = tokens.get(body.verificationToken!)
+    if (!token || token.email !== email || Date.now() > token.expiresAt) {
       return error(
         400,
-        'INVALID_INPUT',
-        '비밀번호는 8자 이상, 영문과 숫자를 섞어 주세요.',
-        { field: 'password' },
+        'INVALID_VERIFICATION_TOKEN',
+        '가입 인증이 올바르지 않거나 만료되었습니다.',
       )
     }
 
-    tokens.delete(body.verificationToken)
+    if (users.some((item) => item.email === email)) {
+      return error(409, 'DUPLICATE_EMAIL', '이미 가입된 이메일입니다.')
+    }
+
+    tokens.delete(body.verificationToken!)
     const user: MockUser = {
       userId: users.length + 1,
-      email: body.email,
-      password: body.password,
+      email,
+      password: body.password!,
       managerName: body.managerName!.trim(),
       companyName: body.companyName!.trim(),
       businessRegNo: body.businessRegNo ?? null,
     }
     users.push(user)
 
-    return HttpResponse.json(
-      { userId: user.userId, email: user.email },
-      { status: 201 },
-    )
+    return HttpResponse.json(toMe(user), { status: 201 })
   }),
 ]

@@ -79,8 +79,5 @@ export function confirmVerificationCode(request: {
 
 // A1 회원가입
 export function signUp(request: SignUpRequest) {
-  return apiRequest<{ userId: number; email: string }>(
-    '/auth/signup',
-    postJson(request),
-  )
+  return apiRequest<Me>('/auth/signup', postJson(request))
 }
