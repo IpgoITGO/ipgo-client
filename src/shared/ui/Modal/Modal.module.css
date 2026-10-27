@@ -1,0 +1,29 @@
+.backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: rgb(25 31 40 / 52%);
+}
+
+.dialog {
+  width: min(100%, 560px);
+  max-height: calc(100vh - 40px);
+  padding: 36px;
+  overflow: auto;
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  box-shadow: 0 24px 80px rgb(25 31 40 / 24%);
+}
+
+.dialog:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+
+@media (max-width: 560px) {
+  .dialog {
+    padding: var(--space-5);
+  }
+}

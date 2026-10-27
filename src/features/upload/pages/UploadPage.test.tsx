@@ -16,7 +16,7 @@ describe('UploadPage', () => {
 
     const input = screen.getByLabelText('수불부 파일 선택')
     await user.upload(input, [
-      new File(['ok'], '2026-09.xlsx'),
+      new File(['ok'], '2026-10.xlsx'),
       new File(['bad'], '재고현황.xlsx'),
     ])
 
@@ -26,5 +26,30 @@ describe('UploadPage', () => {
 
     await user.click(screen.getByRole('button', { name: '재고현황.xlsx 제거' }))
     expect(screen.queryByText('재고현황.xlsx')).not.toBeInTheDocument()
+  })
+
+  it('기존 기간은 확인 후 덮어쓸 수 있다', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <UploadPage />
+      </MemoryRouter>,
+    )
+
+    await user.upload(
+      screen.getByLabelText('수불부 파일 선택'),
+      new File(['duplicate'], '2026-09.xlsx'),
+    )
+
+    expect(
+      screen.getByRole('dialog', { name: '이미 올린 기간이에요' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '0개 올리기' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: '덮어쓰기' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('덮어쓰기 확인')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
   })
 })
