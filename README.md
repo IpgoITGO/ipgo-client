@@ -35,8 +35,11 @@ npm run dev
 | 이메일   | `seller@a.com` |
 | 비밀번호 | `pass1234`     |
 
-현재 로그인은 화면 구조 확인을 위한 임시 client 상태입니다. 실제 인증 방식은 백엔드 계약이
-확정된 뒤 `src/auth`에서 교체합니다.
+회원가입을 시험할 때 이메일 인증 코드는 항상 `482915`입니다. 가입한 계정은 MSW 메모리에만 있어
+브라우저를 새로고침하면 시험 계정만 남습니다.
+
+로그인 상태는 앱을 시작할 때 `GET /auth/me`(A4)로 확인하며, 현재 MSW는 세션 쿠키 방식으로
+흉내 냅니다. 실제 인증 방식(세션/JWT)은 백엔드 계약이 확정된 뒤 `src/auth`에서만 교체합니다.
 
 ## 명령
 
@@ -105,7 +108,8 @@ src/
 ## Mock API
 
 MSW handler는 기능별 mock을 모아 `src/mocks/handlers.ts`에서 조립합니다. 같은 handler를
-개발 브라우저와 Vitest에서 함께 사용하며, 실제 API 코드에는 mock 분기를 넣지 않습니다.
+개발 브라우저와 Vitest에서 함께 사용하며, 실제 API 코드에는 mock 분기를 넣지 않습니다. 인증 API(A1~A7) mock은
+`src/auth/mocks/handlers.ts`에 있습니다.
 
 ## 작업 흐름
 
