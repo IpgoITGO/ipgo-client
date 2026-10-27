@@ -189,4 +189,82 @@ export const handlers = [
       ],
     })
   }),
+  http.get('/api/skus/:skuId', ({ params }) => {
+    if (params.skuId === 'new-product') {
+      return HttpResponse.json({
+        id: 'new-product',
+        name: '신상품 트릿 30g',
+        barcode: '8800272421999',
+        fulfillment: '서울 풀필먼트',
+        status: 'unavailable',
+        unavailableReason: '판매한 날이 7일보다 적어요.',
+        recommendation: { quantity: 0, cost: 0, expectedStockoutDate: '-' },
+        history: [],
+        calculation: {
+          formulaA: 0,
+          formulaB: 0,
+          selectedFormula: 'A',
+          multiplier: 1,
+          coverDays: 0,
+          startingInventory: 0,
+          startingInventoryEstimated: false,
+          existingOrders: 0,
+          inboundUnit: 1,
+          rawQuantity: 0,
+        },
+        accuracy: {
+          grade: 'low',
+          score: 0,
+          survivedRatio: 0,
+          description: '비교할 예측 기록이 없어요.',
+        },
+      })
+    }
+
+    const isReference = params.skuId === 'reference-product'
+    const isLowAccuracy =
+      params.skuId === 'low-accuracy' || params.skuId === 'reference-product'
+
+    return HttpResponse.json({
+      id: String(params.skuId),
+      name: '케어트릿 120g',
+      barcode: '8800272420016',
+      fulfillment: '서울 풀필먼트',
+      status: isReference ? 'reference' : 'ready',
+      recommendation: {
+        quantity: 72,
+        cost: 129600,
+        expectedStockoutDate: '2026. 10. 22',
+      },
+      history: [
+        { date: '9월 1일', inventory: 45, outbound: 4, predictedOutbound: 5 },
+        { date: '9월 8일', inventory: 31, outbound: 7, predictedOutbound: 6 },
+        { date: '9월 15일', inventory: 18, outbound: 5, predictedOutbound: 7 },
+        { date: '9월 22일', inventory: 0, outbound: 2, predictedOutbound: 6 },
+        { date: '9월 29일', inventory: 28, outbound: 8, predictedOutbound: 7 },
+        { date: '10월 6일', inventory: 14, outbound: 6, predictedOutbound: 7 },
+        { date: '10월 14일', inventory: 4, outbound: 9, predictedOutbound: 8 },
+      ],
+      calculation: {
+        formulaA: 67,
+        formulaB: 69,
+        selectedFormula: 'B',
+        multiplier: 1.15,
+        coverDays: 34,
+        startingInventory: 4,
+        startingInventoryEstimated: isReference,
+        existingOrders: 12,
+        inboundUnit: 12,
+        rawQuantity: 68.7,
+      },
+      accuracy: {
+        grade: isLowAccuracy ? 'low' : 'high',
+        score: isLowAccuracy ? 48 : 87,
+        survivedRatio: isLowAccuracy ? 54 : 92,
+        description: isLowAccuracy
+          ? '관측 기간이 짧아 실제 출고와 차이가 클 수 있어요.'
+          : '최근 4주 예측이 실제 출고 흐름과 비슷했어요.',
+      },
+    })
+  }),
 ]
