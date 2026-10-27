@@ -11,6 +11,8 @@ const CODE_LIFETIME_MS = 10 * 60 * 1000
 const RESEND_INTERVAL_MS = 60 * 1000
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000
 const MAX_CODE_FAILURES = 5
+// 비밀번호: 8자 이상, 영문·숫자·특수문자를 모두 포함 (명세서 규칙 + 특수문자)
+const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,128}$/
 
 type MockUser = {
   userId: number
@@ -247,8 +249,7 @@ export const authHandlers = [
     if (!isEmail(email)) invalid.push('email')
     if (
       typeof body.password !== 'string' ||
-      body.password.length < 12 ||
-      body.password.length > 128
+      !PASSWORD_RULE.test(body.password)
     ) {
       invalid.push('password')
     }

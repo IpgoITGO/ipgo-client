@@ -26,7 +26,7 @@ async function fillCompany(user: UserEvent) {
   await user.type(screen.getByLabelText('담당자 이름'), '김담당')
 }
 
-async function fillPassword(user: UserEvent, password = 'abcd1234abcd') {
+async function fillPassword(user: UserEvent, password = 'abcd1234!') {
   await user.type(screen.getByLabelText('비밀번호'), password)
   await user.type(screen.getByLabelText('비밀번호 확인'), password)
 }
@@ -171,7 +171,9 @@ describe('SignUpPage', () => {
       await screen.findByText('회사명을 입력해 주세요.'),
     ).toBeInTheDocument()
     expect(screen.getByText('숫자 10자리로 입력해 주세요.')).toBeInTheDocument()
-    expect(screen.getByText('12자 이상 입력해 주세요.')).toBeInTheDocument()
+    expect(
+      screen.getByText('8자 이상, 영문·숫자·특수문자를 섞어 주세요.'),
+    ).toBeInTheDocument()
     expect(screen.getByText('비밀번호가 서로 달라요.')).toBeInTheDocument()
   })
 
@@ -190,7 +192,7 @@ describe('SignUpPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByLabelText('이메일')).toHaveValue(newEmail)
 
-    await user.type(screen.getByLabelText('비밀번호'), 'abcd1234abcd')
+    await user.type(screen.getByLabelText('비밀번호'), 'abcd1234!')
     await user.click(screen.getByRole('button', { name: '로그인' }))
 
     expect(
