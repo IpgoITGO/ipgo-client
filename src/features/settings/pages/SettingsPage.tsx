@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
 import styles from './SettingsPage.module.css'
 
 const positiveInteger = z
@@ -220,17 +221,7 @@ export function SettingsPage() {
         )}
       </section>
 
-      <section className={styles.card}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2>이미 발주한 물량</h2>
-            <p>발주했지만 아직 안 온 물량은 다음 단계에서 등록할 수 있어요.</p>
-          </div>
-          <Button disabled type="button" variant="secondary">
-            등록
-          </Button>
-        </div>
-      </section>
+      <PurchaseOrdersSection />
 
       {saved && (
         <p className={styles.saved} role="status">

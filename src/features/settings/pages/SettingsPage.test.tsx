@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -19,8 +19,16 @@ describe('SettingsPage', () => {
 
     expect(await screen.findByText('케어트릿 120g')).toBeInTheDocument()
     await user.type(screen.getByLabelText('상품명 또는 바코드 검색'), '덴탈껌')
-    expect(screen.getByText('덴탈껌 S 10입')).toBeInTheDocument()
-    expect(screen.queryByText('케어트릿 120g')).not.toBeInTheDocument()
+    const productSection = screen
+      .getByRole('heading', { name: '상품별로 다른 조건' })
+      .closest('section')
+    expect(productSection).not.toBeNull()
+    expect(
+      within(productSection!).getByText('덴탈껌 S 10입'),
+    ).toBeInTheDocument()
+    expect(
+      within(productSection!).queryByText('케어트릿 120g'),
+    ).not.toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('덴탈껌 S 10입 inboundUnit'))
     await user.type(screen.getByLabelText('덴탈껌 S 10입 inboundUnit'), '0')
