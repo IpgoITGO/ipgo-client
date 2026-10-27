@@ -23,4 +23,10 @@ export const handlers = [
       },
     })
   }),
+  http.post('/api/uploads', () => {
+    return HttpResponse.json(
+      { uploadId: 'upload-20261027', status: 'processing' },
+      { status: 202 },
+    )
+  }),
 ]

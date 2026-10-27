@@ -1,0 +1,170 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+}
+.intro {
+  display: grid;
+  gap: var(--space-2);
+}
+.intro p,
+.intro h1 {
+  margin: 0;
+}
+.intro p {
+  color: var(--color-text-3);
+}
+.back {
+  justify-self: start;
+  padding: 0;
+  color: var(--color-text-2);
+  background: none;
+  border: 0;
+}
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  min-height: 300px;
+  padding: 48px var(--space-6);
+  color: var(--color-text-3);
+  text-align: center;
+  background: var(--color-card);
+  border: 2px dashed var(--color-input-border);
+  border-radius: var(--radius-card);
+  transition: 0.2s ease;
+}
+.dropzone[data-dragging='true'] {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+.dropzone strong {
+  color: var(--color-text);
+  font-size: var(--text-section);
+}
+.uploadIcon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  color: var(--color-primary);
+  font-size: 28px;
+  background: var(--color-primary-soft);
+  border-radius: 18px;
+}
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.fileSection {
+  padding: var(--space-6);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+.sectionHeader,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sectionHeader {
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.sectionHeader h2 {
+  margin: 0;
+  font-size: var(--text-section);
+}
+.sectionHeader span {
+  color: var(--color-text-3);
+}
+.fileList {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.fileRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-input);
+}
+.fileName {
+  display: grid;
+  gap: var(--space-1);
+}
+.fileName span,
+.reason {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.reason {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger);
+}
+.status {
+  padding: 7px 11px;
+  color: var(--color-success);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  background: var(--color-success-bg);
+  border-radius: var(--radius-chip);
+}
+.status[data-status='error'] {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.remove {
+  padding: var(--space-2);
+  color: var(--color-text-3);
+  background: transparent;
+  border: 0;
+}
+.error {
+  padding: var(--space-4);
+  margin: 0;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-input);
+}
+.actions {
+  justify-content: flex-end;
+}
+.actions > div {
+  display: grid;
+  gap: var(--space-1);
+  margin-right: auto;
+}
+.actions > div span {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+@media (max-width: 720px) {
+  .fileRow {
+    grid-template-columns: 1fr auto;
+  }
+  .status {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .remove {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .actions {
+    flex-wrap: wrap;
+  }
+  .actions > div {
+    width: 100%;
+  }
+}
