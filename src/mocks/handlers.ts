@@ -29,4 +29,25 @@ export const handlers = [
       { status: 202 },
     )
   }),
+  http.get('/api/uploads/:uploadId', () => {
+    return HttpResponse.json({
+      status: 'completed',
+      period: '2026. 9. 1 ~ 10. 14',
+      referenceDate: '2026. 10. 14',
+      totalCount: 159,
+      excludedCount: 1,
+      calculatedCount: 158,
+      validationIssues: [
+        {
+          name: '덴탈껌 M 5입',
+          barcode: '8800272421082',
+          date: '2026. 9. 12',
+          reason: '전날 재고 + 입고 − 출고 + 조정이 당일 재고와 3개 달라요',
+        },
+      ],
+      orderedItems: [
+        { name: '덴탈껌 S 10입', quantity: 60, arrivalDate: '10월 20일' },
+      ],
+    })
+  }),
 ]
