@@ -6,7 +6,6 @@ import styles from './AppLayout.module.css'
 
 const navigation = [
   { to: '/dashboard', label: '대시보드' },
-  { to: '/upload', label: '수불부 업로드' },
   { to: '/settings', label: '입고 조건' },
 ]
 
@@ -23,7 +22,7 @@ export function AppLayout() {
     <div className={styles.shell}>
       <header className={styles.header}>
         <NavLink className={styles.brand} to="/dashboard">
-          Ipgo
+          입고 예측
         </NavLink>
         <nav aria-label="주요 메뉴" className={styles.navigation}>
           {navigation.map((item) => (
@@ -39,7 +38,12 @@ export function AppLayout() {
           ))}
         </nav>
         <div className={styles.account}>
-          <span>{user?.email}</span>
+          <span
+            aria-label={`${user?.name} · ${user?.companyName}`}
+            className={styles.identity}
+          >
+            {user?.name} <span aria-hidden="true">·</span> {user?.companyName}
+          </span>
           <Button onClick={handleSignOut} variant="secondary">
             로그아웃
           </Button>
