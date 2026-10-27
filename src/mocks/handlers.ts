@@ -85,4 +85,59 @@ export const handlers = [
     })
   }),
   http.put('/api/settings/inbound', () => HttpResponse.json({ saved: true })),
+  http.get('/api/purchase-orders', () => {
+    return HttpResponse.json([
+      {
+        id: 'order-1',
+        productName: '덴탈껌 S 10입',
+        barcode: '8800272421044',
+        quantity: 60,
+        arrivalDate: '2026-10-24',
+        status: 'arrived',
+      },
+      {
+        id: 'order-2',
+        productName: '케어트릿 120g',
+        barcode: '8800272420016',
+        quantity: 120,
+        arrivalDate: '2026-12-01',
+        status: 'reflecting',
+      },
+      {
+        id: 'order-3',
+        productName: '동결건조 큐브 50g',
+        barcode: '8800272421501',
+        quantity: 30,
+        arrivalDate: '2026-10-16',
+        status: 'overdue',
+      },
+      {
+        id: 'order-4',
+        productName: '저키 스틱 100g',
+        barcode: '8800272421273',
+        quantity: 40,
+        arrivalDate: null,
+        status: 'no-date',
+      },
+    ])
+  }),
+  http.post('/api/purchase-orders', async ({ request }) => {
+    const body = (await request.json()) as {
+      productName: string
+      barcode: string
+      quantity: number
+      arrivalDate: string
+    }
+    return HttpResponse.json(
+      {
+        id: 'order-new',
+        productName: body.productName,
+        barcode: body.barcode,
+        quantity: body.quantity,
+        arrivalDate: body.arrivalDate || null,
+        status: body.arrivalDate ? 'reflecting' : 'no-date',
+      },
+      { status: 201 },
+    )
+  }),
 ]
