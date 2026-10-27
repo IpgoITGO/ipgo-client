@@ -1,63 +1,33 @@
-.page {
+.form {
   display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: var(--space-5);
+  gap: var(--space-6);
+  margin-top: var(--space-8);
 }
 
-.card {
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.fields {
   display: grid;
   gap: var(--space-5);
-  width: min(100%, 420px);
-  padding: var(--space-8);
-  background: var(--color-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
 }
 
-.eyebrow {
-  margin: 0 0 var(--space-1);
-  color: var(--color-primary);
-  font-weight: 700;
-}
-
-.description {
-  margin: var(--space-2) 0 0;
+.footnote {
+  margin: 0;
   color: var(--color-text-3);
-}
-
-.field {
-  display: grid;
-  gap: var(--space-2);
-  color: var(--color-text-2);
-  font-weight: 600;
-}
-
-.field input {
-  height: var(--h-input);
-  padding: 0 var(--space-4);
-  color: var(--color-text);
-  background: var(--color-card);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-input);
-  font: inherit;
-}
-
-.field input:focus-visible {
-  border-color: var(--color-primary);
-  outline: 3px solid var(--color-primary-soft);
-}
-
-.field input[aria-invalid='true'] {
-  border-color: var(--color-danger);
-}
-
-.field small {
-  color: var(--color-danger);
-  font-weight: 400;
-}
-
-.link {
-  color: var(--color-primary);
+  font-size: var(--text-caption);
   text-align: center;
+}
+
+/* 화면에는 보이지 않지만 스크린 리더는 읽는 페이지 제목 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
