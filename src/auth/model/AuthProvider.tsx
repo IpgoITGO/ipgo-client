@@ -6,7 +6,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null)
 
   const signIn = useCallback((email: string) => {
-    setUser({ email })
+    setUser({
+      email,
+      name: '박셀러',
+      companyName: '펫스낵랩',
+    })
   }, [])
 
   const signOut = useCallback(() => {
