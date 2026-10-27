@@ -123,6 +123,19 @@
   color: var(--color-danger);
   background: var(--color-danger-bg);
 }
+
+.status[data-status='duplicate'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.detail {
+  padding: var(--space-2);
+  color: var(--color-primary);
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+}
 .remove {
   padding: var(--space-2);
   color: var(--color-text-3);
@@ -147,6 +160,53 @@
 .actions > div span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
+}
+
+.modalContent {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.modalContent h2,
+.modalContent p {
+  margin: 0;
+}
+
+.modalContent p {
+  color: var(--color-text-2);
+  line-height: 1.7;
+}
+
+.modalIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: var(--color-warning);
+  font-size: 24px;
+  font-weight: 800;
+  background: var(--color-warning-bg);
+  border-radius: 16px;
+}
+
+.modalFile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-input);
+}
+
+.modalFile span {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.modalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
 
 @media (max-width: 720px) {

@@ -1,9 +1,14 @@
 export type UploadFileState = {
+  existingUpload?: {
+    uploadedAt: string
+  }
   file: File
   id: string
+  overwrite?: boolean
+  periodKey?: string
   period?: string
   reason?: string
-  status: 'ready' | 'error'
+  status: 'ready' | 'duplicate' | 'error'
 }
 
 const filenamePattern = /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i
@@ -33,6 +38,7 @@ export function validateUploadFile(file: File): UploadFileState {
   return {
     file,
     id,
+    periodKey: `${match[1]}-${match[2]}`,
     period: `${match[1]}년 ${Number(match[2])}월`,
     status: 'ready',
   }
