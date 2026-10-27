@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useLocation } from 'react-router-dom'
 import { z } from 'zod'
 
 import { ApiError } from '../../shared/api/client'
@@ -20,6 +21,9 @@ type LoginValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const { signIn } = useAuth()
+  // 회원가입을 마치고 왔다면 가입한 이메일을 미리 채워 줍니다.
+  const signedUp = (useLocation().state as { signedUp?: string } | null)
+    ?.signedUp
   const [submitError, setSubmitError] = useState<string | null>(null)
   const {
     register,
@@ -27,7 +31,7 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: signedUp ?? '', password: '' },
   })
 
   // 성공하면 PublicOnly가 원래 가려던 화면으로 보냅니다.
@@ -57,6 +61,11 @@ export function LoginPage() {
       <form className={styles.form} noValidate onSubmit={handleSubmit(run)}>
         <h1 className={styles.srOnly}>로그인</h1>
         <h2 className={styles.title}>다시 오신 걸 환영해요</h2>
+        {signedUp && (
+          <p className={styles.notice} role="status">
+            가입을 마쳤어요. 로그인해 주세요.
+          </p>
+        )}
         <div className={styles.fields}>
           <TextField
             autoComplete="email"
@@ -74,7 +83,12 @@ export function LoginPage() {
             {...register('password')}
           />
         </div>
-        <Button loading={isPending} loadingLabel="로그인 중" type="submit">
+        <Button
+          className={styles.submit}
+          loading={isPending}
+          loadingLabel="로그인 중"
+          type="submit"
+        >
           로그인
         </Button>
         <p className={styles.footnote}>소셜 로그인은 추후 제공해요</p>

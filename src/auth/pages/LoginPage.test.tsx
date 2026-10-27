@@ -33,6 +33,24 @@ describe('LoginPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('회원가입을 마치고 오면 안내 문구를 보여주고 이메일을 미리 채운다', async () => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: [
+        { pathname: '/login', state: { signedUp: 'new@b.com' } },
+      ],
+    })
+    render(
+      <AppProviders>
+        <RouterProvider router={router} />
+      </AppProviders>,
+    )
+
+    expect(
+      await screen.findByText('가입을 마쳤어요. 로그인해 주세요.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('이메일')).toHaveValue('new@b.com')
+  })
+
   it('빈 칸으로 로그인하면 칸마다 안내를 보여준다', async () => {
     const user = userEvent.setup()
     renderLogin()

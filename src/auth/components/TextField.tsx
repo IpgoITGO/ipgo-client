@@ -7,6 +7,7 @@ type TextFieldProps = Omit<ComponentProps<'input'>, 'id'> & {
   error?: string
   hint?: ReactNode
   success?: boolean // 사용할 수 있는 값 · 인증 완료
+  inputClassName?: string // 입력칸 글자 모양처럼 이 칸에만 필요한 스타일
   suffix?: ReactNode // 입력칸 안 오른쪽 (남은 시간 등)
   action?: ReactNode // 입력칸 옆 버튼
 }
@@ -16,6 +17,7 @@ export function TextField({
   error,
   hint,
   success,
+  inputClassName,
   suffix,
   action,
   required,
@@ -40,7 +42,11 @@ export function TextField({
             aria-describedby={error || hint ? messageId : undefined}
             aria-invalid={error ? true : undefined}
             aria-required={required || undefined}
-            className={styles.input}
+            className={
+              inputClassName
+                ? `${styles.input} ${inputClassName}`
+                : styles.input
+            }
             id={id}
             {...input}
           />
