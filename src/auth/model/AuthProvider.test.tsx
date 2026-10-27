@@ -24,14 +24,14 @@ describe('로그인 상태', () => {
 
     await signInAsSeller(user)
     expect(
-      await screen.findByRole('heading', { name: '대시보드' }),
+      await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).toBeInTheDocument()
 
     first.unmount()
     renderApp('/dashboard')
 
     expect(
-      await screen.findByRole('heading', { name: '대시보드' }),
+      await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).toBeInTheDocument()
   })
 
@@ -65,7 +65,7 @@ describe('로그인 상태', () => {
       '이메일 또는 비밀번호가 맞지 않아요.',
     )
     expect(
-      screen.queryByRole('heading', { name: '대시보드' }),
+      screen.queryByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).not.toBeInTheDocument()
   })
 })

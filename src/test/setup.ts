@@ -1,9 +1,12 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 
 import { resetAuthMock } from '../auth/mocks/handlers'
 import { server } from '../mocks/server'
+
+// 느린 컴퓨터·CI에서 기본 1초 대기가 모자라 테스트가 흔들리지 않게 늘립니다.
+configure({ asyncUtilTimeout: 4000 })
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {

@@ -51,10 +51,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [clearSession])
 
+  // 로그인한 상태에서 401을 받았을 때만 만료로 봅니다. 로그인 전 A4나 로그인 실패의
+  // 401은 정상 응답이므로 다른 화면의 데이터를 지우면 안 됩니다.
+  const handleExpired = useCallback(() => {
+    if (queryClient.getQueryData(ME_KEY)) clearSession()
+  }, [clearSession, queryClient])
+
   useEffect(() => {
-    window.addEventListener(AUTH_EXPIRED_EVENT, clearSession)
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, clearSession)
-  }, [clearSession])
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired)
+  }, [handleExpired])
 
   const value = useMemo<AuthContextValue>(
     () => ({
