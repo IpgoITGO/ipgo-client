@@ -267,4 +267,74 @@ export const handlers = [
       },
     })
   }),
+  http.get('/api/skus/:skuId/scenarios', ({ params }) => {
+    const recommendedQuantity = params.skuId === 'zero-recommendation' ? 0 : 72
+    return HttpResponse.json({
+      recommendedQuantity,
+      scenarios: [
+        {
+          id: '80',
+          label: '권장량의 80%',
+          quantity: 60,
+          expectedStockoutDate: '2026. 11. 18',
+          remainingAtNextInbound: 14,
+          preArrivalRisk: 18,
+          postArrivalRisk: 9,
+          estimated: true,
+          sampleSize: 44,
+        },
+        {
+          id: '100',
+          label: '권장량 100%',
+          quantity: 72,
+          expectedStockoutDate: '2026. 11. 27',
+          remainingAtNextInbound: 26,
+          preArrivalRisk: 8,
+          postArrivalRisk: 3,
+          estimated: true,
+          sampleSize: 44,
+        },
+        {
+          id: '120',
+          label: '권장량의 120%',
+          quantity: 84,
+          expectedStockoutDate: '2026. 12. 5',
+          remainingAtNextInbound: 38,
+          preArrivalRisk: null,
+          postArrivalRisk: null,
+          estimated: true,
+          sampleSize: 5,
+        },
+      ],
+    })
+  }),
+  http.post('/api/skus/:skuId/scenarios', async ({ request }) => {
+    const body = (await request.json()) as { quantity: number }
+    return HttpResponse.json({
+      id: 'custom',
+      label: '직접 입력',
+      quantity: body.quantity,
+      expectedStockoutDate: '2026. 12. 10',
+      remainingAtNextInbound: body.quantity - 46,
+      preArrivalRisk: 7,
+      postArrivalRisk: 2,
+      estimated: true,
+      sampleSize: 44,
+    })
+  }),
+  http.get('/api/skus/:skuId/insight', ({ params }) => {
+    if (params.skuId === 'ai-fallback') {
+      return HttpResponse.json({
+        source: 'fallback',
+        message:
+          '권장 입고량 72개를 기준으로 도착 전 품절 위험과 다음 입고 시점 재고를 함께 확인해 주세요.',
+      })
+    }
+
+    return HttpResponse.json({
+      source: 'ai',
+      message:
+        '권장량 72개를 입고하면 도착 전 품절 위험은 8%, 도착 후 위험은 3%로 낮아져요. 60개보다 다음 입고 시점 재고가 12개 더 남아요.',
+    })
+  }),
 ]

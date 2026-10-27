@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { ScenarioInsight } from '../components/ScenarioInsight'
 import styles from './SkuPage.module.css'
 
 export type SkuDetail = {
@@ -291,6 +292,7 @@ export function SkuPage() {
               </div>
             </div>
           </section>
+          <ScenarioInsight key={skuId} skuId={skuId} />
         </>
       )}
     </div>
