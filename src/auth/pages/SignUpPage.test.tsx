@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '../../app/providers/AppProviders'
 import { routes } from '../../app/router/router'
@@ -46,7 +46,48 @@ async function verifyEmail(user: UserEvent) {
   await screen.findByText('인증을 마쳤어요.')
 }
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('SignUpPage', () => {
+  it('틀린 코드나 시간 초과 뒤에도 다시 보내기를 눌러 새 타이머를 시작할 수 있다', async () => {
+    const user = userEvent.setup()
+    renderSignUp()
+
+    await sendCode(user)
+    await user.type(await screen.findByLabelText('인증 코드'), '000000')
+    await user.click(screen.getByRole('button', { name: '확인' }))
+    expect(
+      await screen.findByText(/4번 더 해 볼 수 있어요/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^다시 보내기/ }),
+    ).toBeInTheDocument()
+
+    // 10분이 지난 것으로 시계를 앞당깁니다. 타이머가 1초마다 새로 그립니다.
+    const realNow = Date.now.bind(Date)
+    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 601_000)
+
+    expect(
+      await screen.findByText('시간이 지났어요. 코드를 다시 받아 주세요.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled()
+    const resend = screen.getByRole('button', { name: '다시 보내기' })
+    expect(resend).toBeEnabled()
+
+    await user.click(resend)
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('시간이 지났어요. 코드를 다시 받아 주세요.'),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByLabelText('남은 시간')).toHaveTextContent(
+      /^(10:00|09:59)$/,
+    )
+  })
+
   it('중복 확인을 통과하면 코드를 보내고 10분 타이머와 다시 보내기 대기 시간을 보여준다', async () => {
     const user = userEvent.setup()
     renderSignUp()

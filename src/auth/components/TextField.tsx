@@ -24,7 +24,8 @@ export function TextField({
   ...input
 }: TextFieldProps) {
   const id = useId()
-  const messageId = `${id}-message`
+  const errorId = `${id}-error`
+  const hintId = `${id}-hint`
 
   return (
     <div className={styles.field} data-success={success || undefined}>
@@ -39,7 +40,10 @@ export function TextField({
       <div className={styles.control}>
         <div className={styles.inputWrap}>
           <input
-            aria-describedby={error || hint ? messageId : undefined}
+            aria-describedby={
+              [error && errorId, hint && hintId].filter(Boolean).join(' ') ||
+              undefined
+            }
             aria-invalid={error ? true : undefined}
             aria-required={required || undefined}
             className={
@@ -54,16 +58,16 @@ export function TextField({
         </div>
         {action}
       </div>
-      {error ? (
-        <p className={styles.error} id={messageId} role="alert">
+      {/* 오류가 있어도 안내 줄은 남겨 둡니다. 다시 보내기 같은 버튼이 안내 줄에 있습니다. */}
+      {error && (
+        <p className={styles.error} id={errorId} role="alert">
           {error}
         </p>
-      ) : (
-        hint && (
-          <p className={styles.hint} id={messageId}>
-            {hint}
-          </p>
-        )
+      )}
+      {hint && (
+        <p className={styles.hint} id={hintId}>
+          {hint}
+        </p>
       )}
     </div>
   )
