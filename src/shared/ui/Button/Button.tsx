@@ -4,6 +4,8 @@ import styles from './Button.module.css'
 
 type ButtonProps = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & {
+    loading?: boolean
+    loadingLabel?: string
     variant?: 'primary' | 'secondary'
   }
 >
@@ -11,6 +13,9 @@ type ButtonProps = PropsWithChildren<
 export function Button({
   children,
   className,
+  disabled,
+  loading = false,
+  loadingLabel = '처리 중',
   variant = 'primary',
   ...props
 }: ButtonProps) {
@@ -19,8 +24,14 @@ export function Button({
     .join(' ')
 
   return (
-    <button className={classes} {...props}>
-      {children}
+    <button
+      aria-busy={loading || undefined}
+      className={classes}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading && <span aria-hidden="true" className={styles.spinner} />}
+      {loading ? loadingLabel : children}
     </button>
   )
 }

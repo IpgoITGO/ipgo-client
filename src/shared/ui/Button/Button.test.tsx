@@ -14,4 +14,12 @@ describe('Button', () => {
 
     expect(onClick).toHaveBeenCalledOnce()
   })
+
+  it('처리 중에는 버튼을 잠그고 상태를 알린다', () => {
+    render(<Button loading>저장</Button>)
+
+    const button = screen.getByRole('button', { name: '처리 중' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+  })
 })
