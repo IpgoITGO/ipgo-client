@@ -8,8 +8,14 @@
 | Issue·PR·commit 작성 방식 | [작성 규칙](rules/conventions.md) |
 | 비밀값과 위험한 변경 기준 | [안전 규칙](rules/safety.md) |
 | 화면 시안 (화면 7 · 팝업 4 등 15장) | [UI 시안](design/ui-screens.pdf) |
-| API 요청·응답 형식 | [API 명세서](design/api-spec.docx) |
+| API 요청·응답 형식 (10월 23일 기준 **과거 문서**) | [API 명세서](design/api-spec.docx) |
 
-> API 기본 경로는 `/api`로 확정되었습니다. 명세서(10/23판) 1장의 `/api/v1`은 이전 내용이므로 `/api`로 읽습니다.
+> ⚠️ **API 명세서는 10월 23일 기준의 과거 문서입니다.** 현재 서버(`ipgo-server`)와 다른 점이 많으니, 연동할 때는 서버 README를 먼저 확인합니다.
+>
+> - 기본 경로는 `/api`입니다 (`/api/v1` 아님).
+> - 로그인은 **세션 쿠키 + CSRF 토큰** 방식입니다. 로그인 요청은 form 형식이고 성공하면 204입니다.
+> - 비밀번호 규칙은 **8자 이상, 영문+숫자+특수문자**입니다 (서버 반영 예정).
+> - 오류 code 이름이 서버 기준으로 바뀌었습니다 (예: `LOGIN_FAILED` → `INVALID_CREDENTIALS`).
+> - 명세서를 서버 기준으로 고치는 담당은 팀에서 정하는 중입니다.
 
 애플리케이션 실행 방법과 주요 구조는 루트 [README](../README.md)에 유지합니다.
