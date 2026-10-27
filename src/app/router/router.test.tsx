@@ -26,7 +26,9 @@ describe('app router', () => {
     await user.click(screen.getByRole('button', { name: '로그인' }))
 
     expect(
-      await screen.findByRole('heading', { name: '대시보드' }),
+      await screen.findByRole('heading', {
+        name: '지금 넣어야 할 상품이 6개 있어요',
+      }),
     ).toBeInTheDocument()
   })
 })

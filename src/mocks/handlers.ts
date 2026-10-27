@@ -140,4 +140,53 @@ export const handlers = [
       { status: 201 },
     )
   }),
+  http.get('/api/dashboard', () => {
+    return HttpResponse.json({
+      baseDate: '2026. 10. 14',
+      freshness: 'fresh',
+      lastCalculatedAt: '10월 18일',
+      summary: { needed: 6, safe: 22, unavailable: 2, excluded: 1 },
+      neededItems: [
+        {
+          id: '8800272420016',
+          name: '케어트릿 120g',
+          barcode: '8800272420016',
+          stockoutDate: '2026. 10. 22',
+          leadTime: 5,
+          quantity: 72,
+          cost: 129600,
+          risk: 8,
+        },
+        {
+          id: '8800272421044',
+          name: '덴탈껌 S 10입',
+          barcode: '8800272421044',
+          stockoutDate: '2026. 10. 25',
+          leadTime: 5,
+          quantity: 60,
+          cost: 108000,
+          risk: 5,
+        },
+        {
+          id: '8800272420108',
+          name: '케어트릿 8g 낱개',
+          barcode: '8800272420108',
+          stockoutDate: '2026. 10. 28',
+          leadTime: 7,
+          quantity: 96,
+          cost: 28800,
+          risk: 3,
+        },
+      ],
+      unavailableItems: [
+        { name: '신상품 트릿 30g', reason: '판매한 날이 7일보다 적어요.' },
+      ],
+      excludedItems: [
+        {
+          name: '덴탈껌 M 5입',
+          reason: '재고 숫자가 맞지 않아 계산에서 제외했어요.',
+        },
+      ],
+    })
+  }),
 ]
