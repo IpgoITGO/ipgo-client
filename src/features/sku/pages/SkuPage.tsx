@@ -59,6 +59,99 @@ function toPoints(values: number[], width = 560, height = 170) {
     .join(' ')
 }
 
+// 시안 S05 그래프: 기말 재고는 선, 출고는 막대, 재고가 0인 날은 빨간 점으로 그린다.
+const CHART = {
+  width: 600,
+  height: 220,
+  left: 40,
+  right: 590,
+  top: 12,
+  bottom: 180,
+}
+
+function TrendChart({ history }: { history: SkuDetail['history'] }) {
+  const max = Math.max(...history.map((item) => item.inventory), 1)
+  // 눈금이 깔끔하도록 10 단위로 올린다.
+  const top = Math.ceil(max / 10) * 10
+  const plotWidth = CHART.right - CHART.left
+  const gap = history.length > 1 ? plotWidth / (history.length - 1) : 0
+  const x = (index: number) => CHART.left + index * gap
+  const y = (value: number) =>
+    CHART.bottom - (value / top) * (CHART.bottom - CHART.top)
+  const barWidth = Math.min(14, Math.max(gap * 0.35, 4))
+  const stockouts = history
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.inventory === 0)
+  const middle = history[Math.floor((history.length - 1) / 2)]
+
+  return (
+    <>
+      <svg
+        aria-label="최근 재고와 출고 추이 그래프"
+        className={styles.chart}
+        role="img"
+        viewBox={`0 0 ${CHART.width} ${CHART.height}`}
+      >
+        <title>최근 재고와 출고 추이</title>
+        {[0, top / 2, top].map((tick) => (
+          <g key={tick}>
+            <line
+              className={styles.gridLine}
+              x1={CHART.left}
+              x2={CHART.right}
+              y1={y(tick)}
+              y2={y(tick)}
+            />
+            <text className={styles.tick} x={CHART.left - 8} y={y(tick) + 4}>
+              {tick}
+            </text>
+          </g>
+        ))}
+        {history.map((item, index) => (
+          <rect
+            className={styles.outboundBar}
+            height={CHART.bottom - y(item.outbound)}
+            key={item.date}
+            width={barWidth}
+            x={x(index) - barWidth / 2}
+            y={y(item.outbound)}
+          />
+        ))}
+        <polyline
+          className={styles.inventoryLine}
+          fill="none"
+          points={history
+            .map((item, index) => `${x(index)},${y(item.inventory)}`)
+            .join(' ')}
+        />
+        {stockouts.map(({ item, index }) => (
+          <circle
+            className={styles.zeroPoint}
+            cx={x(index)}
+            cy={CHART.bottom}
+            key={item.date}
+            r="6"
+          />
+        ))}
+        {stockouts.length > 0 && (
+          <text
+            className={styles.stockoutLabel}
+            x={x(stockouts[Math.floor(stockouts.length / 2)].index)}
+            y={CHART.bottom + 26}
+          >
+            품절 {stockouts.length}일
+          </text>
+        )}
+      </svg>
+      <div className={styles.dates}>
+        <span>{history[0]?.date}</span>
+        {history.length > 2 && <span>{middle?.date}</span>}
+        <span>{history.at(-1)?.date}</span>
+      </div>
+    </>
+  )
+}
+
 export function SkuPage() {
   const { skuId = '' } = useParams()
   const query = useQuery({
@@ -144,51 +237,14 @@ export function SkuPage() {
           <div className={styles.mainGrid}>
             <section className={styles.card}>
               <div className={styles.sectionHeader}>
-                <div>
-                  <h2>재고·출고 추이</h2>
-                  <p>재고가 0이 된 날은 빨간 점으로 표시했어요.</p>
-                </div>
+                <h2>재고·출고 추이</h2>
                 <div className={styles.legend} aria-label="그래프 범례">
-                  <span data-series="inventory">재고</span>
+                  <span data-series="inventory">기말 재고</span>
                   <span data-series="outbound">출고</span>
+                  <span data-series="stockout">품절일 (계산에서 제외)</span>
                 </div>
               </div>
-              <svg
-                aria-label="최근 재고와 출고 추이 그래프"
-                className={styles.chart}
-                role="img"
-                viewBox="0 0 560 190"
-              >
-                <title>최근 재고와 출고 추이</title>
-                <line x1="0" x2="560" y1="170" y2="170" />
-                <polyline
-                  className={styles.inventoryLine}
-                  fill="none"
-                  points={toPoints(data.history.map((item) => item.inventory))}
-                />
-                <polyline
-                  className={styles.outboundLine}
-                  fill="none"
-                  points={toPoints(data.history.map((item) => item.outbound))}
-                />
-                {data.history.map((item, index) => {
-                  if (item.inventory !== 0) return null
-                  const x = (index * 560) / Math.max(data.history.length - 1, 1)
-                  return (
-                    <circle
-                      className={styles.zeroPoint}
-                      cx={x}
-                      cy="170"
-                      key={item.date}
-                      r="6"
-                    />
-                  )
-                })}
-              </svg>
-              <div className={styles.dates}>
-                <span>{data.history[0]?.date}</span>
-                <span>{data.history.at(-1)?.date}</span>
-              </div>
+              <TrendChart history={data.history} />
             </section>
 
             <section className={styles.card}>
@@ -249,6 +305,12 @@ export function SkuPage() {
             </section>
           </div>
 
+          <ScenarioInsight
+            inboundUnit={data.calculation.inboundUnit}
+            key={skuId}
+            skuId={skuId}
+          />
+
           <section className={styles.card}>
             <div className={styles.accuracyHeader}>
               <div>
@@ -292,7 +354,6 @@ export function SkuPage() {
               </div>
             </div>
           </section>
-          <ScenarioInsight key={skuId} skuId={skuId} />
         </>
       )}
     </div>
