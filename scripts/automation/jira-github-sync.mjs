@@ -4,6 +4,7 @@ import {
   assertAutoCreateLimit,
   extractJiraKeys,
   githubCommentMarker,
+  indexGithubIssuesByJiraKey,
   isSyncedGithubComment,
   isSyncedJiraComment,
   jiraCommentMarker,
@@ -132,6 +133,21 @@ async function findGithubIssue(jiraKey) {
 
 async function getGithubIssue(number) {
   return github(`/repos/${owner}/${repo}/issues/${number}`)
+}
+
+async function listGithubIssues() {
+  const issues = []
+
+  for (let page = 1; ; page += 1) {
+    const query = new URLSearchParams({
+      state: 'all',
+      per_page: '100',
+      page: String(page),
+    })
+    const batch = await github(`/repos/${owner}/${repo}/issues?${query}`)
+    issues.push(...batch)
+    if (batch.length < 100) return issues
+  }
 }
 
 async function createGithubIssue(jiraIssue) {
@@ -485,13 +501,16 @@ async function jiraPoll() {
     method: 'POST',
     body: JSON.stringify({ jql, fields, maxResults: 100 }),
   })
+  const githubIssuesByJiraKey = indexGithubIssuesByJiraKey(
+    await listGithubIssues(),
+  )
 
   const targets = []
   for (const jiraIssue of result.issues) {
     jiraIssue.fields.__startDate = startFieldId
       ? (jiraIssue.fields[startFieldId] ?? null)
       : null
-    const githubIssue = await findGithubIssue(jiraIssue.key)
+    const githubIssue = githubIssuesByJiraKey.get(jiraIssue.key) ?? null
     const shouldCreate =
       !githubIssue &&
       shouldAutoCreateGithubIssue({
