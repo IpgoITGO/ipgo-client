@@ -5,9 +5,10 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
-import { apiRequest } from '../../../shared/api/client'
+import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
@@ -16,7 +17,30 @@ import {
   type UploadFileState,
   validateUploadFile,
 } from '../model/fileValidation'
+import {
+  getUploadPeriods,
+  type UploadPeriods,
+  uploadFiles,
+} from '../model/uploadApi'
+import { formatUploadedAt } from '../model/uploadFormat'
 import styles from './UploadPage.module.css'
+
+// 이미 올린 기간(U3)과 겹치는 파일은 덮어쓰기 확인이 필요한 상태로 바꾼다.
+function markDuplicate(
+  item: UploadFileState,
+  periods: UploadPeriods | undefined,
+): UploadFileState {
+  const existing = periods?.items.find(
+    (period) => period.period === item.periodKey,
+  )
+  if (!existing || item.status !== 'ready' || item.overwrite) return item
+
+  return {
+    ...item,
+    existingUpload: { uploadedAt: formatUploadedAt(existing.uploadedAt) },
+    status: 'duplicate',
+  }
+}
 
 export function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -29,23 +53,22 @@ export function UploadPage() {
     type: 'duplicate' | 'error'
   } | null>(null)
 
+  const periods = useQuery({
+    queryKey: ['upload-periods'],
+    queryFn: getUploadPeriods,
+  })
+
   const readyFiles = useMemo(
     () => files.filter((item) => item.status === 'ready'),
     [files],
   )
 
-  function addFiles(selectedFiles: FileList | File[]) {
-    const nextFiles = Array.from(selectedFiles).map((file) => {
-      const item = validateUploadFile(file)
-      if (item.periodKey === '2026-09') {
-        return {
-          ...item,
-          existingUpload: { uploadedAt: '2026.10.15 오전 10:02' },
-          status: 'duplicate' as const,
-        }
-      }
-      return item
-    })
+  async function addFiles(selectedFiles: FileList | File[]) {
+    // 목록이 아직 안 왔으면 기다렸다가 비교한다.
+    const uploaded = periods.data ?? (await periods.refetch()).data
+    const nextFiles = Array.from(selectedFiles).map((file) =>
+      markDuplicate(validateUploadFile(file), uploaded),
+    )
     setFiles((current) => {
       const ids = new Set(current.map((item) => item.id))
       return [...current, ...nextFiles.filter((item) => !ids.has(item.id))]
@@ -61,14 +84,14 @@ export function UploadPage() {
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    if (event.target.files) addFiles(event.target.files)
+    if (event.target.files) void addFiles(event.target.files)
     event.target.value = ''
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setIsDragging(false)
-    addFiles(event.dataTransfer.files)
+    void addFiles(event.dataTransfer.files)
   }
 
   function removeFile(id: string) {
@@ -88,16 +111,27 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0) return
 
-    const formData = new FormData()
-    readyFiles.forEach((item) => formData.append('files', item.file))
-
     try {
-      const result = await apiRequest<{ uploadId: string }>('/uploads', {
-        body: formData,
-        method: 'POST',
-      })
+      const result = await uploadFiles(
+        readyFiles.map((item) => item.file),
+        readyFiles.some((item) => item.overwrite),
+      )
       navigate(`/upload/${result.uploadId}/result`)
     } catch (cause) {
+      // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409로 알려 준다.
+      if (cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE') {
+        const latest = await periods.refetch()
+        const updated = files.map((item) => markDuplicate(item, latest.data))
+        const firstDuplicate = updated.find(
+          (item) => item.status === 'duplicate',
+        )
+        setFiles(updated)
+        if (firstDuplicate) {
+          setActiveModal({ id: firstDuplicate.id, type: 'duplicate' })
+          return
+        }
+      }
+
       setError(
         cause instanceof Error
           ? cause.message

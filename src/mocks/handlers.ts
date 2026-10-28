@@ -1,5 +1,21 @@
 import { http, HttpResponse } from 'msw'
 
+// 연동 명세 U3 예시. 2026-09는 이미 올린 기간이라 다시 올리면 덮어쓰기 확인이 뜬다.
+const mockUploadPeriods = {
+  items: [
+    {
+      period: '2026-09',
+      uploadId: 12,
+      fileName: '2026-09.xlsx',
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+      uploadedAt: '2026-10-15T10:02:00+09:00',
+      status: 'DONE',
+    },
+  ],
+  latestUploadId: 12,
+}
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
@@ -23,31 +39,81 @@ export const handlers = [
       },
     })
   }),
-  http.post('/api/uploads', () => {
+  http.get('/api/uploads/periods', () => {
+    return HttpResponse.json(mockUploadPeriods)
+  }),
+  http.post('/api/uploads', async ({ request }) => {
+    const form = await request.formData()
+    const overwrite = form.get('overwrite') === 'true'
+    const names = form
+      .getAll('files')
+      .map((file) => (typeof file === 'string' ? file : file.name))
+    const periods = names.map((name) => ({
+      match: /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i.exec(name),
+      name,
+    }))
+
+    const invalid = periods.find((item) => !item.match)
+    if (invalid) {
+      return HttpResponse.json(
+        {
+          code: 'UPLOAD_INVALID_FORMAT',
+          message: 'XLSX 파일이 아니거나 파일명에서 연·월을 읽을 수 없어요.',
+          details: { fileName: invalid.name },
+        },
+        { status: 400 },
+      )
+    }
+
+    const existing = mockUploadPeriods.items.find((item) =>
+      periods.some((p) => `${p.match?.[1]}-${p.match?.[2]}` === item.period),
+    )
+    if (existing && !overwrite) {
+      return HttpResponse.json(
+        {
+          code: 'UPLOAD_DUPLICATE',
+          message: '이미 올린 기간입니다',
+          details: { existing },
+        },
+        { status: 409 },
+      )
+    }
+
     return HttpResponse.json(
-      { uploadId: 'upload-20261027', status: 'processing' },
+      { uploadId: 15, status: 'PROCESSING' },
       { status: 202 },
     )
   }),
   http.get('/api/uploads/:uploadId', () => {
     return HttpResponse.json({
-      status: 'completed',
-      period: '2026. 9. 1 ~ 10. 14',
-      referenceDate: '2026. 10. 14',
-      totalCount: 159,
-      excludedCount: 1,
-      calculatedCount: 158,
-      validationIssues: [
+      uploadId: 15,
+      status: 'DONE',
+      periodStart: '2026-09-01',
+      periodEnd: '2026-10-14',
+      asOfDate: '2026-10-14',
+      validation: {
+        checkedSkuCount: 159,
+        targetSkuCount: 158,
+        excludedSkus: [
+          {
+            productId: 108,
+            skuBarcode: '8800272421082',
+            skuName: '덴탈껌 M 5입',
+            date: '2026-09-12',
+            reason: '전날 재고 + 입고 − 출고 ± 조정이 당일 재고와 3개 달라요',
+          },
+        ],
+      },
+      matchedReceipts: [
         {
-          name: '덴탈껌 M 5입',
-          barcode: '8800272421082',
-          date: '2026. 9. 12',
-          reason: '전날 재고 + 입고 − 출고 + 조정이 당일 재고와 3개 달라요',
+          receiptId: 5,
+          skuName: '덴탈껌 S 10입',
+          quantity: 60,
+          receivedOn: '2026-10-20',
+          status: 'RECEIVED',
         },
       ],
-      orderedItems: [
-        { name: '덴탈껌 S 10입', quantity: 60, arrivalDate: '10월 20일' },
-      ],
+      runId: 31,
     })
   }),
   http.get('/api/settings/inbound', () => {
