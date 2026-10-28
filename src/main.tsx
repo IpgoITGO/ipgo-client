@@ -7,7 +7,7 @@ import './styles/tokens.css'
 import './styles/base.css'
 
 async function enableApiMocking() {
-  if (!import.meta.env.DEV || !env.enableMsw) {
+  if (!env.enableMsw) {
     return
   }
 

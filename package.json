@@ -9,8 +9,10 @@
     "npm": ">=11 <12"
   },
   "scripts": {
+    "automation:test": "node --test scripts/automation/*.node-test.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "ci:check": "npm run lint && npm run format:check && npm run typecheck && npm test -- --reporter=default && npm run automation:test",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
