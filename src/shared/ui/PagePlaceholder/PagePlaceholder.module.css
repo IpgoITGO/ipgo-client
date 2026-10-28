@@ -1,0 +1,15 @@
+.card {
+  padding: var(--space-8);
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.card p {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-2);
+}
+
+.actions {
+  margin-top: var(--space-5);
+}

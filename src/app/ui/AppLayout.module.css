@@ -1,0 +1,92 @@
+.shell {
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 76px;
+  padding: var(--space-2)
+    max(var(--space-6), calc((100% - var(--w-content)) / 2));
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 0 rgb(25 31 40 / 2%);
+}
+
+.brand {
+  color: var(--color-primary);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.navigation {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.link {
+  min-height: 42px;
+  padding: 11px var(--space-4);
+  color: var(--color-text-2);
+  border-radius: var(--radius-chip);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.link:hover,
+.active {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+}
+
+.identity {
+  white-space: nowrap;
+}
+
+.account button {
+  min-height: 40px;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+.main {
+  width: min(calc(100% - (var(--space-6) * 2)), var(--w-content));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .navigation {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .account span {
+    display: none;
+  }
+
+  .main {
+    width: calc(100% - (var(--space-3) * 2));
+    padding: var(--space-5) 0;
+  }
+}

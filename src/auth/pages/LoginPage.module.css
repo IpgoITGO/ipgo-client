@@ -1,0 +1,44 @@
+.form {
+  margin-top: var(--space-6);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.notice {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-radius: var(--radius-input);
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.submit {
+  width: 100%;
+}
+
+.footnote {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  text-align: center;
+}
+
+/* 화면에는 보이지 않지만 스크린 리더는 읽는 페이지 제목 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
