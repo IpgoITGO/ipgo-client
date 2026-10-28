@@ -12,6 +12,18 @@ export function extractJiraKeys(...values) {
   ]
 }
 
+export function indexGithubIssuesByJiraKey(issues = []) {
+  const byKey = new Map()
+
+  for (const issue of issues) {
+    if (issue.pull_request) continue
+    for (const key of extractJiraKeys(issue.title)) {
+      if (!byKey.has(key)) byKey.set(key, issue)
+    }
+  }
+  return byKey
+}
+
 export function readSyncMarker(body = '') {
   const start = body.indexOf(SYNC_MARKER_PREFIX)
   if (start < 0) return { start: null, due: null }

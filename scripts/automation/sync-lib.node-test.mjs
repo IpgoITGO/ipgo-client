@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   assertAutoCreateLimit,
   extractJiraKeys,
+  indexGithubIssuesByJiraKey,
   isSyncedGithubComment,
   isSyncedJiraComment,
   readSyncMarker,
@@ -17,6 +18,20 @@ test('Jira 키를 중복 없이 추출한다', () => {
     'IPGO-77',
     'IPGO-12',
   ])
+})
+
+test('저장소 Issue 목록을 Jira 키로 색인하고 PR은 제외한다', () => {
+  const first = { number: 47, title: '[IPGO-77] 배포 자동화' }
+  const duplicate = { number: 48, title: '[IPGO-77] 중복 Issue' }
+  const pullRequest = {
+    number: 99,
+    title: '[IPGO-99] PR',
+    pull_request: { url: 'https://api.github.com/pulls/99' },
+  }
+  const indexed = indexGithubIssuesByJiraKey([first, duplicate, pullRequest])
+
+  assert.equal(indexed.get('IPGO-77'), first)
+  assert.equal(indexed.has('IPGO-99'), false)
 })
 
 test('날짜 한쪽만 바뀌면 반대쪽을 갱신한다', () => {
