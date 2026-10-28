@@ -242,11 +242,13 @@ export function SettingsPage() {
       )}
       <footer className={styles.actions}>
         <Button
+          className={styles.back}
           onClick={() => navigate('/dashboard')}
+          title="저장하지 않고 대시보드로 이동해요"
           type="button"
           variant="secondary"
         >
-          대시보드로
+          ← 대시보드로
         </Button>
         <Button
           loading={isSubmitting}
