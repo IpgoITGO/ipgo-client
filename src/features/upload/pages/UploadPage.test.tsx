@@ -52,6 +52,30 @@ describe('UploadPage', () => {
     expect(screen.queryByText('재고현황.xlsx')).not.toBeInTheDocument()
   })
 
+  it('오류 파일이 여러 개면 팝업을 하나씩 차례로 보여준다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+      new File(['bad'], '재고현황.xlsx'),
+      new File(['bad'], '2026-13.xlsx'),
+    ])
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '이 파일은 올릴 수 없어요',
+    })
+    expect(dialog).toHaveTextContent('재고현황.xlsx')
+
+    await user.click(screen.getByRole('button', { name: '이 파일 빼기' }))
+
+    expect(
+      await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
+    ).toHaveTextContent('2026-13.xlsx')
+
+    await user.click(screen.getByRole('button', { name: '이 파일 빼기' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('이미 올린 기간은 서버 목록과 비교해 확인 후 덮어쓸 수 있다', async () => {
     const user = userEvent.setup()
     renderPage()
