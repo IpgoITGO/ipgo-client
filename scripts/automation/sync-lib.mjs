@@ -54,6 +54,38 @@ export function resolveDateSync({ jiraValue, githubValue, previousValue }) {
   return { finalValue: previousValue, update: null, conflict: false }
 }
 
+export function shouldAutoCreateGithubIssue({
+  jiraCreatedAt,
+  autoCreateAfter,
+}) {
+  const createdAt = Date.parse(jiraCreatedAt)
+  const cutoff = Date.parse(autoCreateAfter)
+
+  if (!Number.isFinite(createdAt)) {
+    throw new Error(`Jira 생성일을 해석할 수 없습니다: ${jiraCreatedAt}`)
+  }
+  if (!Number.isFinite(cutoff)) {
+    throw new Error(
+      `JIRA_AUTO_CREATE_AFTER를 ISO 8601 형식으로 설정하세요: ${autoCreateAfter}`,
+    )
+  }
+  return createdAt >= cutoff
+}
+
+export function assertAutoCreateLimit(count, limit) {
+  if (!Number.isInteger(limit) || limit < 0) {
+    throw new Error(
+      `JIRA_AUTO_CREATE_LIMIT는 0 이상의 정수여야 합니다: ${limit}`,
+    )
+  }
+  if (count > limit) {
+    throw new Error(
+      `자동 생성 후보가 ${count}건으로 안전 한도 ${limit}건을 초과했습니다. ` +
+        '범위와 기존 연결을 확인한 뒤 한도를 조정하세요.',
+    )
+  }
+}
+
 export function isSyncedGithubComment(body = '') {
   return body.includes('<!-- sync:jira-comment:')
 }
