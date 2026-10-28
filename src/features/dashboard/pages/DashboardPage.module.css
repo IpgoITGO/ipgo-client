@@ -118,25 +118,28 @@
 .tableWrap {
   overflow-x: auto;
 }
-table {
+.tableWrap table {
   width: 100%;
   border-collapse: collapse;
 }
-th,
-td {
+.tableWrap th,
+.tableWrap td {
   padding: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
 }
-th {
+.tableWrap th {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-td:first-child {
-  display: grid;
+.tableWrap td:first-child {
   min-width: 190px;
 }
-td:first-child span {
+.tableWrap td:first-child strong,
+.tableWrap td:first-child span {
+  display: block;
+}
+.tableWrap td:first-child span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }

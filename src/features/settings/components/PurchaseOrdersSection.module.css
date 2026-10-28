@@ -28,29 +28,33 @@
 .tableWrap {
   overflow-x: auto;
 }
-table {
+.tableWrap table {
   width: 100%;
   border-collapse: collapse;
 }
-th,
-td {
+.tableWrap th,
+.tableWrap td {
   padding: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
 }
-th {
+.tableWrap th {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-td:first-child {
-  display: grid;
+/* 칸을 grid로 바꾸면 표에서 빠져 아래 선이 어긋나서, 칸은 그대로 두고 글자만 줄을 나눈다. */
+.tableWrap td:first-child {
   min-width: 190px;
 }
-td:first-child span {
+.tableWrap td:first-child strong,
+.tableWrap td:first-child span {
+  display: block;
+}
+.tableWrap td:first-child span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-td[data-overdue='true'] {
+.tableWrap td[data-overdue='true'] {
   color: var(--color-danger);
   font-weight: 700;
 }
@@ -89,8 +93,13 @@ td[data-overdue='true'] {
   display: grid;
   gap: var(--space-2);
 }
-.modal label > span {
+.modal label > span,
+.product > span {
   font-weight: 700;
+}
+.product {
+  display: grid;
+  gap: var(--space-2);
 }
 .modal input,
 .modal select {

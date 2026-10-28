@@ -46,7 +46,7 @@
 }
 .defaultGrid input,
 .sectionHeader input,
-td input {
+.tableWrap td input {
   width: 100%;
   min-height: var(--h-input);
   padding: 0 var(--space-4);
@@ -54,12 +54,12 @@ td input {
   border-radius: var(--radius-input);
 }
 .defaultGrid small,
-td small {
+.tableWrap td small {
   min-height: 18px;
   color: var(--color-text-3);
 }
 .defaultGrid small[role='alert'],
-td small[role='alert'] {
+.tableWrap td small[role='alert'] {
   color: var(--color-danger);
 }
 .sectionHeader {
@@ -78,37 +78,41 @@ td small[role='alert'] {
 .tableWrap {
   overflow-x: auto;
 }
-table {
+.tableWrap table {
   width: 100%;
   border-collapse: collapse;
 }
-th,
-td {
+.tableWrap th,
+.tableWrap td {
   padding: var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
 }
-th {
+.tableWrap th {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-td:first-child {
-  display: grid;
+/* 칸을 grid로 바꾸면 표에서 빠져 아래 선이 어긋나서, 칸은 그대로 두고 글자만 줄을 나눈다. */
+.tableWrap td:first-child {
   min-width: 190px;
 }
-td:first-child span {
+.tableWrap td:first-child strong,
+.tableWrap td:first-child span {
+  display: block;
+}
+.tableWrap td:first-child span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-td input {
+.tableWrap td input {
   min-width: 100px;
 }
-tr[data-overridden='true'] input {
+.tableWrap tr[data-overridden='true'] input {
   color: var(--color-primary);
   font-weight: 800;
   background: var(--color-primary-soft);
 }
-td small {
+.tableWrap td small {
   display: block;
   width: 140px;
   margin-top: var(--space-1);
@@ -127,6 +131,7 @@ td small {
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--space-3);
 }
 
 @media (max-width: 760px) {
