@@ -1,41 +1,27 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { getUploadResult } from '../model/uploadApi'
+import { formatDate, formatPeriod } from '../model/uploadFormat'
 import styles from './UploadResultPage.module.css'
 
-type UploadResult = {
-  calculatedCount: number
-  excludedCount: number
-  orderedItems: Array<{
-    name: string
-    quantity: number
-    arrivalDate: string
-  }>
-  period: string
-  referenceDate: string
-  status: 'processing' | 'completed' | 'failed'
-  totalCount: number
-  validationIssues: Array<{
-    barcode: string
-    date: string
-    name: string
-    reason: string
-  }>
-}
+// 정제·검산이 끝날 때까지 2초마다 다시 확인한다.
+const POLL_INTERVAL_MS = 2000
 
 export function UploadResultPage() {
   const { uploadId } = useParams()
   const navigate = useNavigate()
   const result = useQuery({
     queryKey: ['upload-result', uploadId],
-    queryFn: () => apiRequest<UploadResult>(`/uploads/${uploadId}`),
+    queryFn: () => getUploadResult(uploadId ?? ''),
     enabled: Boolean(uploadId),
+    refetchInterval: (query) =>
+      query.state.data?.status === 'PROCESSING' ? POLL_INTERVAL_MS : false,
   })
 
-  if (result.isPending) {
+  if (result.isPending || result.data?.status === 'PROCESSING') {
     return (
       <AsyncState
         description="수불부 형식과 재고 숫자를 확인하고 있어요."
@@ -58,6 +44,21 @@ export function UploadResultPage() {
 
   const data = result.data
 
+  if (data.status === 'FAILED') {
+    return (
+      <AsyncState
+        description="수불부를 고친 뒤 다시 올려 주세요."
+        onRetry={() => navigate('/upload')}
+        retryLabel="다시 올리기"
+        status="error"
+        title="수불부를 처리하지 못했어요"
+      />
+    )
+  }
+
+  const { checkedSkuCount, excludedSkus, targetSkuCount } = data.validation
+  const excludedCount = excludedSkus.length
+
   return (
     <div className={styles.page}>
       <header>
@@ -72,7 +73,7 @@ export function UploadResultPage() {
         <li data-complete="true">
           <strong>✓ 정제·검산</strong>
           <span>
-            {data.totalCount}개 상품 · {data.excludedCount}개 제외
+            {checkedSkuCount}개 상품 · {excludedCount}개 제외
           </span>
         </li>
         <li>
@@ -84,24 +85,24 @@ export function UploadResultPage() {
       <section className={styles.metrics} aria-label="업로드 요약">
         <article>
           <span>자료 기간</span>
-          <strong>{data.period}</strong>
+          <strong>{formatPeriod(data.periodStart, data.periodEnd)}</strong>
         </article>
         <article>
           <span>기준일 (자료 마지막 날)</span>
-          <strong>{data.referenceDate}</strong>
+          <strong>{formatDate(data.asOfDate)}</strong>
         </article>
         <article>
           <span>계산 대상</span>
-          <strong>{data.calculatedCount}개 상품</strong>
+          <strong>{targetSkuCount}개 상품</strong>
         </article>
       </section>
 
       <section className={styles.report}>
         <div className={styles.sectionTitle}>
           <h2>검증 리포트</h2>
-          <span>{data.excludedCount}개 상품은 계산에서 뺐어요</span>
+          <span>{excludedCount}개 상품은 계산에서 뺐어요</span>
         </div>
-        {data.validationIssues.length === 0 ? (
+        {excludedSkus.length === 0 ? (
           <p className={styles.empty}>재고 숫자가 모두 맞아요.</p>
         ) : (
           <div className={styles.tableWrap}>
@@ -114,13 +115,13 @@ export function UploadResultPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.validationIssues.map((issue) => (
-                  <tr key={`${issue.barcode}-${issue.date}`}>
+                {excludedSkus.map((issue) => (
+                  <tr key={`${issue.skuBarcode}-${issue.date}`}>
                     <td>
-                      <strong>{issue.name}</strong>
-                      <span>{issue.barcode}</span>
+                      <strong>{issue.skuName}</strong>
+                      <span>{issue.skuBarcode}</span>
                     </td>
-                    <td>{issue.date}</td>
+                    <td>{formatDate(issue.date)}</td>
                     <td>{issue.reason}</td>
                   </tr>
                 ))}
@@ -133,15 +134,20 @@ export function UploadResultPage() {
         </p>
       </section>
 
-      {data.orderedItems.map((order) => (
-        <aside className={styles.orderNotice} key={order.name}>
-          <strong>✓ 이미 발주한 물량 1건이 입고로 확인됐어요</strong>
-          <span>
-            {order.name} {order.quantity}개 · {order.arrivalDate} 입고 ·
-            계산에서 두 번 빼지 않아요
-          </span>
+      {data.matchedReceipts.length > 0 && (
+        <aside className={styles.orderNotice}>
+          <strong>
+            ✓ 이미 발주한 물량 {data.matchedReceipts.length}건이 입고로
+            확인됐어요
+          </strong>
+          {data.matchedReceipts.map((receipt) => (
+            <span key={receipt.receiptId}>
+              {receipt.skuName} {receipt.quantity}개 ·{' '}
+              {formatDate(receipt.receivedOn)} 입고 · 계산에서 두 번 빼지 않아요
+            </span>
+          ))}
         </aside>
-      ))}
+      )}
 
       <footer className={styles.actions}>
         <Button onClick={() => navigate('/dashboard')} variant="secondary">
