@@ -24,7 +24,9 @@ describe('SkuPage', () => {
     expect(
       await screen.findByRole('heading', { name: '케어트릿 120g' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('72개')).toBeInTheDocument()
+    // 시나리오 카드에도 72개가 나와서 하나 이상인지만 본다.
+    expect(screen.getAllByText('72개').length).toBeGreaterThan(0)
+    expect(screen.getByText('품절 1일')).toBeInTheDocument()
     expect(screen.getByText('계산식 B 선택')).toBeInTheDocument()
     expect(screen.getByText('반올림 전 필요량')).toBeInTheDocument()
     expect(

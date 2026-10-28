@@ -10,7 +10,7 @@ import { ScenarioInsight } from './ScenarioInsight'
 function renderInsight(skuId = '8800272420016') {
   return render(
     <AppProviders>
-      <ScenarioInsight skuId={skuId} />
+      <ScenarioInsight inboundUnit={12} skuId={skuId} />
     </AppProviders>,
   )
 }
@@ -23,6 +23,8 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('권장량 100%')).toBeInTheDocument()
     expect(screen.getByText('권장량의 120%')).toBeInTheDocument()
     expect(screen.getAllByText('표본 부족으로 미산출')).toHaveLength(2)
+    expect(screen.getByText('권장')).toBeInTheDocument()
+    expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
     expect(await screen.findByText('AI 생성')).toBeInTheDocument()
     expect(
       screen.getByText(/권장량 72개.*도착 전 품절 위험은 8%/),
@@ -55,14 +57,14 @@ describe('ScenarioInsight', () => {
 
     const input = screen.getByLabelText('직접 입력')
     await user.type(input, '0')
-    await user.click(screen.getByRole('button', { name: '비교 추가' }))
+    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
     expect(screen.getByRole('alert')).toHaveTextContent(
       '1개 이상의 정수를 입력해 주세요.',
     )
 
     await user.clear(input)
     await user.type(input, '90')
-    await user.dblClick(screen.getByRole('button', { name: '비교 추가' }))
+    await user.dblClick(screen.getByRole('button', { name: '비교에 추가' }))
 
     expect(await screen.findByText('90개')).toBeInTheDocument()
     expect(requestCount).toBe(1)

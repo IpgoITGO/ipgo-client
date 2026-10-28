@@ -145,8 +145,21 @@
   content: '';
 }
 
+/* 범례 모양을 그래프와 맞춘다: 재고는 선, 출고는 막대, 품절일은 빨간 점. */
+.legend span[data-series='inventory']::before {
+  width: 14px;
+  height: 3px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
 .legend span[data-series='outbound']::before {
-  background: #4da57b;
+  background: #c9d1ec;
+  border-radius: 2px;
+}
+
+.legend span[data-series='stockout']::before {
+  background: var(--color-danger);
 }
 
 .chart {
@@ -172,8 +185,25 @@
   stroke: var(--color-primary);
 }
 
-.outboundLine {
-  stroke: #4da57b;
+.gridLine {
+  stroke-dasharray: 3 4;
+}
+
+.tick {
+  fill: var(--color-text-3);
+  font-size: 11px;
+  text-anchor: end;
+}
+
+.outboundBar {
+  fill: #c9d1ec;
+}
+
+.stockoutLabel {
+  fill: var(--color-danger);
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: middle;
 }
 
 .predictionLine {
