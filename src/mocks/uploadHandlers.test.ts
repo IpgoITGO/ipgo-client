@@ -2,9 +2,11 @@
 // jsdom의 FormData는 Node fetch로 보낼 수 없어서, 올리기 handler는 node 환경에서 확인한다.
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-// handler의 /api 주소를 http://localhost 기준으로 읽게 한다.
+// handler의 /api 주소를 http://localhost 기준으로 읽게 하고,
+// 공용 setup이 쿠키(document.cookie)를 비우는 자리는 빈 객체로 채운다.
 beforeAll(() => {
   vi.stubGlobal('location', new URL('http://localhost/'))
+  Object.assign(globalThis, { document: { cookie: '' } })
 })
 
 function upload(name: string, overwrite: boolean) {

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
+import { signInAsSeller } from '../../test/signIn'
 import { AppProviders } from '../providers/AppProviders'
 import { routes } from '../router/router'
 
@@ -17,7 +18,7 @@ describe('AppLayout', () => {
       </AppProviders>,
     )
 
-    await user.click(screen.getByRole('button', { name: '로그인' }))
+    await signInAsSeller(user)
 
     expect(
       await screen.findByRole('link', { name: '대시보드' }),

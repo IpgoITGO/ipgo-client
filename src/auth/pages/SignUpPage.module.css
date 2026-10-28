@@ -1,0 +1,106 @@
+.form {
+  margin-top: var(--space-5);
+}
+
+.title {
+  margin: 0 0 var(--space-6);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.section {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.block + .block {
+  margin-top: var(--space-6);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-3);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.code {
+  letter-spacing: 0.25em;
+}
+
+.submit {
+  width: 100%;
+  margin-top: var(--space-6);
+}
+
+.optional {
+  color: var(--color-text-3);
+}
+
+.timer {
+  color: var(--color-danger);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.linkButton {
+  padding: 0;
+  color: var(--color-primary);
+  background: none;
+  border: 0;
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkButton:disabled {
+  color: var(--color-text-3);
+  text-decoration: none;
+}
+
+.note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.banner {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-input);
+}
+
+.footnote {
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  text-align: center;
+}
+
+/* 화면에는 보이지 않지만 스크린 리더는 읽는 페이지 제목 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

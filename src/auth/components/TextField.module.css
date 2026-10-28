@@ -1,0 +1,80 @@
+.field {
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.required::after {
+  margin-left: 2px;
+  color: var(--color-danger);
+  content: '*';
+}
+
+.control {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inputWrap {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+
+.input {
+  width: 100%;
+  height: var(--h-input);
+  padding: 0 var(--space-4);
+  color: var(--color-text);
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-input);
+}
+
+.input::placeholder {
+  color: var(--color-text-3);
+}
+
+.input:focus-visible {
+  border-color: var(--color-primary);
+  outline: 3px solid var(--color-primary-soft);
+}
+
+.field[data-success] .input {
+  border-color: var(--color-success);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.suffix {
+  position: absolute;
+  inset: 0 var(--space-4) 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.error,
+.hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-caption);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.hint {
+  color: var(--color-text-3);
+}
+
+.field[data-success] .hint {
+  color: var(--color-success);
+}
