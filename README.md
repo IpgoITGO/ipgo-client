@@ -46,15 +46,17 @@ npm run dev
 
 ## 명령
 
-| 명령                   | 설명                                |
-| ---------------------- | ----------------------------------- |
-| `npm run dev`          | 개발 서버 실행                      |
-| `npm run build`        | TypeScript 검사 후 production build |
-| `npm run typecheck`    | TypeScript 검사                     |
-| `npm run lint`         | ESLint 검사                         |
-| `npm run format:check` | Prettier 형식 검사                  |
-| `npm test`             | Vitest 테스트 1회 실행              |
-| `npm run test:watch`   | Vitest watch 실행                   |
+| 명령                      | 설명                                |
+| ------------------------- | ----------------------------------- |
+| `npm run dev`             | 개발 서버 실행                      |
+| `npm run build`           | TypeScript 검사 후 production build |
+| `npm run typecheck`       | TypeScript 검사                     |
+| `npm run lint`            | ESLint 검사                         |
+| `npm run format:check`    | Prettier 형식 검사                  |
+| `npm test`                | Vitest 테스트 1회 실행              |
+| `npm run test:watch`      | Vitest watch 실행                   |
+| `npm run ci:check`        | CI에서 사용하는 전체 코드 검사      |
+| `npm run automation:test` | 자동화 script 단위 검사             |
 
 ## 환경 변수
 
@@ -133,9 +135,19 @@ flowchart LR
 - 구현과 검증 후 `dev` 대상 PR을 생성합니다.
 - `main` 변경은 `dev → main` PR로만 진행합니다.
 
+## 자동화
+
+- Jira 작업은 GitHub Issue와 연결하고 상태·댓글·담당자·기간을 동기화합니다.
+- GitHub Issue의 기간은 조직 Project `IpgoITGO 작업 일정`의 `시작일`·`마감일` 필드에 표시합니다.
+- 승인된 PR을 사람이 병합하면 `dev`는 개발 주소, `main`은 운영 주소로 Vercel 배포를 시작합니다.
+- PR 자동 승인·자동 병합과 Jira 스프린트 자동 배정은 하지 않습니다.
+
+필요한 GitHub Variables·Secrets와 복구 절차는 [자동화 운영 문서](docs/automation.md)를 따릅니다.
+
 ## 문서
 
 - [개발 문서 안내](docs/README.md)
 - [작업 흐름](docs/rules/workflow.md)
 - [작성 규칙](docs/rules/conventions.md)
 - [안전 규칙](docs/rules/safety.md)
+- [자동화 운영](docs/automation.md)

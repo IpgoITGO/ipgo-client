@@ -1,0 +1,64 @@
+name: Vercel 개발 배포
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-development
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_CLI_VERSION: ${{ vars.VERCEL_CLI_VERSION }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 코드 검증
+        run: npm run ci:check
+
+      - name: Vercel CLI 설치
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
+
+      - name: Preview 환경 가져오기
+        run: vercel pull --yes --environment=preview
+
+      - name: Preview build
+        run: vercel build
+
+      - id: deploy
+        name: 개발 배포
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --yes | tail -n 1)"
+          DEPLOYMENT_URL="$deployment_url" node scripts/automation/validate-vercel-url.mjs
+          vercel alias set "$deployment_url" ipgo-client-dev.vercel.app
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: 개발 주소 확인
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: node scripts/automation/smoke-test.mjs
