@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 
 import {
+  assertAutoCreateLimit,
   extractJiraKeys,
   githubCommentMarker,
   isSyncedGithubComment,
@@ -8,6 +9,7 @@ import {
   jiraCommentMarker,
   readSyncMarker,
   resolveDateSync,
+  shouldAutoCreateGithubIssue,
   writeSyncMarker,
 } from './sync-lib.mjs'
 
@@ -19,6 +21,8 @@ const projectsToken = process.env.PROJECTS_TOKEN
 const jiraBaseUrl = process.env.JIRA_BASE_URL?.replace(/\/$/, '')
 const jiraProjectKey = process.env.JIRA_PROJECT_KEY || 'IPGO'
 const jiraSyncCreatedAfter = process.env.JIRA_SYNC_CREATED_AFTER
+const jiraAutoCreateAfter = process.env.JIRA_AUTO_CREATE_AFTER
+const jiraAutoCreateLimit = Number(process.env.JIRA_AUTO_CREATE_LIMIT || 5)
 const jiraAuth = Buffer.from(
   `${process.env.JIRA_USER_EMAIL ?? ''}:${process.env.JIRA_API_TOKEN ?? ''}`,
 ).toString('base64')
@@ -464,21 +468,53 @@ async function jiraPoll() {
     'JIRA_USER_EMAIL',
     'JIRA_API_TOKEN',
     'JIRA_SYNC_CREATED_AFTER',
+    'JIRA_AUTO_CREATE_AFTER',
   ])
   const startFieldId = await discoverStartField()
   const jql = `project = ${jiraProjectKey} AND created >= "${jiraSyncCreatedAfter}" ORDER BY updated ASC`
-  const fields = ['summary', 'description', 'status', 'assignee', 'duedate']
+  const fields = [
+    'summary',
+    'description',
+    'status',
+    'assignee',
+    'duedate',
+    'created',
+  ]
   if (startFieldId) fields.push(startFieldId)
   const result = await jira('/rest/api/3/search/jql', {
     method: 'POST',
     body: JSON.stringify({ jql, fields, maxResults: 100 }),
   })
 
+  const targets = []
   for (const jiraIssue of result.issues) {
     jiraIssue.fields.__startDate = startFieldId
       ? (jiraIssue.fields[startFieldId] ?? null)
       : null
-    let githubIssue = await findGithubIssue(jiraIssue.key)
+    const githubIssue = await findGithubIssue(jiraIssue.key)
+    const shouldCreate =
+      !githubIssue &&
+      shouldAutoCreateGithubIssue({
+        jiraCreatedAt: jiraIssue.fields.created,
+        autoCreateAfter: jiraAutoCreateAfter,
+      })
+    targets.push({ jiraIssue, githubIssue, shouldCreate })
+  }
+
+  assertAutoCreateLimit(
+    targets.filter((target) => target.shouldCreate).length,
+    jiraAutoCreateLimit,
+  )
+
+  for (const target of targets) {
+    const { jiraIssue, shouldCreate } = target
+    let { githubIssue } = target
+    if (!githubIssue && !shouldCreate) {
+      console.log(
+        `${jiraIssue.key}: 신규 Issue 생성 기준 이전의 미연결 작업이라 건너뜁니다.`,
+      )
+      continue
+    }
     if (!githubIssue) githubIssue = await createGithubIssue(jiraIssue)
     githubIssue = await getGithubIssue(githubIssue.number)
 
