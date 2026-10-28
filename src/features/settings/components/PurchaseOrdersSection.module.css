@@ -42,9 +42,13 @@ th {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
+/* 칸을 grid로 바꾸면 표에서 빠져 아래 선이 어긋나서, 칸은 그대로 두고 글자만 줄을 나눈다. */
 td:first-child {
-  display: grid;
   min-width: 190px;
+}
+td:first-child strong,
+td:first-child span {
+  display: block;
 }
 td:first-child span {
   color: var(--color-text-3);
@@ -89,8 +93,13 @@ td[data-overdue='true'] {
   display: grid;
   gap: var(--space-2);
 }
-.modal label > span {
+.modal label > span,
+.product > span {
   font-weight: 700;
+}
+.product {
+  display: grid;
+  gap: var(--space-2);
 }
 .modal input,
 .modal select {
