@@ -325,6 +325,10 @@ export function SkuPage() {
                 <strong>{data.accuracy.score}점</strong>
               </div>
             </div>
+            <div className={styles.legend} aria-label="그래프 범례">
+              <span data-series="actual">실제 출고량</span>
+              <span data-series="prediction">예측 출고량</span>
+            </div>
             <div className={styles.accuracyGrid}>
               <svg
                 aria-label="과거 실제 출고량과 예측 출고량 비교 그래프"

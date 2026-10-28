@@ -33,6 +33,8 @@ describe('SkuPage', () => {
       screen.getByRole('img', { name: '최근 재고와 출고 추이 그래프' }),
     ).toBeInTheDocument()
     expect(screen.getByText('지난 예측 생존 비율')).toBeInTheDocument()
+    expect(screen.getByText('실제 출고량')).toBeInTheDocument()
+    expect(screen.getByText('예측 출고량')).toBeInTheDocument()
   })
 
   it('신상품은 계산 불가 이유를 보여준다', async () => {

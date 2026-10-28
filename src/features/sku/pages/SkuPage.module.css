@@ -162,6 +162,22 @@
   background: var(--color-danger);
 }
 
+/* 예측 정확도 그래프 범례: 실제 출고는 진한 실선, 예측 출고는 보라 점선. */
+.legend span[data-series='actual']::before,
+.legend span[data-series='prediction']::before {
+  width: 18px;
+  height: 0;
+  margin-bottom: 2px;
+  background: none;
+  border-radius: 0;
+  border-top: 3px solid var(--color-primary);
+  vertical-align: middle;
+}
+
+.legend span[data-series='prediction']::before {
+  border-top: 3px dashed #a16fd0;
+}
+
 .chart {
   width: 100%;
   min-height: 190px;
