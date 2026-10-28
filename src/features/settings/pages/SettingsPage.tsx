@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { apiRequest } from '../../../shared/api/client'
@@ -37,6 +38,7 @@ const settingsSchema = z.object({
 type SettingsValues = z.infer<typeof settingsSchema>
 
 export function SettingsPage() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [saved, setSaved] = useState(false)
   const query = useQuery({
@@ -229,6 +231,13 @@ export function SettingsPage() {
         </p>
       )}
       <footer className={styles.actions}>
+        <Button
+          onClick={() => navigate('/dashboard')}
+          type="button"
+          variant="secondary"
+        >
+          대시보드로
+        </Button>
         <Button
           loading={isSubmitting}
           loadingLabel="계산 요청 중"
