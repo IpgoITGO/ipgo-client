@@ -48,10 +48,8 @@ export function UploadPage() {
   const [files, setFiles] = useState<UploadFileState[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeModal, setActiveModal] = useState<{
-    id: string
-    type: 'duplicate' | 'error'
-  } | null>(null)
+  // 확인이 필요한 파일을 차례로 하나씩 팝업으로 보여 준다. 맨 앞이 지금 열린 팝업이다.
+  const [modalQueue, setModalQueue] = useState<string[]>([])
 
   const periods = useQuery({
     queryKey: ['upload-periods'],
@@ -69,18 +67,18 @@ export function UploadPage() {
     const nextFiles = Array.from(selectedFiles).map((file) =>
       markDuplicate(validateUploadFile(file), uploaded),
     )
-    setFiles((current) => {
-      const ids = new Set(current.map((item) => item.id))
-      return [...current, ...nextFiles.filter((item) => !ids.has(item.id))]
-    })
-    const firstAttention = nextFiles.find((item) => item.status !== 'ready')
-    if (firstAttention) {
-      setActiveModal({
-        id: firstAttention.id,
-        type: firstAttention.status === 'duplicate' ? 'duplicate' : 'error',
-      })
-    }
+    const ids = new Set(files.map((item) => item.id))
+    const added = nextFiles.filter((item) => !ids.has(item.id))
+    setFiles((current) => [...current, ...added])
+    setModalQueue((current) => [
+      ...current,
+      ...added.filter((item) => item.status !== 'ready').map((item) => item.id),
+    ])
     setError(null)
+  }
+
+  function closeModal() {
+    setModalQueue((current) => current.slice(1))
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -96,7 +94,7 @@ export function UploadPage() {
 
   function removeFile(id: string) {
     setFiles((current) => current.filter((item) => item.id !== id))
-    setActiveModal(null)
+    setModalQueue((current) => current.filter((item) => item !== id))
   }
 
   function confirmOverwrite(id: string) {
@@ -105,7 +103,7 @@ export function UploadPage() {
         item.id === id ? { ...item, overwrite: true, status: 'ready' } : item,
       ),
     )
-    setActiveModal(null)
+    closeModal()
   }
 
   const uploadAction = useActionLock(async () => {
@@ -122,12 +120,12 @@ export function UploadPage() {
       if (cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE') {
         const latest = await periods.refetch()
         const updated = files.map((item) => markDuplicate(item, latest.data))
-        const firstDuplicate = updated.find(
-          (item) => item.status === 'duplicate',
-        )
+        const duplicateIds = updated
+          .filter((item) => item.status === 'duplicate')
+          .map((item) => item.id)
         setFiles(updated)
-        if (firstDuplicate) {
-          setActiveModal({ id: firstDuplicate.id, type: 'duplicate' })
+        if (duplicateIds.length > 0) {
+          setModalQueue(duplicateIds)
           return
         }
       }
@@ -140,7 +138,7 @@ export function UploadPage() {
     }
   })
 
-  const modalFile = files.find((item) => item.id === activeModal?.id)
+  const modalFile = files.find((item) => item.id === modalQueue[0])
 
   return (
     <div className={styles.page}>
@@ -207,13 +205,7 @@ export function UploadPage() {
                 {item.status !== 'ready' && (
                   <button
                     className={styles.detail}
-                    onClick={() =>
-                      setActiveModal({
-                        id: item.id,
-                        type:
-                          item.status === 'duplicate' ? 'duplicate' : 'error',
-                      })
-                    }
+                    onClick={() => setModalQueue([item.id])}
                   >
                     {item.status === 'duplicate' ? '확인하기' : '이유 보기'}
                   </button>
@@ -255,12 +247,9 @@ export function UploadPage() {
         </Button>
       </footer>
 
-      {activeModal && modalFile && (
-        <Modal
-          labelledBy="upload-modal-title"
-          onClose={() => setActiveModal(null)}
-        >
-          {activeModal.type === 'duplicate' ? (
+      {modalFile && (
+        <Modal labelledBy="upload-modal-title" onClose={closeModal}>
+          {modalFile.status === 'duplicate' ? (
             <div className={styles.modalContent}>
               <span aria-hidden="true" className={styles.modalIcon}>
                 ↻
@@ -278,10 +267,7 @@ export function UploadPage() {
                 </span>
               </div>
               <div className={styles.modalActions}>
-                <Button
-                  onClick={() => setActiveModal(null)}
-                  variant="secondary"
-                >
+                <Button onClick={closeModal} variant="secondary">
                   취소
                 </Button>
                 <Button onClick={() => confirmOverwrite(modalFile.id)}>
