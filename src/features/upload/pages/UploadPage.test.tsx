@@ -34,7 +34,7 @@ function renderPage() {
 }
 
 describe('UploadPage', () => {
-  it('파일별 검증 결과를 보여주고 오류 파일을 제외한다', async () => {
+  it('형식이 틀린 파일은 고른 파일 목록에 넣지 않고 이유만 알려준다', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -44,12 +44,15 @@ describe('UploadPage', () => {
       new File(['bad'], '재고현황.xlsx'),
     ])
 
-    expect(await screen.findByText('올릴 수 있어요')).toBeInTheDocument()
-    expect(screen.getByText('형식 오류')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
+    expect(
+      await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
+    ).toHaveTextContent('재고현황.xlsx')
+    await user.click(screen.getByRole('button', { name: '확인' }))
 
-    await user.click(screen.getByRole('button', { name: '재고현황.xlsx 제거' }))
+    expect(screen.getByText('올릴 수 있어요')).toBeInTheDocument()
     expect(screen.queryByText('재고현황.xlsx')).not.toBeInTheDocument()
+    expect(screen.getByText('고른 파일 1개')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
   })
 
   it('오류 파일이 여러 개면 팝업을 하나씩 차례로 보여준다', async () => {
@@ -66,13 +69,13 @@ describe('UploadPage', () => {
     })
     expect(dialog).toHaveTextContent('재고현황.xlsx')
 
-    await user.click(screen.getByRole('button', { name: '이 파일 빼기' }))
+    await user.click(screen.getByRole('button', { name: '확인' }))
 
     expect(
       await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
     ).toHaveTextContent('2026-13.xlsx')
 
-    await user.click(screen.getByRole('button', { name: '이 파일 빼기' }))
+    await user.click(screen.getByRole('button', { name: '확인' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

@@ -26,8 +26,21 @@ async function fillCompany(user: UserEvent) {
   await user.type(screen.getByLabelText('담당자 이름'), '김담당')
 }
 
+// 1단계(회사 정보)를 채우고 2단계(이메일 인증)로 넘어간다.
+async function goToEmail(user: UserEvent) {
+  await fillCompany(user)
+  await user.click(screen.getByRole('button', { name: '다음' }))
+}
+
+// 이메일 인증을 마치고 3단계(비밀번호)로 넘어간다.
+async function goToPassword(user: UserEvent) {
+  await goToEmail(user)
+  await verifyEmail(user)
+  await user.click(screen.getByRole('button', { name: '다음' }))
+}
+
 async function fillPassword(user: UserEvent, password = 'abcd1234!') {
-  await user.type(screen.getByLabelText('비밀번호'), password)
+  await user.type(await screen.findByLabelText('비밀번호'), password)
   await user.type(screen.getByLabelText('비밀번호 확인'), password)
 }
 
@@ -55,6 +68,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
+    await goToEmail(user)
     await sendCode(user)
     await user.type(await screen.findByLabelText('인증 코드'), '000000')
     await user.click(screen.getByRole('button', { name: '확인' }))
@@ -90,6 +104,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
+    await goToEmail(user)
     await sendCode(user)
 
     expect(
@@ -106,6 +121,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
+    await goToEmail(user)
     await sendCode(user, 'seller@a.com')
 
     expect(
@@ -118,6 +134,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
+    await goToEmail(user)
     await sendCode(user)
     await user.type(await screen.findByLabelText('인증 코드'), '000000')
     await user.click(screen.getByRole('button', { name: '확인' }))
@@ -135,6 +152,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
+    await goToEmail(user)
     await verifyEmail(user)
     await user.type(screen.getByLabelText('이메일'), 'x')
 
@@ -144,46 +162,72 @@ describe('SignUpPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('이메일 인증 없이 가입하면 인증을 먼저 하라고 안내한다', async () => {
+  it('이메일 인증 없이 다음으로 넘어가면 인증을 먼저 하라고 안내한다', async () => {
     const user = userEvent.setup()
     renderSignUp()
 
-    await fillCompany(user)
-    await user.type(screen.getByLabelText('이메일'), newEmail)
-    await fillPassword(user)
-    await user.click(screen.getByRole('button', { name: '가입하기' }))
+    await goToEmail(user)
+    await user.type(await screen.findByLabelText('이메일'), newEmail)
+    await user.click(screen.getByRole('button', { name: '다음' }))
 
     expect(
       await screen.findByText('이메일 인증을 먼저 해 주세요.'),
     ).toBeInTheDocument()
+    expect(screen.queryByLabelText('비밀번호')).not.toBeInTheDocument()
   })
 
-  it('잘못 입력한 칸마다 안내를 보여준다', async () => {
+  it('사업자등록번호는 숫자만 쳐도 - 가 저절로 들어간다', async () => {
+    const user = userEvent.setup()
+    renderSignUp()
+
+    const field = await screen.findByLabelText(/사업자등록번호/)
+    await user.type(field, '1234567890')
+
+    expect(field).toHaveValue('123-45-67890')
+  })
+
+  it('회사 정보를 잘못 넣으면 다음 단계로 넘어가지 않고 칸마다 안내한다', async () => {
     const user = userEvent.setup()
     renderSignUp()
 
     await user.type(await screen.findByLabelText(/사업자등록번호/), '12345')
-    await user.type(screen.getByLabelText('비밀번호'), 'abcdefgh')
-    await user.type(screen.getByLabelText('비밀번호 확인'), 'abcdefgx')
-    await user.click(screen.getByRole('button', { name: '가입하기' }))
+    await user.click(screen.getByRole('button', { name: '다음' }))
 
     expect(
       await screen.findByText('회사명을 입력해 주세요.'),
     ).toBeInTheDocument()
     expect(screen.getByText('숫자 10자리로 입력해 주세요.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument()
+  })
+
+  it('비밀번호를 잘못 넣으면 칸마다 안내하고, 이전으로 돌아가도 입력이 남아 있다', async () => {
+    const user = userEvent.setup()
+    renderSignUp()
+
+    await goToPassword(user)
+    await user.type(await screen.findByLabelText('비밀번호'), 'abcdefgh')
+    await user.type(screen.getByLabelText('비밀번호 확인'), 'abcdefgx')
+    await user.click(screen.getByRole('button', { name: '가입하기' }))
+
     expect(
-      screen.getByText('8자 이상, 영문·숫자·특수문자를 섞어 주세요.'),
+      await screen.findByText('8자 이상, 영문·숫자·특수문자를 섞어 주세요.'),
     ).toBeInTheDocument()
     expect(screen.getByText('비밀번호가 서로 달라요.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '이전' }))
+    expect(screen.getByLabelText('이메일')).toHaveValue(newEmail)
+    expect(screen.getByText('인증을 마쳤어요.')).toBeInTheDocument()
   })
 
   it('가입을 마치면 로그인 화면으로 가서 가입한 이메일로 로그인할 수 있다', async () => {
     const user = userEvent.setup()
     renderSignUp()
 
-    await fillCompany(user)
-    await user.type(screen.getByLabelText(/사업자등록번호/), '123-45-67890')
-    await verifyEmail(user)
+    await user.type(
+      await screen.findByLabelText(/사업자등록번호/),
+      '1234567890',
+    )
+    await goToPassword(user)
     await fillPassword(user)
     await user.click(screen.getByRole('button', { name: '가입하기' }))
 
@@ -215,8 +259,7 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
-    await fillCompany(user)
-    await verifyEmail(user)
+    await goToPassword(user)
     await fillPassword(user)
     await user.click(screen.getByRole('button', { name: '가입하기' }))
 

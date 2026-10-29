@@ -51,6 +51,22 @@ const signUpSchema = z
 
 type SignUpValues = z.infer<typeof signUpSchema>
 
+type Page = 1 | 2 | 3
+
+const STEPS = [
+  { label: '회사 정보', title: '회사 정보를 알려 주세요' },
+  { label: '이메일 인증', title: '회사 이메일을 인증해 주세요' },
+  { label: '비밀번호', title: '비밀번호를 정해 주세요' },
+]
+
+// 숫자만 쳐도 000-00-00000 모양으로 '-'를 넣어 준다.
+function formatBusinessRegNo(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 10)
+  return [digits.slice(0, 3), digits.slice(3, 5), digits.slice(5)]
+    .filter(Boolean)
+    .join('-')
+}
+
 function formatTime(milliseconds: number) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
   const minutes = String(Math.floor(seconds / 60)).padStart(2, '0')
@@ -60,6 +76,7 @@ function formatTime(milliseconds: number) {
 
 export function SignUpPage() {
   const navigate = useNavigate()
+  const [page, setPage] = useState<Page>(1)
   const [code, setCode] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const {
@@ -81,6 +98,7 @@ export function SignUpPage() {
     },
   })
   const email = useWatch({ control, name: 'email' })
+  const bizNo = register('businessRegNo')
   const verification = useEmailVerification(email)
 
   const { step, expiresAt, resendAt, now } = verification
@@ -127,34 +145,48 @@ export function SignUpPage() {
         ? '사용할 수 있는 이메일이에요.'
         : undefined
 
+  // 한 화면에 한 단계만 보여준다. 다음으로 넘어갈 때 그 단계 칸만 검사한다.
+  async function next() {
+    if (page === 1) {
+      if (await trigger(['companyName', 'businessRegNo', 'managerName']))
+        setPage(2)
+      return
+    }
+    if (step === 'verified') setPage(3)
+    else setError('email', { message: EMAIL_VERIFICATION_REQUIRED_MESSAGE })
+  }
+
+  const current = STEPS[page - 1]
+
   return (
-    <AuthShell
-      description="올린 수불부와 계산 결과는 우리 회사 계정에서만 볼 수 있어요."
-      headline={'회사 정보와\n이메일 인증으로\n시작해요'}
-      steps={[
-        { label: '회사 정보', active: true },
-        {
-          label: '이메일 중복 확인 · 인증',
-          active: step !== 'idle' && step !== 'unavailable',
-        },
-        { label: '비밀번호', active: step === 'verified' },
-      ]}
-      tab="signup"
-    >
+    <AuthShell tab="signup">
       <form
         className={styles.form}
         noValidate
-        onSubmit={handleSubmit(submit.run)}
+        onSubmit={
+          page === 3
+            ? handleSubmit(submit.run)
+            : (event) => {
+                event.preventDefault()
+                void next()
+              }
+        }
       >
         <h1 className={styles.srOnly}>회원가입</h1>
-        <h2 className={styles.title}>계정을 만들어요</h2>
+        <div aria-hidden="true" className={styles.progress}>
+          {STEPS.map((item, index) => (
+            <i data-on={index < page || undefined} key={item.label} />
+          ))}
+        </div>
+        <p className={styles.stepLabel}>
+          {page}/3 · {current.label}
+        </p>
+        <h2 className={styles.title}>{current.title}</h2>
 
-        <section aria-labelledby="signup-company" className={styles.block}>
-          <h3 className={styles.section} id="signup-company">
-            1 · 회사 정보
-          </h3>
-          <div className={styles.grid}>
+        {page === 1 && (
+          <div className={styles.stack}>
             <TextField
+              autoFocus
               error={errors.companyName?.message}
               label="회사명 (상호)"
               required
@@ -168,24 +200,24 @@ export function SignUpPage() {
                   사업자등록번호 <span className={styles.optional}>(선택)</span>
                 </>
               }
+              maxLength={12}
               placeholder="000-00-00000"
-              {...register('businessRegNo')}
+              {...bizNo}
+              onChange={(event) => {
+                event.target.value = formatBusinessRegNo(event.target.value)
+                void bizNo.onChange(event)
+              }}
             />
-            <div className={styles.wide}>
-              <TextField
-                error={errors.managerName?.message}
-                label="담당자 이름"
-                required
-                {...register('managerName')}
-              />
-            </div>
+            <TextField
+              error={errors.managerName?.message}
+              label="담당자 이름"
+              required
+              {...register('managerName')}
+            />
           </div>
-        </section>
+        )}
 
-        <section aria-labelledby="signup-email" className={styles.block}>
-          <h3 className={styles.section} id="signup-email">
-            2 · 이메일
-          </h3>
+        {page === 2 && (
           <div className={styles.stack}>
             <TextField
               action={
@@ -199,6 +231,7 @@ export function SignUpPage() {
                 </FieldButton>
               }
               autoComplete="email"
+              autoFocus
               error={errors.email?.message ?? verification.error}
               hint={emailHint}
               label="이메일"
@@ -258,16 +291,19 @@ export function SignUpPage() {
               />
             )}
           </div>
-        </section>
+        )}
 
-        <section aria-labelledby="signup-password" className={styles.block}>
-          <h3 className={styles.section} id="signup-password">
-            3 · 비밀번호
-          </h3>
-          <div className={styles.grid}>
+        {page === 3 && (
+          <div className={styles.stack}>
             <TextField
               autoComplete="new-password"
+              autoFocus
               error={errors.password?.message}
+              hint={
+                errors.password
+                  ? undefined
+                  : '영문, 숫자, 특수문자를 모두 넣어 8자 이상으로 정해 주세요.'
+              }
               label="비밀번호"
               required
               type="password"
@@ -282,29 +318,42 @@ export function SignUpPage() {
               {...register('passwordConfirm')}
             />
           </div>
-          {!errors.password && (
-            <p className={styles.note}>
-              영문, 숫자, 특수문자를 모두 넣어 8자 이상으로 정해 주세요.
-            </p>
-          )}
-        </section>
+        )}
 
         {submitError && (
           <p className={styles.banner} role="alert">
             {submitError}
           </p>
         )}
-        <Button
-          className={styles.submit}
-          loading={submit.isPending}
-          loadingLabel="가입 중"
-          type="submit"
-        >
-          가입하기
-        </Button>
+        <div className={styles.actions}>
+          {page > 1 && (
+            <Button
+              onClick={() => setPage((value) => (value - 1) as Page)}
+              type="button"
+              variant="text"
+            >
+              이전
+            </Button>
+          )}
+          {page < 3 ? (
+            <Button className={styles.submit} type="submit">
+              다음
+            </Button>
+          ) : (
+            <Button
+              className={styles.submit}
+              loading={submit.isPending}
+              loadingLabel="가입 중"
+              type="submit"
+            >
+              가입하기
+            </Button>
+          )}
+        </div>
         <p className={styles.footnote}>
-          이메일 인증을 마쳐야 가입할 수 있어요 · 가입이 끝나면 로그인 화면으로
-          이동해요
+          {page === 3
+            ? '가입이 끝나면 로그인 화면으로 이동해요'
+            : '올린 수불부와 계산 결과는 우리 회사 계정에서만 볼 수 있어요'}
         </p>
       </form>
     </AuthShell>

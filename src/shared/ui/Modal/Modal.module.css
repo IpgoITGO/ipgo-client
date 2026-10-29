@@ -9,6 +9,7 @@
 }
 
 .dialog {
+  position: relative;
   width: min(100%, 560px);
   max-height: calc(100vh - 40px);
   padding: 36px;
@@ -34,7 +35,7 @@
   }
 
   .dialog {
-    animation: dialog-in 220ms ease-out;
+    animation: dialog-in var(--motion-enter) var(--ease-spring);
   }
 }
 

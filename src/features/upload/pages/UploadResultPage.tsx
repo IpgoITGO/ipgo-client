@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { getUploadResult } from '../model/uploadApi'
-import { formatDate, formatPeriod } from '../model/uploadFormat'
+import {
+  describeExclusion,
+  formatDate,
+  formatPeriod,
+} from '../model/uploadFormat'
 import styles from './UploadResultPage.module.css'
 
 // 정제·검산이 끝날 때까지 2초마다 다시 확인한다.
@@ -13,6 +17,9 @@ const POLL_INTERVAL_MS = 2000
 export function UploadResultPage() {
   const { uploadId } = useParams()
   const navigate = useNavigate()
+  // 업로드 화면에서 같은 기간을 덮어써 올렸으면 그 기간 목록이 넘어온다.
+  const replaced = (useLocation().state as { replaced?: string[] } | null)
+    ?.replaced
   const result = useQuery({
     queryKey: ['upload-result', uploadId],
     queryFn: () => getUploadResult(uploadId ?? ''),
@@ -65,19 +72,42 @@ export function UploadResultPage() {
         <h1>수불부를 확인했어요</h1>
       </header>
 
+      {replaced && replaced.length > 0 && (
+        <p className={styles.replaced} role="status">
+          <span aria-hidden="true">↻</span>
+          {replaced.join(', ')} 자료를 새 파일로 바꿨어요. 이전 결과는 이력으로
+          남아요.
+        </p>
+      )}
+
       <ol className={styles.steps} aria-label="업로드 진행 단계">
         <li data-complete="true">
-          <strong>✓ 업로드</strong>
+          <strong>
+            <i aria-hidden="true" className={styles.mark}>
+              ✓
+            </i>
+            업로드
+          </strong>
           <span>파일 형식 확인 완료</span>
         </li>
         <li data-complete="true">
-          <strong>✓ 정제·검산</strong>
+          <strong>
+            <i aria-hidden="true" className={styles.mark}>
+              ✓
+            </i>
+            정제·검산
+          </strong>
           <span>
             {checkedSkuCount}개 상품 · {excludedCount}개 제외
           </span>
         </li>
         <li>
-          <strong>3 입고 조건 확인</strong>
+          <strong>
+            <i aria-hidden="true" className={styles.mark}>
+              3
+            </i>
+            입고 조건 확인
+          </strong>
           <span>처음 한 번만 확인해요</span>
         </li>
       </ol>
@@ -115,16 +145,27 @@ export function UploadResultPage() {
                 </tr>
               </thead>
               <tbody>
-                {excludedSkus.map((issue) => (
-                  <tr key={`${issue.skuBarcode}-${issue.date}`}>
-                    <td>
-                      <strong>{issue.skuName}</strong>
-                      <span>{issue.skuBarcode}</span>
-                    </td>
-                    <td>{formatDate(issue.date)}</td>
-                    <td>{issue.reason}</td>
-                  </tr>
-                ))}
+                {excludedSkus.map((issue) => {
+                  const reason = describeExclusion(issue.reason, issue.date)
+                  return (
+                    <tr key={`${issue.skuBarcode}-${issue.date}`}>
+                      <td>
+                        <strong>{issue.skuName}</strong>
+                        <span>{issue.skuBarcode}</span>
+                      </td>
+                      <td>{formatDate(issue.date)}</td>
+                      <td title={issue.reason}>
+                        <div className={styles.reason}>
+                          <div>
+                            {reason.diff && <b>{reason.diff}</b>}
+                            <small>{reason.fix}</small>
+                          </div>
+                          <em>{reason.label}</em>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

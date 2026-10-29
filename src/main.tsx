@@ -20,6 +20,16 @@ async function enableApiMocking() {
   })
 }
 
+// 회원가입은 단계가 나뉘어 새로고침하면 입력이 사라지므로, 거기서 새로고침하면 로그인부터 다시 시작한다.
+function restartSignupOnReload() {
+  const [navigation] = performance.getEntriesByType('navigation')
+  const reloaded = (navigation as PerformanceNavigationTiming | undefined)?.type
+  if (reloaded === 'reload' && location.pathname === '/signup') {
+    history.replaceState(null, '', '/login')
+  }
+}
+
+restartSignupOnReload()
 await enableApiMocking()
 
 const rootElement = document.getElementById('root')

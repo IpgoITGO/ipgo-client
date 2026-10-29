@@ -30,7 +30,8 @@ describe('UploadResultPage', () => {
     expect(screen.getByText('2026. 9. 1 ~ 2026. 10. 14')).toBeInTheDocument()
     expect(screen.getByText('2026. 10. 14')).toBeInTheDocument()
     expect(screen.getByText('덴탈껌 M 5입')).toBeInTheDocument()
-    expect(screen.getByText(/당일 재고와 3개 달라요/)).toBeInTheDocument()
+    expect(screen.getByText('재고 안 맞음')).toBeInTheDocument()
+    expect(screen.getByText('3개 차이')).toBeInTheDocument()
     expect(screen.getByText(/이미 발주한 물량 1건/)).toBeInTheDocument()
   })
 

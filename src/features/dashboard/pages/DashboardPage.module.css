@@ -2,25 +2,37 @@
   display: grid;
   gap: var(--space-6);
 }
+/* 큰 색 면 대신 흰 카드 + 작은 동그라미 하나로만 상태를 알린다 (베이지 바탕에 묻히지 않게) */
 .banner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
+  gap: var(--space-4);
   padding: var(--space-5);
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border: 1px solid #f0cf8a;
+  color: var(--color-text);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-input);
 }
-.banner[data-state='refresh-required'] {
+.bannerMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-warning);
+  font-weight: 800;
+  background: var(--color-warning-bg);
+  border-radius: 50%;
+}
+.banner[data-state='refresh-required'] .bannerMark {
   color: var(--color-danger);
   background: var(--color-danger-bg);
-  border-color: #f4b8b3;
 }
 .banner > div {
   display: grid;
+  flex: 1;
   gap: var(--space-1);
+  min-width: 0;
 }
 .banner span {
   color: var(--color-text-2);
@@ -61,32 +73,52 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
+  padding-top: var(--space-2);
 }
 .summary article {
+  position: relative;
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-6);
+  gap: var(--space-2);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
 }
+/* 급한 상자: 다른 카드와 같은 흰 상자에 굵은 남색 테두리와 테이프 */
 .summary article[data-state='needed'] {
-  color: white;
-  background: #65759c;
-  border-color: transparent;
+  border: 2px solid var(--color-primary);
+}
+.summary article[data-state='needed'] span {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.summary article[data-state='needed'] em {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+.tape {
+  top: -11px;
+  left: var(--space-5);
 }
 .summary span {
-  opacity: 0.8;
+  color: var(--color-text-3);
 }
 .summary strong {
+  color: var(--color-primary);
   font-size: 34px;
+  font-variant-numeric: tabular-nums;
+}
+.summary em {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  font-style: normal;
 }
 .summary small {
   margin-left: var(--space-1);
   font-size: var(--text-body);
 }
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -109,11 +141,32 @@
   margin-top: var(--space-1);
   color: var(--color-text-3);
 }
-.sectionHeader select {
-  min-height: 42px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-input);
+/* 정렬: 탭처럼 붙은 버튼 세 개. 고른 것만 흰 바탕에 굵게 */
+.sort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: var(--space-1);
+  background: var(--color-bg);
+  border-radius: 14px;
+}
+.sort button {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+}
+.sort button[aria-checked='true'] {
+  color: var(--color-text);
+  font-weight: 700;
+  background: var(--color-card);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+.sort button:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
 }
 .tableWrap {
   overflow-x: auto;
@@ -171,4 +224,26 @@
   .lowerGrid {
     grid-template-columns: 1fr;
   }
+}
+/* 줄 전체가 링크: 올리면 연한 노랑, 상품명은 남색 굵게 */
+.rowLink {
+  cursor: pointer;
+}
+.rowLink:hover td {
+  background: var(--color-accent-soft);
+}
+.rowLink a {
+  display: block;
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+.rowLink a:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+/* .tableWrap td의 왼쪽 정렬보다 우선하도록 표 안에서 지정 */
+.tableWrap .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

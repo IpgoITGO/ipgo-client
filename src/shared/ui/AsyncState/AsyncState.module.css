@@ -22,20 +22,48 @@
 }
 
 .symbol {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  color: var(--color-primary);
-  font-size: 20px;
-  font-weight: 800;
-  background: var(--color-primary-soft);
-  border-radius: 16px;
+  width: 64px;
+  height: 64px;
 }
 
-.symbol[data-status='error'] {
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
+.symbol img {
+  width: 56px;
+  height: 56px;
+}
+
+.symbol[data-status='empty'] img {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.symbol b {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: white;
+  font-size: 13px;
+  background: var(--color-danger);
+  border: 2px solid var(--color-card);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .symbol[data-status='loading'] img {
+    animation: wobble 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes wobble {
+  50% {
+    transform: translateY(-3px) rotate(-3deg);
+  }
 }
 
 .progress {
@@ -51,7 +79,7 @@
   width: 45%;
   height: 100%;
   content: '';
-  background: var(--color-primary);
+  background: var(--color-accent);
   border-radius: inherit;
   animation: progress 1s ease-in-out infinite alternate;
 }

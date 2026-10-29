@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
+import { Tape } from '../../../shared/ui/Tape/Tape'
 import styles from './DashboardPage.module.css'
 
 export type DashboardData = {
@@ -31,9 +33,55 @@ export type DashboardData = {
   excludedItems: Array<{ name: string; reason: string }>
 }
 
+// 숫자 카드. "지금 넣어야 해요"는 투톤 대신 흰 상자에 테이프를 붙여 급한 상자로 표시한다.
+function SummaryCard({
+  empty,
+  label,
+  note,
+  state,
+  value,
+}: {
+  empty: boolean
+  label: string
+  note: string
+  state: string
+  value: number
+}) {
+  const shown = useCountUp(value)
+
+  return (
+    <article data-state={state}>
+      {state === 'needed' && !empty && <Tape className={styles.tape} />}
+      <span>{label}</span>
+      <strong>
+        {empty ? '—' : shown}
+        <small>{empty ? '' : '개'}</small>
+      </strong>
+      {!empty && <em>{note}</em>}
+    </article>
+  )
+}
+
+type SortKey = 'stockout' | 'risk' | 'cost'
+
+// "2026. 9. 5" 같은 날짜를 자릿수 맞춘 "20260905"로 바꿔 글자 비교로도 날짜 순이 되게 한다.
+function dateKey(date: string) {
+  return date
+    .split('.')
+    .map((part) => part.trim().padStart(2, '0'))
+    .join('')
+}
+
+// 브라우저 기본 드롭다운 대신 한눈에 보이는 버튼형 정렬
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'stockout', label: '소진일 빠른 순' },
+  { value: 'risk', label: '품절 위험 높은 순' },
+  { value: 'cost', label: '금액 큰 순' },
+]
+
 export function DashboardPage() {
   const navigate = useNavigate()
-  const [sort, setSort] = useState<'stockout' | 'risk' | 'cost'>('stockout')
+  const [sort, setSort] = useState<SortKey>('stockout')
   const query = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => apiRequest<DashboardData>('/dashboard'),
@@ -44,7 +92,7 @@ export function DashboardPage() {
     return source.sort((a, b) => {
       if (sort === 'cost') return b.cost - a.cost
       if (sort === 'risk') return b.risk - a.risk
-      return a.stockoutDate.localeCompare(b.stockoutDate)
+      return dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
     })
   }, [query.data?.neededItems, sort])
 
@@ -73,6 +121,9 @@ export function DashboardPage() {
     <div className={styles.page}>
       {data.freshness !== 'fresh' && (
         <aside className={styles.banner} data-state={data.freshness}>
+          <span aria-hidden="true" className={styles.bannerMark}>
+            !
+          </span>
           <div>
             <strong>
               {refreshRequired ? '새 수불부가 필요해요' : '갱신 전 결과예요'}
@@ -113,19 +164,42 @@ export function DashboardPage() {
       </header>
 
       <section className={styles.summary} aria-label="입고 예측 요약">
-        {[
-          ['지금 넣어야 해요', data.summary.needed, 'needed'],
-          ['아직 괜찮아요', data.summary.safe, 'safe'],
-          ['계산 불가', data.summary.unavailable, 'unavailable'],
-          ['검산 제외', data.summary.excluded, 'excluded'],
-        ].map(([label, value, state]) => (
-          <article data-state={state} key={label}>
-            <span>{label}</span>
-            <strong>
-              {refreshRequired ? '—' : value}
-              <small>{refreshRequired ? '' : '개'}</small>
-            </strong>
-          </article>
+        {(
+          [
+            [
+              '지금 넣어야 해요',
+              data.summary.needed,
+              'needed',
+              '오늘 발주해야 제때 도착해요',
+            ],
+            [
+              '아직 괜찮아요',
+              data.summary.safe,
+              'safe',
+              '다음 입고까지 버텨요',
+            ],
+            [
+              '계산 불가',
+              data.summary.unavailable,
+              'unavailable',
+              '판매 기록이 부족해요',
+            ],
+            [
+              '검산 제외',
+              data.summary.excluded,
+              'excluded',
+              '재고 숫자가 맞지 않아요',
+            ],
+          ] as const
+        ).map(([label, value, state, note]) => (
+          <SummaryCard
+            empty={refreshRequired}
+            key={label}
+            label={label}
+            note={note}
+            state={state}
+            value={value}
+          />
         ))}
       </section>
 
@@ -143,15 +217,23 @@ export function DashboardPage() {
                 <h2>입고가 필요한 상품</h2>
                 <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
               </div>
-              <select
+              <div
                 aria-label="입고 필요 목록 정렬"
-                onChange={(event) => setSort(event.target.value as typeof sort)}
-                value={sort}
+                className={styles.sort}
+                role="radiogroup"
               >
-                <option value="stockout">소진일 빠른 순</option>
-                <option value="risk">품절 위험 높은 순</option>
-                <option value="cost">금액 큰 순</option>
-              </select>
+                {SORT_OPTIONS.map((option) => (
+                  <button
+                    aria-checked={sort === option.value}
+                    key={option.value}
+                    onClick={() => setSort(option.value)}
+                    role="radio"
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className={styles.tableWrap}>
               <table>
@@ -159,32 +241,32 @@ export function DashboardPage() {
                   <tr>
                     <th>상품</th>
                     <th>예상 소진일</th>
-                    <th>리드타임</th>
-                    <th>권장 입고량</th>
-                    <th>사입비</th>
-                    <th />
+                    <th className={styles.num}>리드타임</th>
+                    <th className={styles.num}>품절 위험</th>
+                    <th className={styles.num}>권장 입고량</th>
+                    <th className={styles.num}>사입비</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id}>
+                    // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
+                    <tr
+                      className={styles.rowLink}
+                      key={item.id}
+                      onClick={() => navigate(`/sku/${item.id}`)}
+                    >
                       <td>
-                        <strong>{item.name}</strong>
+                        <Link to={`/sku/${item.id}`}>{item.name}</Link>
                         <span>{item.barcode}</span>
                       </td>
                       <td>{item.stockoutDate}</td>
-                      <td>{item.leadTime}일</td>
-                      <td>
+                      <td className={styles.num}>{item.leadTime}일</td>
+                      <td className={styles.num}>{item.risk}%</td>
+                      <td className={styles.num}>
                         <strong>{item.quantity}개</strong>
                       </td>
-                      <td>{item.cost.toLocaleString()}원</td>
-                      <td>
-                        <Button
-                          onClick={() => navigate(`/sku/${item.id}`)}
-                          variant="secondary"
-                        >
-                          상세 보기
-                        </Button>
+                      <td className={styles.num}>
+                        {item.cost.toLocaleString()}원
                       </td>
                     </tr>
                   ))}

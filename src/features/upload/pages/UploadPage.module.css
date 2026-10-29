@@ -33,15 +33,21 @@
   border-radius: var(--radius-card);
   transition: 0.2s ease;
 }
+/* 파일을 끌어 올리면 노란 테두리로 바뀌고 아이콘이 상자 뚜껑처럼 들린다 */
 .dropzone[data-dragging='true'] {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-press);
+  border-style: solid;
+}
+.dropzone[data-dragging='true'] .uploadIcon {
+  transform: translateY(-6px) rotate(-8deg);
 }
 .dropzone strong {
   color: var(--color-text);
   font-size: var(--text-section);
 }
 .uploadIcon {
+  transition: transform 220ms var(--ease-spring);
   display: grid;
   place-items: center;
   width: 56px;
@@ -59,7 +65,7 @@
   clip: rect(0 0 0 0);
 }
 .fileSection {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -122,6 +128,12 @@
 .status[data-status='error'] {
   color: var(--color-danger);
   background: var(--color-danger-bg);
+}
+
+/* 덮어쓰기로 정한 파일: "올릴 수 있어요"(초록)와 구분되는 연한 파랑 */
+.status[data-status='overwrite'] {
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .status[data-status='duplicate'] {

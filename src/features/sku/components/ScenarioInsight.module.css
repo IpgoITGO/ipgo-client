@@ -4,7 +4,7 @@
 }
 
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -41,14 +41,23 @@
   border-radius: var(--radius-chip);
 }
 
+/* 한 줄 5칸 고정. 넘치면 "더 보기"로 다음 줄을 편다. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.more {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .scenario,
 .inputCard {
+  position: relative;
   display: grid;
   align-content: start;
   gap: var(--space-3);
@@ -62,8 +71,40 @@
   border: 2px solid var(--color-primary);
 }
 
+/* 직접 넣은 수량: 점선 대신 조금 진한 실선으로만 구분 */
 .scenario[data-custom='true'] {
-  border-style: dashed;
+  border-color: var(--color-input-border);
+}
+
+/* 다음 빈 칸에 하나만 두는 "+" 카드 */
+.addCard {
+  display: grid;
+  min-height: 180px;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-3);
+  font-weight: 700;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+
+.addCard span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--color-primary);
+  font-size: 24px;
+  background: var(--color-card);
+  border-radius: 50%;
+}
+
+.addCard:hover,
+.addCard:focus-visible {
+  color: var(--color-primary);
   border-color: var(--color-primary);
 }
 
@@ -76,12 +117,31 @@
   font-size: var(--text-caption);
 }
 
+/* 권장 카드는 "권장"이라 쓴 테이프를 위쪽 테두리에 반쯤 걸쳐 붙인다 (입체감) */
 .badge {
-  padding: 3px 9px;
-  color: #fff;
+  position: absolute;
+  top: -13px;
+  right: var(--space-4);
+  display: grid;
+  width: 72px;
+  height: 26px;
+  place-items: center;
+}
+
+.badge b {
+  position: relative;
+  z-index: 3;
+  color: #5a3a00;
   font-size: var(--text-caption);
-  background: var(--color-primary);
-  border-radius: var(--radius-chip);
+  font-weight: 900;
+}
+
+.badgeTape {
+  --tape-rotate: 3deg;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 26px;
 }
 
 .quantity {
@@ -135,7 +195,7 @@
 }
 
 .inputCard {
-  border: 2px dashed var(--color-input-border);
+  border: 1px solid var(--color-primary);
 }
 
 .inputCard label {
@@ -184,59 +244,135 @@
   text-align: center;
 }
 
-/* AI 인사이트는 계산 근거와 구분되도록 진한 띠로 크게 보여준다. */
+/* AI 인사이트: 테이프 붙인 흰 카드 */
 .insight {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: var(--space-5);
-  padding: var(--space-6);
-  color: #fff;
-  background: var(--color-primary);
+  gap: var(--space-3);
+  padding: var(--space-8);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
 }
 
-.insightIcon {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  font-size: 22px;
-  background: rgb(255 255 255 / 14%);
-  border-radius: var(--radius-input);
+.insightTape {
+  --tape-rotate: -2deg;
+  top: -12px;
+  left: var(--space-6);
+  width: 96px;
 }
 
-.insightTitle {
+.insightHead {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
 }
 
-.insightTitle h2 {
+.insightHead h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
+  color: var(--color-primary);
   font-size: var(--text-section);
 }
 
-.insightTitle small {
-  color: rgb(255 255 255 / 70%);
+.insightHead small {
+  color: var(--color-text-3);
   font-size: var(--text-caption);
+}
+
+.spark {
+  color: var(--color-link);
 }
 
 .source {
-  padding: 3px 9px;
+  padding: 2px 9px;
+  color: var(--color-primary);
   font-size: var(--text-caption);
-  font-weight: 700;
-  background: rgb(255 255 255 / 16%);
+  font-weight: 800;
+  background: #eef4ff;
+  border: 1px solid #cfe0ff;
   border-radius: var(--radius-chip);
 }
 
-.message {
+.source[data-source='fallback'] {
+  color: var(--color-text-2);
+  background: var(--color-primary-soft);
+  border-color: var(--color-border);
+}
+
+/* 문장마다 번호를 붙여 한 줄씩 */
+.lines {
+  display: grid;
+  gap: var(--space-2);
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.5;
+  padding: 0;
+  list-style: none;
+  counter-reset: line;
+}
+
+.lines li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  color: var(--color-text);
+  font-size: 17px;
+  line-height: 1.6;
+  counter-increment: line;
+}
+
+.lines li::before {
+  padding-top: 3px;
+  color: var(--color-text-3);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--text-caption);
+  content: counter(line);
+}
+
+/* 숫자만 형광펜 */
+.mark {
+  padding: 0 2px;
+  color: var(--color-primary);
+  font-weight: 900;
+  background: linear-gradient(
+    180deg,
+    transparent 52%,
+    var(--color-accent-soft) 52%,
+    var(--color-accent-soft) 92%,
+    transparent 92%
+  );
+}
+
+.mark[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
+.basis {
+  margin: 0;
+  padding-top: var(--space-2);
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  border-top: 1px dashed var(--color-border);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lines li {
+    animation: line-in 380ms var(--ease-spring) both;
+  }
+}
+
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 800px) {
@@ -244,11 +380,7 @@
     flex-direction: column;
   }
 
-  .insight {
-    grid-template-columns: 1fr;
-  }
-
-  .message {
-    font-size: 18px;
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

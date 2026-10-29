@@ -7,6 +7,12 @@ import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { ScenarioInsight } from './ScenarioInsight'
 
+// AI 문장은 숫자가 따로 강조되어 여러 조각으로 나뉘므로, 문장 한 줄(li) 전체 글자로 찾는다.
+function sentence(pattern: RegExp) {
+  return (_: string, element: Element | null) =>
+    element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
+}
+
 function renderInsight(skuId = '8800272420016') {
   return render(
     <AppProviders>
@@ -27,8 +33,10 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
     expect(await screen.findByText('AI 생성')).toBeInTheDocument()
     expect(
-      screen.getByText(/권장량 72개.*도착 전 품절 위험은 8%/),
+      screen.getByText(sentence(/권장량 72개.*도착 전 품절 위험은 8%/)),
     ).toBeInTheDocument()
+    // 문장 속 숫자만 형광펜으로 강조한다
+    expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
   })
 
   it('직접 입력을 검증하고 중복 요청 없이 비교를 추가한다', async () => {
@@ -55,6 +63,8 @@ describe('ScenarioInsight', () => {
     renderInsight()
     await screen.findByText('권장량 100%')
 
+    // 빈 칸의 "+" 카드를 눌러야 입력칸이 열린다
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
     const input = screen.getByLabelText('직접 입력')
     await user.type(input, '0')
     await user.click(screen.getByRole('button', { name: '비교에 추가' }))
@@ -68,13 +78,29 @@ describe('ScenarioInsight', () => {
 
     expect(await screen.findByText('90개')).toBeInTheDocument()
     expect(requestCount).toBe(1)
+    // 추가하면 입력칸이 닫히고 "+" 카드가 다음 칸으로 간다
+    expect(screen.queryByLabelText('직접 입력')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '수량 넣어 비교' }),
+    ).toBeInTheDocument()
+
+    // 권장 3 + 직접 2 = 5칸이 차면 "+"는 줄 아래 버튼으로 내려간다
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+    await user.type(screen.getByLabelText('직접 입력'), '100')
+    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
+    expect(await screen.findByText('100개')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '+ 수량 넣어 비교' }),
+    ).toBeInTheDocument()
   })
 
   it('AI 실패 응답은 기본 문장으로 구분한다', async () => {
     renderInsight('ai-fallback')
 
     expect(await screen.findByText('기본 문장')).toBeInTheDocument()
-    expect(screen.getByText(/권장 입고량 72개를 기준/)).toBeInTheDocument()
+    expect(
+      screen.getByText(sentence(/권장 입고량 72개를 기준/)),
+    ).toBeInTheDocument()
     expect(await screen.findByText('권장량 100%')).toBeInTheDocument()
   })
 

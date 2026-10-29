@@ -37,9 +37,14 @@ const settingsSchema = z.object({
 
 type SettingsValues = z.infer<typeof settingsSchema>
 
+// 계산 시작 효과 시간. CSS의 ship 애니메이션과 같다.
+const SHIP_MS = 900
+
 export function SettingsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  // 저장 뒤 상자가 오른쪽으로 출고되는 짧은 효과를 보여 준 다음 대시보드로 간다.
+  const [shipping, setShipping] = useState(false)
   const query = useQuery({
     queryKey: ['inbound-settings'],
     queryFn: () => apiRequest<SettingsValues>('/settings/inbound'),
@@ -82,7 +87,14 @@ export function SettingsPage() {
       body: JSON.stringify(values),
     })
     // 저장이 끝나면 대시보드로 보내고, 안내는 그 화면에서 토스트로 보여준다.
-    navigate('/dashboard', { state: { toast: '입고 조건을 저장했어요' } })
+    const goDashboard = () =>
+      navigate('/dashboard', { state: { toast: '입고 조건을 저장했어요' } })
+    const animate =
+      typeof window.matchMedia === 'function' &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!animate) return goDashboard()
+    setShipping(true)
+    window.setTimeout(goDashboard, SHIP_MS)
   }
 
   if (query.isPending) {
@@ -237,11 +249,10 @@ export function SettingsPage() {
 
       <footer className={styles.actions}>
         <Button
-          className={styles.back}
           onClick={() => navigate('/dashboard')}
           title="저장하지 않고 대시보드로 이동해요"
           type="button"
-          variant="secondary"
+          variant="text"
         >
           ← 대시보드로
         </Button>
@@ -254,6 +265,12 @@ export function SettingsPage() {
           확인하고 계산하기
         </Button>
       </footer>
+      {shipping && (
+        <div aria-live="polite" className={styles.ship} role="status">
+          <img alt="" height="88" src="/logo.png" width="88" />
+          <strong>계산을 시작했어요</strong>
+        </div>
+      )}
     </div>
   )
 }

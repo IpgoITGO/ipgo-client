@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { Tape } from '../../../shared/ui/Tape/Tape'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import styles from './SkuPage.module.css'
 
@@ -103,6 +104,7 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
             className={styles.outboundBar}
             height={CHART.bottom - y(item.outbound)}
             key={item.date}
+            style={{ animationDelay: `${index * 60}ms` }}
             width={barWidth}
             x={x(index) - barWidth / 2}
             y={y(item.outbound)}
@@ -147,11 +149,11 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
 function AccuracyChart({ history }: { history: SkuDetail['history'] }) {
   const box = {
     width: 600,
-    height: 230,
-    left: 48,
-    right: 590,
-    top: 28,
-    bottom: 180,
+    height: 236,
+    left: 56,
+    right: 568,
+    top: 36,
+    bottom: 186,
   }
   const max = Math.max(
     ...history.map((item) => Math.max(item.outbound, item.predictedOutbound)),
@@ -193,7 +195,7 @@ function AccuracyChart({ history }: { history: SkuDetail['history'] }) {
           </text>
         </g>
       ))}
-      <text className={styles.axisTitle} x={box.left - 8} y={box.top - 16}>
+      <text className={styles.axisTitle} x={0} y={box.top - 18}>
         출고량(개)
       </text>
       <polyline
@@ -295,7 +297,11 @@ export function SkuPage() {
           <section className={styles.recommendation}>
             <div>
               <span>권장 입고량</span>
-              <strong>{data.recommendation.quantity.toLocaleString()}개</strong>
+              {/* 가장 중요한 숫자라 테이프를 밑줄처럼 붙인다 */}
+              <strong className={styles.recoQty}>
+                <Tape className={styles.recoTape} />
+                <span>{data.recommendation.quantity.toLocaleString()}개</span>
+              </strong>
             </div>
             <dl>
               <div>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -51,6 +51,30 @@ describe('LoginPage', () => {
       await screen.findByText('가입을 마쳤어요. 로그인해 주세요.'),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('이메일')).toHaveValue('new@b.com')
+  })
+
+  it('아이디 저장을 켜고 로그인하면 다음에 이메일을 미리 채운다', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.type(await screen.findByLabelText('이메일'), 'seller@a.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'pass1234')
+    await user.click(screen.getByRole('checkbox', { name: '아이디 저장' }))
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    await waitFor(() =>
+      expect(localStorage.getItem('ipgo:saved-email')).toBe('seller@a.com'),
+    )
+    localStorage.removeItem('ipgo:saved-email')
+  })
+
+  it('저장된 이메일이 있으면 채워 두고 아이디 저장을 켜 둔다', async () => {
+    localStorage.setItem('ipgo:saved-email', 'seller@a.com')
+    renderLogin()
+
+    expect(await screen.findByLabelText('이메일')).toHaveValue('seller@a.com')
+    expect(screen.getByRole('checkbox', { name: '아이디 저장' })).toBeChecked()
+    localStorage.removeItem('ipgo:saved-email')
   })
 
   it('빈 칸으로 로그인하면 칸마다 안내를 보여준다', async () => {

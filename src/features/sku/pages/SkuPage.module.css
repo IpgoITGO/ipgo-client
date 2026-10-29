@@ -64,12 +64,13 @@
   border-radius: var(--radius-input);
 }
 
+/* 투톤 그라데이션 대신 다른 카드와 같은 흰 카드. 숫자에 테이프를 붙여 강조한다. */
 .recommendation {
   padding: var(--space-6) var(--space-8);
-  color: white;
-  background: linear-gradient(120deg, #283862, #65759c);
+  color: var(--color-primary);
+  background: var(--color-card);
+  border: 2px solid var(--color-primary);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
 }
 
 .recommendation > div {
@@ -79,11 +80,32 @@
 
 .recommendation > div > span,
 .recommendation dt {
-  opacity: 0.75;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  font-weight: 700;
 }
 
 .recommendation > div strong {
   font-size: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+.recoQty {
+  position: relative;
+  justify-self: start;
+}
+
+.recoQty > span {
+  position: relative;
+  z-index: 3;
+}
+
+.recoTape {
+  --tape-rotate: -2deg;
+  top: 50%;
+  left: -8px;
+  width: calc(100% + 16px);
+  height: 22px;
 }
 
 .recommendation dl {
@@ -110,7 +132,7 @@
 }
 
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -130,7 +152,9 @@
 
 .legend {
   display: flex;
-  gap: var(--space-3);
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
@@ -154,7 +178,7 @@
 }
 
 .legend span[data-series='outbound']::before {
-  background: #c9d1ec;
+  background: var(--color-chart-muted);
   border-radius: 2px;
 }
 
@@ -162,7 +186,7 @@
   background: var(--color-danger);
 }
 
-/* 예측 정확도 그래프 범례: 실제 출고는 진한 실선, 예측 출고는 보라 점선. */
+/* 예측 정확도 그래프 범례: 실제 출고는 가는 남색 실선, 예측 출고는 굵은 황토 점선(먼저 눈에 들어오게). */
 .legend span[data-series='actual']::before,
 .legend span[data-series='prediction']::before {
   width: 18px;
@@ -175,7 +199,7 @@
 }
 
 .legend span[data-series='prediction']::before {
-  border-top: 3px dashed #a16fd0;
+  border-top: 3px dashed var(--color-accent-text);
 }
 
 .chart {
@@ -212,7 +236,7 @@
 }
 
 .outboundBar {
-  fill: #c9d1ec;
+  fill: var(--color-chart-muted);
 }
 
 .xTick {
@@ -225,7 +249,7 @@
   fill: var(--color-text-2);
   font-size: 12px;
   font-weight: 700;
-  text-anchor: end;
+  text-anchor: start;
 }
 
 .xTitle {
@@ -243,7 +267,7 @@
 }
 
 .predictionLine {
-  stroke: #a16fd0;
+  stroke: var(--color-accent-text);
   stroke-dasharray: 7 7;
 }
 
@@ -277,7 +301,7 @@
 
 .formulas article[data-selected='true'] {
   background: var(--color-primary-soft);
-  border-color: #9da9c8;
+  border-color: var(--color-input-border);
 }
 
 .formulas span,
@@ -386,4 +410,69 @@
     gap: var(--space-4);
     width: 100%;
   }
+}
+
+/* 그래프는 처음 한 번 그려진다: 선은 왼쪽부터, 막대는 아래부터, 품절 점은 마지막에 */
+@media (prefers-reduced-motion: no-preference) {
+  .chart polyline {
+    animation: line-in 900ms cubic-bezier(0.4, 0, 0.6, 1) 200ms both;
+  }
+
+  .outboundBar {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: bar-in 500ms var(--ease-spring) both;
+  }
+
+  .zeroPoint {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: dot-in 360ms var(--ease-spring) 1000ms both;
+  }
+
+  .stockoutLabel {
+    animation: fade-in 300ms ease-out 1150ms both;
+  }
+}
+
+@keyframes line-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes bar-in {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 예측 정확도: 비교 기준인 실제 출고 선은 가늘고 흐리게, 예측 선이 먼저 보이게 한다. */
+.chart .actualLine {
+  stroke-opacity: 0.75;
+  stroke-width: 1.75;
+}
+
+.legend span[data-series='actual']::before {
+  border-top-width: 2px;
+  opacity: 0.75;
 }
