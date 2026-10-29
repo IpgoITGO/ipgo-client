@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
 import { Button } from '../../shared/ui/Button/Button'
@@ -13,6 +13,7 @@ const navigation = [
 export function AppLayout() {
   const { signOut, user } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   function handleSignOut() {
     signOut()
@@ -51,7 +52,10 @@ export function AppLayout() {
         </div>
       </header>
       <main className={styles.main}>
-        <Outlet />
+        {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
+        <div className={styles.page} key={pathname}>
+          <Outlet />
+        </div>
       </main>
       <RouteToast />
     </div>
