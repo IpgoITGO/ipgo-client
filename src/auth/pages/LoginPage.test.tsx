@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { AppProviders } from '../../app/providers/AppProviders'
 import { routes } from '../../app/router/router'
+import { server } from '../../mocks/server'
 
 function renderLogin() {
   const router = createMemoryRouter(routes, { initialEntries: ['/login'] })
@@ -65,5 +67,25 @@ describe('LoginPage', () => {
       'aria-invalid',
       'true',
     )
+  })
+
+  it('서버에 연결하지 못하면 비밀번호 오류와 다른 문구를 보여준다', async () => {
+    // 가짜 서버가 안 붙어 보안 토큰 요청에 홈페이지 HTML이 돌아오는 경우
+    server.use(
+      http.get('/api/auth/csrf', () => HttpResponse.html('<html></html>')),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.type(await screen.findByLabelText('이메일'), 'seller@a.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'pass1234')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '서버에 연결하지 못했어요',
+    )
+    expect(
+      screen.queryByText('이메일 또는 비밀번호가 맞지 않아요.'),
+    ).not.toBeInTheDocument()
   })
 })
