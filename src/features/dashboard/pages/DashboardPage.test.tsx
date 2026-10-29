@@ -40,13 +40,15 @@ describe('DashboardPage', () => {
     )
 
     // 가짜 서버 예시: 케어트릿 120g은 3일 전, 연어 져키는 1일 전에 소진
-    expect(await screen.findByText('이미 소진 · 3일 지남')).toBeInTheDocument()
-    expect(screen.getByText('이미 소진 · 1일 지남')).toBeInTheDocument()
+    expect(await screen.findByText('3일 지남')).toBeInTheDocument()
+    expect(screen.getByText('1일 지남')).toBeInTheDocument()
+    expect(screen.getAllByRole('img', { name: /품절/ })).toHaveLength(2)
+
+    const firstRow = screen.getAllByRole('row')[1]
+    expect(firstRow).toHaveAttribute('data-passed')
+    expect(firstRow).toHaveTextContent('케어트릿 120g')
     expect(
-      screen.getByText('그중 2개는 이미 소진됐을 수 있어요'),
-    ).toBeInTheDocument()
-    expect(screen.getAllByRole('row')[1]).toHaveTextContent(
-      '이미 소진 · 3일 지남',
-    )
+      screen.getByText('지금 넣어야 해요').closest('article'),
+    ).toHaveTextContent('2개는 이미 소진됐을 수 있어요')
   })
 })

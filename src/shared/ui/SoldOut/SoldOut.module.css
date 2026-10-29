@@ -1,0 +1,15 @@
+.stamp {
+  flex: none;
+  width: 58px;
+  height: 27px;
+  overflow: visible;
+  color: var(--color-danger);
+  vertical-align: middle;
+}
+
+.box {
+  flex: none;
+  width: 40px;
+  height: 37px;
+  overflow: visible;
+}
