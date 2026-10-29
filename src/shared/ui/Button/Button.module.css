@@ -60,6 +60,17 @@
   background: var(--color-primary-soft);
 }
 
+/* 카드 안에서 놓치면 안 되는 행동(예: 고친 파일 다시 올리기). 노란 주요 버튼과 겹치지 않게 남색으로 채운다. */
+.strong {
+  min-height: var(--h-button-sub);
+  color: var(--color-card);
+  background: var(--color-primary);
+}
+
+.strong:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
 /* 보조 행동은 테두리 없이 글자만. 노란 주요 버튼 하나만 눈에 띄게 한다. */
 .text {
   min-height: var(--h-button-sub);

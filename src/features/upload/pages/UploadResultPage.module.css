@@ -44,86 +44,79 @@
 .steps span {
   font-size: var(--text-caption);
 }
-.metrics {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: var(--space-4);
-}
-.metrics article {
+/* 결과 카드: 제목이 결론. 주제마다 하나 */
+.result {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-8);
+  padding: var(--space-6) var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
 }
-.metrics span {
-  color: var(--color-text-3);
-}
-.metrics strong {
-  font-size: 22px;
-}
-.report {
-  padding: var(--space-8);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-}
-.sectionTitle {
+.resultHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
 }
-.sectionTitle h2 {
-  margin: 0;
-  font-size: var(--text-section);
-}
-.sectionTitle span {
-  padding: 8px 12px;
-  color: var(--color-warning);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  background: var(--color-warning-bg);
-  border-radius: var(--radius-chip);
-}
-.tableWrap {
-  overflow-x: auto;
-}
-.report table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.report th,
-.report td {
-  padding: var(--space-4);
-  text-align: left;
-  vertical-align: top;
-  border-bottom: 1px solid var(--color-border);
-}
-.report th {
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
-}
-/* 칸 자체를 grid로 바꾸면 표 줄 높이가 어긋나서, 안쪽 글자만 줄을 바꾼다 */
-.report td:first-child span {
-  display: block;
-  margin-top: var(--space-1);
-}
-.report td span {
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
-}
-/* 사유: 왼쪽에 차이 개수(크게)와 고칠 곳(흐리게), 오른쪽 끝에 꼬리표 */
-.reason {
+.resultTitle {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
 }
-.reason em {
-  flex: none;
+.resultTitleSmall {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.resultSub {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.mark[data-tone='ok'] {
+  color: var(--color-done);
+  background: var(--color-done-bg);
+  border-color: transparent;
+}
+.mark[data-tone='warn'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: transparent;
+}
+/* 뺀 상품: 이름 → 이유 → 고치는 방법 */
+.excluded {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+.excluded li {
+  display: grid;
+  gap: var(--space-2);
+}
+.excluded p {
+  margin: 0;
+}
+.excludedName strong {
+  margin-right: var(--space-2);
+}
+.excludedName small {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.excludedWhy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.excludedWhy em {
   padding: 2px var(--space-2);
   color: var(--color-accent-text);
   font-size: var(--text-caption);
@@ -132,17 +125,24 @@
   background: var(--color-warning-bg);
   border-radius: var(--radius-chip);
 }
-.reason b {
-  display: block;
-  font-size: 1.125rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+.excludedFix {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  background: var(--color-bg);
+  border-radius: var(--radius-input);
 }
-.reason small {
-  display: block;
-  margin-top: var(--space-1);
+.excludedFix b {
+  margin-right: var(--space-2);
+  color: var(--color-text);
+}
+/* "따로 알려드려요": 뺀 이유와 섞이지 않게 제목으로 떼어 놓는다 */
+.asideLabel {
+  margin: var(--space-2) 0 calc(-1 * var(--space-3));
   color: var(--color-text-3);
   font-size: var(--text-caption);
+  font-weight: 700;
 }
 /* 같은 기간을 다시 올렸을 때 한 줄 안내 (흰 카드 + 쑥색 표시) */
 .replaced {
@@ -166,24 +166,6 @@
   background: var(--color-done-bg);
   border-radius: 50%;
 }
-.help,
-.empty {
-  margin: var(--space-4) 0 0;
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
-}
-.orderNotice {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  color: var(--color-success);
-  background: var(--color-success-bg);
-  border-radius: var(--radius-input);
-}
-.orderNotice span {
-  color: var(--color-text-2);
-}
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -191,13 +173,10 @@
 }
 
 @media (max-width: 760px) {
-  .steps,
-  .metrics {
+  .steps {
     grid-template-columns: 1fr;
   }
-  .sectionTitle,
-  .orderNotice {
-    align-items: flex-start;
-    flex-direction: column;
+  .result {
+    padding: var(--space-5);
   }
 }

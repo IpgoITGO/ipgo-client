@@ -24,12 +24,12 @@ export function formatUploadedAt(iso: string) {
 // 문장 모양이 달라 개수를 못 찾으면 원래 문장을 고칠 곳 자리에 그대로 보여준다.
 export function describeExclusion(reason: string, date: string) {
   const gap = /(\d+)개 달라요/.exec(reason)
-  if (!gap) return { label: '검산 안 맞음', diff: null, fix: reason }
+  if (!gap) return { label: '검산 안 맞음', summary: reason, fix: null }
 
   const [, month, day] = date.split('-').map(Number)
   return {
     label: '재고 안 맞음',
-    diff: `${gap[1]}개 차이`,
-    fix: `${month}월 ${day}일 행의 재고·입고·출고를 확인해 주세요`,
+    summary: `재고 숫자가 ${gap[1]}개 안 맞아요`,
+    fix: `수불부 ${month}월 ${day}일 행의 재고·입고·출고를 확인해 고쳐 주세요.`,
   }
 }
