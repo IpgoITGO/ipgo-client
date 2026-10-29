@@ -1,5 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
+import { PASSWORD_RULE } from '../model/passwordRule'
+
 // ipgo-server의 인증 API 규칙(PR #7·#9·#13의 README)을 따르는 MSW handler입니다.
 // 오류 code 이름과 응답 모양은 서버 기준입니다. API 명세서와 다른 곳은 서버를 따릅니다.
 // 가입한 계정은 메모리에만 있어 브라우저를 새로고침하면 시험 계정만 남습니다.
@@ -12,8 +14,6 @@ const RESEND_INTERVAL_MS = 60 * 1000
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000
 const MAX_CODE_FAILURES = 5
 const CSRF_HEADER = 'X-CSRF-TOKEN'
-// 비밀번호: 8자 이상, 영문·숫자·특수문자를 모두 포함 (명세서 규칙 + 특수문자)
-const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,128}$/
 
 type MockUser = {
   userId: number

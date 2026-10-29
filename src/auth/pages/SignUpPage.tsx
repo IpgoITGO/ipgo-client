@@ -14,11 +14,14 @@ import {
   EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   messageOf,
 } from '../model/authMessages'
+import {
+  PASSWORD_RULE,
+  PASSWORD_RULE_HINT,
+  PASSWORD_RULE_MESSAGE,
+} from '../model/passwordRule'
 import { SIGNUP_OPEN_KEY } from '../model/signupSession'
 import { useEmailVerification } from '../model/useEmailVerification'
 import styles from './SignUpPage.module.css'
-
-const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,128}$/
 
 const name = (label: string) =>
   z
@@ -39,10 +42,8 @@ const signUpSchema = z
       ),
     managerName: name('담당자 이름'),
     email: z.email('올바른 이메일 주소를 입력해 주세요.'),
-    // 비밀번호 규칙: 8자 이상, 영문·숫자·특수문자를 모두 포함 (명세서 규칙 + 특수문자)
-    password: z
-      .string()
-      .regex(PASSWORD_RULE, '8자 이상, 영문·숫자·특수문자를 섞어 주세요.'),
+    // 비밀번호 규칙은 서버와 같다 (passwordRule.ts)
+    password: z.string().regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
     passwordConfirm: z.string(),
   })
   .refine((values) => values.password === values.passwordConfirm, {
@@ -315,11 +316,7 @@ export function SignUpPage() {
               autoComplete="new-password"
               autoFocus
               error={errors.password?.message}
-              hint={
-                errors.password
-                  ? undefined
-                  : '영문, 숫자, 특수문자를 모두 넣어 8자 이상으로 정해 주세요.'
-              }
+              hint={errors.password ? undefined : PASSWORD_RULE_HINT}
               label="비밀번호"
               required
               type="password"

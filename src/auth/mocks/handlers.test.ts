@@ -11,7 +11,7 @@ import {
 import { MOCK_VERIFICATION_CODE } from './handlers'
 
 const newEmail = 'new@b.com'
-const password = 'abcd1234!'
+const password = 'Abcd123!'
 
 const signUpBody = {
   companyName: '다음스낵',
@@ -125,10 +125,19 @@ describe('auth MSW handler (서버 인증 API 규칙)', () => {
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_VERIFICATION_TOKEN' })
   })
 
-  it('A1: 비밀번호는 8자 이상이고 영문·숫자·특수문자를 모두 넣어야 한다', async () => {
+  it('A1: 비밀번호는 8~16자, 영문 대·소문자·숫자·특수문자를 모두 넣어야 한다', async () => {
     const verificationToken = await verify()
 
-    for (const weak of ['short1!', 'abcdefgh1', 'abcdefgh!', '12345678!']) {
+    for (const weak of [
+      'Ab1!',
+      'Abcd1234!xyzwvuts',
+      'abcd123!',
+      'ABCD123!',
+      'Abcdefg!',
+      'Abcd1234',
+      'Abc 123!',
+      'Abc한123!',
+    ]) {
       await expect(
         signUp({ ...signUpBody, password: weak, verificationToken }),
       ).rejects.toMatchObject({ status: 400, code: 'INVALID_INPUT' })
