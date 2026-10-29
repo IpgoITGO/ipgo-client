@@ -8,6 +8,8 @@
 | Issue·PR·commit 작성 방식 | [작성 규칙](rules/conventions.md) |
 | 비밀값과 위험한 변경 기준 | [안전 규칙](rules/safety.md) |
 | Jira·GitHub 동기화와 Vercel 배포 | [자동화 운영](automation.md) |
+| 자동화 도입 결과와 확인된 예외 | [2026-10-29 자동화 기준 기록](records/2026-10-29-automation-baseline.md) |
+| 요구사항·Jira·GitHub 담당자 정리 결과 | [2026-10-29 담당자 정합성 기록](records/2026-10-29-assignee-reconciliation.md) |
 | 화면 시안 (화면 7 · 팝업 4 등 15장) | [UI 시안](design/ui-screens.pdf) |
 | API 요청·응답 형식 (10월 23일 기준 **과거 문서**) | [API 명세서](design/api-spec.docx) |
 

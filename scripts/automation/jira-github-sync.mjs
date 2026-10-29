@@ -8,6 +8,8 @@ import {
   isSyncedGithubComment,
   isSyncedJiraComment,
   jiraCommentMarker,
+  planGithubAssigneeSync,
+  planJiraAssigneeSync,
   readSyncMarker,
   resolveDateSync,
   shouldAutoCreateGithubIssue,
@@ -218,15 +220,25 @@ async function syncGithubStateFromJira(jiraIssue, githubIssue) {
 }
 
 async function syncGithubAssigneeFromJira(jiraIssue, githubIssue) {
-  const mapped = jiraIssue.fields.assignee?.accountId
-    ? userMap[jiraIssue.fields.assignee.accountId]
-    : null
-  const current = githubIssue.assignees.map((assignee) => assignee.login)
-  const desired = mapped ? [mapped] : []
-  if (current.join(',') !== desired.join(',')) {
+  const plan = planGithubAssigneeSync({
+    jiraAccountId: jiraIssue.fields.assignee?.accountId,
+    githubAssignees: githubIssue.assignees,
+    userMap,
+  })
+  if (plan.reason === 'assignee-conflict') {
+    console.warn(
+      `${jiraIssue.key} ↔ #${githubIssue.number}: 담당자가 서로 달라 자동 변경하지 않습니다.`,
+    )
+  }
+  if (plan.reason === 'unmapped-jira-user') {
+    console.warn(
+      `${jiraIssue.key}: Jira 담당자 계정 매핑이 없어 GitHub 담당자를 변경하지 않습니다.`,
+    )
+  }
+  if (plan.update) {
     await github(`/repos/${owner}/${repo}/issues/${githubIssue.number}`, {
       method: 'PATCH',
-      body: JSON.stringify({ assignees: desired }),
+      body: JSON.stringify({ assignees: plan.desired }),
     })
   }
 }
@@ -553,13 +565,28 @@ async function syncIssueEvent(event) {
   if (event.action === 'closed') await transitionJira(jiraKey, 'done')
   if (event.action === 'reopened') await transitionJira(jiraKey, 'new')
   if (['assigned', 'unassigned'].includes(event.action)) {
-    const accountId = issue.assignees[0]
-      ? reverseUserMap()[issue.assignees[0].login.toLowerCase()]
-      : null
-    await jira(`/rest/api/3/issue/${jiraKey}/assignee`, {
-      method: 'PUT',
-      body: JSON.stringify({ accountId }),
+    const jiraIssue = await jira(`/rest/api/3/issue/${jiraKey}?fields=assignee`)
+    const plan = planJiraAssigneeSync({
+      githubAssignees: issue.assignees,
+      jiraAccountId: jiraIssue.fields.assignee?.accountId,
+      reverseUserMap: reverseUserMap(),
     })
+    if (plan.reason === 'assignee-conflict') {
+      console.warn(
+        `${jiraKey} ↔ #${issue.number}: 담당자가 서로 달라 자동 변경하지 않습니다.`,
+      )
+    }
+    if (plan.reason === 'unmapped-github-user') {
+      console.warn(
+        `${jiraKey}: GitHub 담당자 계정 매핑이 없어 Jira 담당자를 변경하지 않습니다.`,
+      )
+    }
+    if (plan.update) {
+      await jira(`/rest/api/3/issue/${jiraKey}/assignee`, {
+        method: 'PUT',
+        body: JSON.stringify({ accountId: plan.accountId }),
+      })
+    }
   }
 }
 

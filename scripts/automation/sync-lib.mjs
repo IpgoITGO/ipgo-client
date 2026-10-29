@@ -66,6 +66,76 @@ export function resolveDateSync({ jiraValue, githubValue, previousValue }) {
   return { finalValue: previousValue, update: null, conflict: false }
 }
 
+function githubLogins(assignees = []) {
+  return assignees
+    .map((assignee) =>
+      typeof assignee === 'string' ? assignee : assignee?.login,
+    )
+    .filter(Boolean)
+}
+
+export function planGithubAssigneeSync({
+  jiraAccountId,
+  githubAssignees = [],
+  userMap = {},
+}) {
+  const current = githubLogins(githubAssignees)
+  if (!jiraAccountId) {
+    return { update: false, desired: current, reason: 'jira-unassigned' }
+  }
+
+  const mapped = userMap[jiraAccountId]
+  if (!mapped) {
+    return { update: false, desired: current, reason: 'unmapped-jira-user' }
+  }
+
+  if (current.length === 0) {
+    return { update: true, desired: [mapped], reason: null }
+  }
+
+  const isSame =
+    current.length === 1 && current[0].toLowerCase() === mapped.toLowerCase()
+  return {
+    update: false,
+    desired: current,
+    reason: isSame ? 'already-synced' : 'assignee-conflict',
+  }
+}
+
+export function planJiraAssigneeSync({
+  githubAssignees = [],
+  jiraAccountId,
+  reverseUserMap = {},
+}) {
+  const [githubLogin] = githubLogins(githubAssignees)
+  if (!githubLogin) {
+    return {
+      update: false,
+      accountId: jiraAccountId ?? null,
+      reason: 'github-unassigned',
+    }
+  }
+
+  const mapped = reverseUserMap[githubLogin.toLowerCase()]
+  if (!mapped) {
+    return {
+      update: false,
+      accountId: jiraAccountId ?? null,
+      reason: 'unmapped-github-user',
+    }
+  }
+
+  if (!jiraAccountId) {
+    return { update: true, accountId: mapped, reason: null }
+  }
+
+  return {
+    update: false,
+    accountId: jiraAccountId,
+    reason: jiraAccountId === mapped ? 'already-synced' : 'assignee-conflict',
+  }
+}
+
 export function shouldAutoCreateGithubIssue({
   jiraCreatedAt,
   autoCreateAfter,

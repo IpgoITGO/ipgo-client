@@ -140,6 +140,7 @@ flowchart LR
 - Jira 작업은 GitHub Issue와 연결하고 상태·댓글·담당자·기간을 동기화합니다.
 - GitHub Issue의 기간은 조직 Project `IpgoITGO 작업 일정`의 `시작일`·`마감일` 필드에 표시합니다.
 - 승인된 PR을 사람이 병합하면 `dev`는 개발 주소, `main`은 운영 주소로 Vercel 배포를 시작합니다.
+- `dev → main` PR 제목에는 운영 배포 후 완료할 Jira 키를 모두 포함합니다.
 - PR 자동 승인·자동 병합과 Jira 스프린트 자동 배정은 하지 않습니다.
 
 필요한 GitHub Variables·Secrets와 복구 절차는 [자동화 운영 문서](docs/automation.md)를 따릅니다.
