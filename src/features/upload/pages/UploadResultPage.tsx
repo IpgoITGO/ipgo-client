@@ -112,82 +112,85 @@ export function UploadResultPage() {
         </li>
       </ol>
 
-      <section className={styles.metrics} aria-label="업로드 요약">
-        <article>
-          <span>자료 기간</span>
-          <strong>{formatPeriod(data.periodStart, data.periodEnd)}</strong>
-        </article>
-        <article>
-          <span>기준일 (자료 마지막 날)</span>
-          <strong>{formatDate(data.asOfDate)}</strong>
-        </article>
-        <article>
-          <span>계산 대상</span>
-          <strong>{targetSkuCount}개 상품</strong>
-        </article>
-      </section>
-
-      <section className={styles.report}>
-        <div className={styles.sectionTitle}>
-          <h2>검증 리포트</h2>
-          <span>{excludedCount}개 상품은 계산에서 뺐어요</span>
-        </div>
-        {excludedSkus.length === 0 ? (
-          <p className={styles.empty}>재고 숫자가 모두 맞아요.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th>상품</th>
-                  <th>날짜</th>
-                  <th>사유</th>
-                </tr>
-              </thead>
-              <tbody>
-                {excludedSkus.map((issue) => {
-                  const reason = describeExclusion(issue.reason, issue.date)
-                  return (
-                    <tr key={`${issue.skuBarcode}-${issue.date}`}>
-                      <td>
-                        <strong>{issue.skuName}</strong>
-                        <span>{issue.skuBarcode}</span>
-                      </td>
-                      <td>{formatDate(issue.date)}</td>
-                      <td title={issue.reason}>
-                        <div className={styles.reason}>
-                          <div>
-                            {reason.diff && <b>{reason.diff}</b>}
-                            <small>{reason.fix}</small>
-                          </div>
-                          <em>{reason.label}</em>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className={styles.help}>
-          수불부를 고쳐 같은 기간을 다시 올리면 확인 후 교체하고 다시 계산해요.
+      {/* 주제마다 카드 하나. 카드 제목이 곧 결론이고, 이유·할 일은 그 카드 안에서 위에서 아래로 읽힌다. */}
+      <section aria-labelledby="result-calculated" className={styles.result}>
+        <h2 className={styles.resultTitle} id="result-calculated">
+          <i aria-hidden="true" className={styles.mark} data-tone="ok">
+            ✓
+          </i>
+          {targetSkuCount}개 상품으로 계산했어요
+        </h2>
+        <p className={styles.resultSub}>
+          자료 {formatPeriod(data.periodStart, data.periodEnd)} · 기준일{' '}
+          {formatDate(data.asOfDate)} ·{' '}
+          {excludedCount > 0
+            ? `올린 ${checkedSkuCount}개 중 ${excludedCount}개는 뺐어요`
+            : '재고 숫자가 모두 맞아요'}
         </p>
       </section>
 
+      {excludedCount > 0 && (
+        <section aria-labelledby="result-excluded" className={styles.result}>
+          <div className={styles.resultHead}>
+            <h2 className={styles.resultTitle} id="result-excluded">
+              <i aria-hidden="true" className={styles.mark} data-tone="warn">
+                !
+              </i>
+              {excludedCount}개 상품은 빼고 계산했어요
+            </h2>
+            <Button onClick={() => navigate('/upload')} variant="strong">
+              고친 파일 다시 올리기 →
+            </Button>
+          </div>
+          <ul className={styles.excluded}>
+            {excludedSkus.map((issue) => {
+              const reason = describeExclusion(issue.reason, issue.date)
+              return (
+                <li
+                  key={`${issue.skuBarcode}-${issue.date}`}
+                  title={issue.reason}
+                >
+                  <p className={styles.excludedName}>
+                    <strong>{issue.skuName}</strong>
+                    <small>
+                      {issue.skuBarcode} · {formatDate(issue.date)}
+                    </small>
+                  </p>
+                  <p className={styles.excludedWhy}>
+                    <em>{reason.label}</em>
+                    {reason.summary}
+                  </p>
+                  {reason.fix && (
+                    <p className={styles.excludedFix}>
+                      <b>고치는 방법</b>
+                      {reason.fix} 같은 기간으로 다시 올리면 바꿔서 다시
+                      계산해요.
+                    </p>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
       {data.matchedReceipts.length > 0 && (
-        <aside className={styles.orderNotice}>
-          <strong>
-            ✓ 이미 발주한 물량 {data.matchedReceipts.length}건이 입고로
-            확인됐어요
-          </strong>
-          {data.matchedReceipts.map((receipt) => (
-            <span key={receipt.receiptId}>
-              {receipt.skuName} {receipt.quantity}개 ·{' '}
-              {formatDate(receipt.receivedOn)} 입고 · 계산에서 두 번 빼지 않아요
-            </span>
-          ))}
-        </aside>
+        <>
+          <p className={styles.asideLabel}>따로 알려드려요</p>
+          <section aria-labelledby="result-receipts" className={styles.result}>
+            <h2 className={styles.resultTitleSmall} id="result-receipts">
+              이미 발주한 물량 {data.matchedReceipts.length}건이 입고로
+              확인됐어요
+            </h2>
+            {data.matchedReceipts.map((receipt) => (
+              <p className={styles.resultSub} key={receipt.receiptId}>
+                {receipt.skuName} {receipt.quantity}개 ·{' '}
+                {formatDate(receipt.receivedOn)} 입고 · 계산에서 두 번 빼지
+                않아요
+              </p>
+            ))}
+          </section>
+        </>
       )}
 
       <footer className={styles.actions}>

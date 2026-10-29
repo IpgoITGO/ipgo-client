@@ -6,7 +6,7 @@ type ButtonProps = PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & {
     loading?: boolean
     loadingLabel?: string
-    variant?: 'primary' | 'secondary' | 'text'
+    variant?: 'primary' | 'secondary' | 'strong' | 'text'
   }
 >
 

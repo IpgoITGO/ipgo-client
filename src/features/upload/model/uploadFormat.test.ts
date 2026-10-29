@@ -27,7 +27,7 @@ describe('uploadFormat', () => {
     )
   })
 
-  it('검산 제외 사유를 꼬리표·차이·고칠 곳으로 나눈다', () => {
+  it('검산 제외 사유를 꼬리표·한 줄 요약·고칠 곳으로 나눈다', () => {
     expect(
       describeExclusion(
         '전날 재고 + 입고 − 출고 ± 조정이 당일 재고와 3개 달라요',
@@ -35,14 +35,14 @@ describe('uploadFormat', () => {
       ),
     ).toEqual({
       label: '재고 안 맞음',
-      diff: '3개 차이',
-      fix: '9월 12일 행의 재고·입고·출고를 확인해 주세요',
+      summary: '재고 숫자가 3개 안 맞아요',
+      fix: '수불부 9월 12일 행의 재고·입고·출고를 확인해 고쳐 주세요.',
     })
     // 문장 모양이 다르면 원래 문장을 그대로 보여준다
     expect(describeExclusion('출고가 음수예요', '2026-09-03')).toEqual({
       label: '검산 안 맞음',
-      diff: null,
-      fix: '출고가 음수예요',
+      summary: '출고가 음수예요',
+      fix: null,
     })
   })
 })
