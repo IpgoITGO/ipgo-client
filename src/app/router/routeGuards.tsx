@@ -26,17 +26,14 @@ export function RootRedirect() {
   )
 }
 
-// 로그인한 사람은 로그인·회원가입 화면 대신 원래 가려던 화면으로 보냅니다.
+// 로그인한 사람은 로그인·회원가입 화면 대신 늘 대시보드로 보냅니다. (가려던 화면으로 돌려보내지 않음)
 export function PublicOnly() {
   const { status } = useAuth()
-  const location = useLocation()
 
   if (status === 'loading') return <AuthChecking />
 
-  const from = (location.state as { from?: { pathname: string } } | null)?.from
-
   return status === 'authenticated' ? (
-    <Navigate to={from ?? '/dashboard'} replace />
+    <Navigate to="/dashboard" replace />
   ) : (
     <Outlet />
   )
