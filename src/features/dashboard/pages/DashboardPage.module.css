@@ -247,3 +247,16 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* 예상 소진일이 오늘이거나 지난 상품: 날짜 옆 빨간 꼬리표 */
+.passed {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-chip);
+}

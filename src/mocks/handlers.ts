@@ -24,6 +24,13 @@ function orderStatus(arrivalDate: string) {
   return arrivalDate < '2026-10-19' ? 'overdue' : 'reflecting'
 }
 
+// 오늘에서 n일 뒤(음수면 앞) 날짜를 "2026. 10. 29" 모양으로
+function dayFromToday(n: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + n)
+  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`
+}
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
@@ -220,8 +227,10 @@ export const handlers = [
     })
   }),
   http.get('/api/dashboard', () => {
+    // 예시 날짜는 오늘 기준으로 움직여서 늘 그럴듯하게 보이게 한다. 두 상품은 소진일이 이미 지난 경우.
     return HttpResponse.json({
-      baseDate: '2026. 10. 14',
+      baseDate: dayFromToday(-1),
+      today: dayFromToday(0),
       freshness: 'fresh',
       lastCalculatedAt: '10월 18일',
       summary: { needed: 6, safe: 22, unavailable: 2, excluded: 1 },
@@ -230,7 +239,7 @@ export const handlers = [
           id: '8800272420016',
           name: '케어트릿 120g',
           barcode: '8800272420016',
-          stockoutDate: '2026. 10. 22',
+          stockoutDate: dayFromToday(-3),
           leadTime: 5,
           quantity: 72,
           cost: 129600,
@@ -240,7 +249,7 @@ export const handlers = [
           id: '8800272421044',
           name: '덴탈껌 S 10입',
           barcode: '8800272421044',
-          stockoutDate: '2026. 10. 25',
+          stockoutDate: dayFromToday(1),
           leadTime: 5,
           quantity: 60,
           cost: 108000,
@@ -250,7 +259,7 @@ export const handlers = [
           id: '8800272420108',
           name: '케어트릿 8g 낱개',
           barcode: '8800272420108',
-          stockoutDate: '2026. 10. 28',
+          stockoutDate: dayFromToday(4),
           leadTime: 7,
           quantity: 96,
           cost: 28800,
@@ -261,7 +270,7 @@ export const handlers = [
           id: '8800272421200',
           name: '연어 져키 80g',
           barcode: '8800272421200',
-          stockoutDate: '2026. 10. 24',
+          stockoutDate: dayFromToday(-1),
           leadTime: 4,
           quantity: 40,
           cost: 52000,
@@ -271,7 +280,7 @@ export const handlers = [
           id: '8800272421300',
           name: '오리 큐브 100g',
           barcode: '8800272421300',
-          stockoutDate: '2026. 10. 31',
+          stockoutDate: dayFromToday(7),
           leadTime: 6,
           quantity: 120,
           cost: 210000,
@@ -281,7 +290,7 @@ export const handlers = [
           id: '8800272421501',
           name: '동결건조 큐브 50g',
           barcode: '8800272421501',
-          stockoutDate: '2026. 10. 27',
+          stockoutDate: dayFromToday(3),
           leadTime: 5,
           quantity: 24,
           cost: 74400,

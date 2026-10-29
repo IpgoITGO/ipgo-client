@@ -29,4 +29,24 @@ describe('DashboardPage', () => {
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('케어트릿 120g')
     expect(screen.getAllByRole('row')).toHaveLength(7)
   })
+
+  it('예상 소진일이 지난 상품은 이미 소진으로 표시하고 요약 카드에 몇 개인지 알린다', async () => {
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+
+    // 가짜 서버 예시: 케어트릿 120g은 3일 전, 연어 져키는 1일 전에 소진
+    expect(await screen.findByText('이미 소진 · 3일 지남')).toBeInTheDocument()
+    expect(screen.getByText('이미 소진 · 1일 지남')).toBeInTheDocument()
+    expect(
+      screen.getByText('그중 2개는 이미 소진됐을 수 있어요'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent(
+      '이미 소진 · 3일 지남',
+    )
+  })
 })

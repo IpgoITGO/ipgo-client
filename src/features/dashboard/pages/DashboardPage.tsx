@@ -11,6 +11,8 @@ import styles from './DashboardPage.module.css'
 
 export type DashboardData = {
   baseDate: string
+  /** 서버가 판정에 쓴 오늘 날짜(API 명세 3.5 today). 없으면 브라우저의 오늘 */
+  today?: string
   freshness: 'fresh' | 'stale-result' | 'refresh-required'
   lastCalculatedAt?: string
   summary: {
@@ -72,6 +74,27 @@ function dateKey(date: string) {
     .join('')
 }
 
+// "2026. 10. 29"·"2026-10-29" 어느 모양이든 하루 단위 숫자로. 두 날짜의 차이(일)를 셀 때 쓴다.
+function dayNumber(date: string) {
+  const [, y, m, d] = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(date) ?? []
+  return y ? Date.UTC(Number(y), Number(m) - 1, Number(d)) / 864e5 : NaN
+}
+
+function localToday() {
+  const now = new Date()
+  return `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}`
+}
+
+// 예상 소진일이 오늘이거나 지났으면 날짜 옆에 빨간 꼬리표
+function PassedTag({ days }: { days: number }) {
+  if (!(days >= 0)) return null
+  return (
+    <em className={styles.passed}>
+      {days === 0 ? '오늘 소진' : `이미 소진 · ${days}일 지남`}
+    </em>
+  )
+}
+
 // 브라우저 기본 드롭다운 대신 한눈에 보이는 버튼형 정렬
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'stockout', label: '소진일 빠른 순' },
@@ -116,6 +139,12 @@ export function DashboardPage() {
 
   const data = query.data
   const refreshRequired = data.freshness === 'refresh-required'
+  // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
+  const today = dayNumber(data.today ?? localToday())
+  const daysPast = (date: string) => today - dayNumber(date)
+  const passedCount = data.neededItems.filter(
+    (item) => daysPast(item.stockoutDate) > 0,
+  ).length
 
   return (
     <div className={styles.page}>
@@ -170,7 +199,9 @@ export function DashboardPage() {
               '지금 넣어야 해요',
               data.summary.needed,
               'needed',
-              '오늘 발주해야 제때 도착해요',
+              passedCount > 0
+                ? `그중 ${passedCount}개는 이미 소진됐을 수 있어요`
+                : '오늘 발주해야 제때 도착해요',
             ],
             [
               '아직 괜찮아요',
@@ -259,7 +290,10 @@ export function DashboardPage() {
                         <Link to={`/sku/${item.id}`}>{item.name}</Link>
                         <span>{item.barcode}</span>
                       </td>
-                      <td>{item.stockoutDate}</td>
+                      <td>
+                        {item.stockoutDate}
+                        <PassedTag days={daysPast(item.stockoutDate)} />
+                      </td>
                       <td className={styles.num}>{item.leadTime}일</td>
                       <td className={styles.num}>{item.risk}%</td>
                       <td className={styles.num}>
