@@ -1,5 +1,6 @@
 import { type PropsWithChildren, useEffect, useRef } from 'react'
 
+import { Tape } from '../Tape/Tape'
 import styles from './Modal.module.css'
 
 type ModalProps = PropsWithChildren<{
@@ -32,6 +33,7 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
         role="dialog"
         tabIndex={-1}
       >
+        <Tape className={styles.tape} />
         {children}
       </div>
     </div>

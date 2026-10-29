@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { Tape } from '../../../shared/ui/Tape/Tape'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import styles from './SkuPage.module.css'
 
@@ -103,6 +104,7 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
             className={styles.outboundBar}
             height={CHART.bottom - y(item.outbound)}
             key={item.date}
+            style={{ animationDelay: `${index * 60}ms` }}
             width={barWidth}
             x={x(index) - barWidth / 2}
             y={y(item.outbound)}
@@ -295,7 +297,11 @@ export function SkuPage() {
           <section className={styles.recommendation}>
             <div>
               <span>권장 입고량</span>
-              <strong>{data.recommendation.quantity.toLocaleString()}개</strong>
+              {/* 가장 중요한 숫자라 테이프를 밑줄처럼 붙인다 */}
+              <strong className={styles.recoQty}>
+                <Tape className={styles.recoTape} />
+                <span>{data.recommendation.quantity.toLocaleString()}개</span>
+              </strong>
             </div>
             <dl>
               <div>

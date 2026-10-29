@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
+import { Tape } from '../../../shared/ui/Tape/Tape'
 import styles from './DashboardPage.module.css'
 
 export type DashboardData = {
@@ -29,6 +31,35 @@ export type DashboardData = {
   }>
   unavailableItems: Array<{ name: string; reason: string }>
   excludedItems: Array<{ name: string; reason: string }>
+}
+
+// 숫자 카드. "지금 넣어야 해요"는 투톤 대신 흰 상자에 테이프를 붙여 급한 상자로 표시한다.
+function SummaryCard({
+  empty,
+  label,
+  note,
+  state,
+  value,
+}: {
+  empty: boolean
+  label: string
+  note: string
+  state: string
+  value: number
+}) {
+  const shown = useCountUp(value)
+
+  return (
+    <article data-state={state}>
+      {state === 'needed' && !empty && <Tape className={styles.tape} />}
+      <span>{label}</span>
+      <strong>
+        {empty ? '—' : shown}
+        <small>{empty ? '' : '개'}</small>
+      </strong>
+      {!empty && <em>{note}</em>}
+    </article>
+  )
 }
 
 export function DashboardPage() {
@@ -113,19 +144,42 @@ export function DashboardPage() {
       </header>
 
       <section className={styles.summary} aria-label="입고 예측 요약">
-        {[
-          ['지금 넣어야 해요', data.summary.needed, 'needed'],
-          ['아직 괜찮아요', data.summary.safe, 'safe'],
-          ['계산 불가', data.summary.unavailable, 'unavailable'],
-          ['검산 제외', data.summary.excluded, 'excluded'],
-        ].map(([label, value, state]) => (
-          <article data-state={state} key={label}>
-            <span>{label}</span>
-            <strong>
-              {refreshRequired ? '—' : value}
-              <small>{refreshRequired ? '' : '개'}</small>
-            </strong>
-          </article>
+        {(
+          [
+            [
+              '지금 넣어야 해요',
+              data.summary.needed,
+              'needed',
+              '오늘 발주해야 제때 도착해요',
+            ],
+            [
+              '아직 괜찮아요',
+              data.summary.safe,
+              'safe',
+              '다음 입고까지 버텨요',
+            ],
+            [
+              '계산 불가',
+              data.summary.unavailable,
+              'unavailable',
+              '판매 기록이 부족해요',
+            ],
+            [
+              '검산 제외',
+              data.summary.excluded,
+              'excluded',
+              '재고 숫자가 맞지 않아요',
+            ],
+          ] as const
+        ).map(([label, value, state, note]) => (
+          <SummaryCard
+            empty={refreshRequired}
+            key={label}
+            label={label}
+            note={note}
+            state={state}
+            value={value}
+          />
         ))}
       </section>
 
@@ -160,31 +214,29 @@ export function DashboardPage() {
                     <th>상품</th>
                     <th>예상 소진일</th>
                     <th>리드타임</th>
-                    <th>권장 입고량</th>
-                    <th>사입비</th>
-                    <th />
+                    <th className={styles.num}>권장 입고량</th>
+                    <th className={styles.num}>사입비</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id}>
+                    // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
+                    <tr
+                      className={styles.rowLink}
+                      key={item.id}
+                      onClick={() => navigate(`/sku/${item.id}`)}
+                    >
                       <td>
-                        <strong>{item.name}</strong>
+                        <Link to={`/sku/${item.id}`}>{item.name}</Link>
                         <span>{item.barcode}</span>
                       </td>
                       <td>{item.stockoutDate}</td>
                       <td>{item.leadTime}일</td>
-                      <td>
+                      <td className={styles.num}>
                         <strong>{item.quantity}개</strong>
                       </td>
-                      <td>{item.cost.toLocaleString()}원</td>
-                      <td>
-                        <Button
-                          onClick={() => navigate(`/sku/${item.id}`)}
-                          variant="secondary"
-                        >
-                          상세 보기
-                        </Button>
+                      <td className={styles.num}>
+                        {item.cost.toLocaleString()}원
                       </td>
                     </tr>
                   ))}

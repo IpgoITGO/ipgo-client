@@ -28,7 +28,10 @@ export function AuthShell({
     <main className={styles.page}>
       <div className={styles.layout} data-tab={tab}>
         <aside className={styles.intro}>
-          <p className={styles.brand}>입고 예측</p>
+          <p className={styles.brand}>
+            <img alt="" height="40" src="/logo.png" width="40" />
+            ITGO <small>입고 예측</small>
+          </p>
           <p className={styles.headline}>{headline}</p>
           {description && <p className={styles.description}>{description}</p>}
           <ol className={styles.steps}>

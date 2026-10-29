@@ -24,7 +24,9 @@ export function AppLayout() {
     <div className={styles.shell}>
       <header className={styles.header}>
         <NavLink className={styles.brand} to="/dashboard">
-          입고 예측
+          <img alt="" height="36" src="/logo.png" width="36" />
+          ITGO
+          <small>입고 예측</small>
         </NavLink>
         <nav aria-label="주요 메뉴" className={styles.navigation}>
           {navigation.map((item) => (

@@ -64,12 +64,13 @@
   border-radius: var(--radius-input);
 }
 
+/* 투톤 그라데이션 대신 다른 카드와 같은 흰 카드. 숫자에 테이프를 붙여 강조한다. */
 .recommendation {
   padding: var(--space-6) var(--space-8);
-  color: white;
-  background: linear-gradient(120deg, #283862, #65759c);
+  color: var(--color-primary);
+  background: var(--color-card);
+  border: 2px solid var(--color-primary);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
 }
 
 .recommendation > div {
@@ -79,11 +80,32 @@
 
 .recommendation > div > span,
 .recommendation dt {
-  opacity: 0.75;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  font-weight: 700;
 }
 
 .recommendation > div strong {
   font-size: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+.recoQty {
+  position: relative;
+  justify-self: start;
+}
+
+.recoQty > span {
+  position: relative;
+  z-index: 3;
+}
+
+.recoTape {
+  --tape-rotate: -2deg;
+  top: 50%;
+  left: -8px;
+  width: calc(100% + 16px);
+  height: 22px;
 }
 
 .recommendation dl {
@@ -385,5 +407,59 @@
     display: grid;
     gap: var(--space-4);
     width: 100%;
+  }
+}
+
+/* 그래프는 처음 한 번 그려진다: 선은 왼쪽부터, 막대는 아래부터, 품절 점은 마지막에 */
+@media (prefers-reduced-motion: no-preference) {
+  .chart polyline {
+    animation: line-in 900ms cubic-bezier(0.4, 0, 0.6, 1) 200ms both;
+  }
+
+  .outboundBar {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: bar-in 500ms var(--ease-spring) both;
+  }
+
+  .zeroPoint {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: dot-in 360ms var(--ease-spring) 1000ms both;
+  }
+
+  .stockoutLabel {
+    animation: fade-in 300ms ease-out 1150ms both;
+  }
+}
+
+@keyframes line-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes bar-in {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 }

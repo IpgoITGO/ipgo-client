@@ -33,15 +33,21 @@
   border-radius: var(--radius-card);
   transition: 0.2s ease;
 }
+/* 파일을 끌어 올리면 노란 테두리로 바뀌고 아이콘이 상자 뚜껑처럼 들린다 */
 .dropzone[data-dragging='true'] {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-press);
+  border-style: solid;
+}
+.dropzone[data-dragging='true'] .uploadIcon {
+  transform: translateY(-6px) rotate(-8deg);
 }
 .dropzone strong {
   color: var(--color-text);
   font-size: var(--text-section);
 }
 .uploadIcon {
+  transition: transform 220ms var(--ease-spring);
   display: grid;
   place-items: center;
   width: 56px;

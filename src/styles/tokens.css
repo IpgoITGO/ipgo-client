@@ -1,29 +1,40 @@
 :root {
-  --color-primary: #283862;
-  --color-primary-hover: #1b2850;
-  --color-primary-soft: #eef1f8;
-  --color-bg: #f2f4f6;
+  /* ITGO 로고에서 뽑은 색: 남색 글자 #1F2537, 테이프 노랑, 속도선 파랑·초록, 상자 황토 */
+  --color-primary: #1f2537;
+  --color-primary-hover: #141927;
+  --color-primary-soft: #f3eee5;
+  /* 노랑: Radix Colors Amber (9 버튼, 10 올렸을 때, 8 눌림 그림자, 3 강조 배경, 11 노랑 위 글자) */
+  --color-accent: #ffc53d;
+  --color-accent-hover: #ffba18;
+  --color-accent-press: #e2a336;
+  --color-accent-soft: #fff7c2;
+  --color-accent-text: #ab6400;
+  --color-link: #087cfc;
+  --color-tape-1: rgb(255 197 61 / 78%);
+  --color-tape-2: rgb(255 186 24 / 70%);
+  --color-bg: #fbf6ef;
   --color-card: #ffffff;
-  --color-border: #e5e8eb;
-  --color-input-border: #d1d6db;
-  --color-text: #191f28;
-  --color-text-2: #4e5968;
-  --color-text-3: #6b7684;
-  --color-success: #16883e;
-  --color-success-bg: #e9f7ee;
-  --color-warning: #b25e09;
-  --color-warning-bg: #fff4e5;
-  --color-danger: #d92d20;
-  --color-danger-bg: #fff0ef;
+  --color-border: #efe4d4;
+  --color-input-border: #ddd0bd;
+  /* 글자는 한 단계 진하게 해서 대비를 분명히 한다 */
+  --color-text: #141922;
+  --color-text-2: #3f4652;
+  --color-text-3: #5c6370;
+  --color-success: #04876a;
+  --color-success-bg: #e2f8f1;
+  --color-warning: #a85a00;
+  --color-warning-bg: #fff2d6;
+  --color-danger: #c8261c;
+  --color-danger-bg: #fff0ec;
 
-  --radius-card: 28px;
+  --radius-card: 22px;
   --radius-input: 14px;
   --radius-button: 14px;
   --radius-chip: 999px;
 
   --h-input: 50px;
-  --h-button: 56px;
-  --h-button-sub: 50px;
+  --h-button: 44px;
+  --h-button-sub: 44px;
 
   --text-title: 32px;
   --text-section: 19px;
@@ -40,4 +51,10 @@
 
   --w-content: 1240px;
   --shadow-card: 0 12px 36px rgb(25 31 40 / 8%);
+
+  /* 움직임: 들어올 때는 살짝 튕기고, 나갈 때는 부드럽게 */
+  --motion-enter: 300ms;
+  --motion-exit: 420ms;
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.1);
+  --ease-exit: cubic-bezier(0.4, 0, 0.6, 1);
 }

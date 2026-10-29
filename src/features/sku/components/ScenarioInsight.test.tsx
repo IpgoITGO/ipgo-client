@@ -7,6 +7,12 @@ import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { ScenarioInsight } from './ScenarioInsight'
 
+// AI 문장은 숫자가 따로 강조되어 여러 조각으로 나뉘므로, 문장 한 줄(li) 전체 글자로 찾는다.
+function sentence(pattern: RegExp) {
+  return (_: string, element: Element | null) =>
+    element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
+}
+
 function renderInsight(skuId = '8800272420016') {
   return render(
     <AppProviders>
@@ -27,8 +33,10 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
     expect(await screen.findByText('AI 생성')).toBeInTheDocument()
     expect(
-      screen.getByText(/권장량 72개.*도착 전 품절 위험은 8%/),
+      screen.getByText(sentence(/권장량 72개.*도착 전 품절 위험은 8%/)),
     ).toBeInTheDocument()
+    // 문장 속 숫자만 형광펜으로 강조한다
+    expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
   })
 
   it('직접 입력을 검증하고 중복 요청 없이 비교를 추가한다', async () => {
@@ -74,7 +82,9 @@ describe('ScenarioInsight', () => {
     renderInsight('ai-fallback')
 
     expect(await screen.findByText('기본 문장')).toBeInTheDocument()
-    expect(screen.getByText(/권장 입고량 72개를 기준/)).toBeInTheDocument()
+    expect(
+      screen.getByText(sentence(/권장 입고량 72개를 기준/)),
+    ).toBeInTheDocument()
     expect(await screen.findByText('권장량 100%')).toBeInTheDocument()
   })
 

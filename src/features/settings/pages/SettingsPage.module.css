@@ -134,11 +134,52 @@
   gap: var(--space-3);
 }
 
-/* 연한 배경만 있으면 흐려 보여서, 테두리를 줘 '확인하고 계산하기'와 같은 크기로 눈에 띄게 한다. */
-.actions .back {
-  min-height: var(--h-button);
-  background: var(--color-card);
-  border: 2px solid var(--color-primary);
+/* 계산 시작: 로고 상자가 나타나 오른쪽으로 출고된다 (0.9초) */
+.ship {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  pointer-events: none;
+  background: rgb(251 246 239 / 72%);
+  animation: ship-bg 900ms ease both;
+}
+.ship img {
+  animation: ship-out 900ms cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+.ship strong {
+  color: var(--color-primary);
+  animation: ship-bg 900ms ease both;
+}
+@keyframes ship-out {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px) scale(0.9);
+  }
+  25% {
+    opacity: 1;
+    transform: none;
+  }
+  50% {
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(260px);
+  }
+}
+@keyframes ship-bg {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  75% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 760px) {
