@@ -10,14 +10,14 @@ import { ApiError } from '../../../shared/api/client'
 import { UploadPage } from './UploadPage'
 
 // jsdom의 FormData는 Node fetch로 보낼 수 없어서 올리기 요청만 가짜로 바꾼다.
-const { uploadFilesMock } = vi.hoisted(() => ({ uploadFilesMock: vi.fn() }))
+const { uploadFileMock } = vi.hoisted(() => ({ uploadFileMock: vi.fn() }))
 vi.mock('../model/uploadApi', async (importActual) => ({
   ...(await importActual<typeof import('../model/uploadApi')>()),
-  uploadFiles: uploadFilesMock,
+  uploadFile: uploadFileMock,
 }))
 
 beforeEach(() => {
-  uploadFilesMock.mockReset()
+  uploadFileMock.mockReset()
 })
 
 function renderPage() {
@@ -105,7 +105,7 @@ describe('UploadPage', () => {
 
   it('덮어쓰기를 고르면 overwrite=true로 보내고 결과 화면으로 간다', async () => {
     const user = userEvent.setup()
-    uploadFilesMock.mockResolvedValue({ uploadId: 15, status: 'PROCESSING' })
+    uploadFileMock.mockResolvedValue({ uploadId: 15, status: 'PROCESSING' })
     renderPage()
 
     await user.upload(
@@ -116,12 +116,33 @@ describe('UploadPage', () => {
     await user.click(screen.getByRole('button', { name: '1개 올리기' }))
 
     expect(await screen.findByText('결과 화면')).toBeInTheDocument()
-    expect(uploadFilesMock).toHaveBeenCalledWith(expect.any(Array), true)
+    expect(uploadFileMock).toHaveBeenCalledWith(expect.any(File), true)
+  })
+
+  it('여러 파일은 한 요청에 하나씩 차례로 보낸다', async () => {
+    const user = userEvent.setup()
+    uploadFileMock
+      .mockResolvedValueOnce({ uploadId: 21, status: 'PROCESSING' })
+      .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+    renderPage()
+
+    await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+      new File(['a'], '2026-10.xlsx'),
+      new File(['b'], '2026-11.xlsx'),
+    ])
+    await user.click(await screen.findByRole('button', { name: '2개 올리기' }))
+
+    expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(uploadFileMock).toHaveBeenCalledTimes(2)
+    expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
+      '2026-10.xlsx',
+      '2026-11.xlsx',
+    ])
   })
 
   it('서버가 같은 기간이라고 거절하면 덮어쓰기 확인을 띄운다', async () => {
     const user = userEvent.setup()
-    uploadFilesMock.mockImplementation(async () => {
+    uploadFileMock.mockImplementation(async () => {
       throw new ApiError(409, 'UPLOAD_DUPLICATE', '이미 올린 기간입니다')
     })
     renderPage()

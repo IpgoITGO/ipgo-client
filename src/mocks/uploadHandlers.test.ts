@@ -11,7 +11,7 @@ beforeAll(() => {
 
 function upload(name: string, overwrite: boolean) {
   const form = new FormData()
-  form.append('files', new File(['x'], name))
+  form.append('file', new File(['x'], name))
   form.append('overwrite', String(overwrite))
 
   return fetch('http://localhost/api/uploads', { body: form, method: 'POST' })
@@ -33,6 +33,23 @@ describe('upload mock handlers', () => {
     expect(body.code).toBe('UPLOAD_DUPLICATE')
     expect(body.details.existing.uploadId).toBe(12)
     expect((await upload('2026-09.xlsx', true)).status).toBe(202)
+  })
+
+  it('파일을 두 개 넣거나 옛 files 칸으로 보내면 400 INVALID_INPUT', async () => {
+    const two = new FormData()
+    two.append('file', new File(['x'], '2026-10.xlsx'))
+    two.append('file', new File(['y'], '2026-11.xlsx'))
+    const old = new FormData()
+    old.append('files', new File(['x'], '2026-10.xlsx'))
+
+    for (const body of [two, old]) {
+      const response = await fetch('http://localhost/api/uploads', {
+        body,
+        method: 'POST',
+      })
+      expect(response.status).toBe(400)
+      expect((await response.json()).code).toBe('INVALID_INPUT')
+    }
   })
 
   it('형식이 맞지 않으면 400 UPLOAD_INVALID_FORMAT', async () => {
