@@ -24,13 +24,17 @@ describe('SkuPage', () => {
     expect(
       await screen.findByRole('heading', { name: '케어트릿 120g' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('72개')).toBeInTheDocument()
+    // 시나리오 카드에도 72개가 나와서 하나 이상인지만 본다.
+    expect(screen.getAllByText('72개').length).toBeGreaterThan(0)
+    expect(screen.getByText('품절 1일')).toBeInTheDocument()
     expect(screen.getByText('계산식 B 선택')).toBeInTheDocument()
     expect(screen.getByText('반올림 전 필요량')).toBeInTheDocument()
     expect(
       screen.getByRole('img', { name: '최근 재고와 출고 추이 그래프' }),
     ).toBeInTheDocument()
     expect(screen.getByText('지난 예측 생존 비율')).toBeInTheDocument()
+    expect(screen.getByText('실제 출고량')).toBeInTheDocument()
+    expect(screen.getByText('예측 출고량')).toBeInTheDocument()
   })
 
   it('신상품은 계산 불가 이유를 보여준다', async () => {

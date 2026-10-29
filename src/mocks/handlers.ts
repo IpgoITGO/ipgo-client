@@ -18,6 +18,12 @@ const mockUploadPeriods = {
   latestUploadId: 12,
 }
 
+// 발주 도착 상태. 오늘은 명세 예시의 2026-10-19로 본다.
+function orderStatus(arrivalDate: string) {
+  if (!arrivalDate) return 'no-date'
+  return arrivalDate < '2026-10-19' ? 'overdue' : 'reflecting'
+}
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
@@ -180,15 +186,32 @@ export const handlers = [
     }
     return HttpResponse.json(
       {
-        id: 'order-new',
+        id: crypto.randomUUID(),
         productName: body.productName,
         barcode: body.barcode,
         quantity: body.quantity,
         arrivalDate: body.arrivalDate || null,
-        status: body.arrivalDate ? 'reflecting' : 'no-date',
+        status: orderStatus(body.arrivalDate),
       },
       { status: 201 },
     )
+  }),
+  // 수량·도착일 고치기 (명세 R3 PATCH /planned-receipts/{receiptId})
+  http.patch('/api/purchase-orders/:orderId', async ({ params, request }) => {
+    const body = (await request.json()) as {
+      productName: string
+      barcode: string
+      quantity: number
+      arrivalDate: string
+    }
+    return HttpResponse.json({
+      id: params.orderId,
+      productName: body.productName,
+      barcode: body.barcode,
+      quantity: body.quantity,
+      arrivalDate: body.arrivalDate || null,
+      status: orderStatus(body.arrivalDate),
+    })
   }),
   http.get('/api/dashboard', () => {
     return HttpResponse.json({

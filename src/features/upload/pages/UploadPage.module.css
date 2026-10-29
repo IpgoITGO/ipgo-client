@@ -90,7 +90,7 @@
 }
 .fileRow {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-4);
@@ -136,7 +136,9 @@
   background: transparent;
   border: 0;
 }
+/* "이유 보기"가 없는 줄에서도 제거 버튼은 항상 맨 끝 칸에 둔다. */
 .remove {
+  grid-column: 4;
   padding: var(--space-2);
   color: var(--color-text-3);
   background: transparent;

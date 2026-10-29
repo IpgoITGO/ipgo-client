@@ -3,8 +3,7 @@
   gap: var(--space-4);
 }
 
-.card,
-.insight {
+.card {
   padding: var(--space-6);
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -13,21 +12,18 @@
 
 .header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-5);
   margin-bottom: var(--space-5);
 }
 
 .header h2,
-.header p,
-.insight h2,
-.insight p {
+.header p {
   margin: 0;
 }
 
-.header h2,
-.insight h2 {
+.header h2 {
   margin-bottom: var(--space-1);
   font-size: var(--text-section);
 }
@@ -36,127 +32,223 @@
   color: var(--color-text-3);
 }
 
-.form {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.form label {
+.sample {
+  flex-shrink: 0;
+  padding: 6px 12px;
   color: var(--color-text-2);
   font-size: var(--text-caption);
-  font-weight: 700;
-  white-space: nowrap;
+  background: var(--color-bg);
+  border-radius: var(--radius-chip);
 }
 
-.form input {
-  width: 110px;
-  height: var(--h-button-sub);
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+}
+
+.scenario,
+.inputCard {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+
+.scenario[data-recommended='true'] {
+  background: var(--color-primary-soft);
+  border: 2px solid var(--color-primary);
+}
+
+.scenario[data-custom='true'] {
+  border-style: dashed;
+  border-color: var(--color-primary);
+}
+
+.scenarioTop {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.badge {
+  padding: 3px 9px;
+  color: #fff;
+  font-size: var(--text-caption);
+  background: var(--color-primary);
+  border-radius: var(--radius-chip);
+}
+
+.quantity {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.scenario dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.scenario dt {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.scenario dd {
+  margin: var(--space-1) 0 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.scenario dd[data-tone='warning'] {
+  color: var(--color-warning);
+}
+
+.scenario dd[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
+.riskBar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: var(--radius-chip);
+}
+
+.riskBar span {
+  display: block;
+  height: 100%;
+  background: var(--color-danger);
+  border-radius: inherit;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.inputCard {
+  border: 2px dashed var(--color-input-border);
+}
+
+.inputCard label {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-3);
+}
+
+.inputRow input {
+  width: 100%;
+  min-width: 0;
+  height: var(--h-input);
   padding: 0 var(--space-3);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-input);
 }
 
-.error {
-  margin: calc(var(--space-3) * -1) 0 var(--space-4);
-  color: var(--color-danger);
-  font-size: var(--text-caption);
-}
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-.tableWrap table {
+.addButton {
   width: 100%;
-  border-collapse: collapse;
 }
 
-.tableWrap th,
-.tableWrap td {
-  padding: var(--space-3);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-
-.tableWrap th {
-  color: var(--color-text-3);
+.hint,
+.error {
+  margin: 0;
   font-size: var(--text-caption);
 }
 
-.tableWrap td:first-child {
-  display: grid;
-  min-width: 130px;
-}
-
-.tableWrap td:first-child span {
+.hint {
   color: var(--color-text-3);
-  font-size: var(--text-caption);
 }
 
-.tableWrap tr[data-custom='true'] {
-  background: var(--color-primary-soft);
+.error {
+  color: var(--color-danger);
 }
 
 .empty {
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-6) 0;
   color: var(--color-text-3);
   text-align: center;
 }
 
+/* AI 인사이트는 계산 근거와 구분되도록 진한 띠로 크게 보여준다. */
 .insight {
   display: grid;
-  grid-template-columns: 190px 1fr;
-  align-items: center;
-  gap: var(--space-6);
-  background: linear-gradient(120deg, #f6f2ff, #eef1f8);
-  border-color: #dcd5ef;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: var(--radius-card);
+}
+
+.insightIcon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  font-size: 22px;
+  background: rgb(255 255 255 / 14%);
+  border-radius: var(--radius-input);
 }
 
 .insightTitle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  color: #7145a5;
+  margin-bottom: var(--space-2);
 }
 
-.insightTitle span {
-  font-size: 24px;
+.insightTitle h2 {
+  margin: 0;
+  font-size: var(--text-section);
 }
 
-.insight > div:last-child {
-  display: grid;
-  gap: var(--space-2);
+.insightTitle small {
+  color: rgb(255 255 255 / 70%);
+  font-size: var(--text-caption);
 }
 
 .source {
-  width: fit-content;
-  padding: 5px 9px;
-  color: #7145a5;
+  padding: 3px 9px;
   font-size: var(--text-caption);
   font-weight: 700;
-  background: #eee3fb;
+  background: rgb(255 255 255 / 16%);
   border-radius: var(--radius-chip);
 }
 
-.source[data-source='fallback'] {
-  color: var(--color-text-2);
-  background: var(--color-border);
+.message {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 @media (max-width: 800px) {
-  .header,
-  .form {
-    align-items: stretch;
+  .header {
     flex-direction: column;
-  }
-
-  .form input {
-    width: auto;
   }
 
   .insight {
     grid-template-columns: 1fr;
+  }
+
+  .message {
+    font-size: 18px;
   }
 }

@@ -36,8 +36,20 @@ const statusLabels = {
   'no-date': '도착일 없어 반영 안 돼요',
 }
 
+function editLabel(order: PurchaseOrder) {
+  return order.status === 'overdue' ? '도착일 고치기' : '수정'
+}
+
+const emptyOrder: OrderValues = {
+  product: '케어트릿 120g|8800272420016',
+  quantity: 1,
+  arrivalDate: '',
+}
+
 export function PurchaseOrdersSection() {
   const [isOpen, setIsOpen] = useState(false)
+  // 수정 중인 발주. null이면 새로 등록한다.
+  const [editing, setEditing] = useState<PurchaseOrder | null>(null)
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null)
   const query = useQuery({
     queryKey: ['purchase-orders'],
@@ -51,30 +63,38 @@ export function PurchaseOrdersSection() {
     formState: { errors, isSubmitting },
   } = useForm<OrderValues>({
     resolver: zodResolver(orderSchema),
-    defaultValues: {
-      product: '케어트릿 120g|8800272420016',
-      quantity: 1,
-      arrivalDate: '',
-    },
+    defaultValues: emptyOrder,
   })
 
-  function openModal() {
-    reset({
-      product: '케어트릿 120g|8800272420016',
-      quantity: 1,
-      arrivalDate: '',
-    })
+  function openModal(order: PurchaseOrder | null) {
+    setEditing(order)
+    reset(
+      order
+        ? {
+            product: `${order.productName}|${order.barcode}`,
+            quantity: order.quantity,
+            arrivalDate: order.arrivalDate ?? '',
+          }
+        : emptyOrder,
+    )
     setIsOpen(true)
   }
 
   async function save(values: OrderValues) {
     const [productName, barcode] = values.product.split('|')
-    const order = await apiRequest<PurchaseOrder>('/purchase-orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...values, productName, barcode }),
-    })
-    setOrders([...displayOrders, order])
+    const order = await apiRequest<PurchaseOrder>(
+      editing ? `/purchase-orders/${editing.id}` : '/purchase-orders',
+      {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...values, productName, barcode }),
+      },
+    )
+    setOrders(
+      editing
+        ? displayOrders.map((item) => (item.id === order.id ? order : item))
+        : [...displayOrders, order],
+    )
     setIsOpen(false)
   }
 
@@ -85,7 +105,7 @@ export function PurchaseOrdersSection() {
           <h2>이미 발주한 물량</h2>
           <p>발주했지만 아직 안 온 물량은 그만큼 빼고 계산해요.</p>
         </div>
-        <Button onClick={openModal} type="button">
+        <Button onClick={() => openModal(null)} type="button">
           등록
         </Button>
       </div>
@@ -125,11 +145,12 @@ export function PurchaseOrdersSection() {
                   </td>
                   <td>
                     <Button
-                      onClick={openModal}
+                      aria-label={`${order.productName} ${editLabel(order)}`}
+                      onClick={() => openModal(order)}
                       type="button"
                       variant="secondary"
                     >
-                      {order.status === 'overdue' ? '도착일 고치기' : '수정'}
+                      {editLabel(order)}
                     </Button>
                   </td>
                 </tr>
@@ -144,24 +165,36 @@ export function PurchaseOrdersSection() {
           onClose={() => setIsOpen(false)}
         >
           <form className={styles.modal} onSubmit={handleSubmit(save)}>
-            <h2 id="purchase-order-title">이미 발주한 물량 등록</h2>
+            <h2 id="purchase-order-title">
+              이미 발주한 물량 {editing ? '수정' : '등록'}
+            </h2>
             <p>
               아직 도착하지 않은 물량을 넣으면, 그만큼 빼고 권장량을 계산해요.
             </p>
-            <label>
-              <span>상품</span>
-              <select {...register('product')}>
-                <option value="케어트릿 120g|8800272420016">
-                  케어트릿 120g · 8800272420016
-                </option>
-                <option value="덴탈껌 S 10입|8800272421044">
-                  덴탈껌 S 10입 · 8800272421044
-                </option>
-              </select>
-              {errors.product && (
-                <small role="alert">{errors.product.message}</small>
-              )}
-            </label>
+            {editing ? (
+              // 수정할 때는 상품은 그대로 두고 수량과 도착일만 바꾼다.
+              <div className={styles.product}>
+                <span>상품</span>
+                <strong>
+                  {editing.productName} · {editing.barcode}
+                </strong>
+              </div>
+            ) : (
+              <label>
+                <span>상품</span>
+                <select {...register('product')}>
+                  <option value="케어트릿 120g|8800272420016">
+                    케어트릿 120g · 8800272420016
+                  </option>
+                  <option value="덴탈껌 S 10입|8800272421044">
+                    덴탈껌 S 10입 · 8800272421044
+                  </option>
+                </select>
+                {errors.product && (
+                  <small role="alert">{errors.product.message}</small>
+                )}
+              </label>
+            )}
             <div className={styles.fields}>
               <label>
                 <span>수량</span>

@@ -29,11 +29,29 @@ type InsightResponse = {
   message: string
 }
 
+// 품절 위험이 이 값 이상이면 빨간 글씨로 강조한다.
+const HIGH_RISK = 20
+
 function formatRisk(risk: number | null) {
   return risk === null ? '표본 부족으로 미산출' : `${risk}%`
 }
 
-export function ScenarioInsight({ skuId }: { skuId: string }) {
+// 권장량보다 적으면 언제 떨어지는지, 많으면 재고가 남는다는 걸 한 줄로 알려준다.
+function scenarioNote(scenario: Scenario, recommendedQuantity: number) {
+  if (scenario.quantity < recommendedQuantity) {
+    return `예상 소진일 ${scenario.expectedStockoutDate}`
+  }
+  if (scenario.quantity === recommendedQuantity) return '다음 입고까지 버텨요'
+  return '재고가 많이 남아요'
+}
+
+export function ScenarioInsight({
+  inboundUnit,
+  skuId,
+}: {
+  inboundUnit: number
+  skuId: string
+}) {
   const [quantity, setQuantity] = useState('')
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>([])
   const [inputError, setInputError] = useState('')
@@ -90,48 +108,42 @@ export function ScenarioInsight({ skuId }: { skuId: string }) {
     void action.run(parsed)
   }
 
+  const data = scenariosQuery.data
+  const scenarios = data
+    ? [
+        ...(data.recommendedQuantity === 0 ? [] : data.scenarios),
+        ...customScenarios,
+      ]
+    : []
+  const preArrivalRisks = new Set(scenarios.map((item) => item.preArrivalRisk))
+  // 도착 전 위험은 입고량과 상관없어 보통 모두 같다. 같으면 위에 한 번만 쓴다.
+  const sharedPreArrivalRisk =
+    preArrivalRisks.size === 1 ? scenarios[0].preArrivalRisk : undefined
+  const maxRisk = Math.max(
+    ...scenarios.map((item) => item.postArrivalRisk ?? 0),
+    1,
+  )
+
   return (
     <div className={styles.wrapper}>
       <section className={styles.card}>
         <div className={styles.header}>
           <div>
-            <h2>입고량 시나리오 비교</h2>
+            <h2>입고량을 바꾸면 이렇게 달라져요</h2>
             <p>
-              입고량을 바꿨을 때 재고와 품절 위험이 어떻게 달라지는지 비교해요.
+              {sharedPreArrivalRisk === undefined ||
+              sharedPreArrivalRisk === null
+                ? '입고량을 바꿨을 때 남는 재고와 품절 위험을 비교해요.'
+                : `입고가 도착하기 전 품절 위험은 ${sharedPreArrivalRisk}%로 모든 경우가 같아요.`}
             </p>
           </div>
-          <form className={styles.form} noValidate onSubmit={handleSubmit}>
-            <label htmlFor="scenario-quantity">직접 입력</label>
-            <input
-              aria-describedby={inputError ? 'scenario-input-error' : undefined}
-              id="scenario-quantity"
-              inputMode="numeric"
-              min="1"
-              onChange={(event) => setQuantity(event.target.value)}
-              placeholder="수량"
-              type="number"
-              value={quantity}
-            />
-            <Button
-              loading={action.isPending}
-              loadingLabel="계산 중"
-              type="submit"
-              variant="secondary"
-            >
-              비교 추가
-            </Button>
-          </form>
+          {scenarios[0] && (
+            <span className={styles.sample}>
+              {scenarios[0].estimated ? '추정치' : '계산값'} · 이 상품 기준 ·
+              표본 {scenarios[0].sampleSize}일
+            </span>
+          )}
         </div>
-        {inputError && (
-          <p className={styles.error} id="scenario-input-error" role="alert">
-            {inputError}
-          </p>
-        )}
-        {actionError && (
-          <p className={styles.error} role="alert">
-            {actionError}
-          </p>
-        )}
 
         {scenariosQuery.isPending ? (
           <AsyncState
@@ -147,85 +159,166 @@ export function ScenarioInsight({ skuId }: { skuId: string }) {
             title="시나리오를 불러오지 못했어요"
           />
         ) : (
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th>시나리오</th>
-                  <th>입고량</th>
-                  <th>예상 소진일</th>
-                  <th>다음 입고 시점 재고</th>
-                  <th>도착 전 위험</th>
-                  <th>도착 후 위험</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ...(scenariosQuery.data.recommendedQuantity === 0
-                    ? []
-                    : scenariosQuery.data.scenarios),
-                  ...customScenarios,
-                ].map((scenario) => (
-                  <tr data-custom={scenario.id === 'custom'} key={scenario.id}>
-                    <td>
-                      <strong>{scenario.label}</strong>
-                      <span>
-                        {scenario.estimated ? '추정치' : '계산값'} · 표본{' '}
-                        {scenario.sampleSize}일
-                      </span>
-                    </td>
-                    <td>{scenario.quantity.toLocaleString()}개</td>
-                    <td>{scenario.expectedStockoutDate}</td>
-                    <td>{scenario.remainingAtNextInbound}개</td>
-                    <td>{formatRisk(scenario.preArrivalRisk)}</td>
-                    <td>{formatRisk(scenario.postArrivalRisk)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {scenariosQuery.data.recommendedQuantity === 0 &&
+          <>
+            <div className={styles.cards}>
+              {scenarios.map((scenario) => {
+                const recommended =
+                  scenario.id !== 'custom' &&
+                  scenario.quantity === data?.recommendedQuantity
+                const note = scenarioNote(
+                  scenario,
+                  data?.recommendedQuantity ?? 0,
+                )
+                return (
+                  <article
+                    className={styles.scenario}
+                    data-custom={scenario.id === 'custom'}
+                    data-recommended={recommended}
+                    key={scenario.id}
+                  >
+                    <div className={styles.scenarioTop}>
+                      <span>{scenario.label}</span>
+                      {recommended && <b className={styles.badge}>권장</b>}
+                    </div>
+                    <strong className={styles.quantity}>
+                      {scenario.quantity.toLocaleString()}개
+                    </strong>
+                    <dl>
+                      <div>
+                        <dt>다음 입고 때 남는 재고</dt>
+                        <dd
+                          data-tone={
+                            scenario.quantity >
+                            (data?.recommendedQuantity ?? Infinity)
+                              ? 'warning'
+                              : undefined
+                          }
+                        >
+                          {scenario.remainingAtNextInbound}개
+                        </dd>
+                      </div>
+                      {sharedPreArrivalRisk === undefined && (
+                        <div>
+                          <dt>도착 전 품절 위험</dt>
+                          <dd>{formatRisk(scenario.preArrivalRisk)}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt>도착 후 품절 위험</dt>
+                        <dd
+                          data-tone={
+                            (scenario.postArrivalRisk ?? 0) >= HIGH_RISK
+                              ? 'danger'
+                              : undefined
+                          }
+                        >
+                          {formatRisk(scenario.postArrivalRisk)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div aria-hidden="true" className={styles.riskBar}>
+                      <span
+                        style={{
+                          width: `${((scenario.postArrivalRisk ?? 0) / maxRisk) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <p className={styles.note}>{note}</p>
+                  </article>
+                )
+              })}
+
+              <form
+                className={styles.inputCard}
+                noValidate
+                onSubmit={handleSubmit}
+              >
+                <label htmlFor="scenario-quantity">직접 입력</label>
+                <div className={styles.inputRow}>
+                  <input
+                    aria-describedby={
+                      inputError ? 'scenario-input-error' : undefined
+                    }
+                    id="scenario-quantity"
+                    inputMode="numeric"
+                    min="1"
+                    onChange={(event) => setQuantity(event.target.value)}
+                    placeholder="수량"
+                    type="number"
+                    value={quantity}
+                  />
+                  <span>개</span>
+                </div>
+                {/* 버튼을 칸 너비에 맞춰 두면 "계산 중"으로 글자가 바뀌어도 칸이 흔들리지 않는다. */}
+                <Button
+                  className={styles.addButton}
+                  loading={action.isPending}
+                  loadingLabel="계산 중"
+                  type="submit"
+                  variant="secondary"
+                >
+                  비교에 추가
+                </Button>
+                {inputError || actionError ? (
+                  <p
+                    className={styles.error}
+                    id={inputError ? 'scenario-input-error' : undefined}
+                    role="alert"
+                  >
+                    {inputError || actionError}
+                  </p>
+                ) : (
+                  <p className={styles.hint}>
+                    입고 단위 {inboundUnit}개로 올려서 계산해요
+                  </p>
+                )}
+              </form>
+            </div>
+            {data?.recommendedQuantity === 0 &&
               customScenarios.length === 0 && (
                 <p className={styles.empty}>
                   권장량이 0개라 비율 시나리오는 만들지 않았어요. 비교할 수량을
                   직접 입력해 주세요.
                 </p>
               )}
-          </div>
+          </>
         )}
       </section>
 
       <section className={styles.insight}>
-        <div className={styles.insightTitle}>
-          <span aria-hidden="true">✦</span>
-          <h2>AI 인사이트</h2>
-        </div>
-        {insightQuery.isPending ? (
-          <AsyncState
-            description="비교표의 숫자를 바탕으로 핵심 내용을 정리하고 있어요."
-            status="loading"
-            title="인사이트 생성 중"
-          />
-        ) : insightQuery.isError ? (
-          <div>
-            <span className={styles.source} data-source="fallback">
-              기본 문장
-            </span>
-            <p>
-              권장 입고량과 도착 전 품절 위험을 비교해 발주 수량을 결정해
-              주세요.
+        <span aria-hidden="true" className={styles.insightIcon}>
+          ✦
+        </span>
+        <div>
+          <div className={styles.insightTitle}>
+            <h2>AI 인사이트</h2>
+            {insightQuery.isSuccess && insightQuery.data.source === 'ai' ? (
+              <span className={styles.source} data-source="ai">
+                AI 생성
+              </span>
+            ) : (
+              !insightQuery.isPending && (
+                <span className={styles.source} data-source="fallback">
+                  기본 문장
+                </span>
+              )
+            )}
+            <small>숫자는 계산 결과를 그대로 넣었어요</small>
+          </div>
+          {insightQuery.isPending ? (
+            <AsyncState
+              description="비교표의 숫자를 바탕으로 핵심 내용을 정리하고 있어요."
+              status="loading"
+              title="인사이트 생성 중"
+            />
+          ) : (
+            <p className={styles.message}>
+              {insightQuery.isError
+                ? '권장 입고량과 도착 전 품절 위험을 비교해 발주 수량을 결정해 주세요.'
+                : insightQuery.data.message}
             </p>
-          </div>
-        ) : (
-          <div>
-            <span
-              className={styles.source}
-              data-source={insightQuery.data.source}
-            >
-              {insightQuery.data.source === 'ai' ? 'AI 생성' : '기본 문장'}
-            </span>
-            <p>{insightQuery.data.message}</p>
-          </div>
-        )}
+          )}
+        </div>
       </section>
     </div>
   )

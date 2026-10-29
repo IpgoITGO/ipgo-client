@@ -145,8 +145,37 @@
   content: '';
 }
 
+/* 범례 모양을 그래프와 맞춘다: 재고는 선, 출고는 막대, 품절일은 빨간 점. */
+.legend span[data-series='inventory']::before {
+  width: 14px;
+  height: 3px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
 .legend span[data-series='outbound']::before {
-  background: #4da57b;
+  background: #c9d1ec;
+  border-radius: 2px;
+}
+
+.legend span[data-series='stockout']::before {
+  background: var(--color-danger);
+}
+
+/* 예측 정확도 그래프 범례: 실제 출고는 진한 실선, 예측 출고는 보라 점선. */
+.legend span[data-series='actual']::before,
+.legend span[data-series='prediction']::before {
+  width: 18px;
+  height: 0;
+  margin-bottom: 2px;
+  background: none;
+  border-radius: 0;
+  border-top: 3px solid var(--color-primary);
+  vertical-align: middle;
+}
+
+.legend span[data-series='prediction']::before {
+  border-top: 3px dashed #a16fd0;
 }
 
 .chart {
@@ -172,8 +201,25 @@
   stroke: var(--color-primary);
 }
 
-.outboundLine {
-  stroke: #4da57b;
+.gridLine {
+  stroke-dasharray: 3 4;
+}
+
+.tick {
+  fill: var(--color-text-3);
+  font-size: 11px;
+  text-anchor: end;
+}
+
+.outboundBar {
+  fill: #c9d1ec;
+}
+
+.stockoutLabel {
+  fill: var(--color-danger);
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: middle;
 }
 
 .predictionLine {
