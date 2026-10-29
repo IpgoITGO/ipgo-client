@@ -59,8 +59,8 @@ export function DatePicker({
         </button>
       </div>
       <div className={styles.grid}>
-        {WEEKDAYS.map((day) => (
-          <span className={styles.weekday} key={day}>
+        {WEEKDAYS.map((day, index) => (
+          <span className={styles.weekday} data-weekday={index} key={day}>
             {day}
           </span>
         ))}
@@ -75,6 +75,7 @@ export function DatePicker({
               className={styles.day}
               data-marked={marked || undefined}
               data-today={key === today || undefined}
+              data-weekday={(firstWeekday + day - 1) % 7}
               key={key}
               onClick={() => onChange(key)}
               type="button"

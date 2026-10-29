@@ -1,11 +1,11 @@
-/* 연한 아이보리 바탕에 날짜 칸마다 옅은 선 */
+/* 연한 아이보리 바탕, 칸 선 없이 동그란 날짜. 요일 줄 아래에만 옅은 점선 */
 .picker {
   display: grid;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
   background: #fffcf5;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-input);
+  border-radius: 18px;
 }
 
 .head {
@@ -25,46 +25,51 @@
 }
 
 .head button:hover {
-  background: var(--color-bg);
+  background: var(--color-primary-soft);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  overflow: hidden;
-  border-top: 1px solid var(--color-border);
-  border-left: 1px solid var(--color-border);
-  border-radius: 10px;
-}
-
-.grid > * {
-  border-right: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  row-gap: 2px;
+  justify-items: center;
 }
 
 .weekday {
-  padding: var(--space-1) 0;
+  justify-self: stretch;
+  padding: var(--space-1) 0 var(--space-2);
+  margin-bottom: var(--space-1);
   color: var(--color-text-3);
   font-size: var(--text-caption);
   text-align: center;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+/* 일요일은 옅은 빨강, 토요일은 옅은 파랑 */
+.grid > [data-weekday='0'] {
+  color: #c0544d;
+}
+
+.grid > [data-weekday='6'] {
+  color: var(--color-info);
 }
 
 .day {
   position: relative;
+  width: 34px;
   height: 34px;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
   background: transparent;
   border: 0;
-  border-right: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  border-radius: 50%;
 }
 
 .day:hover {
-  background: var(--color-bg);
+  background: var(--color-primary-soft);
 }
 
-/* 오늘: 숫자 아래 짧은 밑줄 */
+/* 오늘: 숫자 아래 짧은 노란 밑줄 */
 .day[data-today] {
   font-weight: 700;
   text-decoration: underline;
@@ -73,22 +78,28 @@
   text-underline-offset: 4px;
 }
 
-.day[aria-pressed='true'] {
+.grid > .day[aria-pressed='true'] {
   color: var(--color-card);
   font-weight: 800;
   background: var(--color-primary);
 }
 
-/* 짚을 날짜(지난 도착일): 숫자를 가리지 않게 칸 오른쪽 위 모서리에 빨간 점 */
+/* 짚을 날짜(지난 도착일): 숫자를 가리지 않게 동그라미 오른쪽 위에 빨간 점 */
 .day[data-marked]::after {
   position: absolute;
-  top: 4px;
-  right: 5px;
-  width: 6px;
-  height: 6px;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
   content: '';
   background: var(--color-danger);
+  border: 2px solid #fffcf5;
   border-radius: 50%;
+}
+
+/* 고른 날이 지난 날짜(짚을 날)면 남색 대신 빨강: 아직 새 날짜를 안 골랐다는 뜻 */
+.grid > .day[aria-pressed='true'][data-marked] {
+  background: var(--color-danger);
 }
 
 .day:focus-visible,
@@ -100,6 +111,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-top: var(--space-1);
   color: var(--color-text-2);
   font-size: var(--text-caption);
 }
@@ -111,13 +123,4 @@
   border: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-/* 고른 날이 지난 날짜(짚을 날)면 남색 대신 빨강으로: 아직 새 날짜를 안 골랐다는 뜻 */
-.day[aria-pressed='true'][data-marked] {
-  background: var(--color-danger);
-}
-
-.day[aria-pressed='true'][data-marked]::after {
-  background: var(--color-card);
 }
