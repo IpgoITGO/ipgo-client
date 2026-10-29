@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -14,6 +14,7 @@ import {
   EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   messageOf,
 } from '../model/authMessages'
+import { SIGNUP_OPEN_KEY } from '../model/signupSession'
 import { useEmailVerification } from '../model/useEmailVerification'
 import styles from './SignUpPage.module.css'
 
@@ -77,6 +78,21 @@ function formatTime(milliseconds: number) {
 export function SignUpPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState<Page>(1)
+  // 이 탭에 회원가입이 열려 있다고 표시해 두고, 다른 화면으로 가면 지운다(새로고침 때만 남음).
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SIGNUP_OPEN_KEY, '1')
+    } catch {
+      // 저장소를 못 쓰면 새로고침 뒤 회원가입 1단계에 그대로 머문다.
+    }
+    return () => {
+      try {
+        sessionStorage.removeItem(SIGNUP_OPEN_KEY)
+      } catch {
+        // 위와 같음
+      }
+    }
+  }, [])
   const [code, setCode] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const {
