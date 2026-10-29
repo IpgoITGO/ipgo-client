@@ -28,3 +28,9 @@
 ## 관련 Issue
 
 Closes #번호
+
+## Jira·배포
+
+- Jira: `IPGO-번호` 또는 `없음`
+- [ ] Issue·PR 제목 또는 branch에 Jira 키 포함
+- [ ] `dev → main` PR이면 운영 배포 후 완료할 Jira 키를 PR 제목에 모두 포함
