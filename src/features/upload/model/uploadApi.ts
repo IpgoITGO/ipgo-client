@@ -49,10 +49,11 @@ export function getUploadPeriods() {
   return apiRequest<UploadPeriods>('/uploads/periods')
 }
 
-// U1 수불부 올리기. 같은 기간을 덮어쓸 때만 overwrite를 true로 보낸다.
-export function uploadFiles(files: File[], overwrite: boolean) {
+// U1 수불부 올리기. 서버 계약상 한 요청에 파일 1개(`file` 칸)만 보낸다. 여러 파일은 화면에서 하나씩.
+// 같은 기간을 덮어쓸 때만 overwrite를 true로 보낸다.
+export function uploadFile(file: File, overwrite: boolean) {
   const formData = new FormData()
-  files.forEach((file) => formData.append('files', file))
+  formData.append('file', file)
   formData.append('overwrite', String(overwrite))
 
   return apiRequest<{ uploadId: number; status: UploadResult['status'] }>(

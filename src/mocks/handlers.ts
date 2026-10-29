@@ -35,9 +35,15 @@ export const handlers = [
   http.post('/api/uploads', async ({ request }) => {
     const form = await request.formData()
     const overwrite = form.get('overwrite') === 'true'
-    const names = form
-      .getAll('files')
-      .map((file) => (typeof file === 'string' ? file : file.name))
+    // 서버와 같이 한 요청에 파일 1개(file 칸)만 받는다.
+    const file = form.get('file')
+    if (!file || typeof file === 'string' || form.getAll('file').length > 1) {
+      return HttpResponse.json(
+        { code: 'INVALID_INPUT', message: '파일을 하나 골라 주세요.' },
+        { status: 400 },
+      )
+    }
+    const names = [file.name]
     const periods = names.map((name) => ({
       match: /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i.exec(name),
       name,

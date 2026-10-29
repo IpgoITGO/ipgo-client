@@ -20,7 +20,7 @@ import {
 import {
   getUploadPeriods,
   type UploadPeriods,
-  uploadFiles,
+  uploadFile,
 } from '../model/uploadApi'
 import { formatUploadedAt } from '../model/uploadFormat'
 import styles from './UploadPage.module.css'
@@ -115,21 +115,30 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0) return
 
+    // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
+    const uploaded = new Set<string>()
+    let lastUploadId: number | null = null
+    // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
+    const replaced: string[] = []
+
     try {
-      const result = await uploadFiles(
-        readyFiles.map((item) => item.file),
-        readyFiles.some((item) => item.overwrite),
-      )
-      // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
-      const replaced = readyFiles
-        .filter((item) => item.overwrite)
-        .map((item) => item.period)
-      navigate(`/upload/${result.uploadId}/result`, { state: { replaced } })
+      for (const item of readyFiles) {
+        const result = await uploadFile(item.file, Boolean(item.overwrite))
+        uploaded.add(item.id)
+        lastUploadId = result.uploadId
+        if (item.overwrite && item.period) replaced.push(item.period)
+        setFiles((current) => current.filter((file) => file.id !== item.id))
+      }
+      // ponytail: 여러 파일이면 마지막 파일의 결과만 보여 준다. 파일별 결과 목록은 U2가 여러 건을 줄 때.
+      navigate(`/upload/${lastUploadId}/result`, { state: { replaced } })
     } catch (cause) {
+      const remaining = files.filter((item) => !uploaded.has(item.id))
       // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409로 알려 준다.
       if (cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE') {
         const latest = await periods.refetch()
-        const updated = files.map((item) => markDuplicate(item, latest.data))
+        const updated = remaining.map((item) =>
+          markDuplicate(item, latest.data),
+        )
         const duplicateIds = updated
           .filter((item) => item.status === 'duplicate')
           .map((item) => item.id)
@@ -140,10 +149,14 @@ export function UploadPage() {
         }
       }
 
-      setError(
+      const message =
         cause instanceof Error
           ? cause.message
-          : '파일을 올리지 못했어요. 다시 시도해 주세요.',
+          : '파일을 올리지 못했어요. 다시 시도해 주세요.'
+      setError(
+        uploaded.size > 0
+          ? `${uploaded.size}개는 올렸어요. 남은 파일: ${message}`
+          : message,
       )
     }
   })
