@@ -8,6 +8,7 @@
 | Issue·PR·commit 작성 방식 | [작성 규칙](rules/conventions.md) |
 | 비밀값과 위험한 변경 기준 | [안전 규칙](rules/safety.md) |
 | Jira·GitHub 동기화와 Vercel 배포 | [자동화 운영](automation.md) |
+| Drive 최종산출물 기준, 요구사항 현황과 문서 충돌 | [2026-10-29 최종산출물 기준 검토](records/2026-10-29-final-deliverables-review.md) |
 | 화면 시안 (화면 7 · 팝업 4 등 15장) | [UI 시안](design/ui-screens.pdf) |
 | API 요청·응답 형식 (10월 23일 기준 **과거 문서**) | [API 명세서](design/api-spec.docx) |
 
