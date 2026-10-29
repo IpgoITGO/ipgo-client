@@ -6,7 +6,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
-  padding: var(--space-6);
+  padding: var(--space-8);
   margin: 0;
   list-style: none;
   background: var(--color-card);
@@ -17,8 +17,29 @@
   gap: var(--space-1);
   color: var(--color-text-3);
 }
-.steps li[data-complete='true'] strong {
-  color: var(--color-primary);
+.steps strong {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+}
+/* 끝난 단계는 연한 동그라미 안의 쑥색 체크, 남은 단계는 빈 동그라미에 번호 */
+.mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  color: var(--color-text-3);
+  border: 1.5px solid var(--color-input-border);
+  border-radius: 50%;
+}
+.steps li[data-complete='true'] .mark {
+  color: var(--color-done);
+  background: var(--color-done-bg);
+  border-color: transparent;
 }
 .steps span {
   font-size: var(--text-caption);
@@ -31,7 +52,7 @@
 .metrics article {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -43,7 +64,7 @@
   font-size: 22px;
 }
 .report {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -78,19 +99,72 @@
 .report td {
   padding: var(--space-4);
   text-align: left;
+  vertical-align: top;
   border-bottom: 1px solid var(--color-border);
 }
 .report th {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-.report td:first-child {
-  display: grid;
-  gap: var(--space-1);
+/* 칸 자체를 grid로 바꾸면 표 줄 높이가 어긋나서, 안쪽 글자만 줄을 바꾼다 */
+.report td:first-child span {
+  display: block;
+  margin-top: var(--space-1);
 }
 .report td span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
+}
+/* 사유: 왼쪽에 차이 개수(크게)와 고칠 곳(흐리게), 오른쪽 끝에 꼬리표 */
+.reason {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.reason em {
+  flex: none;
+  padding: 2px var(--space-2);
+  color: var(--color-accent-text);
+  font-size: var(--text-caption);
+  font-style: normal;
+  font-weight: 700;
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-chip);
+}
+.reason b {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.reason small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+/* 같은 기간을 다시 올렸을 때 한 줄 안내 (흰 카드 + 쑥색 표시) */
+.replaced {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  font-weight: 700;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+.replaced span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-done);
+  background: var(--color-done-bg);
+  border-radius: 50%;
 }
 .help,
 .empty {

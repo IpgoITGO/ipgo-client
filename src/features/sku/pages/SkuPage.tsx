@@ -149,11 +149,11 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
 function AccuracyChart({ history }: { history: SkuDetail['history'] }) {
   const box = {
     width: 600,
-    height: 230,
-    left: 48,
-    right: 590,
-    top: 28,
-    bottom: 180,
+    height: 236,
+    left: 56,
+    right: 568,
+    top: 36,
+    bottom: 186,
   }
   const max = Math.max(
     ...history.map((item) => Math.max(item.outbound, item.predictedOutbound)),
@@ -195,7 +195,7 @@ function AccuracyChart({ history }: { history: SkuDetail['history'] }) {
           </text>
         </g>
       ))}
-      <text className={styles.axisTitle} x={box.left - 8} y={box.top - 16}>
+      <text className={styles.axisTitle} x={0} y={box.top - 18}>
         출고량(개)
       </text>
       <polyline

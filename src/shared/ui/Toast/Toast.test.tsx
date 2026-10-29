@@ -11,11 +11,12 @@ describe('Toast', () => {
   it('정해진 시간이 지나면 서서히 사라진 뒤 닫는다', () => {
     vi.useFakeTimers()
     const onClose = vi.fn()
-    render(<Toast message="저장했어요" onClose={onClose} duration={3000} />)
+    render(<Toast message="저장했어요" onClose={onClose} duration={1500} />)
 
     expect(screen.getByRole('status')).toHaveTextContent('저장했어요')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
     act(() => {
-      vi.advanceTimersByTime(2999)
+      vi.advanceTimersByTime(1499)
     })
     expect(onClose).not.toHaveBeenCalled()
     act(() => {

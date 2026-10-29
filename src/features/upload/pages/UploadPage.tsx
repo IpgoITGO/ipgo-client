@@ -46,6 +46,8 @@ export function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const [files, setFiles] = useState<UploadFileState[]>([])
+  // 형식이 틀린 파일은 목록에 넣지 않고 이유 팝업으로만 알린다.
+  const [rejected, setRejected] = useState<UploadFileState[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 확인이 필요한 파일을 차례로 하나씩 팝업으로 보여 준다. 맨 앞이 지금 열린 팝업이다.
@@ -69,7 +71,11 @@ export function UploadPage() {
     )
     const ids = new Set(files.map((item) => item.id))
     const added = nextFiles.filter((item) => !ids.has(item.id))
-    setFiles((current) => [...current, ...added])
+    setFiles((current) => [
+      ...current,
+      ...added.filter((item) => item.status !== 'error'),
+    ])
+    setRejected(added.filter((item) => item.status === 'error'))
     setModalQueue((current) => [
       ...current,
       ...added.filter((item) => item.status !== 'ready').map((item) => item.id),
@@ -114,7 +120,11 @@ export function UploadPage() {
         readyFiles.map((item) => item.file),
         readyFiles.some((item) => item.overwrite),
       )
-      navigate(`/upload/${result.uploadId}/result`)
+      // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
+      const replaced = readyFiles
+        .filter((item) => item.overwrite)
+        .map((item) => item.period)
+      navigate(`/upload/${result.uploadId}/result`, { state: { replaced } })
     } catch (cause) {
       // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409로 알려 준다.
       if (cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE') {
@@ -138,7 +148,9 @@ export function UploadPage() {
     }
   })
 
-  const modalFile = files.find((item) => item.id === modalQueue[0])
+  const modalFile = [...files, ...rejected].find(
+    (item) => item.id === modalQueue[0],
+  )
 
   return (
     <div className={styles.page}>
@@ -193,7 +205,10 @@ export function UploadPage() {
                     {formatFileSize(item.file.size)}
                   </span>
                 </div>
-                <span className={styles.status} data-status={item.status}>
+                <span
+                  className={styles.status}
+                  data-status={item.overwrite ? 'overwrite' : item.status}
+                >
                   {item.status === 'ready'
                     ? item.overwrite
                       ? '덮어쓰기 확인'
@@ -282,18 +297,16 @@ export function UploadPage() {
               </span>
               <h2 id="upload-modal-title">이 파일은 올릴 수 없어요</h2>
               <p>
-                다른 파일은 그대로 두고, 아래 내용을 고친 뒤 다시 골라 주세요.
+                이 파일은 목록에 넣지 않았어요. 아래 내용을 고친 뒤 다시 골라
+                주세요.
               </p>
               <div className={styles.modalFile}>
                 <strong>{modalFile.file.name}</strong>
                 <span>{modalFile.reason}</span>
               </div>
               <div className={styles.modalActions}>
-                <Button
-                  onClick={() => removeFile(modalFile.id)}
-                  variant="secondary"
-                >
-                  이 파일 빼기
+                <Button onClick={closeModal} variant="secondary">
+                  확인
                 </Button>
                 <Button
                   onClick={() => {

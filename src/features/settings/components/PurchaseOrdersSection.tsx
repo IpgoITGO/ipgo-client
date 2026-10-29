@@ -1,11 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { apiRequest } from '../../../shared/api/client'
 import { Button } from '../../../shared/ui/Button/Button'
+import { DatePicker } from '../../../shared/ui/DatePicker/DatePicker'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import styles from './PurchaseOrdersSection.module.css'
 
@@ -36,10 +37,6 @@ const statusLabels = {
   'no-date': '도착일 없어 반영 안 돼요',
 }
 
-function editLabel(order: PurchaseOrder) {
-  return order.status === 'overdue' ? '도착일 고치기' : '수정'
-}
-
 const emptyOrder: OrderValues = {
   product: '케어트릿 120g|8800272420016',
   quantity: 1,
@@ -58,6 +55,7 @@ export function PurchaseOrdersSection() {
   const displayOrders = orders ?? query.data ?? []
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -119,7 +117,7 @@ export function PurchaseOrdersSection() {
             <thead>
               <tr>
                 <th>상품</th>
-                <th>수량</th>
+                <th className={styles.num}>수량</th>
                 <th>도착 예정일</th>
                 <th>계산 반영</th>
                 <th />
@@ -132,7 +130,7 @@ export function PurchaseOrdersSection() {
                     <strong>{order.productName}</strong>
                     <span>{order.barcode}</span>
                   </td>
-                  <td>
+                  <td className={styles.num}>
                     <strong>{order.quantity}개</strong>
                   </td>
                   <td data-overdue={order.status === 'overdue'}>
@@ -145,12 +143,12 @@ export function PurchaseOrdersSection() {
                   </td>
                   <td>
                     <Button
-                      aria-label={`${order.productName} ${editLabel(order)}`}
+                      aria-label={`${order.productName} 수정`}
                       onClick={() => openModal(order)}
                       type="button"
                       variant="secondary"
                     >
-                      {editLabel(order)}
+                      수정
                     </Button>
                   </td>
                 </tr>
@@ -206,10 +204,35 @@ export function PurchaseOrdersSection() {
                   <small role="alert">{errors.quantity.message}</small>
                 )}
               </label>
-              <label>
-                <span>도착 예정일</span>
-                <input type="date" {...register('arrivalDate')} />
-              </label>
+            </div>
+            <div
+              aria-labelledby="arrival-date-label"
+              className={styles.dateField}
+              role="group"
+            >
+              <span id="arrival-date-label">도착 예정일</span>
+              {editing?.status === 'overdue' && (
+                <p className={styles.overdue} role="note">
+                  원래 도착 예정일({editing.arrivalDate})이 지났어요. 달력의
+                  빨간 점이 원래 날짜예요. 새 도착 예정일을 골라 주세요.
+                </p>
+              )}
+              <Controller
+                control={control}
+                name="arrivalDate"
+                render={({ field }) => (
+                  <DatePicker
+                    markedDate={
+                      editing?.status === 'overdue'
+                        ? (editing.arrivalDate ?? undefined)
+                        : undefined
+                    }
+                    markedLabel="지난 도착일"
+                    onChange={field.onChange}
+                    value={field.value}
+                  />
+                )}
+              />
             </div>
             <aside>
               도착 예정일을 비워 두면 저장은 되지만 계산에는 넣지 않아요.

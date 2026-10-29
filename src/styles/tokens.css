@@ -22,6 +22,14 @@
   --color-text-3: #5c6370;
   --color-success: #04876a;
   --color-success-bg: #e2f8f1;
+  /* 끝난 단계 표시용 차분한 쑥색 */
+  --color-done: #4f8a6e;
+  --color-done-bg: #eaf3ee;
+  /* 덮어쓰기처럼 "알고 하는 일" 안내용 연한 파랑 */
+  --color-info: #2a64a6;
+  --color-info-bg: #e8f1fb;
+  /* 그래프의 보조 막대(출고)용 상자빛 베이지 */
+  --color-chart-muted: #e3d3b8;
   --color-warning: #a85a00;
   --color-warning-bg: #fff2d6;
   --color-danger: #c8261c;

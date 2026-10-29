@@ -1,94 +1,44 @@
+/* 로그인·회원가입이 같은 자리에 오도록 가운데 맞춤 대신 위쪽 기준으로 고정한다.
+   (칸 수가 달라 높이가 바뀌어도 상자 윗선이 움직이지 않는다) */
 .page {
   display: grid;
   min-height: 100vh;
-  place-items: center;
-  padding: var(--space-6);
+  align-items: start;
+  justify-items: center;
+  padding: max(var(--space-6), calc(50vh - 330px)) var(--space-6) var(--space-6);
 }
 
+/* 흰 카드 하나를 반으로: 왼쪽 입력, 오른쪽 상자빛 바탕의 미리보기. 큰 남색 면은 쓰지 않는다. */
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
   width: min(100%, 980px);
+  min-height: 660px;
+  overflow: hidden;
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
-.layout[data-tab='signup'] {
-  grid-template-columns: 419fr 595fr;
-  width: min(100%, 1038px);
-}
-
-.intro {
+.panel {
   display: flex;
   flex-direction: column;
   padding: calc(var(--space-8) + var(--space-2));
-  color: var(--color-card);
-  background: var(--color-primary);
-  border-radius: var(--radius-card);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-5);
-  font-size: 20px;
+  margin: 0 0 var(--space-6);
+  font-size: 18px;
   font-weight: 900;
 }
 
 .brand small {
+  color: var(--color-text-3);
   font-size: var(--text-caption);
   font-weight: 500;
-  opacity: 0.75;
-}
-
-.headline {
-  margin-bottom: 0;
-  font-size: 34px;
-  font-weight: 800;
-  line-height: 1.35;
-  white-space: pre-line;
-}
-
-.description {
-  margin: var(--space-5) 0 0;
-  line-height: 1.6;
-  opacity: 0.85;
-}
-
-.steps {
-  display: grid;
-  gap: var(--space-4);
-  margin: auto 0 0;
-  padding: var(--space-8) 0 0;
-  list-style: none;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.stepNumber {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  background: rgb(255 255 255 / 15%);
-  border-radius: 8px;
-  font-size: var(--text-caption);
-  font-weight: 700;
-}
-
-.step[data-active] .stepNumber {
-  color: var(--color-primary);
-  background: var(--color-card);
-}
-
-.panel {
-  padding: calc(var(--space-8) + var(--space-2));
-  background: var(--color-card);
-  border-radius: var(--radius-card);
 }
 
 .tabs {
@@ -118,14 +68,97 @@
   outline: 3px solid var(--color-primary-soft);
 }
 
+.preview {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: calc(var(--space-8) + var(--space-2));
+  background: var(--color-primary-soft);
+}
+
+.previewCaption {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+/* 대시보드의 "지금 넣어야 해요" 카드와 같은 모양 */
+.previewCard {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-6);
+  background: var(--color-card);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-input);
+}
+
+.tape {
+  --tape-rotate: -4deg;
+  top: -12px;
+  left: var(--space-5);
+  width: 88px;
+}
+
+.previewCard span {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.previewCard strong {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.previewCard small {
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.previewList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-card);
+  border-radius: var(--radius-input);
+}
+
+.previewList li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-caption);
+}
+
+.previewList li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.previewList b {
+  font-variant-numeric: tabular-nums;
+}
+
+.previewNote {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
 @media (max-width: 900px) {
-  .layout,
-  .layout[data-tab='signup'] {
+  .layout {
     grid-template-columns: 1fr;
     width: min(100%, 560px);
+    min-height: 0;
   }
 
-  .intro {
+  .preview {
     display: none;
   }
 

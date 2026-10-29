@@ -62,9 +62,26 @@ function SummaryCard({
   )
 }
 
+type SortKey = 'stockout' | 'risk' | 'cost'
+
+// "2026. 9. 5" 같은 날짜를 자릿수 맞춘 "20260905"로 바꿔 글자 비교로도 날짜 순이 되게 한다.
+function dateKey(date: string) {
+  return date
+    .split('.')
+    .map((part) => part.trim().padStart(2, '0'))
+    .join('')
+}
+
+// 브라우저 기본 드롭다운 대신 한눈에 보이는 버튼형 정렬
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'stockout', label: '소진일 빠른 순' },
+  { value: 'risk', label: '품절 위험 높은 순' },
+  { value: 'cost', label: '금액 큰 순' },
+]
+
 export function DashboardPage() {
   const navigate = useNavigate()
-  const [sort, setSort] = useState<'stockout' | 'risk' | 'cost'>('stockout')
+  const [sort, setSort] = useState<SortKey>('stockout')
   const query = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => apiRequest<DashboardData>('/dashboard'),
@@ -75,7 +92,7 @@ export function DashboardPage() {
     return source.sort((a, b) => {
       if (sort === 'cost') return b.cost - a.cost
       if (sort === 'risk') return b.risk - a.risk
-      return a.stockoutDate.localeCompare(b.stockoutDate)
+      return dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
     })
   }, [query.data?.neededItems, sort])
 
@@ -104,6 +121,9 @@ export function DashboardPage() {
     <div className={styles.page}>
       {data.freshness !== 'fresh' && (
         <aside className={styles.banner} data-state={data.freshness}>
+          <span aria-hidden="true" className={styles.bannerMark}>
+            !
+          </span>
           <div>
             <strong>
               {refreshRequired ? '새 수불부가 필요해요' : '갱신 전 결과예요'}
@@ -197,15 +217,23 @@ export function DashboardPage() {
                 <h2>입고가 필요한 상품</h2>
                 <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
               </div>
-              <select
+              <div
                 aria-label="입고 필요 목록 정렬"
-                onChange={(event) => setSort(event.target.value as typeof sort)}
-                value={sort}
+                className={styles.sort}
+                role="radiogroup"
               >
-                <option value="stockout">소진일 빠른 순</option>
-                <option value="risk">품절 위험 높은 순</option>
-                <option value="cost">금액 큰 순</option>
-              </select>
+                {SORT_OPTIONS.map((option) => (
+                  <button
+                    aria-checked={sort === option.value}
+                    key={option.value}
+                    onClick={() => setSort(option.value)}
+                    role="radio"
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className={styles.tableWrap}>
               <table>
@@ -213,7 +241,8 @@ export function DashboardPage() {
                   <tr>
                     <th>상품</th>
                     <th>예상 소진일</th>
-                    <th>리드타임</th>
+                    <th className={styles.num}>리드타임</th>
+                    <th className={styles.num}>품절 위험</th>
                     <th className={styles.num}>권장 입고량</th>
                     <th className={styles.num}>사입비</th>
                   </tr>
@@ -231,7 +260,8 @@ export function DashboardPage() {
                         <span>{item.barcode}</span>
                       </td>
                       <td>{item.stockoutDate}</td>
-                      <td>{item.leadTime}일</td>
+                      <td className={styles.num}>{item.leadTime}일</td>
+                      <td className={styles.num}>{item.risk}%</td>
                       <td className={styles.num}>
                         <strong>{item.quantity}개</strong>
                       </td>

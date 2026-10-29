@@ -1,5 +1,5 @@
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -138,4 +138,27 @@
   .header {
     flex-direction: column;
   }
+}
+/* 표의 수량은 오른쪽 정렬 (자릿수가 맞아야 크기를 비교하기 쉽다) */
+.tableWrap th.num,
+.tableWrap td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dateField {
+  display: grid;
+  gap: var(--space-2);
+}
+.dateField > span {
+  font-weight: 700;
+}
+/* 도착일이 지난 발주를 고칠 때: 새 날짜를 고르도록 짚어 준다 */
+.overdue {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-input);
 }

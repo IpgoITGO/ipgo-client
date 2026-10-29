@@ -1,0 +1,123 @@
+/* 연한 아이보리 바탕에 날짜 칸마다 옅은 선 */
+.picker {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: #fffcf5;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.head button {
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-2);
+  font-size: 20px;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+.head button:hover {
+  background: var(--color-bg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  overflow: hidden;
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.grid > * {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.weekday {
+  padding: var(--space-1) 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  text-align: center;
+}
+
+.day {
+  position: relative;
+  height: 34px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.day:hover {
+  background: var(--color-bg);
+}
+
+/* 오늘: 숫자 아래 짧은 밑줄 */
+.day[data-today] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.day[aria-pressed='true'] {
+  color: var(--color-card);
+  font-weight: 800;
+  background: var(--color-primary);
+}
+
+/* 짚을 날짜(지난 도착일): 숫자를 가리지 않게 칸 오른쪽 위 모서리에 빨간 점 */
+.day[data-marked]::after {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.day:focus-visible,
+.head button:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+}
+
+.foot button {
+  padding: 0;
+  color: var(--color-text-3);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* 고른 날이 지난 날짜(짚을 날)면 남색 대신 빨강으로: 아직 새 날짜를 안 골랐다는 뜻 */
+.day[aria-pressed='true'][data-marked] {
+  background: var(--color-danger);
+}
+
+.day[aria-pressed='true'][data-marked]::after {
+  background: var(--color-card);
+}

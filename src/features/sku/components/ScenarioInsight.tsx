@@ -31,6 +31,7 @@ type InsightResponse = {
 }
 
 // 품절 위험이 이 값 이상이면 빨간 글씨로 강조한다.
+const ROW_SIZE = 5
 const HIGH_RISK = 20
 
 function formatRisk(risk: number | null) {
@@ -82,6 +83,9 @@ export function ScenarioInsight({
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>([])
   const [inputError, setInputError] = useState('')
   const [actionError, setActionError] = useState('')
+  // "+" 카드를 눌러 입력 중인지, 한 줄(5칸)을 넘는 카드를 펼쳤는지
+  const [adding, setAdding] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const scenariosQuery = useQuery({
     queryKey: ['sku', skuId, 'scenarios'],
@@ -104,11 +108,13 @@ export function ScenarioInsight({
             body: JSON.stringify({ quantity: inputQuantity }),
           },
         )
+        // 직접 넣은 수량은 여러 개 쌓아 비교한다. 같은 수량을 다시 넣으면 새 값으로 바꾼다.
         setCustomScenarios((current) => [
-          ...current.filter((item) => item.id !== 'custom'),
-          scenario,
+          ...current.filter((item) => item.quantity !== scenario.quantity),
+          { ...scenario, id: `custom-${scenario.quantity}` },
         ])
         setQuantity('')
+        setAdding(false)
       } catch (error) {
         setActionError(
           error instanceof Error
@@ -145,6 +151,14 @@ export function ScenarioInsight({
   // 도착 전 위험은 입고량과 상관없어 보통 모두 같다. 같으면 위에 한 번만 쓴다.
   const sharedPreArrivalRisk =
     preArrivalRisks.size === 1 ? scenarios[0].preArrivalRisk : undefined
+  const isCustom = (scenario: Scenario) => scenario.id.startsWith('custom')
+  // 한 줄에 5칸("+" 카드 포함). 넘치면 처음 5개만 보이고 나머지는 "더 보기"로 편다.
+  const overflow = scenarios.length + 1 > ROW_SIZE
+  const showAll = expanded || !overflow
+  const visible = showAll ? scenarios : scenarios.slice(0, ROW_SIZE)
+  const hiddenCount = scenarios.length - visible.length
+  // 권장량이 0이라 카드가 없으면 처음부터 입력칸을 연다.
+  const showInput = adding || scenarios.length === 0
   const maxRisk = Math.max(
     ...scenarios.map((item) => item.postArrivalRisk ?? 0),
     1,
@@ -187,9 +201,9 @@ export function ScenarioInsight({
         ) : (
           <>
             <div className={styles.cards}>
-              {scenarios.map((scenario) => {
+              {visible.map((scenario) => {
                 const recommended =
-                  scenario.id !== 'custom' &&
+                  !isCustom(scenario) &&
                   scenario.quantity === data?.recommendedQuantity
                 const note = scenarioNote(
                   scenario,
@@ -198,7 +212,7 @@ export function ScenarioInsight({
                 return (
                   <article
                     className={styles.scenario}
-                    data-custom={scenario.id === 'custom'}
+                    data-custom={isCustom(scenario)}
                     data-recommended={recommended}
                     key={scenario.id}
                   >
@@ -259,52 +273,111 @@ export function ScenarioInsight({
                 )
               })}
 
-              <form
-                className={styles.inputCard}
-                noValidate
-                onSubmit={handleSubmit}
-              >
-                <label htmlFor="scenario-quantity">직접 입력</label>
-                <div className={styles.inputRow}>
-                  <input
-                    aria-describedby={
-                      inputError ? 'scenario-input-error' : undefined
-                    }
-                    id="scenario-quantity"
-                    inputMode="numeric"
-                    min="1"
-                    onChange={(event) => setQuantity(event.target.value)}
-                    placeholder="수량"
-                    type="number"
-                    value={quantity}
-                  />
-                  <span>개</span>
-                </div>
-                {/* 버튼을 칸 너비에 맞춰 두면 "계산 중"으로 글자가 바뀌어도 칸이 흔들리지 않는다. */}
-                <Button
-                  className={styles.addButton}
-                  loading={action.isPending}
-                  loadingLabel="계산 중"
-                  type="submit"
-                  variant="secondary"
+              {showAll && !showInput && (
+                <button
+                  className={styles.addCard}
+                  onClick={() => setAdding(true)}
+                  type="button"
                 >
-                  비교에 추가
-                </Button>
-                {inputError || actionError ? (
-                  <p
-                    className={styles.error}
-                    id={inputError ? 'scenario-input-error' : undefined}
-                    role="alert"
+                  <span aria-hidden="true">+</span>
+                  수량 넣어 비교
+                </button>
+              )}
+
+              {showAll && showInput && (
+                <form
+                  className={styles.inputCard}
+                  noValidate
+                  onSubmit={handleSubmit}
+                >
+                  <label htmlFor="scenario-quantity">직접 입력</label>
+                  <div className={styles.inputRow}>
+                    <input
+                      autoFocus={adding}
+                      aria-describedby={
+                        inputError ? 'scenario-input-error' : undefined
+                      }
+                      id="scenario-quantity"
+                      inputMode="numeric"
+                      min="1"
+                      onChange={(event) => setQuantity(event.target.value)}
+                      placeholder="수량"
+                      type="number"
+                      value={quantity}
+                    />
+                    <span>개</span>
+                  </div>
+                  {/* 버튼을 칸 너비에 맞춰 두면 "계산 중"으로 글자가 바뀌어도 칸이 흔들리지 않는다. */}
+                  <Button
+                    className={styles.addButton}
+                    loading={action.isPending}
+                    loadingLabel="계산 중"
+                    type="submit"
+                    variant="secondary"
                   >
-                    {inputError || actionError}
-                  </p>
-                ) : (
-                  <p className={styles.hint}>
-                    입고 단위 {inboundUnit}개로 올려서 계산해요
-                  </p>
-                )}
-              </form>
+                    비교에 추가
+                  </Button>
+                  {scenarios.length > 0 && (
+                    <Button
+                      onClick={() => {
+                        setAdding(false)
+                        setInputError('')
+                        setQuantity('')
+                      }}
+                      type="button"
+                      variant="text"
+                    >
+                      취소
+                    </Button>
+                  )}
+                  {inputError || actionError ? (
+                    <p
+                      className={styles.error}
+                      id={inputError ? 'scenario-input-error' : undefined}
+                      role="alert"
+                    >
+                      {inputError || actionError}
+                    </p>
+                  ) : (
+                    <p className={styles.hint}>
+                      입고 단위 {inboundUnit}개로 올려서 계산해요
+                    </p>
+                  )}
+                </form>
+              )}
             </div>
+            {overflow && (
+              <div className={styles.more}>
+                {expanded ? (
+                  <Button
+                    onClick={() => {
+                      setExpanded(false)
+                      setAdding(false)
+                    }}
+                    variant="text"
+                  >
+                    접기
+                  </Button>
+                ) : (
+                  <>
+                    {hiddenCount > 0 && (
+                      <Button onClick={() => setExpanded(true)} variant="text">
+                        더 보기 {hiddenCount}개
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => {
+                        setExpanded(true)
+                        setAdding(true)
+                      }}
+                      variant="secondary"
+                    >
+                      + 수량 넣어 비교
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
             {data?.recommendedQuantity === 0 &&
               customScenarios.length === 0 && (
                 <p className={styles.empty}>

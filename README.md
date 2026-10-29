@@ -44,6 +44,10 @@ npm run dev
 로그인은 form 방식으로 보내고 성공(204) 뒤 `/auth/me`로 사용자 정보를 받습니다. MSW의 인증 mock
 (`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니다.
 
+로그인 화면의 "아이디 저장"은 이메일만 브라우저 `localStorage`(`ipgo:saved-email`)에 남기며 서버
+로그인 유지와는 관계없습니다. 회원가입은 단계별 화면이라 `/signup`에서 새로고침하면 `/login`으로
+돌아갑니다(`src/main.tsx`).
+
 ## 명령
 
 | 명령                      | 설명                                |

@@ -24,7 +24,7 @@ describe('PurchaseOrdersSection', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('수정하면 새로 등록하지 않고 그 발주의 수량과 도착일을 바꾼다', async () => {
+  it('도착일이 지난 발주도 수정으로 열고, 달력에서 새 도착일을 골라 바꾼다', async () => {
     const user = userEvent.setup()
     render(
       <AppProviders>
@@ -33,18 +33,23 @@ describe('PurchaseOrdersSection', () => {
     )
     await user.click(
       await screen.findByRole('button', {
-        name: '동결건조 큐브 50g 도착일 고치기',
+        name: '동결건조 큐브 50g 수정',
       }),
     )
     expect(
       screen.getByRole('heading', { name: '이미 발주한 물량 수정' }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('수량')).toHaveValue(30)
+    // 지난 도착일을 알려 주고 달력에 빨간 점으로 짚는다
+    expect(screen.getByRole('note')).toHaveTextContent('2026-10-16')
+    expect(
+      screen.getByRole('button', { name: '10월 16일 (지난 도착일)' }),
+    ).toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('수량'))
     await user.type(screen.getByLabelText('수량'), '45')
-    await user.clear(screen.getByLabelText('도착 예정일'))
-    await user.type(screen.getByLabelText('도착 예정일'), '2026-11-02')
+    await user.click(screen.getByRole('button', { name: '다음 달' }))
+    await user.click(screen.getByRole('button', { name: '11월 2일' }))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
     expect(await screen.findByText('45개')).toBeInTheDocument()

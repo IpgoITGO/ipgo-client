@@ -17,7 +17,7 @@
   color: var(--color-text-3);
 }
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -193,4 +193,12 @@
   .sectionHeader input {
     max-width: none;
   }
+}
+/* 숫자 칸(리드타임·입고 주기·입고 단위·원가)은 오른쪽 정렬 */
+.tableWrap th:not(:first-child) {
+  text-align: right;
+}
+.tableWrap td input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

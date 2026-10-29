@@ -4,7 +4,7 @@
 }
 
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -41,14 +41,23 @@
   border-radius: var(--radius-chip);
 }
 
+/* 한 줄 5칸 고정. 넘치면 "더 보기"로 다음 줄을 편다. */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.more {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .scenario,
 .inputCard {
+  position: relative;
   display: grid;
   align-content: start;
   gap: var(--space-3);
@@ -62,8 +71,40 @@
   border: 2px solid var(--color-primary);
 }
 
+/* 직접 넣은 수량: 점선 대신 조금 진한 실선으로만 구분 */
 .scenario[data-custom='true'] {
-  border-style: dashed;
+  border-color: var(--color-input-border);
+}
+
+/* 다음 빈 칸에 하나만 두는 "+" 카드 */
+.addCard {
+  display: grid;
+  min-height: 180px;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-3);
+  font-weight: 700;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+
+.addCard span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--color-primary);
+  font-size: 24px;
+  background: var(--color-card);
+  border-radius: 50%;
+}
+
+.addCard:hover,
+.addCard:focus-visible {
+  color: var(--color-primary);
   border-color: var(--color-primary);
 }
 
@@ -76,14 +117,15 @@
   font-size: var(--text-caption);
 }
 
-/* 권장 카드는 모서리에 "권장" 테이프를 붙인다 */
+/* 권장 카드는 "권장"이라 쓴 테이프를 위쪽 테두리에 반쯤 걸쳐 붙인다 (입체감) */
 .badge {
-  position: relative;
+  position: absolute;
+  top: -13px;
+  right: var(--space-4);
   display: grid;
-  width: 64px;
-  height: 25px;
+  width: 72px;
+  height: 26px;
   place-items: center;
-  margin: -30px -6px 0 0;
 }
 
 .badge b {
@@ -95,10 +137,11 @@
 }
 
 .badgeTape {
-  --tape-rotate: 4deg;
+  --tape-rotate: 3deg;
   top: 0;
   left: 0;
-  width: 64px;
+  width: 72px;
+  height: 26px;
 }
 
 .quantity {
@@ -152,7 +195,7 @@
 }
 
 .inputCard {
-  border: 2px dashed var(--color-input-border);
+  border: 1px solid var(--color-primary);
 }
 
 .inputCard label {
@@ -206,7 +249,7 @@
   position: relative;
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -326,8 +369,18 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 800px) {
   .header {
     flex-direction: column;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

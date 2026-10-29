@@ -19,3 +19,17 @@ export function formatUploadedAt(iso: string) {
 
   return `${kst.getUTCFullYear()}.${kst.getUTCMonth() + 1}.${kst.getUTCDate()} ${dayPeriod} ${hour12}:${minute}`
 }
+
+// 검산 제외 사유: 서버가 주는 문장에서 차이 개수만 뽑아 "꼬리표 · 차이 · 고칠 곳"으로 나눈다.
+// 문장 모양이 달라 개수를 못 찾으면 원래 문장을 고칠 곳 자리에 그대로 보여준다.
+export function describeExclusion(reason: string, date: string) {
+  const gap = /(\d+)개 달라요/.exec(reason)
+  if (!gap) return { label: '검산 안 맞음', diff: null, fix: reason }
+
+  const [, month, day] = date.split('-').map(Number)
+  return {
+    label: '재고 안 맞음',
+    diff: `${gap[1]}개 차이`,
+    fix: `${month}월 ${day}일 행의 재고·입고·출고를 확인해 주세요`,
+  }
+}

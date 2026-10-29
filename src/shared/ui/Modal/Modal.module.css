@@ -8,14 +8,6 @@
   background: rgb(25 31 40 / 52%);
 }
 
-/* 위쪽 가운데에 테이프로 봉한 상자 뚜껑처럼 보이게 한다. 팝업은 내용이 길면 스크롤되므로 테이프를 안쪽 위에 붙인다. */
-.tape {
-  --tape-rotate: 0deg;
-  top: 0;
-  left: calc(50% - 60px);
-  width: 120px;
-}
-
 .dialog {
   position: relative;
   width: min(100%, 560px);

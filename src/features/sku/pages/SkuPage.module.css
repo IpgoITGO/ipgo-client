@@ -132,7 +132,7 @@
 }
 
 .card {
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
@@ -152,7 +152,9 @@
 
 .legend {
   display: flex;
-  gap: var(--space-3);
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
@@ -176,7 +178,7 @@
 }
 
 .legend span[data-series='outbound']::before {
-  background: #c9d1ec;
+  background: var(--color-chart-muted);
   border-radius: 2px;
 }
 
@@ -184,7 +186,7 @@
   background: var(--color-danger);
 }
 
-/* 예측 정확도 그래프 범례: 실제 출고는 진한 실선, 예측 출고는 보라 점선. */
+/* 예측 정확도 그래프 범례: 실제 출고는 가는 남색 실선, 예측 출고는 굵은 황토 점선(먼저 눈에 들어오게). */
 .legend span[data-series='actual']::before,
 .legend span[data-series='prediction']::before {
   width: 18px;
@@ -197,7 +199,7 @@
 }
 
 .legend span[data-series='prediction']::before {
-  border-top: 3px dashed #a16fd0;
+  border-top: 3px dashed var(--color-accent-text);
 }
 
 .chart {
@@ -234,7 +236,7 @@
 }
 
 .outboundBar {
-  fill: #c9d1ec;
+  fill: var(--color-chart-muted);
 }
 
 .xTick {
@@ -247,7 +249,7 @@
   fill: var(--color-text-2);
   font-size: 12px;
   font-weight: 700;
-  text-anchor: end;
+  text-anchor: start;
 }
 
 .xTitle {
@@ -265,7 +267,7 @@
 }
 
 .predictionLine {
-  stroke: #a16fd0;
+  stroke: var(--color-accent-text);
   stroke-dasharray: 7 7;
 }
 
@@ -299,7 +301,7 @@
 
 .formulas article[data-selected='true'] {
   background: var(--color-primary-soft);
-  border-color: #9da9c8;
+  border-color: var(--color-input-border);
 }
 
 .formulas span,
@@ -462,4 +464,15 @@
   from {
     opacity: 0;
   }
+}
+
+/* 예측 정확도: 비교 기준인 실제 출고 선은 가늘고 흐리게, 예측 선이 먼저 보이게 한다. */
+.chart .actualLine {
+  stroke-opacity: 0.75;
+  stroke-width: 1.75;
+}
+
+.legend span[data-series='actual']::before {
+  border-top-width: 2px;
+  opacity: 0.75;
 }

@@ -16,14 +16,13 @@
   transform: translateX(-50%);
 }
 
-.toast button {
-  padding: 0 var(--space-1);
-  color: inherit;
-  font-size: 28px;
-  line-height: 1;
-  background: transparent;
-  border: 0;
-  opacity: 0.8;
+/* 잠깐 붙여 두는 쪽지라 왼쪽 위 모서리에만 테이프를 붙인다. */
+.tape {
+  --tape-rotate: -6deg;
+  top: -10px;
+  left: -16px;
+  width: 72px;
+  height: 20px;
 }
 
 /* 로고의 속도선 세 줄 */
@@ -60,8 +59,13 @@
     animation: toast-in var(--motion-enter) var(--ease-spring) both;
   }
 
+  /* 나갈 때는 테이프가 먼저 떼어지고(0.24초) 쪽지가 뒤따라 사라진다. 합쳐서 0.42초 = EXIT_MS. */
   .toast[data-leaving='true'] {
-    animation: toast-out var(--motion-exit) var(--ease-exit) both;
+    animation: toast-out 260ms var(--ease-exit) 160ms both;
+  }
+
+  .toast[data-leaving='true'] .tape {
+    animation: peel 240ms var(--ease-exit) both;
   }
 
   .lines i {
@@ -88,6 +92,13 @@
   to {
     opacity: 0;
     transform: translate(-50%, -16px);
+  }
+}
+
+@keyframes peel {
+  to {
+    opacity: 0;
+    transform: rotate(-28deg) translate(8px, -12px);
   }
 }
 

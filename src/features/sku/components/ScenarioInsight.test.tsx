@@ -63,6 +63,8 @@ describe('ScenarioInsight', () => {
     renderInsight()
     await screen.findByText('권장량 100%')
 
+    // 빈 칸의 "+" 카드를 눌러야 입력칸이 열린다
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
     const input = screen.getByLabelText('직접 입력')
     await user.type(input, '0')
     await user.click(screen.getByRole('button', { name: '비교에 추가' }))
@@ -76,6 +78,20 @@ describe('ScenarioInsight', () => {
 
     expect(await screen.findByText('90개')).toBeInTheDocument()
     expect(requestCount).toBe(1)
+    // 추가하면 입력칸이 닫히고 "+" 카드가 다음 칸으로 간다
+    expect(screen.queryByLabelText('직접 입력')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '수량 넣어 비교' }),
+    ).toBeInTheDocument()
+
+    // 권장 3 + 직접 2 = 5칸이 차면 "+"는 줄 아래 버튼으로 내려간다
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+    await user.type(screen.getByLabelText('직접 입력'), '100')
+    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
+    expect(await screen.findByText('100개')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '+ 수량 넣어 비교' }),
+    ).toBeInTheDocument()
   })
 
   it('AI 실패 응답은 기본 문장으로 구분한다', async () => {
