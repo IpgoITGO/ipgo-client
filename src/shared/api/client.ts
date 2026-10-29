@@ -13,6 +13,15 @@ export class ApiError extends Error {
   }
 }
 
+// 서버에 닿지 못했거나 서버가 아닌 곳(예: 가짜 서버가 안 붙어 홈페이지 HTML)이 답한 경우의 code입니다.
+export const CONNECTION_FAILED = 'CONNECTION_FAILED'
+const CONNECTION_FAILED_MESSAGE =
+  '서버에 연결하지 못했어요. 새로고침한 뒤 다시 시도해 주세요. 계속되면 알려 주세요.'
+
+function connectionFailed(status = 0) {
+  return new ApiError(status, CONNECTION_FAILED, CONNECTION_FAILED_MESSAGE)
+}
+
 type ErrorBody = {
   code?: string
   message?: string
@@ -52,6 +61,10 @@ export async function apiRequest<T>(
     }
 
     const errorBody = await readJson<ErrorBody>(response)
+    // JSON이 아닌 404·5xx 응답은 우리 서버가 아니라 다른 곳이 답한 것이라 연결 문제로 봅니다.
+    if (!errorBody && (response.status === 404 || response.status >= 500)) {
+      throw connectionFailed(response.status)
+    }
     throw new ApiError(
       response.status,
       errorBody?.code ?? 'UNKNOWN_ERROR',
@@ -63,7 +76,19 @@ export async function apiRequest<T>(
     return undefined as T
   }
 
-  return (await response.json()) as T
+  const body = await readJson<T>(response)
+  // 성공(200)인데 JSON이 아니면 홈페이지 HTML 같은 엉뚱한 응답입니다.
+  if (body === null) throw connectionFailed(response.status)
+  return body
+}
+
+// 네트워크 오류(서버 꺼짐, 인터넷 끊김, 브라우저 차단)는 fetch가 TypeError로 던집니다.
+async function request(url: string, init?: RequestInit) {
+  try {
+    return await fetch(url, init)
+  } catch {
+    throw connectionFailed()
+  }
 }
 
 async function send(
@@ -73,7 +98,7 @@ async function send(
 ) {
   const csrf = needsCsrf ? await getCsrfToken() : null
 
-  return fetch(createApiUrl(path), {
+  return request(createApiUrl(path), {
     ...init,
     headers: {
       Accept: 'application/json',
@@ -86,11 +111,15 @@ async function send(
 async function getCsrfToken() {
   if (csrfToken) return csrfToken
 
-  const response = await fetch(createApiUrl('/auth/csrf'), {
+  const response = await request(createApiUrl('/auth/csrf'), {
     headers: { Accept: 'application/json' },
   })
 
   if (!response.ok) {
+    // 보안 토큰 주소가 없거나(404) 서버가 죽은(5xx) 경우는 연결 문제로 봅니다.
+    if (response.status === 404 || response.status >= 500) {
+      throw connectionFailed(response.status)
+    }
     throw new ApiError(
       response.status,
       'CSRF_UNAVAILABLE',
@@ -98,7 +127,9 @@ async function getCsrfToken() {
     )
   }
 
-  csrfToken = (await response.json()) as CsrfToken
+  const body = await readJson<CsrfToken>(response)
+  if (!body?.token) throw connectionFailed(response.status)
+  csrfToken = body
   return csrfToken
 }
 

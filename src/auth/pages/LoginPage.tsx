@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useLocation } from 'react-router-dom'
 import { z } from 'zod'
 
-import { ApiError } from '../../shared/api/client'
+import { ApiError, CONNECTION_FAILED } from '../../shared/api/client'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
 import { AuthShell } from '../components/AuthShell'
@@ -43,7 +43,9 @@ export function LoginPage() {
       setSubmitError(
         error instanceof ApiError && error.code === 'INVALID_CREDENTIALS'
           ? '이메일 또는 비밀번호가 맞지 않아요.'
-          : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          : error instanceof ApiError && error.code === CONNECTION_FAILED
+            ? error.message
+            : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.',
       )
     }
   })

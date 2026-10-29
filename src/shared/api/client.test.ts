@@ -88,3 +88,60 @@ describe('apiRequest의 CSRF 처리', () => {
     expect(calls.echo).toBe(4)
   })
 })
+
+describe('apiRequest의 연결 문제 구분', () => {
+  it('성공(200)인데 JSON이 아닌 응답은 연결 문제로 던진다', async () => {
+    server.use(http.get('/api/page', () => HttpResponse.html('<html></html>')))
+
+    await expect(apiRequest('/page')).rejects.toMatchObject({
+      code: 'CONNECTION_FAILED',
+    })
+  })
+
+  it('JSON이 아닌 404는 연결 문제로, JSON 오류 본문은 그대로 던진다', async () => {
+    server.use(
+      http.get(
+        '/api/missing',
+        () => new HttpResponse('not found', { status: 404 }),
+      ),
+      http.get('/api/known', () =>
+        HttpResponse.json(
+          { code: 'INVALID_CREDENTIALS', message: '틀림' },
+          { status: 401 },
+        ),
+      ),
+    )
+
+    await expect(apiRequest('/missing')).rejects.toMatchObject({
+      code: 'CONNECTION_FAILED',
+    })
+    await expect(apiRequest('/known')).rejects.toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+    })
+  })
+
+  it('네트워크 오류와 HTML로 돌아온 보안 토큰은 연결 문제로 던진다', async () => {
+    server.use(
+      http.get('/api/auth/csrf', () => HttpResponse.html('<html></html>')),
+      http.post('/api/echo', () => HttpResponse.error()),
+      http.get('/api/net', () => HttpResponse.error()),
+    )
+
+    server.use(
+      http.get(
+        '/api/auth/csrf',
+        () => new HttpResponse('not found', { status: 404 }),
+      ),
+    )
+    await expect(apiRequest('/echo', { method: 'POST' })).rejects.toMatchObject(
+      { code: 'CONNECTION_FAILED' },
+    )
+
+    await expect(apiRequest('/net')).rejects.toMatchObject({
+      code: 'CONNECTION_FAILED',
+    })
+    await expect(apiRequest('/echo', { method: 'POST' })).rejects.toMatchObject(
+      { code: 'CONNECTION_FAILED' },
+    )
+  })
+})
