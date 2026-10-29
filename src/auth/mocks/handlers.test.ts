@@ -125,12 +125,12 @@ describe('auth MSW handler (서버 인증 API 규칙)', () => {
     ).rejects.toMatchObject({ status: 400, code: 'INVALID_VERIFICATION_TOKEN' })
   })
 
-  it('A1: 비밀번호는 8~10자, 영문 대·소문자·숫자·특수문자를 모두 넣어야 한다 (서버 규칙)', async () => {
+  it('A1: 비밀번호는 8~16자, 영문 대·소문자·숫자·특수문자를 모두 넣어야 한다', async () => {
     const verificationToken = await verify()
 
     for (const weak of [
       'Ab1!',
-      'Abcd1234!xy',
+      'Abcd1234!xyzwvuts',
       'abcd123!',
       'ABCD123!',
       'Abcdefg!',

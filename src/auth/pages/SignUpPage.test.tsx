@@ -211,7 +211,7 @@ describe('SignUpPage', () => {
 
     expect(
       await screen.findByText(
-        '8~10자로 영문 대문자·소문자·숫자·특수문자를 모두 넣어 주세요.',
+        '8~16자로 영문 대문자·소문자·숫자·특수문자를 모두 넣어 주세요.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('비밀번호가 서로 달라요.')).toBeInTheDocument()
