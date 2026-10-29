@@ -40,7 +40,6 @@ type SettingsValues = z.infer<typeof settingsSchema>
 export function SettingsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [saved, setSaved] = useState(false)
   const query = useQuery({
     queryKey: ['inbound-settings'],
     queryFn: () => apiRequest<SettingsValues>('/settings/inbound'),
@@ -82,7 +81,8 @@ export function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
     })
-    setSaved(true)
+    // 저장이 끝나면 대시보드로 보내고, 안내는 그 화면에서 토스트로 보여준다.
+    navigate('/dashboard', { state: { toast: '입고 조건을 저장했어요' } })
   }
 
   if (query.isPending) {
@@ -235,11 +235,6 @@ export function SettingsPage() {
       {/* 발주 팝업에도 form이 있어서, 입고 조건 form 밖에 둔다. form 안에 form이 있으면 저장이 페이지 새로고침이 된다. */}
       <PurchaseOrdersSection />
 
-      {saved && (
-        <p className={styles.saved} role="status">
-          입고 조건을 저장했어요.
-        </p>
-      )}
       <footer className={styles.actions}>
         <Button
           className={styles.back}

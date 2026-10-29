@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/model/useAuth'
 import { Button } from '../../shared/ui/Button/Button'
 import styles from './AppLayout.module.css'
+import { RouteToast } from './RouteToast'
 
 const navigation = [
   { to: '/dashboard', label: '대시보드' },
@@ -52,6 +53,7 @@ export function AppLayout() {
       <main className={styles.main}>
         <Outlet />
       </main>
+      <RouteToast />
     </div>
   )
 }
