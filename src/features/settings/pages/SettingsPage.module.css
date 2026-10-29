@@ -134,6 +134,13 @@
   gap: var(--space-3);
 }
 
+/* 연한 배경만 있으면 흐려 보여서, 테두리를 줘 '확인하고 계산하기'와 같은 크기로 눈에 띄게 한다. */
+.actions .back {
+  min-height: var(--h-button);
+  background: var(--color-card);
+  border: 2px solid var(--color-primary);
+}
+
 @media (max-width: 760px) {
   .defaultGrid {
     grid-template-columns: 1fr;
