@@ -215,6 +215,26 @@
   fill: #c9d1ec;
 }
 
+.xTick {
+  fill: var(--color-text-3);
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.axisTitle {
+  fill: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.xTitle {
+  fill: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
 .stockoutLabel {
   fill: var(--color-danger);
   font-size: 12px;

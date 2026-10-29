@@ -50,15 +50,6 @@ const accuracyLabels = {
   low: '낮음',
 } as const
 
-function toPoints(values: number[], width = 560, height = 170) {
-  const max = Math.max(...values, 1)
-  const gap = values.length > 1 ? width / (values.length - 1) : 0
-
-  return values
-    .map((value, index) => `${index * gap},${height - (value / max) * height}`)
-    .join(' ')
-}
-
 // 시안 S05 그래프: 기말 재고는 선, 출고는 막대, 재고가 0인 날은 빨간 점으로 그린다.
 const CHART = {
   width: 600,
@@ -149,6 +140,90 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
         <span>{history.at(-1)?.date}</span>
       </div>
     </>
+  )
+}
+
+// 예측 정확도 그래프: 가로는 기간, 세로는 출고량(개). 실제 선과 예측 선이 얼마나 붙어 있는지로 정확도를 봅니다.
+function AccuracyChart({ history }: { history: SkuDetail['history'] }) {
+  const box = {
+    width: 600,
+    height: 230,
+    left: 48,
+    right: 590,
+    top: 28,
+    bottom: 180,
+  }
+  const max = Math.max(
+    ...history.map((item) => Math.max(item.outbound, item.predictedOutbound)),
+    1,
+  )
+  const top = Math.ceil(max / 5) * 5
+  const gap =
+    history.length > 1 ? (box.right - box.left) / (history.length - 1) : 0
+  const x = (index: number) => box.left + index * gap
+  const y = (value: number) =>
+    box.bottom - (value / top) * (box.bottom - box.top)
+  const line = (pick: (item: SkuDetail['history'][number]) => number) =>
+    history.map((item, index) => `${x(index)},${y(pick(item))}`).join(' ')
+  const labelIndexes = [
+    0,
+    Math.floor((history.length - 1) / 2),
+    history.length - 1,
+  ]
+
+  return (
+    <svg
+      aria-label="과거 실제 출고량과 예측 출고량 비교 그래프"
+      className={styles.chart}
+      role="img"
+      viewBox={`0 0 ${box.width} ${box.height}`}
+    >
+      <title>과거 실제 출고량과 예측 출고량 비교</title>
+      {[0, top / 2, top].map((tick) => (
+        <g key={tick}>
+          <line
+            className={styles.gridLine}
+            x1={box.left}
+            x2={box.right}
+            y1={y(tick)}
+            y2={y(tick)}
+          />
+          <text className={styles.tick} x={box.left - 8} y={y(tick) + 4}>
+            {tick}
+          </text>
+        </g>
+      ))}
+      <text className={styles.axisTitle} x={box.left - 8} y={box.top - 16}>
+        출고량(개)
+      </text>
+      <polyline
+        className={styles.actualLine}
+        fill="none"
+        points={line((item) => item.outbound)}
+      />
+      <polyline
+        className={styles.predictionLine}
+        fill="none"
+        points={line((item) => item.predictedOutbound)}
+      />
+      {[...new Set(labelIndexes)].map((index) => (
+        <text
+          className={styles.xTick}
+          key={history[index].date}
+          x={x(index)}
+          y={box.bottom + 20}
+        >
+          {history[index].date}
+        </text>
+      ))}
+      <text
+        className={styles.xTitle}
+        x={(box.left + box.right) / 2}
+        y={box.bottom + 42}
+      >
+        기간
+      </text>
+    </svg>
   )
 }
 
@@ -330,27 +405,7 @@ export function SkuPage() {
               <span data-series="prediction">예측 출고량</span>
             </div>
             <div className={styles.accuracyGrid}>
-              <svg
-                aria-label="과거 실제 출고량과 예측 출고량 비교 그래프"
-                className={styles.chart}
-                role="img"
-                viewBox="0 0 560 190"
-              >
-                <title>과거 실제 출고량과 예측 출고량 비교</title>
-                <line x1="0" x2="560" y1="170" y2="170" />
-                <polyline
-                  className={styles.actualLine}
-                  fill="none"
-                  points={toPoints(data.history.map((item) => item.outbound))}
-                />
-                <polyline
-                  className={styles.predictionLine}
-                  fill="none"
-                  points={toPoints(
-                    data.history.map((item) => item.predictedOutbound),
-                  )}
-                />
-              </svg>
+              <AccuracyChart history={data.history} />
               <div className={styles.survived}>
                 <span>지난 예측 생존 비율</span>
                 <strong>{data.accuracy.survivedRatio}%</strong>
