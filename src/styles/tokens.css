@@ -34,6 +34,8 @@
   --color-warning-bg: #fff2d6;
   --color-danger: #c8261c;
   --color-danger-bg: #fff0ec;
+  /* 이미 소진된 상품 줄의 아주 옅은 바탕 */
+  --color-soldout-row: #fff5f2;
 
   --radius-card: 22px;
   --radius-input: 14px;

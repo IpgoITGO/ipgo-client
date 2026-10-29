@@ -247,16 +247,35 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* 예상 소진일이 오늘이거나 지난 상품: 날짜 옆 빨간 꼬리표 */
-.passed {
-  display: inline-block;
+/* 예상 소진일이 지난 상품: 그 줄만 아주 옅은 빨강 바탕, 이름 옆 "품절" 도장, 날짜 옆 "N일 지남" */
+.tableWrap tr[data-passed] td {
+  background: var(--color-soldout-row);
+}
+.nameLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.late {
   margin-left: var(--space-2);
-  padding: 2px var(--space-2);
   color: var(--color-danger);
   font-size: var(--text-caption);
-  font-style: normal;
   font-weight: 700;
   white-space: nowrap;
-  background: var(--color-danger-bg);
-  border-radius: var(--radius-chip);
+}
+/* "지금 넣어야 해요" 카드: 빈 상자 그림 + 굵은 개수 */
+.soldNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-style: normal;
+}
+/* 카드 라벨(span)의 남색 규칙보다 우선해서 빨강으로 */
+.summary article[data-state='needed'] .soldNote,
+.summary article[data-state='needed'] .soldNote span {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+.soldNote b {
+  font-size: 1.125rem;
 }

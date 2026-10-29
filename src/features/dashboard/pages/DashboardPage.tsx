@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
+import { EmptyBoxIcon, SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import styles from './DashboardPage.module.css'
 
@@ -45,7 +46,7 @@ function SummaryCard({
 }: {
   empty: boolean
   label: string
-  note: string
+  note: ReactNode
   state: string
   value: number
 }) {
@@ -85,13 +86,16 @@ function localToday() {
   return `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}`
 }
 
-// 예상 소진일이 오늘이거나 지났으면 날짜 옆에 빨간 꼬리표
-function PassedTag({ days }: { days: number }) {
+// 소진일이 지난 줄은 이름 옆에 "품절" 도장을 찍는다. 줄마다 기울기를 조금씩 다르게.
+const STAMP_TILTS = [-6, -2, -4]
+
+// 날짜 옆에는 며칠 지났는지만 짧게
+function LateText({ days }: { days: number }) {
   if (!(days >= 0)) return null
   return (
-    <em className={styles.passed}>
-      {days === 0 ? '오늘 소진' : `이미 소진 · ${days}일 지남`}
-    </em>
+    <small className={styles.late}>
+      {days === 0 ? '오늘 소진' : `${days}일 지남`}
+    </small>
   )
 }
 
@@ -199,9 +203,16 @@ export function DashboardPage() {
               '지금 넣어야 해요',
               data.summary.needed,
               'needed',
-              passedCount > 0
-                ? `그중 ${passedCount}개는 이미 소진됐을 수 있어요`
-                : '오늘 발주해야 제때 도착해요',
+              passedCount > 0 ? (
+                <span className={styles.soldNote}>
+                  <EmptyBoxIcon />
+                  <span>
+                    <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
+                  </span>
+                </span>
+              ) : (
+                '오늘 발주해야 제때 도착해요'
+              ),
             ],
             [
               '아직 괜찮아요',
@@ -279,20 +290,26 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                     // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
                     <tr
                       className={styles.rowLink}
+                      data-passed={daysPast(item.stockoutDate) > 0 || undefined}
                       key={item.id}
                       onClick={() => navigate(`/sku/${item.id}`)}
                     >
                       <td>
-                        <Link to={`/sku/${item.id}`}>{item.name}</Link>
+                        <div className={styles.nameLine}>
+                          <Link to={`/sku/${item.id}`}>{item.name}</Link>
+                          {daysPast(item.stockoutDate) > 0 && (
+                            <SoldOutStamp tilt={STAMP_TILTS[index % 3]} />
+                          )}
+                        </div>
                         <span>{item.barcode}</span>
                       </td>
                       <td>
                         {item.stockoutDate}
-                        <PassedTag days={daysPast(item.stockoutDate)} />
+                        <LateText days={daysPast(item.stockoutDate)} />
                       </td>
                       <td className={styles.num}>{item.leadTime}일</td>
                       <td className={styles.num}>{item.risk}%</td>
