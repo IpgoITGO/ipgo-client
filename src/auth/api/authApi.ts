@@ -56,14 +56,17 @@ export async function login(request: LoginRequest) {
   return apiRequest<Me>('/auth/me')
 }
 
-// A3 로그아웃. 리프레시 쿠키와 CSRF로 처리하고, 끝나면 액세스 토큰도 지운다.
+// A3 로그아웃. 리프레시 쿠키와 CSRF로 처리하고, 서버가 끝냈을 때만 액세스 토큰을 지운다.
+// 실패하면 그대로 던진다. 서버 로그인이 남아 있어 새로고침하면 다시 로그인되므로, 화면이 알려야 한다(#32).
 export async function logout() {
-  try {
-    await apiRequest<void>('/auth/logout', { method: 'POST' })
-  } finally {
-    setAccessToken(null)
-    resetCsrfToken()
-  }
+  await apiRequest<void>('/auth/logout', { method: 'POST' })
+  forgetLocalLogin()
+}
+
+// 이 화면에서만 로그인을 잊는다. 서버 로그아웃이 실패했는데도 셀러가 나가기를 고른 경우.
+export function forgetLocalLogin() {
+  setAccessToken(null)
+  resetCsrfToken()
 }
 
 // A4 내 정보. 새로고침으로 액세스 토큰을 잃었으면 리프레시 쿠키로 먼저 되살리고,

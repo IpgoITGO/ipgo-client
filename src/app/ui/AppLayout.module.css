@@ -134,3 +134,34 @@
     padding: var(--space-5) 0;
   }
 }
+
+/* 로그아웃 실패 팝업: 업로드 확인 팝업과 같은 모양(주황 느낌표 상자, 버튼 두 칸) */
+.logoutFailed {
+  display: grid;
+  gap: var(--space-3);
+}
+.logoutFailed h2,
+.logoutFailed p {
+  margin: 0;
+}
+.logoutFailed p {
+  color: var(--color-text-2);
+  line-height: 1.7;
+}
+.logoutIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: var(--color-warning);
+  font-size: 24px;
+  font-weight: 800;
+  background: var(--color-warning-bg);
+  border-radius: 16px;
+}
+.logoutActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}

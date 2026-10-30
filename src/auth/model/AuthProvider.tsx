@@ -8,7 +8,7 @@ import {
 } from 'react'
 
 import { AUTH_EXPIRED_EVENT } from '../../shared/api/client'
-import { getMe, login, logout, type Me } from '../api/authApi'
+import { forgetLocalLogin, getMe, login, logout, type Me } from '../api/authApi'
 import {
   AuthContext,
   type AuthContextValue,
@@ -50,13 +50,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [queryClient],
   )
 
+  // 서버 로그아웃이 끝나야 화면 로그인을 지운다. 실패하면 로그인은 그대로 두고 오류를 던진다.
   const signOut = useCallback(async () => {
+    await logout()
     clearSession()
-    try {
-      await logout()
-    } catch {
-      // 화면 상태는 이미 지웠으므로 서버 응답 실패는 무시합니다.
-    }
+  }, [clearSession])
+
+  // 서버 로그아웃은 실패했지만 셀러가 알고서 나가기를 고른 경우: 이 화면에서만 잊는다.
+  const signOutLocally = useCallback(() => {
+    forgetLocalLogin()
+    clearSession()
   }, [clearSession])
 
   // 로그인한 상태에서 401을 받았을 때만 만료로 봅니다. 로그인 전 A4나 로그인 실패의
@@ -83,8 +86,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       sessionExpired,
       signIn,
       signOut,
+      signOutLocally,
     }),
-    [me, meQuery.isPending, sessionExpired, signIn, signOut],
+    [me, meQuery.isPending, sessionExpired, signIn, signOut, signOutLocally],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
