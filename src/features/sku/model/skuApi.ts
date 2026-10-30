@@ -25,11 +25,7 @@ export type ProductDetail = {
   result: {
     resultId: number
     status:
-      | 'OK'
-      | 'NOT_NEEDED'
-      | 'NOT_CALCULABLE'
-      | 'EXCLUDED'
-      | 'REUPLOAD_REQUIRED'
+      'OK' | 'NOT_NEEDED' | 'NOT_CALCULABLE' | 'EXCLUDED' | 'REUPLOAD_REQUIRED'
     reason: string | null
     method: 'A' | 'B' | null
     // AI 엔진이 쓴 문장: "평가 결과 기본 방식", "작년 자료 없어 B로 대체"
@@ -103,7 +99,11 @@ export type SkuDetail = {
     coverTrials: number | null
     errorRate: number | null
     range: { low: number; high: number } | null
-    history: Array<{ date: string; outbound: number; predictedOutbound: number }>
+    history: Array<{
+      date: string
+      outbound: number
+      predictedOutbound: number
+    }>
   } | null
 }
 
