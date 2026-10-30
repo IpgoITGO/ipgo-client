@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
@@ -41,13 +41,31 @@ const settingsSchema = z.object({
         .number({ error: '숫자를 입력해 주세요.' })
         .int('0 이상의 정수로 넣어 주세요.')
         .min(0, '0 이상의 정수로 넣어 주세요.'),
-      overridden: z.boolean(),
+      // 기본값 대신 상품별 값을 쓰는 칸(화면 칸 이름). 그 칸만 굵게 보여 준다.
+      overridden: z.array(z.string()),
       isActive: z.boolean(),
     }),
   ),
 })
 
 type SettingsValues = z.infer<typeof settingsSchema>
+
+// 서버 칸 이름 → 화면 칸 이름
+const FIELD_OF: Record<string, string> = {
+  leadTimeDays: 'leadTime',
+  reviewCycleDays: 'orderCycle',
+  orderUnitQty: 'inboundUnit',
+}
+
+// 칸 안에는 숫자만, 단위는 칸 밖에 둔다.
+const PRODUCT_FIELDS = [
+  { field: 'leadTime', unit: '일', label: '리드타임' },
+  { field: 'orderCycle', unit: '일', label: '입고 주기' },
+  { field: 'inboundUnit', unit: '개', label: '입고 단위' },
+] as const
+
+// 사용 스위치를 누른 뒤 "저장됨" 안내를 보여 주는 시간
+const SAVED_MS = 2000
 
 // 서버(P1·S1)의 값을 화면 칸 이름으로 옮긴다. 원가가 비어 있으면 0으로 본다.
 async function loadSettings(): Promise<{
@@ -74,7 +92,7 @@ async function loadSettings(): Promise<{
         orderCycle: item.settings.reviewCycleDays,
         inboundUnit: item.settings.orderUnitQty,
         cost: item.unitCost ?? 0,
-        overridden: item.overridden.length > 0,
+        overridden: item.overridden.map((name) => FIELD_OF[name] ?? name),
         isActive: item.isActive,
       })),
     },
@@ -93,6 +111,13 @@ export function SettingsPage() {
   // 사용 스위치를 누르는 중인 상품, 저장·스위치 실패 안내
   const [activeBusy, setActiveBusy] = useState<number | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  // 표 위 한 줄 안내. 줄마다 글자를 바꾸지 않아 스위치 자리가 움직이지 않는다.
+  const [savedNotice, setSavedNotice] = useState('')
+  useEffect(() => {
+    if (!savedNotice) return
+    const timer = window.setTimeout(() => setSavedNotice(''), SAVED_MS)
+    return () => window.clearTimeout(timer)
+  }, [savedNotice])
   const query = useQuery({
     queryKey: ['inbound-settings'],
     queryFn: loadSettings,
@@ -136,10 +161,14 @@ export function SettingsPage() {
     const productId = getValues(`products.${index}.productId`)
     const next = !getValues(field)
     setFormError(null)
+    setSavedNotice('')
     setActiveBusy(productId)
     setValue(field, next)
     try {
       await setProductActive(productId, next)
+      setSavedNotice(
+        `✓ ${getValues(`products.${index}.name`)} ${next ? '켰어요' : '껐어요'} · 저장됨`,
+      )
       // 발주 상품 고르기 목록에도 바로 반영한다.
       await queryClient.invalidateQueries({ queryKey: ['products'] })
     } catch (error) {
@@ -291,7 +320,7 @@ export function SettingsPage() {
           <div className={styles.sectionHeader}>
             <div>
               <h2>상품별로 다른 조건</h2>
-              <p>굵은 값은 기본값과 다르게 바꾼 값이에요.</p>
+              <p>굵은 칸은 기본값과 다르게 바꾼 칸이에요.</p>
             </div>
             <input
               aria-label="상품명 또는 바코드 검색"
@@ -301,40 +330,60 @@ export function SettingsPage() {
               value={search}
             />
           </div>
+          <div className={styles.useNote}>
+            <p>판매를 접은 상품은 꺼 두세요. 누르는 즉시 저장돼요.</p>
+            <span aria-live="polite" className={styles.savedNotice}>
+              {savedNotice}
+            </span>
+          </div>
           <div className={styles.tableWrap}>
             <table>
               <thead>
                 <tr>
-                  <th>상품</th>
-                  <th>리드타임</th>
-                  <th>입고 주기</th>
-                  <th>입고 단위</th>
-                  <th>원가</th>
                   <th>사용</th>
+                  <th>상품</th>
+                  {PRODUCT_FIELDS.map(({ field, label }) => (
+                    <th className={styles.numHead} key={field}>
+                      {label}
+                    </th>
+                  ))}
+                  <th className={styles.numHead}>원가</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map(({ index, product }) => (
-                  <tr
-                    data-inactive={!product.isActive}
-                    data-overridden={product.overridden}
-                    key={product.productId}
-                  >
+                  <tr data-inactive={!product.isActive} key={product.productId}>
+                    <td className={styles.useCell}>
+                      <input
+                        aria-label={`${product.name} 사용`}
+                        checked={product.isActive}
+                        className={styles.switch}
+                        disabled={activeBusy === product.productId}
+                        onChange={() => void toggleActive(index)}
+                        role="switch"
+                        type="checkbox"
+                      />
+                    </td>
                     <td>
                       <strong>{product.name}</strong>
                       <span>{product.barcode}</span>
                     </td>
-                    {(
-                      ['leadTime', 'orderCycle', 'inboundUnit', 'cost'] as const
-                    ).map((field) => (
-                      <td key={field}>
-                        <input
-                          aria-label={`${product.name} ${field}`}
-                          type="number"
-                          {...register(`products.${index}.${field}`, {
-                            valueAsNumber: true,
-                          })}
-                        />
+                    {PRODUCT_FIELDS.map(({ field, unit }) => (
+                      <td className={styles.numCell} key={field}>
+                        <span
+                          className={styles.numField}
+                          data-changed={product.overridden.includes(field)}
+                        >
+                          <input
+                            aria-label={`${product.name} ${field}`}
+                            inputMode="numeric"
+                            type="number"
+                            {...register(`products.${index}.${field}`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                          <b>{unit}</b>
+                        </span>
                         {errors.products?.[index]?.[field] && (
                           <small role="alert">
                             {errors.products[index]?.[field]?.message}
@@ -342,20 +391,44 @@ export function SettingsPage() {
                         )}
                       </td>
                     ))}
-                    <td>
-                      <label className={styles.switch}>
-                        <input
-                          aria-label={`${product.name} 사용`}
-                          checked={product.isActive}
-                          disabled={activeBusy === product.productId}
-                          onChange={() => void toggleActive(index)}
-                          role="switch"
-                          type="checkbox"
+                    <td className={styles.numCell}>
+                      <span className={styles.numField}>
+                        {/* 원가는 1,800처럼 쉼표로 보여 주고, 숫자만 골라 저장한다. */}
+                        <Controller
+                          control={control}
+                          name={`products.${index}.cost`}
+                          render={({ field }) => (
+                            <input
+                              aria-label={`${product.name} cost`}
+                              className={styles.costInput}
+                              inputMode="numeric"
+                              onBlur={field.onBlur}
+                              onChange={(event) => {
+                                const digits = event.target.value.replace(
+                                  /\D/g,
+                                  '',
+                                )
+                                field.onChange(
+                                  digits === '' ? Number.NaN : Number(digits),
+                                )
+                              }}
+                              ref={field.ref}
+                              type="text"
+                              value={
+                                Number.isFinite(field.value)
+                                  ? field.value.toLocaleString('ko-KR')
+                                  : ''
+                              }
+                            />
+                          )}
                         />
-                        <span>
-                          {product.isActive ? '사용 중' : '사용 안 함'}
-                        </span>
-                      </label>
+                        <b>원</b>
+                      </span>
+                      {errors.products?.[index]?.cost && (
+                        <small role="alert">
+                          {errors.products[index]?.cost?.message}
+                        </small>
+                      )}
                     </td>
                   </tr>
                 ))}

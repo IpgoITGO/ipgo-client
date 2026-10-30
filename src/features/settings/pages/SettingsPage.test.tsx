@@ -91,7 +91,9 @@ describe('SettingsPage', () => {
     await user.click(sw)
     await waitFor(() => expect(sw).not.toBeDisabled())
     expect(sw).not.toBeChecked()
-    expect(screen.getAllByText('사용 안 함')).toHaveLength(2)
+    expect(
+      await screen.findByText('✓ 덴탈껌 S 10입 껐어요 · 저장됨'),
+    ).toBeInTheDocument()
 
     first.unmount()
     renderSettings()
@@ -138,5 +140,49 @@ describe('SettingsPage', () => {
       '/api/replenishment-settings',
     ])
     server.events.removeAllListeners()
+  })
+})
+
+describe('SettingsPage 표 모양', () => {
+  it('원가는 쉼표로 보여 주고, 쉼표를 빼고 숫자로 저장한다', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PUT' && request.url.includes('/products/')) {
+        sent.push(await request.clone().json())
+      }
+    })
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    const cost = await screen.findByLabelText('덴탈껌 S 10입 cost')
+    expect(cost).toHaveValue('1,800')
+
+    await user.clear(cost)
+    await user.type(cost, '25000')
+    expect(cost).toHaveValue('25,000')
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({ unitCost: 25000 })
+    server.events.removeAllListeners()
+  })
+
+  it('기본값과 다르게 바꾼 칸만 굵게 표시한다', async () => {
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    const unit = await screen.findByLabelText('케어트릿 120g inboundUnit')
+    const lead = screen.getByLabelText('케어트릿 120g leadTime')
+    expect(unit.parentElement).toHaveAttribute('data-changed', 'true')
+    expect(lead.parentElement).toHaveAttribute('data-changed', 'false')
   })
 })

@@ -107,7 +107,7 @@
 .tableWrap td input {
   min-width: 100px;
 }
-.tableWrap tr[data-overridden='true'] input {
+.tableWrap [data-changed='true'] input {
   color: var(--color-primary);
   font-weight: 800;
   background: var(--color-primary-soft);
@@ -203,67 +203,113 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 사용 스위치: 켜짐은 차분한 초록, 꺼진 상품 줄은 옅게 */
-.switch {
-  display: inline-flex;
+/* 사용 스위치: 줄 맨 앞. 켜짐은 우리 노랑, 꺼짐은 옅은 바탕. 꺼진 상품 줄은 옅게 */
+.useNote {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-  cursor: pointer;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-3);
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
 }
-.tableWrap td .switch input {
+/* 안내 글자가 생기고 사라져도 줄이 안 밀리게 자리를 잡아 둔다. */
+.savedNotice {
+  min-width: 16em;
+  min-height: 1.5em;
+  color: var(--color-accent-text);
+  font-weight: 700;
+}
+.tableWrap td.useCell {
+  width: 64px;
+  min-width: 64px;
+}
+.tableWrap td input.switch {
   appearance: none;
   position: relative;
-  width: 36px;
-  min-width: 36px;
-  min-height: 20px;
-  height: 20px;
+  width: 40px;
+  min-width: 40px;
+  height: 22px;
+  min-height: 22px;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--color-input-border);
   border-radius: 999px;
-  background: var(--color-border);
+  background: var(--color-primary-soft);
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
-.tableWrap td .switch input::after {
+.tableWrap td input.switch::after {
   content: '';
   position: absolute;
   top: 2px;
   left: 2px;
   width: 16px;
   height: 16px;
+  border: 1px solid var(--color-input-border);
   border-radius: 50%;
   background: #fff;
   transition: transform 0.15s;
 }
-.tableWrap td .switch input:checked {
-  background: var(--color-success);
+.tableWrap td input.switch:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
 }
-.tableWrap td .switch input:checked::after {
-  transform: translateX(16px);
+.tableWrap td input.switch:checked::after {
+  border-color: var(--color-primary);
+  transform: translateX(18px);
 }
-.tableWrap td .switch input:focus-visible {
+.tableWrap td input.switch:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-.tableWrap td .switch input:disabled {
+.tableWrap td input.switch:disabled {
   opacity: 0.5;
   cursor: progress;
 }
-.switch span {
+.tableWrap tr[data-inactive='true'] td:not(.useCell) {
+  opacity: 0.5;
+}
+/* 숫자칸: 칸 안엔 숫자만(오른쪽 정렬), 단위는 칸 밖 오른쪽 */
+.tableWrap th.numHead {
+  padding-right: calc(var(--space-3) + 24px);
+  text-align: right;
+}
+.tableWrap td.numCell {
+  text-align: right;
+}
+.numField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.numField b {
+  width: 16px;
   color: var(--color-text-3);
   font-size: var(--text-caption);
+  font-weight: 400;
+  text-align: left;
 }
-.tableWrap tr[data-inactive='true'] td:not(:last-child) {
-  opacity: 0.55;
+.tableWrap td .numField input {
+  min-width: 0;
+  width: 88px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tableWrap td .numField input.costInput {
+  width: 112px;
+}
+.tableWrap td.numCell small {
+  margin-left: auto;
 }
 .formError {
   margin-top: var(--space-4);
   color: var(--color-danger);
 }
 @media (prefers-reduced-motion: reduce) {
-  .tableWrap td .switch input,
-  .tableWrap td .switch input::after {
+  .tableWrap td input.switch,
+  .tableWrap td input.switch::after {
     transition: none;
   }
 }
