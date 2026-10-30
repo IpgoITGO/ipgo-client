@@ -619,82 +619,100 @@ export const handlers = [
       ],
     })
   }),
-  http.get('/api/skus/:skuId', ({ params }) => {
-    if (params.skuId === 'new-product') {
+  // K1 SKU 상세 (서버 ProductDetail 모양). 아이디로 상태를 고른다:
+  // new-product = 계산 불가, no-result = 아직 계산 전, fallback-product = A를 못 써 B로 대체,
+  // reference-product = 참고용(정확도 낮음·추정 재고), no-trend = 추이 기록 없음(server #45 전).
+  http.get('/api/products/:productId/detail', ({ params }) => {
+    const id = String(params.productId)
+    const product = (skuName: string, skuBarcode: string) => ({
+      productId: Number(id) || 1,
+      skuBarcode,
+      skuName,
+      fulfillment: '서울 풀필먼트',
+    })
+    const settings = {
+      leadTimeDays: 5,
+      leadTimeSource: 'PRODUCT',
+      reviewCycleDays: 7,
+      reviewCycleSource: 'ESTIMATED',
+      orderUnitQty: 12,
+      unitCost: 1800,
+    }
+    if (id === 'no-result') {
       return HttpResponse.json({
-        id: 'new-product',
-        name: '신상품 트릿 30g',
-        barcode: '8800272421999',
-        fulfillment: '서울 풀필먼트',
-        status: 'unavailable',
-        unavailableReason: '판매한 날이 7일보다 적어요.',
-        recommendation: { quantity: 0, cost: 0, expectedStockoutDate: '-' },
-        history: [],
-        calculation: {
-          formulaA: 0,
-          formulaB: 0,
-          selectedFormula: 'A',
-          multiplier: 1,
-          coverDays: 0,
-          startingInventory: 0,
-          startingInventoryEstimated: false,
-          existingOrders: 0,
-          inboundUnit: 1,
-          rawQuantity: 0,
-        },
-        accuracy: {
-          grade: 'low',
-          score: 0,
-          survivedRatio: 0,
-          description: '비교할 예측 기록이 없어요.',
-        },
+        product: product('케어트릿 120g', '8800272420016'),
+        needStatus: null,
+        asOfDate: null,
+        expectedShortageOn: null,
+        settings,
+        result: null,
+        accuracy: null,
+        trend: [],
       })
     }
-
-    const isReference = params.skuId === 'reference-product'
-    const isLowAccuracy =
-      params.skuId === 'low-accuracy' || params.skuId === 'reference-product'
-
+    const isUnavailable = id === 'new-product'
+    const isReference = id === 'reference-product'
+    const isFallback = id === 'fallback-product'
+    const days = [
+      ['2026-09-01', 45, 4],
+      ['2026-09-08', 31, 7],
+      ['2026-09-15', 18, 5],
+      ['2026-09-22', 0, 2],
+      ['2026-09-29', 28, 8],
+      ['2026-10-06', 14, 6],
+      ['2026-10-14', 4, 9],
+    ] as const
     return HttpResponse.json({
-      id: String(params.skuId),
-      name: '케어트릿 120g',
-      barcode: '8800272420016',
-      fulfillment: '서울 풀필먼트',
-      status: isReference ? 'reference' : 'ready',
-      recommendation: {
-        quantity: 72,
-        cost: 129600,
-        expectedStockoutDate: '2026. 10. 22',
+      product: isUnavailable
+        ? product('신상품 트릿 30g', '8800272421999')
+        : product('케어트릿 120g', '8800272420016'),
+      needStatus: isUnavailable ? 'NOT_CALCULABLE' : 'NEED_NOW',
+      asOfDate: '2026-10-14',
+      expectedShortageOn: isUnavailable ? null : '2026-10-22',
+      settings,
+      result: {
+        resultId: 101,
+        status: isUnavailable ? 'NOT_CALCULABLE' : 'OK',
+        reason: isUnavailable ? '판매한 날이 7일보다 적어요.' : null,
+        method: isUnavailable ? null : isFallback ? 'B' : 'A',
+        methodReason: isUnavailable
+          ? null
+          : isFallback
+            ? '작년 자료 없어 B로 대체'
+            : '평가 결과 기본 방식',
+        multiplier: 1.1,
+        horizonDays: 12,
+        forecastOutboundQty: isFallback ? 66 : 58,
+        startStockQty: 4,
+        startStockEstimated: isReference,
+        plannedReceiptsInHorizon: 12,
+        preArrivalUnmetQty: 0,
+        requiredQtyBeforeRounding: null,
+        recommendedQty: isUnavailable ? null : 72,
+        recommendedAmount: isUnavailable ? null : 129600,
       },
-      history: [
-        { date: '9월 1일', inventory: 45, outbound: 4, predictedOutbound: 5 },
-        { date: '9월 8일', inventory: 31, outbound: 7, predictedOutbound: 6 },
-        { date: '9월 15일', inventory: 18, outbound: 5, predictedOutbound: 7 },
-        { date: '9월 22일', inventory: 0, outbound: 2, predictedOutbound: 6 },
-        { date: '9월 29일', inventory: 28, outbound: 8, predictedOutbound: 7 },
-        { date: '10월 6일', inventory: 14, outbound: 6, predictedOutbound: 7 },
-        { date: '10월 14일', inventory: 4, outbound: 9, predictedOutbound: 8 },
-      ],
-      calculation: {
-        formulaA: 67,
-        formulaB: 69,
-        selectedFormula: 'B',
-        multiplier: 1.15,
-        coverDays: 34,
-        startingInventory: 4,
-        startingInventoryEstimated: isReference,
-        existingOrders: 12,
-        inboundUnit: 12,
-        rawQuantity: 68.7,
-      },
-      accuracy: {
-        grade: isLowAccuracy ? 'low' : 'high',
-        score: isLowAccuracy ? 48 : 87,
-        survivedRatio: isLowAccuracy ? 54 : 92,
-        description: isLowAccuracy
-          ? '관측 기간이 짧아 실제 출고와 차이가 클 수 있어요.'
-          : '최근 4주 예측이 실제 출고 흐름과 비슷했어요.',
-      },
+      accuracy: isUnavailable
+        ? null
+        : {
+            grade: isReference ? 'LOW' : 'HIGH',
+            isReference,
+            validObservationDays: isReference ? 21 : 120,
+            coverSuccessCount: isReference ? 5 : 9,
+            coverTrialCount: 10,
+            forecastErrorRate: isReference ? 0.38 : 0.12,
+            history: [],
+            range: isReference ? { low: 40, high: 70 } : null,
+            firstInboundOn: '2026-03-02',
+          },
+      trend:
+        id === 'no-trend'
+          ? []
+          : days.map(([date, closingQty, outboundQty]) => ({
+              date,
+              closingQty,
+              outboundQty,
+              isValidObservation: closingQty > 0,
+            })),
     })
   }),
   http.get('/api/skus/:skuId/scenarios', ({ params }) => {
