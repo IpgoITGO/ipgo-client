@@ -331,7 +331,10 @@ export function SettingsPage() {
             />
           </div>
           <div className={styles.useNote}>
-            <p>판매를 접은 상품은 꺼 두세요. 누르는 즉시 저장돼요.</p>
+            <p>
+              단종된 상품은 꺼 두세요. 꺼 두면 계산·대시보드·SKU 상세에서 빠지고
+              조건 칸이 잠겨요. 누르는 즉시 저장돼요.
+            </p>
             <span aria-live="polite" className={styles.savedNotice}>
               {savedNotice}
             </span>
@@ -377,6 +380,8 @@ export function SettingsPage() {
                           <input
                             aria-label={`${product.name} ${field}`}
                             inputMode="numeric"
+                            // 꺼진(단종) 상품은 잠근다. disabled는 react-hook-form이 값을 비워서 readOnly로.
+                            readOnly={!product.isActive}
                             type="number"
                             {...register(`products.${index}.${field}`, {
                               valueAsNumber: true,
@@ -403,6 +408,7 @@ export function SettingsPage() {
                               className={styles.costInput}
                               inputMode="numeric"
                               onBlur={field.onBlur}
+                              readOnly={!product.isActive}
                               onChange={(event) => {
                                 const digits = event.target.value.replace(
                                   /\D/g,
