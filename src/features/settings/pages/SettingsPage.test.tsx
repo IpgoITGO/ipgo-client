@@ -102,6 +102,29 @@ describe('SettingsPage', () => {
     ).not.toBeChecked()
   })
 
+  it('사용 스위치를 끄면 대시보드도 다시 불러와 그 상품이 빠진다', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+          <DashboardPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    expect(
+      await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
+    ).toBeInTheDocument()
+
+    await user.click(
+      await screen.findByRole('switch', { name: '덴탈껌 S 10입 사용' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 5개/ }),
+    ).toBeInTheDocument()
+  })
+
   it('사용 여부 저장에 실패하면 스위치를 되돌리고 알려 준다', async () => {
     const user = userEvent.setup()
     server.use(
