@@ -41,14 +41,14 @@ export type ReplenishmentNeeds = {
 const REUPLOAD_AFTER_DAYS = 7
 
 // "2026-10-14" → "2026. 10. 14" (화면이 쓰는 날짜 글자)
-function dotDate(iso: string | null) {
+export function dotDate(iso: string | null) {
   if (!iso) return '—'
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
   return `${y}. ${m}. ${d}`
 }
 
 // "2026-10-14T09:00:00+09:00" → "10월 14일"
-function monthDay(iso: string | null) {
+export function monthDay(iso: string | null) {
   if (!iso) return undefined
   const [, m, d] = iso.slice(0, 10).split('-').map(Number)
   return `${m}월 ${d}일`

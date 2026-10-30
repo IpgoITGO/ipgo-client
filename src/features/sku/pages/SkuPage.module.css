@@ -36,8 +36,7 @@
   font-weight: 700;
 }
 
-.status,
-.formulaBadge {
+.status {
   padding: 8px 12px;
   color: var(--color-success);
   font-size: var(--text-caption);
@@ -51,7 +50,8 @@
   background: var(--color-warning-bg);
 }
 
-.status[data-status='reference'] {
+.status[data-status='reference'],
+.status[data-status='pending'] {
   color: var(--color-warning);
   background: var(--color-warning-bg);
 }
@@ -299,9 +299,46 @@
   border-radius: var(--radius-input);
 }
 
+/* 적용한 방식은 노란 테두리, 쓰지 않은 방식은 점선으로 흐리게 */
 .formulas article[data-selected='true'] {
+  background: var(--color-accent-soft);
+  border: 2px solid var(--color-accent);
+}
+
+.formulas article[data-selected='false'] {
+  border: 1px dashed var(--color-input-border);
+}
+
+.formulas article[data-selected='false'] strong {
+  color: var(--color-text-3);
+}
+
+.formulas em {
+  font-size: var(--text-caption);
+  font-style: normal;
+  font-weight: 700;
+  color: var(--color-accent-text);
+}
+
+.formulas article[data-selected='false'] em {
+  font-weight: 400;
+  color: var(--color-text-3);
+}
+
+.methodReason {
+  margin-top: var(--space-3) !important;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.source {
+  margin-left: var(--space-1);
+  padding: 1px 7px;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  font-weight: 400;
   background: var(--color-primary-soft);
-  border-color: var(--color-input-border);
+  border-radius: var(--radius-chip);
 }
 
 .formulas span,
@@ -339,53 +376,93 @@
   font-size: var(--text-caption);
 }
 
-.accuracyScore {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  gap: var(--space-2);
+/* 정확도: 등급 꼬리표 + 커버 성공률(점 10개) · 예측 오차(막대) */
+.accuracyGrade {
+  padding: 6px 14px;
   color: var(--color-success);
+  font-weight: 700;
+  background: var(--color-success-bg);
+  border-radius: var(--radius-chip);
 }
 
-.accuracyScore[data-grade='medium'] {
+.accuracyGrade[data-grade='medium'] {
   color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
-.accuracyScore[data-grade='low'] {
+.accuracyGrade[data-grade='low'] {
   color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
-.accuracyScore strong {
-  font-size: 30px;
-}
-
-.accuracyGrid {
+.accuracyBoxes {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  align-items: center;
-  gap: var(--space-8);
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
-.survived {
+.accuracyBoxes > div {
   display: grid;
   gap: var(--space-2);
-  padding: var(--space-6);
-  background: var(--color-bg);
+  align-content: start;
+  padding: var(--space-5);
+  border: 2px solid var(--color-success);
   border-radius: var(--radius-input);
 }
 
-.survived span,
-.survived p {
+.accuracyBoxes > div[data-tone='error'] {
+  border-color: var(--color-primary);
+}
+
+.accuracyBoxes span,
+.accuracyBoxes p {
   color: var(--color-text-3);
 }
 
-.survived strong {
-  font-size: 36px;
+.accuracyBoxes strong {
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dots i {
+  width: 12px;
+  height: 12px;
+  background: var(--color-border);
+  border-radius: 50%;
+}
+
+.dots i[data-on='true'] {
+  background: var(--color-success);
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-chip);
+}
+
+.bar i {
+  display: block;
+  height: 8px;
+  background: var(--color-primary);
+  border-radius: var(--radius-chip);
+}
+
+.range {
+  margin-top: var(--space-3) !important;
+  color: var(--color-warning);
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {
-  .mainGrid,
-  .accuracyGrid {
+  .mainGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -400,7 +477,8 @@
   }
 
   .formulas,
-  .evidence {
+  .evidence,
+  .accuracyBoxes {
     grid-template-columns: 1fr;
     width: 100%;
   }
