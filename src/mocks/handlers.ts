@@ -202,11 +202,11 @@ function invalidField(field: string) {
 const isQuantity = (value: unknown) =>
   typeof value === 'number' && Number.isInteger(value) && value >= 1
 
-// 오늘에서 n일 뒤(음수면 앞) 날짜를 "2026. 10. 29" 모양으로
-function dayFromToday(n: number) {
+// 오늘에서 n일 뒤(음수면 앞) 날짜를 서버 모양 "2026-10-29"로
+function isoFromToday(n: number) {
   const date = new Date()
   date.setDate(date.getDate() + n)
-  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 export const handlers = [
@@ -510,83 +510,110 @@ export const handlers = [
         )
       : new HttpResponse(null, { status: 204 })
   }),
-  http.get('/api/dashboard', () => {
-    // 예시 날짜는 오늘 기준으로 움직여서 늘 그럴듯하게 보이게 한다. 두 상품은 소진일이 이미 지난 경우.
+  // D1 입고 필요 목록 (서버 ReplenishmentNeeds 모양). 날짜는 오늘 기준으로 움직이고, 두 상품은 소진일이 이미 지났다.
+  // 서버처럼 사용을 끈(단종) 상품은 목록과 개수에서 뺀다(server #27 혜윤 답).
+  http.get('/api/dashboard/replenishment-needs', () => {
+    const items = [
+      {
+        productId: 1,
+        skuBarcode: '8800272420016',
+        skuName: '케어트릿 120g',
+        shortage: -3,
+        leadTimeDays: 5,
+        recommendedQty: 72,
+        recommendedAmount: 129600,
+        preArrivalRisk: 0.08,
+      },
+      {
+        productId: 3,
+        skuBarcode: '8800272421044',
+        skuName: '덴탈껌 S 10입',
+        shortage: 1,
+        leadTimeDays: 5,
+        recommendedQty: 60,
+        recommendedAmount: 108000,
+        preArrivalRisk: 0.05,
+      },
+      {
+        productId: 2,
+        skuBarcode: '8800272420108',
+        skuName: '케어트릿 8g 낱개',
+        shortage: 4,
+        leadTimeDays: 7,
+        recommendedQty: 96,
+        recommendedAmount: 28800,
+        preArrivalRisk: 0.03,
+      },
+      // 정렬마다 순서가 달라지도록 소진일·위험·금액을 엇갈리게 둔다
+      {
+        productId: 7,
+        skuBarcode: '8800272421200',
+        skuName: '연어 져키 80g',
+        shortage: -1,
+        leadTimeDays: 4,
+        recommendedQty: 40,
+        recommendedAmount: 52000,
+        preArrivalRisk: 0.14,
+      },
+      {
+        productId: 8,
+        skuBarcode: '8800272421300',
+        skuName: '오리 큐브 100g',
+        shortage: 7,
+        leadTimeDays: 6,
+        recommendedQty: 120,
+        recommendedAmount: 210000,
+        preArrivalRisk: 0.11,
+      },
+      {
+        productId: 4,
+        skuBarcode: '8800272421501',
+        skuName: '동결건조 큐브 50g',
+        shortage: 3,
+        leadTimeDays: 5,
+        recommendedQty: 24,
+        recommendedAmount: 74400,
+        preArrivalRisk: 0.02,
+      },
+    ]
+      .filter(
+        (item) =>
+          mockProducts.find((product) => product.productId === item.productId)
+            ?.isActive ?? true,
+      )
+      .map(({ shortage, ...item }, index) => ({
+        ...item,
+        resultId: 9001 + index,
+        expectedShortageOn: isoFromToday(shortage),
+      }))
     return HttpResponse.json({
-      baseDate: dayFromToday(-1),
-      today: dayFromToday(0),
-      freshness: 'fresh',
-      lastCalculatedAt: '10월 18일',
-      summary: { needed: 6, safe: 22, unavailable: 2, excluded: 1 },
-      neededItems: [
+      asOfDate: isoFromToday(-1),
+      today: isoFromToday(0),
+      daysSinceAsOf: 1,
+      resultStatus: 'UP_TO_DATE',
+      runId: 31,
+      resultComputedAt: '2026-10-18T09:00:00+09:00',
+      lastFailedRunAt: null,
+      latestUploadId: 12,
+      summary: {
+        needCount: items.length,
+        notNeededCount: 22,
+        notCalculableCount: 1,
+        excludedCount: 1,
+      },
+      items,
+      notCalculable: [
         {
-          id: '8800272420016',
-          name: '케어트릿 120g',
-          barcode: '8800272420016',
-          stockoutDate: dayFromToday(-3),
-          leadTime: 5,
-          quantity: 72,
-          cost: 129600,
-          risk: 8,
-        },
-        {
-          id: '8800272421044',
-          name: '덴탈껌 S 10입',
-          barcode: '8800272421044',
-          stockoutDate: dayFromToday(1),
-          leadTime: 5,
-          quantity: 60,
-          cost: 108000,
-          risk: 5,
-        },
-        {
-          id: '8800272420108',
-          name: '케어트릿 8g 낱개',
-          barcode: '8800272420108',
-          stockoutDate: dayFromToday(4),
-          leadTime: 7,
-          quantity: 96,
-          cost: 28800,
-          risk: 3,
-        },
-        // 정렬마다 순서가 달라지도록 소진일·위험·금액을 엇갈리게 둔다 (요약의 6개와 맞춤)
-        {
-          id: '8800272421200',
-          name: '연어 져키 80g',
-          barcode: '8800272421200',
-          stockoutDate: dayFromToday(-1),
-          leadTime: 4,
-          quantity: 40,
-          cost: 52000,
-          risk: 14,
-        },
-        {
-          id: '8800272421300',
-          name: '오리 큐브 100g',
-          barcode: '8800272421300',
-          stockoutDate: dayFromToday(7),
-          leadTime: 6,
-          quantity: 120,
-          cost: 210000,
-          risk: 11,
-        },
-        {
-          id: '8800272421501',
-          name: '동결건조 큐브 50g',
-          barcode: '8800272421501',
-          stockoutDate: dayFromToday(3),
-          leadTime: 5,
-          quantity: 24,
-          cost: 74400,
-          risk: 2,
+          productId: 9,
+          skuName: '신상품 트릿 30g',
+          reason: '판매한 날이 7일보다 적어요.',
         },
       ],
-      unavailableItems: [
-        { name: '신상품 트릿 30g', reason: '판매한 날이 7일보다 적어요.' },
-      ],
-      excludedItems: [
+      excluded: [
         {
-          name: '덴탈껌 M 5입',
+          productId: 10,
+          skuName: '덴탈껌 M 5입',
+          date: null,
           reason: '재고 숫자가 맞지 않아 계산에서 제외했어요.',
         },
       ],

@@ -2,12 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { apiRequest } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { EmptyBoxIcon, SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import { getDashboard } from '../model/dashboardApi'
 import styles from './DashboardPage.module.css'
 
 export type DashboardData = {
@@ -111,7 +111,7 @@ export function DashboardPage() {
   const [sort, setSort] = useState<SortKey>('stockout')
   const query = useQuery({
     queryKey: ['dashboard'],
-    queryFn: () => apiRequest<DashboardData>('/dashboard'),
+    queryFn: getDashboard,
   })
 
   const items = useMemo(() => {
