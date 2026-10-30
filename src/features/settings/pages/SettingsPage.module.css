@@ -202,3 +202,68 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* 사용 스위치: 켜짐은 차분한 초록, 꺼진 상품 줄은 옅게 */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tableWrap td .switch input {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  min-width: 36px;
+  min-height: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tableWrap td .switch input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.tableWrap td .switch input:checked {
+  background: var(--color-success);
+}
+.tableWrap td .switch input:checked::after {
+  transform: translateX(16px);
+}
+.tableWrap td .switch input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.tableWrap td .switch input:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.switch span {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.tableWrap tr[data-inactive='true'] td:not(:last-child) {
+  opacity: 0.55;
+}
+.formError {
+  margin-top: var(--space-4);
+  color: var(--color-danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tableWrap td .switch input,
+  .tableWrap td .switch input::after {
+    transition: none;
+  }
+}
