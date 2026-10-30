@@ -169,8 +169,11 @@ export function SettingsPage() {
       setSavedNotice(
         `✓ ${getValues(`products.${index}.name`)} ${next ? '켰어요' : '껐어요'} · 저장됨`,
       )
-      // 발주 상품 고르기 목록에도 바로 반영한다.
-      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      // 발주 상품 고르기 목록과, 꺼 둔 상품을 빼고 보여 주는 대시보드에도 바로 반영한다.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['products'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      ])
     } catch (error) {
       setValue(field, !next)
       setFormError(
