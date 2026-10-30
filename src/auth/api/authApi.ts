@@ -1,4 +1,11 @@
-import { ApiError, apiRequest, resetCsrfToken } from '../../shared/api/client'
+import {
+  ApiError,
+  apiRequest,
+  hasAccessToken,
+  refreshAccessToken,
+  resetCsrfToken,
+  setAccessToken,
+} from '../../shared/api/client'
 
 // docs/design/api-spec.docx 3.1절 (A1~A7). 기본 경로 `/api`는 apiRequest가 붙입니다.
 
@@ -31,32 +38,39 @@ function postJson(body: unknown): RequestInit {
   }
 }
 
-// A2 로그인. 서버는 form 방식으로 받고 성공하면 204(본문 없음)를 주므로,
-// 이어서 A4로 사용자 정보를 받아 돌려준다.
+// A2 로그인. 서버는 form 방식으로 받고 성공하면 200과 액세스 JWT를 주므로(server #28),
+// 토큰을 보관한 뒤 A4로 사용자 정보를 받아 돌려준다.
 export async function login(request: LoginRequest) {
-  await apiRequest<void>('/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(request),
-  })
-  // 로그인하면 서버가 세션과 CSRF 토큰을 새로 발급하므로 토큰을 다시 받게 한다.
+  const { accessToken } = await apiRequest<{ accessToken: string }>(
+    '/auth/login',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(request),
+    },
+  )
+  setAccessToken(accessToken)
+  // 로그인하면 서버가 CSRF 토큰을 새로 발급하므로 토큰을 다시 받게 한다.
   resetCsrfToken()
 
   return apiRequest<Me>('/auth/me')
 }
 
-// A3 로그아웃
+// A3 로그아웃. 리프레시 쿠키와 CSRF로 처리하고, 끝나면 액세스 토큰도 지운다.
 export async function logout() {
   try {
     await apiRequest<void>('/auth/logout', { method: 'POST' })
   } finally {
+    setAccessToken(null)
     resetCsrfToken()
   }
 }
 
-// A4 내 정보. 로그인하지 않았으면 401이므로 null로 돌려준다.
+// A4 내 정보. 새로고침으로 액세스 토큰을 잃었으면 리프레시 쿠키로 먼저 되살리고,
+// 로그인하지 않았으면(401) null로 돌려준다.
 export async function getMe(): Promise<Me | null> {
   try {
+    if (!hasAccessToken()) await refreshAccessToken()
     return await apiRequest<Me>('/auth/me')
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null

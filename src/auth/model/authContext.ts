@@ -17,6 +17,8 @@ export type Credentials = {
 export type AuthContextValue = {
   status: AuthStatus
   user: User | null
+  // 로그인 유지 기간이 끝나 저절로 로그아웃됐는지. 로그인 화면이 안내합니다.
+  sessionExpired: boolean
   signIn: (credentials: Credentials) => Promise<void>
   signOut: () => Promise<void>
 }

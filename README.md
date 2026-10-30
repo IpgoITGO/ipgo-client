@@ -40,11 +40,18 @@ npm run dev
 회원가입을 시험할 때 이메일 인증 코드는 항상 `482915`입니다. 가입한 계정은 MSW 메모리에만 있어
 브라우저를 새로고침하면 시험 계정만 남습니다.
 
-로그인 상태는 앱을 시작할 때 `GET /auth/me`(A4)로 확인합니다. 서버는 세션 쿠키와 CSRF 토큰을
-사용하므로, 변경 요청(POST 등)에는 `GET /auth/csrf`로 받은 토큰을 헤더에 넣습니다.
-`shared/api/client.ts`가 자동으로 처리하고, 로그인·로그아웃 뒤에는 토큰을 다시 받습니다.
-로그인은 form 방식으로 보내고 성공(204) 뒤 `/auth/me`로 사용자 정보를 받습니다. MSW의 인증 mock
-(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니다.
+인증은 서버 계약(ipgo-server #28)을 따릅니다. `shared/api/client.ts`가 아래를 자동으로 처리합니다.
+
+- 로그인은 form 방식으로 보내고, 성공(200)하면 받은 액세스 JWT(15분)를 메모리에만 보관한 뒤
+  `/auth/me`로 사용자 정보를 받습니다. 리프레시 토큰은 서버가 HttpOnly 쿠키로 관리합니다.
+- 모든 요청에 `Authorization: Bearer <token>`과 쿠키(`credentials: 'include'`)를 붙입니다. 변경
+  요청(POST 등)에는 `GET /auth/csrf`로 받은 CSRF 토큰도 넣습니다.
+- `401 ACCESS_TOKEN_EXPIRED`를 받으면 `POST /auth/refresh`로 한 번 갱신하고 원래 요청을 한 번만
+  다시 보냅니다. 여러 요청이 동시에 만료돼도 갱신은 한 번만 보냅니다. 다른 401은 갱신하지 않습니다.
+- 새로고침으로 액세스 토큰을 잃으면 앱을 시작할 때 갱신으로 되살립니다. 갱신도 실패하면(7일 만료 등)
+  로그인 화면으로 보내고 "로그인 시간이 끝났어요" 안내를 보여 줍니다.
+
+MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니다.
 
 로그인 화면의 "아이디 저장"은 이메일만 브라우저 `localStorage`(`ipgo:saved-email`)에 남기며 서버
 로그인 유지와는 관계없습니다. 회원가입은 단계별 화면이라 `/signup`에서 새로고침하면 `/login`으로

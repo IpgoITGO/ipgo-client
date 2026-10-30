@@ -8,7 +8,8 @@ import { PASSWORD_RULE } from '../model/passwordRule'
 
 export const MOCK_VERIFICATION_CODE = '482915'
 
-const SESSION_COOKIE = 'mock_session'
+const REFRESH_COOKIE = 'mock_refresh'
+const ACCESS_LIFETIME_SECONDS = 15 * 60
 const CODE_LIFETIME_MS = 10 * 60 * 1000
 const RESEND_INTERVAL_MS = 60 * 1000
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000
@@ -41,6 +42,8 @@ let codes = new Map<
   { sentAt: number; expiresAt: number; failures: number }
 >()
 let tokens = new Map<string, { email: string; expiresAt: number }>()
+// 액세스 JWT 대신 무작위 문자열을 씁니다. 메모리에만 있어 새로고침하면 사라지고 갱신으로 다시 받습니다.
+let accessTokens = new Map<string, { email: string; expiresAt: number }>()
 // 서버처럼 변경 요청에는 CSRF 토큰이 필요하고, 로그인·로그아웃 때 토큰이 새로 바뀝니다.
 let csrfToken = crypto.randomUUID()
 
@@ -49,8 +52,40 @@ export function resetAuthMock() {
   users = seedUsers.map((user) => ({ ...user }))
   codes = new Map()
   tokens = new Map()
+  accessTokens = new Map()
   csrfToken = crypto.randomUUID()
   setSession(null)
+}
+
+// 테스트에서 15분이 지난 것처럼 지금 가진 액세스 토큰을 모두 만료시킵니다.
+export function expireMockAccessTokens() {
+  accessTokens.forEach((token) => (token.expiresAt = 0))
+}
+
+function issueAccessToken(email: string) {
+  const accessToken = crypto.randomUUID()
+  accessTokens.set(accessToken, {
+    email,
+    expiresAt: Date.now() + ACCESS_LIFETIME_SECONDS * 1000,
+  })
+  return HttpResponse.json({
+    accessToken,
+    tokenType: 'Bearer',
+    expiresIn: ACCESS_LIFETIME_SECONDS,
+  })
+}
+
+// 서버처럼 Bearer 토큰을 확인합니다. 만료만 ACCESS_TOKEN_EXPIRED로 구분해 갱신하게 합니다.
+function authenticate(request: Request) {
+  const header = request.headers.get('Authorization') ?? ''
+  const token = accessTokens.get(header.replace(/^Bearer /, ''))
+
+  if (!header) return error(401, 'UNAUTHENTICATED', '로그인이 필요합니다.')
+  if (!token) return error(401, 'INVALID_ACCESS_TOKEN', '다시 로그인해주세요.')
+  if (token.expiresAt <= Date.now()) {
+    return error(401, 'ACCESS_TOKEN_EXPIRED', '로그인 시간이 만료되었습니다.')
+  }
+  return users.find((item) => item.email === token.email) ?? null
 }
 
 function csrfDenied(request: Request) {
@@ -59,18 +94,18 @@ function csrfDenied(request: Request) {
     : error(403, 'FORBIDDEN', '접근 권한 또는 CSRF 토큰을 확인해주세요.')
 }
 
-// 세션은 쿠키 하나로 흉내 냅니다. 서버는 세션 쿠키(JSESSIONID) 방식입니다.
+// 리프레시 쿠키(서버는 HttpOnly `ipgo_refresh`)를 이메일을 담은 쿠키 하나로 흉내 냅니다.
 function readSession() {
   const match = document.cookie.match(
-    new RegExp(`(?:^|; )${SESSION_COOKIE}=([^;]*)`),
+    new RegExp(`(?:^|; )${REFRESH_COOKIE}=([^;]*)`),
   )
   return match ? decodeURIComponent(match[1]) : null
 }
 
 function setSession(email: string | null) {
   document.cookie = email
-    ? `${SESSION_COOKIE}=${encodeURIComponent(email)}; path=/`
-    : `${SESSION_COOKIE}=; path=/; max-age=0`
+    ? `${REFRESH_COOKIE}=${encodeURIComponent(email)}; path=/`
+    : `${REFRESH_COOKIE}=; path=/; max-age=0`
 }
 
 // 서버는 이메일을 소문자로 정규화합니다.
@@ -124,7 +159,7 @@ export const authHandlers = [
     }),
   ),
 
-  // A2 로그인. 서버는 form 방식으로 받고 성공하면 204(본문 없음)를 줍니다.
+  // A2 로그인. 서버는 form 방식으로 받고 성공하면 200과 액세스 JWT, 리프레시 쿠키를 줍니다.
   http.post('/api/auth/login', async ({ request }) => {
     const denied = csrfDenied(request)
     if (denied) return denied
@@ -145,26 +180,40 @@ export const authHandlers = [
 
     setSession(user.email)
     csrfToken = crypto.randomUUID()
-    return new HttpResponse(null, { status: 204 })
+    return issueAccessToken(user.email)
   }),
 
-  // A3 로그아웃
+  // 갱신. 리프레시 쿠키와 CSRF로 새 액세스 JWT를 줍니다. (Bearer는 보지 않음)
+  http.post('/api/auth/refresh', ({ request }) => {
+    const denied = csrfDenied(request)
+    if (denied) return denied
+
+    const email = readSession()
+    if (!email || !users.some((item) => item.email === email)) {
+      return error(401, 'INVALID_REFRESH_TOKEN', '다시 로그인해주세요.')
+    }
+    return issueAccessToken(email)
+  }),
+
+  // A3 로그아웃. 그 로그인에서 받은 액세스 JWT도 바로 쓸 수 없게 됩니다.
   http.post('/api/auth/logout', ({ request }) => {
     const denied = csrfDenied(request)
     if (denied) return denied
 
+    const email = readSession()
+    accessTokens.forEach((token, key) => {
+      if (token.email === email) accessTokens.delete(key)
+    })
     setSession(null)
     csrfToken = crypto.randomUUID()
     return new HttpResponse(null, { status: 204 })
   }),
 
   // A4 내 정보
-  http.get('/api/auth/me', () => {
-    const user = users.find((item) => item.email === readSession())
-
-    if (!user) {
-      return error(401, 'UNAUTHENTICATED', '로그인이 필요합니다.')
-    }
+  http.get('/api/auth/me', ({ request }) => {
+    const user = authenticate(request)
+    if (user instanceof Response) return user
+    if (!user) return error(401, 'UNAUTHENTICATED', '로그인이 필요합니다.')
 
     return HttpResponse.json(toMe(user))
   }),

@@ -42,6 +42,40 @@ export function resetCsrfToken() {
   csrfToken = null
 }
 
+// 액세스 JWT(15분)는 메모리에만 둡니다. 새로고침으로 잃으면 리프레시 쿠키로 다시 받습니다.
+let accessToken: string | null = null
+
+export function setAccessToken(token: string | null) {
+  accessToken = token
+}
+
+export function hasAccessToken() {
+  return accessToken !== null
+}
+
+const REFRESH_PATH = '/auth/refresh'
+
+// 여러 요청이 동시에 만료돼도 갱신은 한 번만 보내고 나머지는 같은 결과를 기다립니다.
+// 서버가 리프레시 토큰을 갱신마다 바꾸므로 두 번 보내면 두 번째가 재사용으로 거절됩니다.
+let refreshing: Promise<void> | null = null
+
+export function refreshAccessToken() {
+  refreshing ??= apiRequest<{ accessToken: string }>(REFRESH_PATH, {
+    method: 'POST',
+  })
+    .then(
+      (body) => setAccessToken(body.accessToken),
+      (error: unknown) => {
+        setAccessToken(null)
+        throw error
+      },
+    )
+    .finally(() => {
+      refreshing = null
+    })
+  return refreshing
+}
+
 export async function apiRequest<T>(
   path: string,
   init?: RequestInit,
@@ -55,12 +89,25 @@ export async function apiRequest<T>(
     response = await send(path, init, needsCsrf)
   }
 
+  let errorBody: ErrorBody | null = null
+  if (!response.ok) errorBody = await readJson<ErrorBody>(response)
+
+  // 액세스 JWT 만료만 갱신 대상입니다. 갱신하고 원래 요청을 한 번만 다시 보냅니다.
+  // 갱신 요청 자신은 갱신하지 않고, 갱신이 실패하면 그 오류(401)를 그대로 던집니다.
+  if (errorBody?.code === 'ACCESS_TOKEN_EXPIRED' && path !== REFRESH_PATH) {
+    await refreshAccessToken()
+    response = await send(path, init, needsCsrf)
+    errorBody = response.ok ? null : await readJson<ErrorBody>(response)
+  }
+
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== 'undefined') {
-      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+    if (response.status === 401) {
+      setAccessToken(null)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+      }
     }
 
-    const errorBody = await readJson<ErrorBody>(response)
     // JSON이 아닌 404·5xx 응답은 우리 서버가 아니라 다른 곳이 답한 것이라 연결 문제로 봅니다.
     if (!errorBody && (response.status === 404 || response.status >= 500)) {
       throw connectionFailed(response.status)
@@ -98,10 +145,13 @@ async function send(
 ) {
   const csrf = needsCsrf ? await getCsrfToken() : null
 
+  // 리프레시·CSRF 쿠키가 로그인·갱신·로그아웃에 함께 가야 하므로 쿠키를 항상 보냅니다.
   return request(createApiUrl(path), {
+    credentials: 'include',
     ...init,
     headers: {
       Accept: 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
       ...(csrf ? { [csrf.headerName]: csrf.token } : {}),
     },
@@ -112,6 +162,7 @@ async function getCsrfToken() {
   if (csrfToken) return csrfToken
 
   const response = await request(createApiUrl('/auth/csrf'), {
+    credentials: 'include',
     headers: { Accept: 'application/json' },
   })
 
