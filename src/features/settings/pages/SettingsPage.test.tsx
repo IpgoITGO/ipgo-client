@@ -186,3 +186,31 @@ describe('SettingsPage 표 모양', () => {
     expect(lead.parentElement).toHaveAttribute('data-changed', 'false')
   })
 })
+
+describe('SettingsPage 단종 상품', () => {
+  it('꺼 둔 상품은 조건 칸이 잠기고, 다시 켜면 풀린다', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    // 처음부터 꺼져 있는 상품
+    expect(
+      await screen.findByLabelText('단종 간식 30g leadTime'),
+    ).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('단종 간식 30g cost')).toHaveAttribute(
+      'readonly',
+    )
+
+    const lead = screen.getByLabelText('덴탈껌 S 10입 leadTime')
+    expect(lead).not.toHaveAttribute('readonly')
+    await user.click(screen.getByRole('switch', { name: '덴탈껌 S 10입 사용' }))
+    await waitFor(() => expect(lead).toHaveAttribute('readonly'))
+
+    await user.click(screen.getByRole('switch', { name: '덴탈껌 S 10입 사용' }))
+    await waitFor(() => expect(lead).not.toHaveAttribute('readonly'))
+  })
+})

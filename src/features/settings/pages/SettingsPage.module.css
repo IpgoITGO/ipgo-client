@@ -313,3 +313,10 @@
     transition: none;
   }
 }
+
+/* 꺼진(단종) 상품: 조건 칸 잠금. 값은 남겨 두고 고칠 수만 없게(readOnly) */
+.tableWrap tr[data-inactive='true'] td .numField input {
+  border-style: dashed;
+  background: var(--color-primary-soft);
+  cursor: not-allowed;
+}
