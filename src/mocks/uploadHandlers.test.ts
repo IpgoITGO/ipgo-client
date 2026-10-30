@@ -9,9 +9,9 @@ beforeAll(() => {
   Object.assign(globalThis, { document: { cookie: '' } })
 })
 
-function upload(name: string, overwrite: boolean) {
+function upload(name: string, overwrite: boolean, content = name) {
   const form = new FormData()
-  form.append('file', new File(['x'], name))
+  form.append('file', new File([content], name))
   form.append('overwrite', String(overwrite))
 
   return fetch('http://localhost/api/uploads', { body: form, method: 'POST' })
@@ -31,8 +31,23 @@ describe('upload mock handlers', () => {
 
     expect(duplicate.status).toBe(409)
     expect(body.code).toBe('UPLOAD_DUPLICATE')
+    expect(body.details.reason).toBe('SAME_PERIOD')
     expect(body.details.existing.uploadId).toBe(12)
     expect((await upload('2026-09.xlsx', true)).status).toBe(202)
+  })
+
+  it('같은 내용을 다른 기간 이름으로 올리면 덮어쓰기여도 409 SAME_FILE', async () => {
+    expect((await upload('2026-10.xlsx', false, 'same')).status).toBe(202)
+
+    for (const overwrite of [false, true]) {
+      const response = await upload('2026-11.xlsx', overwrite, 'same')
+      const body = await response.json()
+      expect(response.status).toBe(409)
+      expect(body.details).toMatchObject({
+        reason: 'SAME_FILE',
+        existing: { originalName: '2026-10.xlsx' },
+      })
+    }
   })
 
   it('파일을 두 개 넣거나 옛 files 칸으로 보내면 400 INVALID_INPUT', async () => {

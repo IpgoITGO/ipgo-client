@@ -136,7 +136,8 @@
   background: var(--color-info-bg);
 }
 
-.status[data-status='duplicate'] {
+.status[data-status='duplicate'],
+.status[data-status='sameFile'] {
   color: var(--color-warning);
   background: var(--color-warning-bg);
 }

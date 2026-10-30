@@ -166,4 +166,54 @@ describe('UploadPage', () => {
       await screen.findByRole('dialog', { name: '이미 올린 기간이에요' }),
     ).toBeInTheDocument()
   })
+
+  // 덮어쓰기로 보내도 서버는 SAME_FILE이면 계속 409를 준다(#105).
+  it.each([
+    ['새 파일', '2026-10.xlsx', false],
+    ['덮어쓰기로 고른 파일', '2026-09.xlsx', true],
+  ])(
+    '%s이 같은 내용의 다른 기간 파일이면 덮어쓰기 없이 "이미 올린 파일" 안내를 띄운다',
+    async (_, name, chooseOverwrite) => {
+      const user = userEvent.setup()
+      uploadFileMock.mockImplementation(async () => {
+        throw new ApiError(409, 'UPLOAD_DUPLICATE', '이미 올린 파일입니다.', {
+          reason: 'SAME_FILE',
+          existing: {
+            originalName: '2026-08.xlsx',
+            uploadedAt: '2026-10-15T10:02:00+09:00',
+          },
+        })
+      })
+      renderPage()
+
+      await user.upload(
+        screen.getByLabelText('수불부 파일 선택'),
+        new File(['same'], name),
+      )
+      if (chooseOverwrite) {
+        await user.click(
+          await screen.findByRole('button', { name: '덮어쓰기' }),
+        )
+      }
+      await user.click(
+        await screen.findByRole('button', { name: '1개 올리기' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: '이미 올린 파일이에요',
+      })
+      expect(dialog).toHaveTextContent(
+        '2026-08.xlsx 이름으로 2026.10.15 오전 10:02에 올림',
+      )
+      expect(
+        screen.queryByRole('button', { name: '덮어쓰기' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('이미 올린 파일')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '0개 올리기' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: '목록에서 빼기' }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByText(name)).not.toBeInTheDocument()
+    },
+  )
 })
