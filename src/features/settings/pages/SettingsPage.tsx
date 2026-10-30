@@ -367,7 +367,7 @@ export function SettingsPage() {
                         type="checkbox"
                       />
                     </td>
-                    <td>
+                    <td className={styles.nameCell}>
                       <strong>{product.name}</strong>
                       <span>{product.barcode}</span>
                     </td>

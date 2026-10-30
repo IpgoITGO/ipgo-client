@@ -93,14 +93,15 @@
   font-size: var(--text-caption);
 }
 /* 칸을 grid로 바꾸면 표에서 빠져 아래 선이 어긋나서, 칸은 그대로 두고 글자만 줄을 나눈다. */
-.tableWrap td:first-child {
+/* 사용 스위치가 맨 앞 칸이 되어, 상품 칸은 순서 대신 이름(nameCell)으로 고른다. */
+.tableWrap td.nameCell {
   min-width: 190px;
 }
-.tableWrap td:first-child strong,
-.tableWrap td:first-child span {
+.tableWrap td.nameCell strong,
+.tableWrap td.nameCell span {
   display: block;
 }
-.tableWrap td:first-child span {
+.tableWrap td.nameCell span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
@@ -195,7 +196,7 @@
   }
 }
 /* 숫자 칸(리드타임·입고 주기·입고 단위·원가)은 오른쪽 정렬 */
-.tableWrap th:not(:first-child) {
+.tableWrap th.numHead {
   text-align: right;
 }
 .tableWrap td input {
