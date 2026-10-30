@@ -32,11 +32,125 @@ export function resetUploadMock() {
   uploadedContents = new Map()
 }
 
-// 발주 도착 상태. 오늘은 명세 예시의 2026-10-19로 본다.
-function orderStatus(arrivalDate: string) {
-  if (!arrivalDate) return 'no-date'
-  return arrivalDate < '2026-10-19' ? 'overdue' : 'reflecting'
+// 상품(P1). 서버는 수불부 정제 결과로 상품을 자동 등록한다. 마지막 하나는 판매 중지(비활성).
+const mockProducts = [
+  {
+    productId: 1,
+    skuBarcode: '8800272420016',
+    skuName: '케어트릿 120g',
+    unitCost: 1800,
+    isActive: true,
+  },
+  {
+    productId: 2,
+    skuBarcode: '8800272420108',
+    skuName: '케어트릿 8g 낱개',
+    unitCost: 300,
+    isActive: true,
+  },
+  {
+    productId: 3,
+    skuBarcode: '8800272421044',
+    skuName: '덴탈껌 S 10입',
+    unitCost: 1800,
+    isActive: true,
+  },
+  {
+    productId: 4,
+    skuBarcode: '8800272421501',
+    skuName: '동결건조 큐브 50g',
+    unitCost: 2500,
+    isActive: true,
+  },
+  {
+    productId: 5,
+    skuBarcode: '8800272421273',
+    skuName: '저키 스틱 100g',
+    unitCost: 2200,
+    isActive: true,
+  },
+  {
+    productId: 6,
+    skuBarcode: '8800272429999',
+    skuName: '단종 간식 30g',
+    unitCost: 900,
+    isActive: false,
+  },
+]
+
+// 기존 발주(R1~R3). 등록·수정·취소가 목록에 남도록 메모리에 둔다.
+type MockReceipt = {
+  receiptId: number
+  productId: number
+  skuName: string
+  quantity: number
+  expectedOn: string | null
+  receivedOn: string | null
+  status: 'PENDING' | 'NO_DATE' | 'RECEIVED' | 'OVERDUE'
+  reflected: boolean
 }
+const seedReceipts: MockReceipt[] = [
+  {
+    receiptId: 1,
+    productId: 3,
+    skuName: '덴탈껌 S 10입',
+    quantity: 60,
+    expectedOn: '2026-10-24',
+    receivedOn: '2026-10-24',
+    status: 'RECEIVED',
+    reflected: false,
+  },
+  {
+    receiptId: 2,
+    productId: 1,
+    skuName: '케어트릿 120g',
+    quantity: 120,
+    expectedOn: '2026-12-01',
+    receivedOn: null,
+    status: 'PENDING',
+    reflected: true,
+  },
+  {
+    receiptId: 3,
+    productId: 4,
+    skuName: '동결건조 큐브 50g',
+    quantity: 30,
+    expectedOn: '2026-10-16',
+    receivedOn: null,
+    status: 'OVERDUE',
+    reflected: true,
+  },
+  {
+    receiptId: 4,
+    productId: 5,
+    skuName: '저키 스틱 100g',
+    quantity: 40,
+    expectedOn: null,
+    receivedOn: null,
+    status: 'NO_DATE',
+    reflected: false,
+  },
+]
+let receipts = seedReceipts.map((item) => ({ ...item }))
+
+// 테스트 사이에 발주 목록을 처음으로 돌린다.
+export function resetPlannedReceiptsMock() {
+  receipts = seedReceipts.map((item) => ({ ...item }))
+}
+
+// 서버처럼 수량은 1 이상 정수, 틀리면 400과 칸 이름
+function invalidField(field: string) {
+  return HttpResponse.json(
+    {
+      code: 'INVALID_INPUT',
+      message: '입력값을 확인해주세요.',
+      details: { field },
+    },
+    { status: 400 },
+  )
+}
+const isQuantity = (value: unknown) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 1
 
 // 오늘에서 n일 뒤(음수면 앞) 날짜를 "2026. 10. 29" 모양으로
 function dayFromToday(n: number) {
@@ -191,77 +305,113 @@ export const handlers = [
     })
   }),
   http.put('/api/settings/inbound', () => HttpResponse.json({ saved: true })),
-  http.get('/api/purchase-orders', () => {
-    return HttpResponse.json([
-      {
-        id: 'order-1',
-        productName: '덴탈껌 S 10입',
-        barcode: '8800272421044',
-        quantity: 60,
-        arrivalDate: '2026-10-24',
-        status: 'arrived',
-      },
-      {
-        id: 'order-2',
-        productName: '케어트릿 120g',
-        barcode: '8800272420016',
-        quantity: 120,
-        arrivalDate: '2026-12-01',
-        status: 'reflecting',
-      },
-      {
-        id: 'order-3',
-        productName: '동결건조 큐브 50g',
-        barcode: '8800272421501',
-        quantity: 30,
-        arrivalDate: '2026-10-16',
-        status: 'overdue',
-      },
-      {
-        id: 'order-4',
-        productName: '저키 스틱 100g',
-        barcode: '8800272421273',
-        quantity: 40,
-        arrivalDate: null,
-        status: 'no-date',
-      },
-    ])
+  // P1 상품 목록·검색 (상품명 대소문자 무시 · 바코드 일부)
+  http.get('/api/products', ({ request }) => {
+    const params = new URL(request.url).searchParams
+    const query = (params.get('query') ?? '').toLowerCase()
+    const page = Number(params.get('page') ?? 0)
+    const size = Number(params.get('size') ?? 20)
+    const matched = mockProducts.filter(
+      (item) =>
+        item.skuName.toLowerCase().includes(query) ||
+        item.skuBarcode.includes(query),
+    )
+    return HttpResponse.json({
+      items: matched.slice(page * size, (page + 1) * size),
+      total: matched.length,
+      page,
+      size,
+    })
   }),
-  http.post('/api/purchase-orders', async ({ request }) => {
+  // R1 목록: 도착 예정일 빠른 순, 예정일 없는 발주는 맨 뒤
+  http.get('/api/planned-receipts', () => {
+    const items = [...receipts].sort((a, b) =>
+      (a.expectedOn ?? '9999').localeCompare(b.expectedOn ?? '9999'),
+    )
+    return HttpResponse.json({ items, total: items.length })
+  }),
+  // R2 등록
+  http.post('/api/planned-receipts', async ({ request }) => {
     const body = (await request.json()) as {
-      productName: string
-      barcode: string
+      productId: number
       quantity: number
-      arrivalDate: string
+      expectedOn: string | null
     }
+    const product = mockProducts.find(
+      (item) => item.productId === body.productId,
+    )
+    if (!product) {
+      return HttpResponse.json(
+        { code: 'NOT_FOUND', message: '상품을 찾을 수 없습니다.' },
+        { status: 404 },
+      )
+    }
+    if (!isQuantity(body.quantity)) return invalidField('quantity')
+    const receipt: MockReceipt = {
+      receiptId: Math.max(0, ...receipts.map((item) => item.receiptId)) + 1,
+      productId: product.productId,
+      skuName: product.skuName,
+      quantity: body.quantity,
+      expectedOn: body.expectedOn,
+      receivedOn: null,
+      status: body.expectedOn ? 'PENDING' : 'NO_DATE',
+      reflected: Boolean(body.expectedOn),
+    }
+    receipts.push(receipt)
     return HttpResponse.json(
       {
-        id: crypto.randomUUID(),
-        productName: body.productName,
-        barcode: body.barcode,
-        quantity: body.quantity,
-        arrivalDate: body.arrivalDate || null,
-        status: orderStatus(body.arrivalDate),
+        receiptId: receipt.receiptId,
+        reflected: receipt.reflected,
+        runId: null,
       },
       { status: 201 },
     )
   }),
-  // 수량·도착일 고치기 (명세 R3 PATCH /planned-receipts/{receiptId})
-  http.patch('/api/purchase-orders/:orderId', async ({ params, request }) => {
-    const body = (await request.json()) as {
-      productName: string
-      barcode: string
-      quantity: number
-      arrivalDate: string
-    }
-    return HttpResponse.json({
-      id: params.orderId,
-      productName: body.productName,
-      barcode: body.barcode,
-      quantity: body.quantity,
-      arrivalDate: body.arrivalDate || null,
-      status: orderStatus(body.arrivalDate),
-    })
+  // R3 수정: 보낸 칸만. 도착일을 넣으면 계산에 반영(PENDING)
+  http.patch(
+    '/api/planned-receipts/:receiptId',
+    async ({ params, request }) => {
+      const receipt = receipts.find(
+        (item) => item.receiptId === Number(params.receiptId),
+      )
+      if (!receipt) {
+        return HttpResponse.json(
+          { code: 'NOT_FOUND', message: '발주를 찾을 수 없습니다.' },
+          { status: 404 },
+        )
+      }
+      const body = (await request.json()) as {
+        quantity?: number
+        expectedOn?: string | null
+      }
+      if (body.quantity !== undefined && !isQuantity(body.quantity)) {
+        return invalidField('quantity')
+      }
+      if (body.quantity !== undefined) receipt.quantity = body.quantity
+      if (body.expectedOn !== undefined) {
+        receipt.expectedOn = body.expectedOn
+        receipt.status = body.expectedOn ? 'PENDING' : 'NO_DATE'
+        receipt.reflected = Boolean(body.expectedOn)
+      }
+      return HttpResponse.json({
+        receiptId: receipt.receiptId,
+        reflected: receipt.reflected,
+        runId: null,
+      })
+    },
+  ),
+  // R3 취소: 서버는 CANCELLED로 남기고 목록에서 뺀다. 다시 취소하면 404
+  http.delete('/api/planned-receipts/:receiptId', ({ params }) => {
+    const before = receipts.length
+    receipts = receipts.filter(
+      (item) => item.receiptId !== Number(params.receiptId),
+    )
+    return before === receipts.length
+      ? HttpResponse.json(
+          { code: 'NOT_FOUND', message: '발주를 찾을 수 없습니다.' },
+          { status: 404 },
+        )
+      : new HttpResponse(null, { status: 204 })
   }),
   http.get('/api/dashboard', () => {
     // 예시 날짜는 오늘 기준으로 움직여서 늘 그럴듯하게 보이게 한다. 두 상품은 소진일이 이미 지난 경우.
