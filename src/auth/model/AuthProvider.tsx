@@ -1,5 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type PropsWithChildren, useCallback, useEffect, useMemo } from 'react'
+import {
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import { AUTH_EXPIRED_EVENT } from '../../shared/api/client'
 import { getMe, login, logout, type Me } from '../api/authApi'
@@ -25,6 +31,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     staleTime: Infinity,
   })
   const me = meQuery.data ?? null
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   // 화면의 로그인 상태만 지웁니다. 서버를 부르지 않으므로
   // 401 → 만료 신호 → 지우기가 서로를 다시 부르지 않습니다.
@@ -38,6 +45,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const signIn = useCallback(
     async (credentials: Credentials) => {
       queryClient.setQueryData(ME_KEY, await login(credentials))
+      setSessionExpired(false)
     },
     [queryClient],
   )
@@ -54,7 +62,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // 로그인한 상태에서 401을 받았을 때만 만료로 봅니다. 로그인 전 A4나 로그인 실패의
   // 401은 정상 응답이므로 다른 화면의 데이터를 지우면 안 됩니다.
   const handleExpired = useCallback(() => {
-    if (queryClient.getQueryData(ME_KEY)) clearSession()
+    if (!queryClient.getQueryData(ME_KEY)) return
+    clearSession()
+    setSessionExpired(true)
   }, [clearSession, queryClient])
 
   useEffect(() => {
@@ -70,10 +80,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
           ? 'authenticated'
           : 'anonymous',
       user: me ? toUser(me) : null,
+      sessionExpired,
       signIn,
       signOut,
     }),
-    [me, meQuery.isPending, signIn, signOut],
+    [me, meQuery.isPending, sessionExpired, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

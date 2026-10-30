@@ -40,7 +40,7 @@ function writeSavedEmail(email: string | null) {
 }
 
 export function LoginPage() {
-  const { signIn } = useAuth()
+  const { signIn, sessionExpired } = useAuth()
   // 회원가입을 마치고 왔다면 가입한 이메일을 미리 채워 줍니다.
   const signedUp = (useLocation().state as { signedUp?: string } | null)
     ?.signedUp
@@ -81,6 +81,11 @@ export function LoginPage() {
         {signedUp && (
           <p className={styles.notice} role="status">
             가입을 마쳤어요. 로그인해 주세요.
+          </p>
+        )}
+        {!signedUp && sessionExpired && (
+          <p className={styles.notice} role="status">
+            로그인 시간이 끝났어요. 다시 로그인해 주세요.
           </p>
         )}
         <div className={styles.fields}>
