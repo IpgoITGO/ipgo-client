@@ -247,3 +247,57 @@ describe('apiRequest의 액세스 JWT 자동 갱신', () => {
     expect(calls.refresh).toBe(0)
   })
 })
+
+describe('apiRequest의 오류 details 전달', () => {
+  async function failWith(body: Record<string, unknown>) {
+    server.use(
+      http.get('/api/fail', () =>
+        HttpResponse.json(body as never, { status: 400 }),
+      ),
+    )
+    try {
+      await apiRequest('/fail')
+    } catch (error) {
+      return error as ApiError
+    }
+    throw new Error('오류가 나야 합니다.')
+  }
+
+  it('오류 응답의 details를 ApiError.details로 넘긴다', async () => {
+    const error = await failWith({
+      code: 'INVALID_INPUT',
+      message: '입력 확인',
+      details: { field: 'email' },
+    })
+
+    expect(error.details).toEqual({ field: 'email' })
+  })
+
+  it('details가 없으면 기존처럼 code·message만 넘긴다', async () => {
+    const error = await failWith({
+      code: 'INVALID_INPUT',
+      message: '입력 확인',
+    })
+
+    expect(error).toMatchObject({ code: 'INVALID_INPUT', details: undefined })
+  })
+
+  it('details가 null·배열·글자면 없는 것으로 본다', async () => {
+    for (const details of [null, ['email'], 'email']) {
+      const error = await failWith({ code: 'INVALID_INPUT', details })
+      expect(error).toMatchObject({ code: 'INVALID_INPUT', details: undefined })
+    }
+  })
+
+  it('JSON이 아닌 오류 응답은 details 없이 기존 처리대로 던진다', async () => {
+    server.use(
+      http.get('/api/fail', () => new HttpResponse('bad', { status: 400 })),
+    )
+
+    await expect(apiRequest('/fail')).rejects.toMatchObject({
+      status: 400,
+      code: 'UNKNOWN_ERROR',
+      details: undefined,
+    })
+  })
+})

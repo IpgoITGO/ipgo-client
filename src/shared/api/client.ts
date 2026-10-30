@@ -2,11 +2,16 @@ import { env } from '../config/env'
 
 export const AUTH_EXPIRED_EVENT = 'ipgo:auth-expired'
 
+// 서버가 오류와 함께 보내는 추가 정보입니다. 예: `{ field: 'email' }`, 409의 `{ reason, existing }`.
+// 칸마다 모양이 달라 값은 쓰는 쪽에서 확인합니다.
+export type ErrorDetails = Record<string, unknown>
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string,
     message: string,
+    public readonly details?: ErrorDetails,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -25,6 +30,14 @@ function connectionFailed(status = 0) {
 type ErrorBody = {
   code?: string
   message?: string
+  details?: unknown
+}
+
+// details는 객체일 때만 넘깁니다. null·배열·글자처럼 엉뚱한 값이면 없는 것으로 봅니다.
+function toDetails(value: unknown): ErrorDetails | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as ErrorDetails)
+    : undefined
 }
 
 type CsrfToken = {
@@ -116,6 +129,7 @@ export async function apiRequest<T>(
       response.status,
       errorBody?.code ?? 'UNKNOWN_ERROR',
       errorBody?.message ?? '요청을 처리하지 못했습니다.',
+      toDetails(errorBody?.details),
     )
   }
 
