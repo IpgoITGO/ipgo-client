@@ -121,8 +121,12 @@ export function UploadPage() {
     // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
     const replaced: string[] = []
 
+    // 서버가 거절한 파일이 어느 것인지 알아야 그 파일에 이유를 붙일 수 있다.
+    let current: UploadFileState | undefined
+
     try {
       for (const item of readyFiles) {
+        current = item
         const result = await uploadFile(item.file, Boolean(item.overwrite))
         uploaded.add(item.id)
         lastUploadId = result.uploadId
@@ -133,8 +137,37 @@ export function UploadPage() {
       navigate(`/upload/${lastUploadId}/result`, { state: { replaced } })
     } catch (cause) {
       const remaining = files.filter((item) => !uploaded.has(item.id))
-      // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409로 알려 준다.
-      if (cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE') {
+      const duplicate =
+        cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE'
+
+      // 같은 내용의 파일을 다른 기간 이름으로 올렸으면 덮어써도 안 되므로 따로 알린다.
+      if (duplicate && cause.details?.reason === 'SAME_FILE' && current) {
+        const existing = cause.details.existing as
+          { originalName?: string; uploadedAt?: string } | undefined
+        const failedId = current.id
+        setFiles(
+          remaining.map((item) =>
+            item.id === failedId
+              ? {
+                  ...item,
+                  overwrite: false,
+                  status: 'sameFile',
+                  existingUpload: {
+                    originalName: existing?.originalName,
+                    uploadedAt: existing?.uploadedAt
+                      ? formatUploadedAt(existing.uploadedAt)
+                      : '',
+                  },
+                }
+              : item,
+          ),
+        )
+        setModalQueue([failedId])
+        return
+      }
+
+      // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409(SAME_PERIOD)로 알려 준다.
+      if (duplicate) {
         const latest = await periods.refetch()
         const updated = remaining.map((item) =>
           markDuplicate(item, latest.data),
@@ -228,14 +261,16 @@ export function UploadPage() {
                       : '올릴 수 있어요'
                     : item.status === 'duplicate'
                       ? '이미 올린 기간 · 확인 필요'
-                      : '형식 오류'}
+                      : item.status === 'sameFile'
+                        ? '이미 올린 파일'
+                        : '형식 오류'}
                 </span>
                 {item.status !== 'ready' && (
                   <button
                     className={styles.detail}
                     onClick={() => setModalQueue([item.id])}
                   >
-                    {item.status === 'duplicate' ? '확인하기' : '이유 보기'}
+                    {item.status === 'error' ? '이유 보기' : '확인하기'}
                   </button>
                 )}
                 <button
@@ -300,6 +335,32 @@ export function UploadPage() {
                 </Button>
                 <Button onClick={() => confirmOverwrite(modalFile.id)}>
                   덮어쓰기
+                </Button>
+              </div>
+            </div>
+          ) : modalFile.status === 'sameFile' ? (
+            <div className={styles.modalContent}>
+              <span aria-hidden="true" className={styles.modalIcon}>
+                ↻
+              </span>
+              <h2 id="upload-modal-title">이미 올린 파일이에요</h2>
+              <p>
+                내용이 똑같은 파일을 다른 달 이름으로 이미 올렸어요. 이 달
+                파일이 맞는지 확인해 주세요. 같은 파일은 덮어쓸 수 없어요.
+              </p>
+              <div className={styles.modalFile}>
+                <strong>{modalFile.file.name}</strong>
+                <span>
+                  {modalFile.existingUpload?.originalName ?? '다른'} 이름으로{' '}
+                  {modalFile.existingUpload?.uploadedAt}에 올림
+                </span>
+              </div>
+              <div className={styles.modalActions}>
+                <Button onClick={closeModal} variant="secondary">
+                  닫기
+                </Button>
+                <Button onClick={() => removeFile(modalFile.id)}>
+                  목록에서 빼기
                 </Button>
               </div>
             </div>

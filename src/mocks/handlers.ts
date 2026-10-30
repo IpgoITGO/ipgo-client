@@ -18,6 +18,20 @@ const mockUploadPeriods = {
   latestUploadId: 12,
 }
 
+// 이번에 올린 파일 내용 → 기간·기존 업로드. 같은 내용을 다른 기간으로 다시 올리는지 본다.
+let uploadedContents = new Map<
+  string,
+  {
+    period: string
+    existing: { uploadId: number; originalName: string; uploadedAt: string }
+  }
+>()
+
+// 테스트 사이에 올린 파일 기록을 지운다.
+export function resetUploadMock() {
+  uploadedContents = new Map()
+}
+
 // 발주 도착 상태. 오늘은 명세 예시의 2026-10-19로 본다.
 function orderStatus(arrivalDate: string) {
   if (!arrivalDate) return 'no-date'
@@ -68,20 +82,43 @@ export const handlers = [
       )
     }
 
-    const existing = mockUploadPeriods.items.find((item) =>
-      periods.some((p) => `${p.match?.[1]}-${p.match?.[2]}` === item.period),
+    const period = `${periods[0].match?.[1]}-${periods[0].match?.[2]}`
+    // 서버처럼 내용이 똑같은 파일을 다른 기간 이름으로 올리면 덮어쓰기여도 막는다(server PR #30).
+    const content = await file.text()
+    const sameFile = uploadedContents.get(content)
+    if (sameFile && sameFile.period !== period) {
+      return HttpResponse.json(
+        {
+          code: 'UPLOAD_DUPLICATE',
+          message: '이미 올린 파일입니다.',
+          details: { reason: 'SAME_FILE', existing: sameFile.existing },
+        },
+        { status: 409 },
+      )
+    }
+
+    const existing = mockUploadPeriods.items.find(
+      (item) => item.period === period,
     )
     if (existing && !overwrite) {
       return HttpResponse.json(
         {
           code: 'UPLOAD_DUPLICATE',
           message: '이미 올린 기간입니다',
-          details: { existing },
+          details: { reason: 'SAME_PERIOD', existing },
         },
         { status: 409 },
       )
     }
 
+    uploadedContents.set(content, {
+      period,
+      existing: {
+        uploadId: 15,
+        originalName: file.name,
+        uploadedAt: new Date().toISOString(),
+      },
+    })
     return HttpResponse.json(
       { uploadId: 15, status: 'PROCESSING' },
       { status: 202 },

@@ -1,5 +1,6 @@
 export type UploadFileState = {
   existingUpload?: {
+    originalName?: string
     uploadedAt: string
   }
   file: File
@@ -8,7 +9,8 @@ export type UploadFileState = {
   periodKey?: string
   period?: string
   reason?: string
-  status: 'ready' | 'duplicate' | 'error'
+  // sameFile: 내용이 똑같은 파일을 다른 기간 이름으로 이미 올림. 덮어쓸 수 없다.
+  status: 'ready' | 'duplicate' | 'sameFile' | 'error'
 }
 
 const filenamePattern = /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i

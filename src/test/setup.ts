@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 
 import { resetAuthMock } from '../auth/mocks/handlers'
 import { resetCsrfToken, setAccessToken } from '../shared/api/client'
+import { resetUploadMock } from '../mocks/handlers'
 import { server } from '../mocks/server'
 
 // 느린 컴퓨터·CI에서 기본 1초 대기가 모자라 테스트가 흔들리지 않게 늘립니다.
@@ -15,6 +16,7 @@ afterEach(() => {
   cleanup()
   server.resetHandlers()
   resetAuthMock()
+  resetUploadMock()
   resetCsrfToken()
   setAccessToken(null)
 })
