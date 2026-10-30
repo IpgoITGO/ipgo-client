@@ -1,10 +1,12 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { AppProviders } from '../../app/providers/AppProviders'
 import { routes } from '../../app/router/router'
+import { server } from '../../mocks/server'
 import { apiRequest, setAccessToken } from '../../shared/api/client'
 import { signInAsSeller } from '../../test/signIn'
 import { expireMockAccessTokens } from '../mocks/handlers'
@@ -106,5 +108,58 @@ describe('로그인 시간 만료', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       '로그인 시간이 끝났어요. 다시 로그인해 주세요.',
     )
+  })
+})
+
+describe('로그아웃 실패 (#32)', () => {
+  it('서버 로그아웃이 실패하면 로그인을 남겨 두고 팝업으로 알리고, 다시 시도해 성공하면 나간다', async () => {
+    const user = userEvent.setup()
+    renderApp('/login')
+    await signInAsSeller(user)
+    await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ })
+
+    let fail = true
+    server.use(
+      http.post('/api/auth/logout', () =>
+        fail
+          ? HttpResponse.json(
+              { code: 'INTERNAL_ERROR', message: '잠시 후' },
+              { status: 500 },
+            )
+          : new HttpResponse(null, { status: 204 }),
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    expect(
+      await screen.findByRole('dialog', { name: '로그아웃을 끝내지 못했어요' }),
+    ).toBeInTheDocument()
+    // 아직 로그인 상태: 대시보드가 그대로 있다
+    expect(
+      screen.getByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
+    ).toBeInTheDocument()
+
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    expect(
+      await screen.findByRole('heading', { name: '로그인' }),
+    ).toBeInTheDocument()
+  })
+
+  it('실패를 알고도 "그래도 나가기"를 고르면 이 화면에서만 로그인을 지운다', async () => {
+    const user = userEvent.setup()
+    renderApp('/login')
+    await signInAsSeller(user)
+    await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ })
+
+    server.use(http.post('/api/auth/logout', () => HttpResponse.error()))
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await user.click(
+      await screen.findByRole('button', { name: '그래도 이 화면에서 나가기' }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: '로그인' }),
+    ).toBeInTheDocument()
   })
 })
