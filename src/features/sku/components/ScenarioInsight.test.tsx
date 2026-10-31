@@ -31,7 +31,9 @@ describe('ScenarioInsight', () => {
     expect(screen.getAllByText('표본 부족으로 미산출')).toHaveLength(2)
     expect(screen.getByText('권장')).toBeInTheDocument()
     expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
-    expect(await screen.findByText('AI 생성')).toBeInTheDocument()
+    expect(
+      await screen.findByText(/AI가 계산 결과를 읽고 정리했어요/),
+    ).toBeInTheDocument()
     expect(
       screen.getByText(sentence(/권장량 72개.*도착 전 품절 위험은 8%/)),
     ).toBeInTheDocument()
@@ -94,10 +96,16 @@ describe('ScenarioInsight', () => {
     ).toBeInTheDocument()
   })
 
-  it('AI 실패 응답은 기본 문장으로 구분한다', async () => {
+  it('AI 실패 응답은 기본 문장으로 구분하고 이유를 알린다', async () => {
     renderInsight('ai-fallback')
 
-    expect(await screen.findByText('기본 문장')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'AI 대신 미리 정해 둔 기본 문장이에요 · AI 응답이 늦었어요',
+      ),
+    ).toBeInTheDocument()
+    // 기본 문장은 숫자 형광펜이 없다
+    expect(screen.queryByText('72개', { selector: 'mark' })).toBeNull()
     expect(
       screen.getByText(sentence(/권장 입고량 72개를 기준/)),
     ).toBeInTheDocument()
@@ -120,7 +128,14 @@ describe('ScenarioInsight', () => {
       }),
       http.get('/api/skus/:skuId/insight', async () => {
         await delay(100)
-        return HttpResponse.json({ source: 'ai', message: '완료' })
+        return HttpResponse.json({
+          mode: 'LLM',
+          sentences: ['완료'],
+          state: 'NORMAL',
+          stateReason: null,
+          failReason: null,
+          stale: false,
+        })
       }),
     )
     renderInsight()
@@ -129,7 +144,48 @@ describe('ScenarioInsight', () => {
       screen.getByRole('heading', { name: '시나리오 계산 중' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: '인사이트 생성 중' }),
+      screen.getByText('계산 결과를 읽고 정리하는 중이에요'),
+    ).toBeInTheDocument()
+  })
+
+  it('기본 문장도 못 만들면 표를 직접 비교하라고 알린다', async () => {
+    renderInsight('ai-none')
+
+    expect(
+      await screen.findByText('설명 문장을 만들지 못했어요.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('숫자는 위 표에 그대로 있어요')).toBeInTheDocument()
+  })
+
+  it('내용 상태 꼬리표와 이유를 보여 준다', async () => {
+    renderInsight('reference-product')
+
+    expect(await screen.findByText('확인 필요')).toBeInTheDocument()
+    expect(screen.getByText('시작 재고가 추정값이에요')).toBeInTheDocument()
+  })
+
+  it('조건을 바꾼 뒤 다시 계산 전이면 갱신 전이라고 알린다', async () => {
+    renderInsight('ai-stale')
+
+    expect(
+      await screen.findByText(/입고 조건이 바뀌었어요/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('지난 계산 기준 문장이에요')).toBeInTheDocument()
+  })
+
+  it('불러오지 못하면 다시 불러오기를 준다', async () => {
+    server.use(
+      http.get('/api/skus/:skuId/insight', () =>
+        HttpResponse.json({ code: 'ERROR', message: '실패' }, { status: 500 }),
+      ),
+    )
+    renderInsight()
+
+    expect(
+      await screen.findByText('설명 문장을 불러오지 못했어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '다시 불러오기' }),
     ).toBeInTheDocument()
   })
 })

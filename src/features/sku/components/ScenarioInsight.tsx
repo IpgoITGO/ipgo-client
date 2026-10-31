@@ -25,10 +25,32 @@ type ScenarioResponse = {
   scenarios: Scenario[]
 }
 
+// ipgo-ai docs/decisions/0002-insight-contract.md 3-7·4장대로 Spring이 숫자를 채워 줄 모양.
+// ponytail: 서버에 인사이트 주소가 아직 없어 mock 경로(/skus/{id}/insight) 그대로. 주소가 생기면 경로만 바꾼다.
 type InsightResponse = {
-  source: 'ai' | 'fallback'
-  message: string
+  // LLM = AI 문장, TEMPLATE = 기본 문장(AI 실패·안 부름), NONE = 기본 문장도 못 만듦(비교표만)
+  mode: 'LLM' | 'TEMPLATE' | 'NONE'
+  sentences: string[]
+  state: 'NORMAL' | 'CHECK_NEEDED' | 'ON_HOLD' | 'NOT_NEEDED' | 'NOT_CALCULABLE'
+  stateReason: string | null
+  failReason: 'LLM_ERROR' | 'LLM_TIMEOUT' | 'VALIDATION_FAILED' | null
+  // 입고 조건을 바꿨는데 아직 다시 계산 전
+  stale: boolean
 }
+
+// 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
+const TONE = { LLM: 'ai', TEMPLATE: 'template', NONE: 'none' } as const
+const STATE_CHIP = {
+  CHECK_NEEDED: { label: '확인 필요', tone: 'warning' },
+  ON_HOLD: { label: '판단 보류', tone: 'muted' },
+  NOT_NEEDED: { label: '입고 불필요', tone: 'info' },
+  NOT_CALCULABLE: { label: '계산 불가', tone: 'danger' },
+} as const
+const FAIL_TEXT = {
+  LLM_ERROR: 'AI 응답에 문제가 있었어요',
+  LLM_TIMEOUT: 'AI 응답이 늦었어요',
+  VALIDATION_FAILED: 'AI 문장이 검사를 통과하지 못했어요',
+} as const
 
 // 품절 위험이 이 값 이상이면 빨간 글씨로 강조한다.
 const ROW_SIZE = 5
@@ -36,14 +58,6 @@ const HIGH_RISK = 20
 
 function formatRisk(risk: number | null) {
   return risk === null ? '표본 부족으로 미산출' : `${risk}%`
-}
-
-// AI 문장을 문장 단위로 나눈다. (마침표·물음표 뒤 공백 기준)
-function splitSentences(message: string) {
-  return message
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean)
 }
 
 // 문장 속 숫자(72개, 8%, 129,600원 등)만 형광펜으로 칠한다. 위험 20% 이상은 빨강.
@@ -95,6 +109,25 @@ export function ScenarioInsight({
     queryKey: ['sku', skuId, 'insight'],
     queryFn: () => apiRequest<InsightResponse>(`/skus/${skuId}/insight`),
   })
+
+  const insight = insightQuery.data
+  const insightTone = insightQuery.isPending
+    ? 'ai'
+    : insightQuery.isError
+      ? 'none'
+      : insight?.stale
+        ? 'template'
+        : TONE[insight?.mode ?? 'LLM']
+  const stateChip =
+    insight && insight.state !== 'NORMAL' ? STATE_CHIP[insight.state] : null
+  const insightFoot = insight?.stale
+    ? '지난 계산 기준 문장이에요'
+    : insight?.mode === 'LLM'
+      ? 'AI가 계산 결과를 읽고 정리했어요 · 숫자는 계산값 그대로'
+      : insight?.mode === 'NONE'
+        ? '숫자는 위 표에 그대로 있어요'
+        : 'AI 대신 미리 정해 둔 기본 문장이에요' +
+          (insight?.failReason ? ` · ${FAIL_TEXT[insight.failReason]}` : '')
 
   const calculate = useCallback(
     async (inputQuantity: number) => {
@@ -389,8 +422,8 @@ export function ScenarioInsight({
         )}
       </section>
 
-      {/* AI 인사이트: 다른 카드와 같은 흰 카드에 테이프. AI가 쓴 글임을 라벨로 드러내고, 문장이 한 줄씩 써지듯 나타난다. */}
-      <section className={styles.insight}>
+      {/* AI 인사이트: 테이프와 ✦ 색으로 어디서 온 문장인지(AI·기본 문장·비교표만) 먼저 보이고, 맨 아래 한 줄이 이유를 말한다. */}
+      <section className={styles.insight} data-tone={insightTone}>
         <Tape className={styles.insightTape} />
         <div className={styles.insightHead}>
           <h2>
@@ -399,43 +432,75 @@ export function ScenarioInsight({
             </span>
             AI 인사이트
           </h2>
-          {insightQuery.isSuccess && insightQuery.data.source === 'ai' ? (
-            <span className={styles.source} data-source="ai">
-              AI 생성
+          {stateChip && (
+            <span className={styles.state} data-tone={stateChip.tone}>
+              {stateChip.label}
             </span>
-          ) : (
-            !insightQuery.isPending && (
-              <span className={styles.source} data-source="fallback">
-                기본 문장
-              </span>
-            )
           )}
-          <small>계산 결과를 읽고 정리했어요 · 숫자는 계산값 그대로</small>
         </div>
-        {insightQuery.isPending ? (
-          <AsyncState
-            description="비교표의 숫자를 바탕으로 핵심 내용을 정리하고 있어요."
-            status="loading"
-            title="인사이트 생성 중"
-          />
-        ) : (
-          <ol className={styles.lines}>
-            {splitSentences(
-              insightQuery.isError
-                ? '권장 입고량과 도착 전 품절 위험을 비교해 발주 수량을 결정해 주세요.'
-                : insightQuery.data.message,
-            ).map((sentence, index) => (
-              <li
-                key={sentence}
-                style={{ animationDelay: `${250 + index * 450}ms` }}
-              >
-                {/* 한 덩어리로 감싸야 번호 칸 옆 한 칸에 문장이 이어진다 */}
-                <span>{highlightNumbers(sentence)}</span>
-              </li>
-            ))}
-          </ol>
+        {insight?.stateReason && (
+          <p className={styles.stateReason}>{insight.stateReason}</p>
         )}
-        <p className={styles.basis}>근거: 위 입고량 시나리오 표</p>
+        {insightQuery.isPending ? (
+          <div className={styles.writing} role="status">
+            <img alt="" height="36" src="/logo.png" width="36" />
+            <b>계산 결과를 읽고 정리하는 중이에요</b>
+            <i />
+            <i />
+            <p>위 시나리오 표는 지금 바로 볼 수 있어요.</p>
+          </div>
+        ) : insightQuery.isError ? (
+          <div className={styles.failed} role="alert">
+            <img alt="" height="36" src="/logo.png" width="36" />
+            <b>설명 문장을 불러오지 못했어요</b>
+            <p>위 시나리오 표의 숫자는 그대로 맞아요.</p>
+            <Button
+              onClick={() => void insightQuery.refetch()}
+              variant="secondary"
+            >
+              다시 불러오기
+            </Button>
+          </div>
+        ) : (
+          <>
+            {insight?.stale && (
+              <p className={styles.staleNote}>
+                입고 조건이 바뀌었어요. 다시 계산하면 새 설명이 나와요.
+              </p>
+            )}
+            {insight?.mode === 'NONE' ? (
+              <ol className={styles.lines} data-numberless="">
+                <li data-tone="danger">
+                  <span>설명 문장을 만들지 못했어요.</span>
+                </li>
+                <li>
+                  <span>
+                    위 입고량 시나리오 표에서 수량별 남는 재고와 품절 위험을
+                    직접 비교해 주세요.
+                  </span>
+                </li>
+              </ol>
+            ) : (
+              <ol
+                className={styles.lines}
+                data-plain={insightTone === 'ai' ? undefined : ''}
+              >
+                {insight?.sentences.map((line, index) => (
+                  <li
+                    key={line}
+                    style={{ animationDelay: `${250 + index * 450}ms` }}
+                  >
+                    {/* 한 덩어리로 감싸야 번호 칸 옆 한 칸에 문장이 이어진다 */}
+                    <span>
+                      {insightTone === 'ai' ? highlightNumbers(line) : line}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <p className={styles.basis}>{insightFoot}</p>
+          </>
+        )}
       </section>
     </div>
   )

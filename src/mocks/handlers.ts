@@ -770,19 +770,68 @@ export const handlers = [
       sampleSize: 44,
     })
   }),
+  // AI 인사이트(ipgo-ai 0002 계약 모양). 아이디로 상태를 고른다:
+  // ai-fallback = 기본 문장(AI 늦음), ai-none = 비교표만, ai-stale = 갱신 전,
+  // reference-product = 확인 필요, zero-recommendation = 입고 불필요, new-product = 계산 불가
   http.get('/api/skus/:skuId/insight', ({ params }) => {
-    if (params.skuId === 'ai-fallback') {
+    const id = String(params.skuId)
+    const base = {
+      mode: 'LLM',
+      sentences: [
+        '권장량 72개를 입고하면 도착 전 품절 위험은 8%, 도착 후 위험은 3%로 낮아져요.',
+        '60개보다 다음 입고 시점 재고가 12개 더 남아요.',
+      ],
+      state: 'NORMAL',
+      stateReason: null,
+      failReason: null,
+      stale: false,
+    }
+    if (id === 'ai-fallback') {
       return HttpResponse.json({
-        source: 'fallback',
-        message:
+        ...base,
+        mode: 'TEMPLATE',
+        failReason: 'LLM_TIMEOUT',
+        sentences: [
           '권장 입고량 72개를 기준으로 도착 전 품절 위험과 다음 입고 시점 재고를 함께 확인해 주세요.',
+        ],
       })
     }
-
-    return HttpResponse.json({
-      source: 'ai',
-      message:
-        '권장량 72개를 입고하면 도착 전 품절 위험은 8%, 도착 후 위험은 3%로 낮아져요. 60개보다 다음 입고 시점 재고가 12개 더 남아요.',
-    })
+    if (id === 'ai-none') {
+      return HttpResponse.json({
+        ...base,
+        mode: 'NONE',
+        sentences: [],
+        failReason: 'LLM_ERROR',
+      })
+    }
+    if (id === 'ai-stale') return HttpResponse.json({ ...base, stale: true })
+    if (id === 'reference-product') {
+      return HttpResponse.json({
+        ...base,
+        state: 'CHECK_NEEDED',
+        stateReason: '시작 재고가 추정값이에요',
+      })
+    }
+    if (id === 'zero-recommendation') {
+      return HttpResponse.json({
+        ...base,
+        mode: 'TEMPLATE',
+        state: 'NOT_NEEDED',
+        sentences: [
+          '지금 재고로 다음 입고 때까지 버틸 수 있어요. 이번엔 넣지 않아도 돼요.',
+        ],
+      })
+    }
+    if (id === 'new-product') {
+      return HttpResponse.json({
+        ...base,
+        mode: 'TEMPLATE',
+        state: 'NOT_CALCULABLE',
+        sentences: [
+          '판매한 날이 7일보다 적어 권장량을 계산하지 못했어요. 이 상품은 기존 방식으로 판단해 주세요.',
+        ],
+      })
+    }
+    return HttpResponse.json(base)
   }),
 ]

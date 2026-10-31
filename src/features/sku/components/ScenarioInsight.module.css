@@ -283,24 +283,103 @@
   font-size: var(--text-caption);
 }
 
+/* 어디서 온 문장인지: 테이프와 ✦ 색. AI 노랑 · 기본 문장(갱신 전) 회색 · 비교표만(오류) 빨강 */
 .spark {
-  color: var(--color-link);
+  color: var(--color-accent-press);
 }
 
-.source {
-  padding: 2px 9px;
-  color: var(--color-primary);
+.insight[data-tone='template'] {
+  --color-tape-1: rgb(176 168 156 / 80%);
+  --color-tape-2: rgb(160 152 140 / 72%);
+}
+
+.insight[data-tone='template'] .spark {
+  color: #a39a8d;
+}
+
+.insight[data-tone='none'] {
+  --color-tape-1: rgb(200 38 28 / 72%);
+  --color-tape-2: rgb(180 30 22 / 66%);
+}
+
+.insight[data-tone='none'] .spark {
+  color: var(--color-danger);
+}
+
+/* 내용 상태 꼬리표(정상이면 없음) */
+.state {
+  padding: 2px 10px;
   font-size: var(--text-caption);
-  font-weight: 800;
-  background: #eef4ff;
-  border: 1px solid #cfe0ff;
+  font-weight: 700;
   border-radius: var(--radius-chip);
 }
 
-.source[data-source='fallback'] {
+.state[data-tone='warning'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.state[data-tone='muted'] {
   color: var(--color-text-2);
   background: var(--color-primary-soft);
-  border-color: var(--color-border);
+}
+
+.state[data-tone='info'] {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.state[data-tone='danger'] {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.stateReason {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+/* 쓰는 중 · 오류: 로고 옆 한 줄, 아래 설명 */
+.writing,
+.failed {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+
+.writing i {
+  grid-column: 1 / -1;
+  height: 12px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-chip);
+}
+
+.writing i:last-of-type {
+  width: 74%;
+}
+
+.writing p,
+.failed p,
+.failed button {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.failed button {
+  justify-self: start;
+}
+
+.staleNote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-warning);
+  font-weight: 700;
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-input);
 }
 
 /* 문장마다 번호를 붙여 한 줄씩 */
@@ -342,6 +421,20 @@
     var(--color-accent-soft) 92%,
     transparent 92%
   );
+}
+
+/* 기본 문장·갱신 전: 회색 글씨, 형광펜 없음. 비교표만: 번호 없이 첫 줄 빨강 */
+.lines[data-plain] li {
+  color: var(--color-text-2);
+}
+
+.lines[data-numberless] li::before {
+  content: '';
+}
+
+.lines li[data-tone='danger'] {
+  color: var(--color-danger);
+  font-weight: 700;
 }
 
 .mark[data-tone='danger'] {
