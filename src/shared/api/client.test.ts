@@ -1,14 +1,59 @@
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../mocks/server'
 import {
   ApiError,
   apiRequest,
   AUTH_EXPIRED_EVENT,
+  CONNECTION_FAILED,
   hasAccessToken,
   setAccessToken,
+  setApiRequestReadinessCheck,
 } from './client'
+
+describe('API 전송 전 모의 서버 준비 검사', () => {
+  let removeCheck = () => {}
+  afterEach(() => removeCheck())
+
+  it('준비가 끝나기 전에는 CSRF와 변경 요청을 보내지 않고, 완료 뒤 한 번만 전송한다', async () => {
+    const calls = useCsrfServer(['t1'])
+    let ready!: () => void
+    const preparation = new Promise<void>((resolve) => {
+      ready = resolve
+    })
+    removeCheck = setApiRequestReadinessCheck(() => preparation)
+    const response = apiRequest('/echo', { method: 'POST' })
+    await Promise.resolve()
+    expect(calls).toEqual({ csrf: 0, echo: 0 })
+    ready()
+    await expect(response).resolves.toEqual({ sent: 't1' })
+    expect(calls).toEqual({ csrf: 1, echo: 1 })
+  })
+
+  it('준비 실패는 연결 오류로 안내하며 HTTP 요청이나 자동 재전송을 하지 않는다', async () => {
+    const calls = useCsrfServer(['t1'])
+    const check = vi.fn().mockRejectedValue(new Error('준비 시간 초과'))
+    removeCheck = setApiRequestReadinessCheck(check)
+    await expect(apiRequest('/echo', { method: 'POST' })).rejects.toMatchObject(
+      { code: CONNECTION_FAILED },
+    )
+    expect(calls).toEqual({ csrf: 0, echo: 0 })
+    expect(check).toHaveBeenCalledOnce()
+  })
+
+  it('검사가 해제되면 실제 API 경로의 동작을 바꾸지 않는다', async () => {
+    const calls = useCsrfServer(['t1'])
+    const check = vi.fn().mockRejectedValue(new Error('모의 서버'))
+    removeCheck = setApiRequestReadinessCheck(check)
+    removeCheck()
+    await expect(apiRequest('/echo', { method: 'POST' })).resolves.toEqual({
+      sent: 't1',
+    })
+    expect(check).not.toHaveBeenCalled()
+    expect(calls).toEqual({ csrf: 1, echo: 1 })
+  })
+})
 
 // 서버처럼 변경 요청에는 CSRF 토큰을 헤더에 넣어야 합니다. (GET /api/auth/csrf → 토큰)
 function useCsrfServer(tokens: string[]) {
