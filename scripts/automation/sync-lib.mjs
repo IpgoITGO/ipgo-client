@@ -12,12 +12,23 @@ export function extractJiraKeys(...values) {
   ]
 }
 
-export function indexGithubIssuesByJiraKey(issues = []) {
+export function extractProjectJiraKeys(projectKey, ...values) {
+  if (!/^[A-Z][A-Z0-9]+$/.test(projectKey)) {
+    throw new Error(
+      'JIRA_PROJECT_KEY는 영문 대문자로 시작하는 프로젝트 키여야 합니다.',
+    )
+  }
+  return extractJiraKeys(...values).filter((key) =>
+    key.startsWith(`${projectKey}-`),
+  )
+}
+
+export function indexGithubIssuesByJiraKey(issues = [], projectKey = 'IPGO') {
   const byKey = new Map()
 
   for (const issue of issues) {
     if (issue.pull_request) continue
-    for (const key of extractJiraKeys(issue.title)) {
+    for (const key of extractProjectJiraKeys(projectKey, issue.title)) {
       if (!byKey.has(key)) byKey.set(key, issue)
     }
   }

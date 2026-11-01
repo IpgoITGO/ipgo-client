@@ -1,0 +1,25 @@
+{
+  "rules": [
+    {
+      "repository": "IpgoITGO/ipgo-client",
+      "summaryPrefixes": ["[화면]"]
+    },
+    {
+      "repository": "IpgoITGO/ipgo-server",
+      "summaryPrefixes": ["[서버]", "[BE]"]
+    },
+    {
+      "repository": "IpgoITGO/ipgo-ai",
+      "summaryPrefixes": ["[AI]", "[AI·DB]", "[AI worker]"]
+    },
+    {
+      "repository": "IpgoITGO/ipgo-infra",
+      "summaryPrefixes": ["[인프라]"]
+    }
+  ],
+  "issueRepositories": {
+    "IPGO-77": "IpgoITGO/ipgo-client",
+    "IPGO-98": "IpgoITGO/ipgo-ai",
+    "IPGO-111": "IpgoITGO/ipgo-ai"
+  }
+}
