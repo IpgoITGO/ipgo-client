@@ -93,6 +93,7 @@ describe('toDashboardData (서버 D1 → 화면 값)', () => {
     })
 
     expect(data.baseDate).toBe('—')
+    expect(data.freshness).toBe('no-result')
     expect(data.lastCalculatedAt).toBeUndefined()
     expect(data.neededItems).toEqual([])
   })
