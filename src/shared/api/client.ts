@@ -27,6 +27,16 @@ function connectionFailed(status = 0) {
   return new ApiError(status, CONNECTION_FAILED, CONNECTION_FAILED_MESSAGE)
 }
 
+// 모의 API 부트스트랩에서만 설정한다. 실제 API 모드에는 준비 검사나 MSW 의존성이 없다.
+let checkRequestReadiness: (() => Promise<void>) | undefined
+
+export function setApiRequestReadinessCheck(check: () => Promise<void>) {
+  checkRequestReadiness = check
+  return () => {
+    if (checkRequestReadiness === check) checkRequestReadiness = undefined
+  }
+}
+
 type ErrorBody = {
   code?: string
   message?: string
@@ -146,6 +156,8 @@ export async function apiRequest<T>(
 // 네트워크 오류(서버 꺼짐, 인터넷 끊김, 브라우저 차단)는 fetch가 TypeError로 던집니다.
 async function request(url: string, init?: RequestInit) {
   try {
+    // 준비를 확인한 뒤 한 번만 전송한다. 복구를 이유로 POST를 다시 보내지 않는다.
+    await checkRequestReadiness?.()
     return await fetch(url, init)
   } catch {
     throw connectionFailed()

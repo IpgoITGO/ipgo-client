@@ -13,13 +13,13 @@ async function enableApiMocking() {
   }
 
   const { worker, keepMockingActive } = await import('./mocks/browser')
-  await worker.start({
+  const registration = await worker.start({
     onUnhandledFrame: 'bypass',
     serviceWorker: {
       url: '/mockServiceWorker.js',
     },
   })
-  keepMockingActive()
+  keepMockingActive(registration)
 }
 
 // 회원가입은 단계가 나뉘어 새로고침하면 입력이 사라지므로, 그 탭에서 회원가입 화면을 다시 불러오면
