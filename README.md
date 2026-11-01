@@ -59,17 +59,17 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 
 ## 명령
 
-| 명령                      | 설명                                |
-| ------------------------- | ----------------------------------- |
-| `npm run dev`             | 개발 서버 실행                      |
-| `npm run build`           | TypeScript 검사 후 production build |
-| `npm run typecheck`       | TypeScript 검사                     |
-| `npm run lint`            | ESLint 검사                         |
-| `npm run format:check`    | Prettier 형식 검사                  |
-| `npm test`                | Vitest 테스트 1회 실행              |
-| `npm run test:watch`      | Vitest watch 실행                   |
-| `npm run ci:check`        | CI에서 사용하는 전체 코드 검사      |
-| `npm run automation:test` | 자동화 script 단위 검사             |
+| 명령                      | 설명                                                |
+| ------------------------- | --------------------------------------------------- |
+| `npm run dev`             | 개발 서버 실행                                      |
+| `npm run build`           | TypeScript 검사 후 production build                 |
+| `npm run typecheck`       | TypeScript 검사                                     |
+| `npm run lint`            | ESLint 검사                                         |
+| `npm run format:check`    | Prettier 형식 검사                                  |
+| `npm test`                | Vitest 테스트 1회 실행                              |
+| `npm run test:watch`      | Vitest watch 실행                                   |
+| `npm run ci:check`        | CI에서 사용하는 전체 코드 검사                      |
+| `npm run automation:test` | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사 |
 
 ## 환경 변수
 
@@ -151,6 +151,9 @@ flowchart LR
 ## 자동화
 
 - Jira 작업은 GitHub Issue와 연결하고 상태·댓글·담당자·기간을 동기화합니다.
+- 신규 작업은 저장소별로 분류하며, 클라이언트 자동화는 클라이언트 대상만 생성합니다.
+  생성 한도를 넘으면 신규 생성만 보류하고 기존 연결 작업은 계속 갱신합니다.
+- Issue 제목에 Jira 키를 명시합니다. 본문에 적힌 참고 키만으로 작업을 연결하지 않습니다.
 - GitHub Issue의 기간은 조직 Project `IpgoITGO 작업 일정`의 `시작일`·`마감일` 필드에 표시합니다.
 - 승인된 PR을 사람이 병합하면 `dev`는 개발 주소, `main`은 운영 주소로 Vercel 배포를 시작합니다.
 - `dev → main` PR 제목에는 운영 배포 후 완료할 Jira 키를 모두 포함합니다.

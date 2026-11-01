@@ -1,10 +1,8 @@
 import { readFile } from 'node:fs/promises'
 
 import {
-  assertAutoCreateLimit,
-  extractJiraKeys,
+  extractProjectJiraKeys,
   githubCommentMarker,
-  indexGithubIssuesByJiraKey,
   isSyncedGithubComment,
   isSyncedJiraComment,
   jiraCommentMarker,
@@ -12,9 +10,9 @@ import {
   planJiraAssigneeSync,
   readSyncMarker,
   resolveDateSync,
-  shouldAutoCreateGithubIssue,
   writeSyncMarker,
 } from './sync-lib.mjs'
+import { planJiraSync } from './sync-routing.mjs'
 
 const command = process.argv[2]
 const repository = process.env.GITHUB_REPOSITORY
@@ -509,57 +507,77 @@ async function jiraPoll() {
     'created',
   ]
   if (startFieldId) fields.push(startFieldId)
-  const result = await jira('/rest/api/3/search/jql', {
-    method: 'POST',
-    body: JSON.stringify({ jql, fields, maxResults: 100 }),
-  })
-  const githubIssuesByJiraKey = indexGithubIssuesByJiraKey(
-    await listGithubIssues(),
+  const jiraIssues = []
+  const pageTokens = new Set()
+  let nextPageToken
+  do {
+    const result = await jira('/rest/api/3/search/jql', {
+      method: 'POST',
+      body: JSON.stringify({ jql, fields, maxResults: 100, nextPageToken }),
+    })
+    jiraIssues.push(...result.issues)
+    if (result.isLast) break
+    nextPageToken = result.nextPageToken
+    if (!nextPageToken || pageTokens.has(nextPageToken)) {
+      throw new Error('Jira 조회 페이지 정보가 올바르지 않습니다.')
+    }
+    pageTokens.add(nextPageToken)
+  } while (nextPageToken)
+  const routing = JSON.parse(
+    await readFile(
+      new URL('../../.github/jira-github-routing.json', import.meta.url),
+      'utf8',
+    ),
   )
-
-  const targets = []
-  for (const jiraIssue of result.issues) {
+  for (const jiraIssue of jiraIssues) {
     jiraIssue.fields.__startDate = startFieldId
       ? (jiraIssue.fields[startFieldId] ?? null)
       : null
-    const githubIssue = githubIssuesByJiraKey.get(jiraIssue.key) ?? null
-    const shouldCreate =
-      !githubIssue &&
-      shouldAutoCreateGithubIssue({
-        jiraCreatedAt: jiraIssue.fields.created,
-        autoCreateAfter: jiraAutoCreateAfter,
-      })
-    targets.push({ jiraIssue, githubIssue, shouldCreate })
   }
-
-  assertAutoCreateLimit(
-    targets.filter((target) => target.shouldCreate).length,
-    jiraAutoCreateLimit,
-  )
-
-  for (const target of targets) {
-    const { jiraIssue, shouldCreate } = target
-    let { githubIssue } = target
-    if (!githubIssue && !shouldCreate) {
-      console.log(
-        `${jiraIssue.key}: 신규 Issue 생성 기준 이전의 미연결 작업이라 건너뜁니다.`,
-      )
-      continue
-    }
-    if (!githubIssue) githubIssue = await createGithubIssue(jiraIssue)
-    githubIssue = await getGithubIssue(githubIssue.number)
-
-    await syncGithubStateFromJira(jiraIssue, githubIssue)
-    await syncGithubAssigneeFromJira(jiraIssue, githubIssue)
-    await syncJiraCommentsToGithub(jiraIssue.key, githubIssue.number)
-    await syncDates(jiraIssue, githubIssue, startFieldId)
-    console.log(`${jiraIssue.key} ↔ #${githubIssue.number} 동기화 완료`)
+  const plan = planJiraSync({
+    jiraIssues,
+    githubIssues: await listGithubIssues(),
+    repository,
+    projectKey: jiraProjectKey,
+    routing,
+    autoCreateAfter: jiraAutoCreateAfter,
+    autoCreateLimit: jiraAutoCreateLimit,
+  })
+  for (const { jiraIssue, destination, reason } of plan.skipped) {
+    console.log(
+      `${jiraIssue.key}: 신규 생성 제외 (${reason}, ${destination ?? '담당 저장소 확인 필요'})`,
+    )
   }
+  if (plan.creationBlocked) {
+    console.warn(
+      `::warning::신규 생성 후보 ${plan.candidates.length}건이 안전 한도 ${jiraAutoCreateLimit}건을 초과해 신규 생성만 보류합니다. 기존 연결 작업은 계속 갱신합니다. 대상: ${plan.deferred.map((issue) => issue.key).join(', ')}`,
+    )
+  }
+  // 기존 작업을 먼저 갱신하고, 허용된 신규 작업만 별도로 생성한다.
+  for (const { jiraIssue, githubIssue } of plan.existing) {
+    await syncLinkedIssue(jiraIssue, githubIssue, startFieldId)
+  }
+  for (const jiraIssue of plan.create) {
+    const githubIssue = await createGithubIssue(jiraIssue)
+    await syncLinkedIssue(jiraIssue, githubIssue, startFieldId)
+  }
+  const summary = `기존 연결 ${plan.existing.length}건 갱신, 신규 ${plan.create.length}건 생성, 한도 초과 보류 ${plan.deferred.length}건, 범위/기준 제외 ${plan.skipped.length}건`
+  console.log(summary)
+}
+
+async function syncLinkedIssue(jiraIssue, githubIssue, startFieldId) {
+  githubIssue = await getGithubIssue(githubIssue.number)
+
+  await syncGithubStateFromJira(jiraIssue, githubIssue)
+  await syncGithubAssigneeFromJira(jiraIssue, githubIssue)
+  await syncJiraCommentsToGithub(jiraIssue.key, githubIssue.number)
+  await syncDates(jiraIssue, githubIssue, startFieldId)
+  console.log(`${jiraIssue.key} ↔ #${githubIssue.number} 동기화 완료`)
 }
 
 async function syncIssueEvent(event) {
   const issue = event.issue
-  const [jiraKey] = extractJiraKeys(issue.title, issue.body)
+  const [jiraKey] = extractProjectJiraKeys(jiraProjectKey, issue.title)
   if (!jiraKey || issue.pull_request) return
 
   if (event.action === 'closed') await transitionJira(jiraKey, 'done')
@@ -592,7 +610,7 @@ async function syncIssueEvent(event) {
 
 async function syncCommentEvent(event) {
   if (event.issue.pull_request || event.action !== 'created') return
-  const [jiraKey] = extractJiraKeys(event.issue.title, event.issue.body)
+  const [jiraKey] = extractProjectJiraKeys(jiraProjectKey, event.issue.title)
   if (!jiraKey || isSyncedGithubComment(event.comment.body)) return
   const body = `${event.comment.body}\n\n${jiraCommentMarker(event.comment.id)}\nGitHub의 ${event.comment.user.login} 댓글에서 동기화됨`
   await jira(`/rest/api/3/issue/${jiraKey}/comment`, {
@@ -602,7 +620,8 @@ async function syncCommentEvent(event) {
 }
 
 async function syncPullRequestEvent(event) {
-  const keys = extractJiraKeys(
+  const keys = extractProjectJiraKeys(
+    jiraProjectKey,
     event.pull_request.title,
     event.pull_request.body,
     event.pull_request.head.ref,
@@ -646,7 +665,10 @@ async function completeFromText() {
     'JIRA_USER_EMAIL',
     'JIRA_API_TOKEN',
   ])
-  for (const jiraKey of extractJiraKeys(process.env.SYNC_TEXT)) {
+  for (const jiraKey of extractProjectJiraKeys(
+    jiraProjectKey,
+    process.env.SYNC_TEXT,
+  )) {
     await transitionJira(jiraKey, 'done')
     const issue = await findGithubIssue(jiraKey)
     if (issue && issue.state !== 'closed') {

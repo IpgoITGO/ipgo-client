@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   assertAutoCreateLimit,
   extractJiraKeys,
+  extractProjectJiraKeys,
   indexGithubIssuesByJiraKey,
   isSyncedGithubComment,
   isSyncedJiraComment,
@@ -20,6 +21,21 @@ test('Jira 키를 중복 없이 추출한다', () => {
     'IPGO-77',
     'IPGO-12',
   ])
+})
+
+test('프로젝트가 다른 키와 SHA-256은 동기화 키에서 제외한다', () => {
+  assert.deepEqual(
+    extractProjectJiraKeys(
+      'IPGO',
+      'SHA-256 OTHER-12 [IPGO-77]',
+      'IPGO-77 IPGO-12',
+    ),
+    ['IPGO-77', 'IPGO-12'],
+  )
+  assert.throws(
+    () => extractProjectJiraKeys('IPGO OR 1=1', 'IPGO-77'),
+    /프로젝트 키/,
+  )
 })
 
 test('저장소 Issue 목록을 Jira 키로 색인하고 PR은 제외한다', () => {
