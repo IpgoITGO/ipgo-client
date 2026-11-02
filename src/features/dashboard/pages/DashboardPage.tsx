@@ -6,7 +6,7 @@ import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
-import { EmptyBoxIcon, SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
+import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import { getDashboard } from '../model/dashboardApi'
 import styles from './DashboardPage.module.css'
@@ -90,7 +90,6 @@ function localToday() {
 }
 
 // 소진일이 지난 줄은 이름 옆에 "품절" 도장을 찍는다. 줄마다 기울기를 조금씩 다르게.
-const STAMP_TILTS = [-6, -2, -4]
 
 // 날짜 옆에는 며칠 지났는지만 짧게
 function LateText({ days }: { days: number }) {
@@ -214,7 +213,7 @@ export function DashboardPage() {
               'needed',
               passedCount > 0 ? (
                 <span className={styles.soldNote}>
-                  <EmptyBoxIcon />
+                  <i aria-hidden="true" className={styles.soldDot} />
                   <span>
                     <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
                   </span>
@@ -324,7 +323,7 @@ export function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item, index) => (
+                    {items.map((item) => (
                       // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
                       <tr
                         className={styles.rowLink}
@@ -338,7 +337,7 @@ export function DashboardPage() {
                           <div className={styles.nameLine}>
                             <Link to={`/sku/${item.id}`}>{item.name}</Link>
                             {daysPast(item.stockoutDate) > 0 && (
-                              <SoldOutStamp tilt={STAMP_TILTS[index % 3]} />
+                              <SoldOutStamp />
                             )}
                           </div>
                           <span>{item.barcode}</span>
@@ -366,7 +365,7 @@ export function DashboardPage() {
                           )}
                         </td>
                         <td className={styles.num}>
-                          <strong>{item.quantity}개</strong>
+                          <span className={styles.qty}>{item.quantity}개</span>
                         </td>
                         <td className={styles.num}>
                           {item.cost.toLocaleString()}원
@@ -378,9 +377,13 @@ export function DashboardPage() {
               </div>
             </section>
           )}
-          <div className={styles.lowerGrid}>
-            <section className={styles.card}>
-              <h2>계산 불가</h2>
+          {/* 한 줄씩뿐이라 한 카드에 두 칸. 제목 앞 점 색은 위 숫자 카드와 짝 */}
+          <section className={`${styles.card} ${styles.lowerGrid}`}>
+            <div>
+              <h2>
+                <i aria-hidden="true" className={styles.dot} data-tone="warn" />
+                계산 불가
+              </h2>
               {data.unavailableItems.length === 0 && (
                 <p className={styles.none}>계산 못 한 상품은 없어요.</p>
               )}
@@ -390,9 +393,16 @@ export function DashboardPage() {
                   <span>{item.reason}</span>
                 </article>
               ))}
-            </section>
-            <section className={styles.card}>
-              <h2>검산 제외</h2>
+            </div>
+            <div>
+              <h2>
+                <i
+                  aria-hidden="true"
+                  className={styles.dot}
+                  data-tone="danger"
+                />
+                검산 제외
+              </h2>
               {data.excludedItems.length === 0 && (
                 <p className={styles.none}>검산에서 뺀 상품은 없어요.</p>
               )}
@@ -402,8 +412,8 @@ export function DashboardPage() {
                   <span>{item.reason}</span>
                 </article>
               ))}
-            </section>
-          </div>
+            </div>
+          </section>
         </>
       )}
     </div>

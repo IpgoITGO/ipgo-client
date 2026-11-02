@@ -85,9 +85,20 @@
   font-weight: 700;
 }
 
+/* 64px로 키우되 뭉툭하지 않게 700 + 좁은 자간, "개"는 작게(11/2 결정) */
 .recommendation > div strong {
-  font-size: 40px;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+}
+
+.recoUnit {
+  margin-left: 4px;
+  color: var(--color-text-2);
+  font-size: 0.42em;
+  letter-spacing: 0;
 }
 
 .recoQty {
@@ -95,14 +106,16 @@
   justify-self: start;
 }
 
-.recoQty > span {
+.recoNum {
   position: relative;
   z-index: 3;
 }
 
+/* 찢은 테이프를 숫자 아래쪽에 숫자 폭만큼 길게 */
 .recoTape {
-  --tape-rotate: -2deg;
-  top: 50%;
+  --tape-rotate: -1.5deg;
+  top: auto;
+  bottom: 2px;
   left: -8px;
   width: calc(100% + 16px);
   height: 22px;
@@ -565,4 +578,29 @@
 
 .fixLink:hover {
   text-decoration: underline;
+}
+
+/* 휴대폰에선 그래프가 줄어 축 글자가 7px쯤 된다. 그림 단위로 키워 실제 12px 안팎으로 */
+@media (max-width: 650px) {
+  .tick,
+  .axisTitle,
+  .stockoutLabel {
+    font-size: 20px;
+  }
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 품절 주의 상품: 맨 위에 할 일 한 줄 */
+.soldBanner {
+  padding: var(--space-4) var(--space-5);
+  color: var(--color-danger);
+  font-weight: 700;
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-input);
 }

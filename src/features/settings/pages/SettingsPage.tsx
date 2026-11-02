@@ -410,7 +410,7 @@ export function SettingsPage() {
                           name={`products.${index}.cost`}
                           render={({ field }) => (
                             <input
-                              aria-label={`${product.name} cost`}
+                              aria-label={`${product.name} 원가`}
                               className={styles.costInput}
                               inputMode="numeric"
                               onBlur={field.onBlur}

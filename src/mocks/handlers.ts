@@ -203,6 +203,72 @@ const isQuantity = (value: unknown) =>
   typeof value === 'number' && Number.isInteger(value) && value >= 1
 
 // 오늘에서 n일 뒤(음수면 앞) 날짜를 서버 모양 "2026-10-29"로
+// 대시보드 "입고가 필요한 상품"(D1). shortage = 오늘부터 며칠 뒤 소진(음수면 이미 지남).
+// 상품 상세(K1) mock도 이 목록을 보고 같은 상품 이름·권장량·소진일을 돌려준다.
+const NEEDED_ITEMS = [
+  {
+    productId: 1,
+    skuBarcode: '8800272420016',
+    skuName: '케어트릿 120g',
+    shortage: -3,
+    leadTimeDays: 5,
+    recommendedQty: 72,
+    recommendedAmount: 129600,
+    preArrivalRisk: 0.08,
+  },
+  {
+    productId: 3,
+    skuBarcode: '8800272421044',
+    skuName: '덴탈껌 S 10입',
+    shortage: 1,
+    leadTimeDays: 5,
+    recommendedQty: 60,
+    recommendedAmount: 108000,
+    preArrivalRisk: 0.05,
+  },
+  {
+    productId: 2,
+    skuBarcode: '8800272420108',
+    skuName: '케어트릿 8g 낱개',
+    shortage: 4,
+    leadTimeDays: 7,
+    recommendedQty: 96,
+    recommendedAmount: 28800,
+    preArrivalRisk: 0.03,
+  },
+  // 정렬마다 순서가 달라지도록 소진일·위험·금액을 엇갈리게 둔다
+  {
+    productId: 7,
+    skuBarcode: '8800272421200',
+    skuName: '연어 져키 80g',
+    shortage: -1,
+    leadTimeDays: 4,
+    recommendedQty: 40,
+    recommendedAmount: 52000,
+    preArrivalRisk: 0.14,
+  },
+  {
+    productId: 8,
+    skuBarcode: '8800272421300',
+    skuName: '오리 큐브 100g',
+    shortage: 7,
+    leadTimeDays: 6,
+    recommendedQty: 120,
+    recommendedAmount: 210000,
+    preArrivalRisk: 0.11,
+  },
+  {
+    productId: 4,
+    skuBarcode: '8800272421501',
+    skuName: '동결건조 큐브 50g',
+    shortage: 3,
+    leadTimeDays: 5,
+    recommendedQty: 24,
+    recommendedAmount: 74400,
+    preArrivalRisk: 0.02,
+  },
+]
+
 function isoFromToday(n: number) {
   const date = new Date()
   date.setDate(date.getDate() + n)
@@ -513,79 +579,15 @@ export const handlers = [
   // D1 입고 필요 목록 (서버 ReplenishmentNeeds 모양). 날짜는 오늘 기준으로 움직이고, 두 상품은 소진일이 이미 지났다.
   // 서버처럼 사용을 끈(단종) 상품은 목록과 개수에서 뺀다(server #27 혜윤 답).
   http.get('/api/dashboard/replenishment-needs', () => {
-    const items = [
-      {
-        productId: 1,
-        skuBarcode: '8800272420016',
-        skuName: '케어트릿 120g',
-        shortage: -3,
-        leadTimeDays: 5,
-        recommendedQty: 72,
-        recommendedAmount: 129600,
-        preArrivalRisk: 0.08,
-      },
-      {
-        productId: 3,
-        skuBarcode: '8800272421044',
-        skuName: '덴탈껌 S 10입',
-        shortage: 1,
-        leadTimeDays: 5,
-        recommendedQty: 60,
-        recommendedAmount: 108000,
-        preArrivalRisk: 0.05,
-      },
-      {
-        productId: 2,
-        skuBarcode: '8800272420108',
-        skuName: '케어트릿 8g 낱개',
-        shortage: 4,
-        leadTimeDays: 7,
-        recommendedQty: 96,
-        recommendedAmount: 28800,
-        preArrivalRisk: 0.03,
-      },
-      // 정렬마다 순서가 달라지도록 소진일·위험·금액을 엇갈리게 둔다
-      {
-        productId: 7,
-        skuBarcode: '8800272421200',
-        skuName: '연어 져키 80g',
-        shortage: -1,
-        leadTimeDays: 4,
-        recommendedQty: 40,
-        recommendedAmount: 52000,
-        preArrivalRisk: 0.14,
-      },
-      {
-        productId: 8,
-        skuBarcode: '8800272421300',
-        skuName: '오리 큐브 100g',
-        shortage: 7,
-        leadTimeDays: 6,
-        recommendedQty: 120,
-        recommendedAmount: 210000,
-        preArrivalRisk: 0.11,
-      },
-      {
-        productId: 4,
-        skuBarcode: '8800272421501',
-        skuName: '동결건조 큐브 50g',
-        shortage: 3,
-        leadTimeDays: 5,
-        recommendedQty: 24,
-        recommendedAmount: 74400,
-        preArrivalRisk: 0.02,
-      },
-    ]
-      .filter(
-        (item) =>
-          mockProducts.find((product) => product.productId === item.productId)
-            ?.isActive ?? true,
-      )
-      .map(({ shortage, ...item }, index) => ({
-        ...item,
-        resultId: 9001 + index,
-        expectedShortageOn: isoFromToday(shortage),
-      }))
+    const items = NEEDED_ITEMS.filter(
+      (item) =>
+        mockProducts.find((product) => product.productId === item.productId)
+          ?.isActive ?? true,
+    ).map(({ shortage, ...item }, index) => ({
+      ...item,
+      resultId: 9001 + index,
+      expectedShortageOn: isoFromToday(shortage),
+    }))
     return HttpResponse.json({
       asOfDate: isoFromToday(-1),
       today: isoFromToday(0),
@@ -626,14 +628,15 @@ export const handlers = [
   http.get('/api/products/:productId/detail', ({ params }) => {
     const id = String(params.productId)
     const isEmpty = id === 'empty-values'
+    const needed = NEEDED_ITEMS.find((item) => String(item.productId) === id)
     const product = (skuName: string, skuBarcode: string) => ({
       productId: Number(id) || 1,
-      skuBarcode,
-      skuName,
+      skuBarcode: needed?.skuBarcode ?? skuBarcode,
+      skuName: needed?.skuName ?? skuName,
       fulfillment: isEmpty ? null : '서울 풀필먼트',
     })
     const settings = {
-      leadTimeDays: isEmpty ? null : 5,
+      leadTimeDays: isEmpty ? null : (needed?.leadTimeDays ?? 5),
       leadTimeSource: 'PRODUCT',
       reviewCycleDays: isEmpty ? null : 7,
       reviewCycleSource: 'ESTIMATED',
@@ -670,7 +673,12 @@ export const handlers = [
         : product('케어트릿 120g', '8800272420016'),
       needStatus: isUnavailable ? 'NOT_CALCULABLE' : 'NEED_NOW',
       asOfDate: '2026-10-14',
-      expectedShortageOn: isUnavailable || isEmpty ? null : '2026-10-22',
+      expectedShortageOn:
+        isUnavailable || isEmpty
+          ? null
+          : needed
+            ? isoFromToday(needed.shortage)
+            : '2026-10-22',
       settings,
       result: {
         // mock은 상품 아이디를 결과 번호로 그대로 써서, 아래 K2·K4 mock이 같은 아이디로 상태를 고른다.
@@ -691,8 +699,11 @@ export const handlers = [
         plannedReceiptsInHorizon: 12,
         preArrivalUnmetQty: 0,
         requiredQtyBeforeRounding: null,
-        recommendedQty: isUnavailable ? null : 72,
-        recommendedAmount: isUnavailable || isEmpty ? null : 129600,
+        recommendedQty: isUnavailable ? null : (needed?.recommendedQty ?? 72),
+        recommendedAmount:
+          isUnavailable || isEmpty
+            ? null
+            : (needed?.recommendedAmount ?? 129600),
       },
       accuracy: isUnavailable
         ? null
@@ -710,12 +721,18 @@ export const handlers = [
       trend:
         id === 'no-trend'
           ? []
-          : days.map(([date, closingQty, outboundQty]) => ({
-              date,
-              closingQty,
-              outboundQty,
-              isValidObservation: closingQty > 0,
-            })),
+          : days.map(([date, closingQty, outboundQty], index) => {
+              const soldOut =
+                needed !== undefined &&
+                needed.shortage < 0 &&
+                index === days.length - 1
+              return {
+                date,
+                closingQty: soldOut ? 0 : closingQty,
+                outboundQty,
+                isValidObservation: !soldOut && closingQty > 0,
+              }
+            }),
     })
   }),
   // K2 시나리오(명세 3.7 · ERD scenario_results). zero-recommendation = 권장량 0개라 비교표 없음

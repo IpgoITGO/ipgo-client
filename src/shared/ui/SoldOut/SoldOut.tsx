@@ -4,17 +4,16 @@ import styles from './SoldOut.module.css'
 
 const SOLD_OUT_HINT = '예상 소진일이 지나 이미 소진됐을 수 있어요'
 
-// 택배 상자에 손으로 찍은 듯한 빨간 잉크 도장 "품절". 배경 잉크에만 번짐·빈 자국을 주고 글자는 또렷하게 둔다.
-// 줄마다 조금씩 다르게 기울여(tilt) 기계로 찍은 느낌을 뺀다.
-export function SoldOutStamp({ tilt = -5 }: { tilt?: number }) {
+// 손으로 찍은 듯한 빨간 잉크 도장 "품절 주의". 속이 빈 이중 테두리에 잉크 번짐·빈 자국을 준다.
+// 예상 소진일이 지났을 뿐 품절은 확인 못 했으니 "품절"이라고 단정하지 않는다(11/2 결정). 기울기는 어디서나 -4°.
+export function SoldOutStamp() {
   const ink = useId()
   return (
     <svg
-      aria-label={`품절 · ${SOLD_OUT_HINT}`}
+      aria-label={`품절 주의 · ${SOLD_OUT_HINT}`}
       className={styles.stamp}
       role="img"
-      style={{ transform: `rotate(${tilt}deg)` }}
-      viewBox="0 0 60 28"
+      viewBox="0 0 82 28"
     >
       <title>{SOLD_OUT_HINT}</title>
       <filter height="140%" id={ink} width="120%" x="-10%" y="-20%">
@@ -46,37 +45,21 @@ export function SoldOutStamp({ tilt = -5 }: { tilt?: number }) {
         />
         <feComposite in="wobble" in2="holes" operator="in" />
       </filter>
-      <g filter={`url(#${ink})`}>
-        <rect
-          fill="currentColor"
-          height="25"
-          rx="5"
-          width="57"
-          x="1.5"
-          y="1.5"
-        />
-        <rect
-          fill="none"
-          height="19"
-          opacity="0.85"
-          rx="3"
-          stroke="#fff"
-          strokeWidth="1.2"
-          width="51"
-          x="4.5"
-          y="4.5"
-        />
+      <g fill="none" filter={`url(#${ink})`} stroke="currentColor">
+        <rect height="24" rx="5" strokeWidth="2.4" width="78" x="2" y="2" />
+        <rect height="17" rx="3" strokeWidth="1" width="71" x="5.5" y="5.5" />
       </g>
       <text
-        fill="#fff"
-        fontSize="15"
+        fill="currentColor"
+        filter={`url(#${ink})`}
+        fontSize="12.5"
         fontWeight="900"
-        letterSpacing="3"
+        letterSpacing="1.5"
         textAnchor="middle"
-        x="30"
-        y="19.8"
+        x="41"
+        y="19.2"
       >
-        품절
+        품절 주의
       </text>
     </svg>
   )

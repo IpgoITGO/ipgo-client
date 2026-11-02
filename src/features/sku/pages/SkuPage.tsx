@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
+import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import { monthDay } from '../../dashboard/model/dashboardApi'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import {
   getSkuDetail,
@@ -252,6 +254,9 @@ export function SkuPage() {
   }
 
   const data = query.data
+  // 예상 소진일이 오늘보다 앞이면 "품절 주의"(대시보드 표와 같은 기준). 품절은 확인 못 했으니 단정하지 않는다
+  const stockoutPassed =
+    data.shortageOn !== null && data.shortageOn < localIsoToday()
   const statusLabel = {
     ready: '계산 완료',
     reference: '참고용',
@@ -303,7 +308,10 @@ export function SkuPage() {
           {data.fulfillment && (
             <span className={styles.eyebrow}>{data.fulfillment}</span>
           )}
-          <h1>{data.name}</h1>
+          <div className={styles.title}>
+            <h1>{data.name}</h1>
+            {stockoutPassed && <SoldOutStamp />}
+          </div>
           <p>바코드 {data.barcode}</p>
         </div>
         <span className={styles.status} data-status={data.status}>
@@ -334,6 +342,13 @@ export function SkuPage() {
         />
       ) : (
         <>
+          {stockoutPassed && data.shortageOn && (
+            <aside className={styles.soldBanner}>
+              {monthDay(data.shortageOn)}에 재고가 바닥났을 수 있어요 · 권장{' '}
+              {data.recommendation.quantity.toLocaleString()}개를 지금 넣어
+              주세요
+            </aside>
+          )}
           {data.status === 'reference' && (
             <aside className={styles.notice}>
               판매 기록이 짧아 예측 범위가 넓어요. 권장량은 참고용으로 확인해
@@ -344,9 +359,15 @@ export function SkuPage() {
             <div>
               <span>권장 입고량</span>
               {/* 가장 중요한 숫자라 테이프를 밑줄처럼 붙인다 */}
-              <strong className={styles.recoQty}>
+              <strong
+                aria-label={`권장 입고량 ${data.recommendation.quantity.toLocaleString()}개`}
+                className={styles.recoQty}
+              >
                 <Tape className={styles.recoTape} />
-                <span>{data.recommendation.quantity.toLocaleString()}개</span>
+                <span aria-hidden="true" className={styles.recoNum}>
+                  {data.recommendation.quantity.toLocaleString()}
+                  <small className={styles.recoUnit}>개</small>
+                </span>
               </strong>
             </div>
             <dl>
@@ -378,7 +399,11 @@ export function SkuPage() {
               <div className={styles.sectionHeader}>
                 <h2>재고·출고 추이</h2>
                 {data.history.length > 0 && (
-                  <div className={styles.legend} aria-label="그래프 범례">
+                  <div
+                    className={styles.legend}
+                    role="group"
+                    aria-label="그래프 범례"
+                  >
                     <span data-series="inventory">기말 재고</span>
                     <span data-series="outbound">출고</span>
                     <span data-series="stockout">품절일 (계산에서 제외)</span>
@@ -567,7 +592,7 @@ function AccuracyCard({
       )}
       {accuracy.history.length > 0 && (
         <>
-          <div className={styles.legend} aria-label="그래프 범례">
+          <div className={styles.legend} role="group" aria-label="그래프 범례">
             <span data-series="actual">실제 출고량</span>
             <span data-series="prediction">예측 출고량</span>
           </div>
@@ -576,4 +601,9 @@ function AccuracyCard({
       )}
     </section>
   )
+}
+
+function localIsoToday() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }

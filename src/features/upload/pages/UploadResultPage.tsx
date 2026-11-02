@@ -161,7 +161,11 @@ export function UploadResultPage() {
               </i>
               {excludedCount}개 상품은 빼고 계산했어요
             </h2>
-            <Button onClick={() => navigate('/upload')} variant="strong">
+            <Button
+              className={styles.retryButton}
+              onClick={() => navigate('/upload')}
+              variant="secondary"
+            >
               고친 파일 다시 올리기 →
             </Button>
           </div>

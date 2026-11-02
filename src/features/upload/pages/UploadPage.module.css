@@ -15,10 +15,14 @@
 }
 .back {
   justify-self: start;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--color-text-2);
-  background: none;
-  border: 0;
+  text-decoration: none;
+}
+.back:hover {
+  color: var(--color-text);
 }
 .dropzone {
   display: grid;

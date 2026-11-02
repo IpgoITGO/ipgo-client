@@ -180,3 +180,20 @@
     padding: var(--space-5);
   }
 }
+
+@media (max-width: 560px) {
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .actions > * {
+    min-width: 0;
+  }
+}
+
+/* 노란 주 버튼 하나만 눈에 띄게: 보조 버튼은 바탕색보다 살짝만 진하게 */
+button.retryButton {
+  color: var(--color-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}

@@ -3,6 +3,7 @@
 .page {
   display: grid;
   min-height: 100vh;
+  min-height: 100dvh;
   align-items: start;
   justify-items: center;
   padding: max(var(--space-6), calc(50vh - 330px)) var(--space-6) var(--space-6);
