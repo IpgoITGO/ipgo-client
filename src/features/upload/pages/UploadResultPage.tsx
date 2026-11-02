@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
+import { ApiError } from '../../../shared/api/client'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { getUploadResult } from '../model/uploadApi'
@@ -39,7 +40,19 @@ export function UploadResultPage() {
   }
 
   if (result.isError) {
-    return (
+    // 없는 기록(404)이나 남의 기록(403)은 다시 불러와도 같으니 업로드 화면으로 보낸다.
+    const gone =
+      result.error instanceof ApiError &&
+      (result.error.status === 404 || result.error.status === 403)
+    return gone ? (
+      <AsyncState
+        description="지워졌거나 다른 계정으로 올린 기록이에요. 수불부를 다시 올려 주세요."
+        onRetry={() => navigate('/upload')}
+        retryLabel="업로드 화면으로"
+        status="error"
+        title="이 업로드 결과를 찾을 수 없어요"
+      />
+    ) : (
       <AsyncState
         description={result.error.message}
         onRetry={() => void result.refetch()}
@@ -52,13 +65,23 @@ export function UploadResultPage() {
   const data = result.data
 
   if (data.status === 'FAILED') {
-    return (
+    // 파일 형식 문제(INVALID_SOURCE·이유 없음)만 고쳐서 올리라고 하고, 서버 쪽 문제면 파일은 그대로 다시 올리게 한다.
+    const fileProblem = !data.error || data.error.code === 'INVALID_SOURCE'
+    return fileProblem ? (
       <AsyncState
-        description="수불부를 고친 뒤 다시 올려 주세요."
+        description="수불부 형식을 확인하고 고친 뒤 다시 올려 주세요."
         onRetry={() => navigate('/upload')}
         retryLabel="다시 올리기"
         status="error"
         title="수불부를 처리하지 못했어요"
+      />
+    ) : (
+      <AsyncState
+        description="파일 문제는 아니에요. 잠시 뒤 같은 파일을 그대로 다시 올려 주세요."
+        onRetry={() => navigate('/upload')}
+        retryLabel="같은 파일 다시 올리기"
+        status="error"
+        title="서버에서 수불부를 처리하지 못했어요"
       />
     )
   }

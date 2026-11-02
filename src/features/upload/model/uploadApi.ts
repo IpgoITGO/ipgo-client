@@ -17,8 +17,14 @@ export type UploadPeriods = {
   latestUploadId: number | null
 }
 
+// 처리 실패 이유(ipgo-server UploadCleaningService.Failure).
+// INVALID_SOURCE = 파일 형식 문제라 고쳐서 다시 올림. 나머지는 서버 쪽 문제라 같은 파일을 잠시 뒤 다시 올림.
+export type UploadFailureCode =
+  'INVALID_SOURCE' | 'ENGINE_UNAVAILABLE' | 'INVALID_RESULT'
+
 export type UploadResult = {
   asOfDate: string
+  error?: { code: UploadFailureCode | string; message: string } | null
   matchedReceipts: Array<{
     quantity: number
     receiptId: number

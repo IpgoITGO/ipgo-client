@@ -167,6 +167,40 @@ describe('UploadPage', () => {
     ).toBeInTheDocument()
   })
 
+  it.each([
+    [400, 'UPLOAD_INVALID_FORMAT', '필수 열(입고)이 없습니다.'],
+    [413, 'FILE_TOO_LARGE', '파일 크기 제한을 초과했습니다.'],
+  ])(
+    '서버가 %s(%s)로 거절하면 그 파일에 이유를 붙여 보여 주고 나머지는 남긴다',
+    async (status, code, message) => {
+      const user = userEvent.setup()
+      uploadFileMock.mockImplementation(async (file: File) => {
+        if (file.name === '2026-10.xlsx')
+          throw new ApiError(status, code, message)
+        return { uploadId: 15, status: 'PROCESSING' }
+      })
+      renderPage()
+
+      await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+        new File(['bad'], '2026-10.xlsx'),
+        new File(['ok'], '2026-11.xlsx'),
+      ])
+      await user.click(
+        await screen.findByRole('button', { name: '2개 올리기' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: '이 파일은 올릴 수 없어요',
+      })
+      expect(dialog).toHaveTextContent('2026-10.xlsx')
+      expect(dialog).toHaveTextContent(message)
+      await user.click(screen.getByRole('button', { name: '확인' }))
+
+      expect(screen.queryByText('2026-10.xlsx')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
+    },
+  )
+
   // 덮어쓰기로 보내도 서버는 SAME_FILE이면 계속 409를 준다(#105).
   it.each([
     ['새 파일', '2026-10.xlsx', false],
