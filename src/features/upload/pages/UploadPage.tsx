@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
@@ -56,6 +56,7 @@ export function UploadPage() {
   // 확인이 필요한 파일을 차례로 하나씩 팝업으로 보여 준다. 맨 앞이 지금 열린 팝업이다.
   const [modalQueue, setModalQueue] = useState<string[]>([])
 
+  const queryClient = useQueryClient()
   const periods = useQuery({
     queryKey: ['upload-periods'],
     queryFn: getUploadPeriods,
@@ -67,8 +68,9 @@ export function UploadPage() {
   )
 
   async function addFiles(selectedFiles: FileList | File[]) {
-    // 목록이 아직 안 왔으면 기다렸다가 비교한다.
-    const uploaded = periods.data ?? (await periods.refetch()).data
+    // 고를 때마다 서버 목록을 새로 받아 비교한다. 저장해 둔 목록(30초)은 방금 올린 기간이나
+    // 다른 창에서 올린 기간을 모를 수 있다(11/2: 올린 직후 같은 파일을 다시 골라도 팝업이 안 떴음).
+    const uploaded = (await periods.refetch()).data ?? periods.data
     const nextFiles = Array.from(selectedFiles).map((file) =>
       markDuplicate(validateUploadFile(file), uploaded),
     )
@@ -136,6 +138,9 @@ export function UploadPage() {
         if (item.overwrite && item.period) replaced.push(item.period)
         setFiles((current) => current.filter((file) => file.id !== item.id))
       }
+      // 올린 기간과 대시보드가 바뀌었으니 저장해 둔 목록을 버린다
+      void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       // ponytail: 여러 파일이면 마지막 파일의 결과만 보여 준다. 파일별 결과 목록은 U2가 여러 건을 줄 때.
       navigate(`/upload/${lastUploadId}/result`, { state: { replaced } })
     } catch (cause) {
