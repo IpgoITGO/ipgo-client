@@ -13,10 +13,10 @@ function sentence(pattern: RegExp) {
     element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
 }
 
-function renderInsight(skuId = '8800272420016') {
+function renderInsight(resultId: number | string = 101) {
   return render(
     <AppProviders>
-      <ScenarioInsight inboundUnit={12} skuId={skuId} />
+      <ScenarioInsight inboundUnit={12} resultId={resultId} />
     </AppProviders>,
   )
 }
@@ -28,7 +28,11 @@ describe('ScenarioInsight', () => {
     expect(await screen.findByText('권장량의 80%')).toBeInTheDocument()
     expect(screen.getByText('권장량 100%')).toBeInTheDocument()
     expect(screen.getByText('권장량의 120%')).toBeInTheDocument()
-    expect(screen.getAllByText('표본 부족으로 미산출')).toHaveLength(2)
+    // 도착 전 위험은 결과에 하나라 위에 한 번만, 120%의 도착 후 위험만 표본 부족
+    expect(
+      screen.getByText(/도착하기 전 품절 위험은 8%로 모든 경우가 같아요/),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('표본 부족으로 미산출')).toHaveLength(1)
     expect(screen.getByText('권장')).toBeInTheDocument()
     expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
     expect(
@@ -45,21 +49,23 @@ describe('ScenarioInsight', () => {
     const user = userEvent.setup()
     let requestCount = 0
     server.use(
-      http.post('/api/skus/:skuId/scenarios', async ({ request }) => {
+      http.post('/api/results/:resultId/scenarios', async ({ request }) => {
         requestCount += 1
-        const body = (await request.json()) as { quantity: number }
+        const body = (await request.json()) as { qty: number }
         await delay(80)
-        return HttpResponse.json({
-          id: 'custom',
-          label: '직접 입력',
-          quantity: body.quantity,
-          expectedStockoutDate: '2026. 12. 10',
-          remainingAtNextInbound: 44,
-          preArrivalRisk: 7,
-          postArrivalRisk: 2,
-          estimated: true,
-          sampleSize: 44,
-        })
+        return HttpResponse.json(
+          {
+            scenarioId: 4,
+            type: 'CUSTOM',
+            qty: body.qty,
+            isDuplicate: false,
+            expectedDepletionOn: '2026-12-10',
+            expectedEndingStock: 44,
+            unmetDemandQty: 0,
+            postArrivalRisk: 0.02,
+          },
+          { status: 201 },
+        )
       }),
     )
     renderInsight()
@@ -122,11 +128,18 @@ describe('ScenarioInsight', () => {
 
   it('시나리오와 AI 생성 진행 상태를 표시한다', () => {
     server.use(
-      http.get('/api/skus/:skuId/scenarios', async () => {
+      http.get('/api/results/:resultId/scenarios', async () => {
         await delay(100)
-        return HttpResponse.json({ recommendedQuantity: 72, scenarios: [] })
+        return HttpResponse.json({
+          resultId: 101,
+          isEstimate: true,
+          preArrivalRisk: null,
+          riskSampleSize: null,
+          riskStatus: 'INSUFFICIENT_SAMPLE',
+          scenarios: [],
+        })
       }),
-      http.get('/api/skus/:skuId/insight', async () => {
+      http.get('/api/results/:resultId/insight', async () => {
         await delay(100)
         return HttpResponse.json({
           mode: 'LLM',
@@ -175,7 +188,7 @@ describe('ScenarioInsight', () => {
 
   it('불러오지 못하면 다시 불러오기를 준다', async () => {
     server.use(
-      http.get('/api/skus/:skuId/insight', () =>
+      http.get('/api/results/:resultId/insight', () =>
         HttpResponse.json({ code: 'ERROR', message: '실패' }, { status: 500 }),
       ),
     )
