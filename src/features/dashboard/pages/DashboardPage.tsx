@@ -14,8 +14,10 @@ export type DashboardData = {
   baseDate: string
   /** 서버가 판정에 쓴 오늘 날짜(API 명세 3.5 today). 없으면 브라우저의 오늘 */
   today?: string
-  freshness: 'fresh' | 'stale-result' | 'refresh-required'
+  freshness: 'fresh' | 'stale-result' | 'refresh-required' | 'no-result'
   lastCalculatedAt?: string
+  /** 수불부를 한 번이라도 올렸는지. 계산 전 안내에서 어느 화면으로 보낼지 정한다 */
+  hasUpload?: boolean
   summary: {
     needed: number
     safe: number
@@ -143,6 +145,7 @@ export function DashboardPage() {
 
   const data = query.data
   const refreshRequired = data.freshness === 'refresh-required'
+  const noResult = data.freshness === 'no-result'
   // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
   const today = dayNumber(data.today ?? localToday())
   const daysPast = (date: string) => today - dayNumber(date)
@@ -152,7 +155,7 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      {data.freshness !== 'fresh' && (
+      {(refreshRequired || data.freshness === 'stale-result') && (
         <aside className={styles.banner} data-state={data.freshness}>
           <span aria-hidden="true" className={styles.bannerMark}>
             !
@@ -178,19 +181,23 @@ export function DashboardPage() {
       <header className={styles.intro}>
         <div>
           <h1>
-            {refreshRequired
-              ? '수불부를 올리면 다시 계산해요'
-              : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
+            {noResult
+              ? '아직 계산한 결과가 없어요'
+              : refreshRequired
+                ? '수불부를 올리면 다시 계산해요'
+                : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
           </h1>
           <div className={styles.meta}>
-            <span>기준일 {data.baseDate}</span>
-            <b data-state={data.freshness}>
-              {refreshRequired
-                ? '재업로드 필요'
-                : data.freshness === 'stale-result'
-                  ? '갱신 전'
-                  : '오늘까지 예상 출고 반영'}
-            </b>
+            <span>{noResult ? '기준일 없음' : `기준일 ${data.baseDate}`}</span>
+            {!noResult && (
+              <b data-state={data.freshness}>
+                {refreshRequired
+                  ? '재업로드 필요'
+                  : data.freshness === 'stale-result'
+                    ? '갱신 전'
+                    : '오늘까지 예상 출고 반영'}
+              </b>
+            )}
           </div>
         </div>
         <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
@@ -235,7 +242,7 @@ export function DashboardPage() {
           ] as const
         ).map(([label, value, state, note]) => (
           <SummaryCard
-            empty={refreshRequired}
+            empty={refreshRequired || noResult}
             key={label}
             label={label}
             note={note}
@@ -245,7 +252,19 @@ export function DashboardPage() {
         ))}
       </section>
 
-      {refreshRequired ? (
+      {noResult ? (
+        <AsyncState
+          description={
+            data.hasUpload
+              ? '입고 조건을 확인하고 계산하면 권장 입고량이 나와요.'
+              : '수불부를 올리고 입고 조건을 확인하면 권장 입고량이 나와요.'
+          }
+          onRetry={() => navigate(data.hasUpload ? '/settings' : '/upload')}
+          retryLabel={data.hasUpload ? '입고 조건 확인하기' : '수불부 업로드'}
+          status="empty"
+          title="아직 계산 전이에요"
+        />
+      ) : refreshRequired ? (
         <AsyncState
           description="오래된 자료로 계산한 숫자를 보여주지 않아요. 풀필먼트에서 최근 수불부를 받아 올려 주세요."
           status="empty"

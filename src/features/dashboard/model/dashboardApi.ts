@@ -58,13 +58,17 @@ export function toDashboardData(raw: ReplenishmentNeeds): DashboardData {
   return {
     baseDate: dotDate(raw.asOfDate),
     today: dotDate(raw.today),
+    // 계산을 한 번도 못 했으면 기준일 대신 "계산 전" 안내를 띄운다(SKU 상세와 같은 모양).
     freshness:
-      (raw.daysSinceAsOf ?? 0) > REUPLOAD_AFTER_DAYS
-        ? 'refresh-required'
-        : raw.resultStatus === 'STALE'
-          ? 'stale-result'
-          : 'fresh',
+      raw.resultStatus === null || raw.asOfDate === null
+        ? 'no-result'
+        : (raw.daysSinceAsOf ?? 0) > REUPLOAD_AFTER_DAYS
+          ? 'refresh-required'
+          : raw.resultStatus === 'STALE'
+            ? 'stale-result'
+            : 'fresh',
     lastCalculatedAt: monthDay(raw.resultComputedAt),
+    hasUpload: raw.latestUploadId !== null,
     summary: {
       needed: raw.summary.needCount,
       safe: raw.summary.notNeededCount,
