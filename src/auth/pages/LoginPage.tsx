@@ -91,6 +91,7 @@ export function LoginPage() {
         <div className={styles.fields}>
           <TextField
             autoComplete="email"
+            spellCheck={false}
             error={errors.email?.message}
             label="이메일"
             placeholder="seller@example.com"

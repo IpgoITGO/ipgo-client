@@ -1,7 +1,8 @@
 .stamp {
   flex: none;
-  width: 58px;
-  height: 27px;
+  width: 76px;
+  height: 26px;
+  transform: rotate(-4deg);
   overflow: visible;
   color: var(--color-danger);
   vertical-align: middle;

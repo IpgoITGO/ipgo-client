@@ -182,7 +182,7 @@ describe('SettingsPage 표 모양', () => {
         </MemoryRouter>
       </AppProviders>,
     )
-    const cost = await screen.findByLabelText('덴탈껌 S 10입 cost')
+    const cost = await screen.findByLabelText('덴탈껌 S 10입 원가')
     expect(cost).toHaveValue('1,800')
 
     await user.clear(cost)
@@ -235,7 +235,7 @@ describe('SettingsPage 표 모양', () => {
       </AppProviders>,
     )
 
-    const cost = await screen.findByLabelText('케어트릿 120g cost')
+    const cost = await screen.findByLabelText('케어트릿 120g 원가')
     expect(cost).toHaveValue('')
     expect(cost).toHaveAttribute('placeholder', '미입력')
 
@@ -282,7 +282,7 @@ describe('SettingsPage 단종 상품', () => {
     expect(
       await screen.findByLabelText('단종 간식 30g leadTime'),
     ).toHaveAttribute('readonly')
-    expect(screen.getByLabelText('단종 간식 30g cost')).toHaveAttribute(
+    expect(screen.getByLabelText('단종 간식 30g 원가')).toHaveAttribute(
       'readonly',
     )
 

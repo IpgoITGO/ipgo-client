@@ -73,6 +73,8 @@ export type SkuDetail = {
   name: string
   barcode: string
   fulfillment: string
+  // 서버가 준 예상 소진일(YYYY-MM-DD). 지났으면 화면이 "품절 주의"를 붙인다
+  shortageOn: string | null
   // pending = 아직 계산 전(결과 없음)
   status: 'ready' | 'reference' | 'unavailable' | 'pending'
   unavailableReason?: string
@@ -128,6 +130,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     name: raw.product.skuName,
     barcode: raw.product.skuBarcode,
     fulfillment: raw.product.fulfillment ?? '',
+    shortageOn: raw.expectedShortageOn,
     status,
     unavailableReason: result?.reason ?? undefined,
     recommendation: {

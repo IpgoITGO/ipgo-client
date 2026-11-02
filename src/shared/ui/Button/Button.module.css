@@ -84,3 +84,8 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+
+/* 휴대폰에서 두 번 누름 확대 지연 없이 바로 반응 */
+.button {
+  touch-action: manipulation;
+}

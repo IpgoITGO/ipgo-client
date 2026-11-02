@@ -25,9 +25,15 @@ describe('SkuPage', () => {
     expect(
       await screen.findByRole('heading', { name: '케어트릿 120g' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('72개')).toBeInTheDocument()
-    expect(screen.getByText('2026. 10. 22')).toBeInTheDocument()
-    expect(screen.getByText('품절 1일')).toBeInTheDocument()
+    expect(screen.getByLabelText('권장 입고량 72개')).toBeInTheDocument()
+    // 대시보드에서 소진일이 지난 상품이라 상세에도 품절 주의와 할 일 한 줄
+    expect(screen.getByRole('img', { name: /품절 주의/ })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /재고가 바닥났을 수 있어요 · 권장 72개를 지금 넣어 주세요/,
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('품절 2일')).toBeInTheDocument()
     // 평가로 정한 기본 방식(A)을 썼고, B는 쓰지 않았다
     expect(screen.getByText('적용 · 평가로 선정')).toBeInTheDocument()
     expect(screen.getByText('평가에서 A가 더 정확했어요')).toBeInTheDocument()

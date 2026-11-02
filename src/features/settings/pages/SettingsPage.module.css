@@ -1,5 +1,7 @@
 .page {
   display: grid;
+  /* 표가 넓어도 화면 폭을 넘지 않게: 칸은 화면 폭까지만, 넓은 표는 안에서 옆으로 밀림 */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
 }
 .intro {

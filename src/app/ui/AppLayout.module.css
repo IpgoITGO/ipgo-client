@@ -1,5 +1,6 @@
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .header {
@@ -164,4 +165,13 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   margin-top: var(--space-5);
+}
+
+/* 키보드로 옮겨 갈 때 어디 있는지 보이게(버튼과 같은 링) */
+.brand:focus-visible,
+.link:focus-visible,
+.account button:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+  border-radius: var(--radius-chip);
 }

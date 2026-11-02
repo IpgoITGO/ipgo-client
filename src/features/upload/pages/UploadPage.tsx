@@ -6,7 +6,7 @@ import {
   useState,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
@@ -219,9 +219,9 @@ export function UploadPage() {
   return (
     <div className={styles.page}>
       <header className={styles.intro}>
-        <button className={styles.back} onClick={() => navigate('/dashboard')}>
+        <Link className={styles.back} to="/dashboard">
           ← 대시보드로
-        </button>
+        </Link>
         <h1>올릴 수불부를 확인해 주세요</h1>
         <p>월별 XLSX 파일을 여러 개 한 번에 선택할 수 있어요.</p>
       </header>
