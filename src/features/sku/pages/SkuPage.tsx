@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import {
@@ -34,6 +35,14 @@ const methodLabels = {
 
 const count = (value: number | null) =>
   value == null ? '—' : `${value.toLocaleString()}개`
+
+// 입고 조건 값(리드타임·발주 주기·입고 단위)이 비었으면 "—일" 대신 "미입력"
+const setting = (value: number | null, unit: string) =>
+  value == null ? (
+    <EmptyValue kind="unset" />
+  ) : (
+    `${value.toLocaleString()}${unit}`
+  )
 
 // 시안 S05 그래프: 기말 재고는 선, 출고는 막대, 재고가 0인 날은 빨간 점으로 그린다.
 const CHART = {
@@ -254,29 +263,46 @@ export function SkuPage() {
       <div>
         <dt>리드타임</dt>
         <dd>
-          {data.settings.leadTimeDays ?? '—'}일
-          <span className={styles.source}>
-            {sourceLabels[data.settings.leadTimeSource]}
-          </span>
+          {setting(data.settings.leadTimeDays, '일')}
+          {data.settings.leadTimeDays != null && (
+            <span className={styles.source}>
+              {sourceLabels[data.settings.leadTimeSource]}
+            </span>
+          )}
         </dd>
       </div>
       <div>
         <dt>발주 주기</dt>
         <dd>
-          {data.settings.reviewCycleDays ?? '—'}일
-          <span className={styles.source}>
-            {sourceLabels[data.settings.reviewCycleSource]}
-          </span>
+          {setting(data.settings.reviewCycleDays, '일')}
+          {data.settings.reviewCycleDays != null && (
+            <span className={styles.source}>
+              {sourceLabels[data.settings.reviewCycleSource]}
+            </span>
+          )}
         </dd>
       </div>
     </dl>
+  )
+  // 사장님이 넣을 값이 하나라도 비었으면 고치는 곳으로 가는 길을 붙인다
+  const settingsMissing =
+    data.settings.leadTimeDays == null ||
+    data.settings.reviewCycleDays == null ||
+    data.settings.orderUnitQty == null
+  const settingsLink = settingsMissing && (
+    <Link className={styles.fixLink} to="/settings">
+      입고 조건에서 정하기 →
+    </Link>
   )
 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>{data.fulfillment}</span>
+          {/* 출고지는 없으면 줄째 뺀다 */}
+          {data.fulfillment && (
+            <span className={styles.eyebrow}>{data.fulfillment}</span>
+          )}
           <h1>{data.name}</h1>
           <p>바코드 {data.barcode}</p>
         </div>
@@ -295,6 +321,7 @@ export function SkuPage() {
             title="아직 계산 전이에요"
           />
           {settingRows}
+          {settingsLink}
         </section>
       ) : data.status === 'unavailable' ? (
         <AsyncState
@@ -325,11 +352,23 @@ export function SkuPage() {
             <dl>
               <div>
                 <dt>예상 사입비</dt>
-                <dd>{data.recommendation.cost.toLocaleString()}원</dd>
+                <dd>
+                  {data.recommendation.cost == null ? (
+                    <Link className={styles.fixLink} to="/settings">
+                      단가를 넣으면 보여요 →
+                    </Link>
+                  ) : (
+                    `${data.recommendation.cost.toLocaleString()}원`
+                  )}
+                </dd>
               </div>
               <div>
                 <dt>현재 예상 소진일</dt>
-                <dd>{data.recommendation.expectedStockoutDate}</dd>
+                <dd>
+                  {data.recommendation.expectedStockoutDate ?? (
+                    <EmptyValue kind="short" />
+                  )}
+                </dd>
               </div>
             </dl>
           </section>
@@ -399,7 +438,11 @@ export function SkuPage() {
                 <div>
                   <dt>시작 재고</dt>
                   <dd>
-                    {count(data.calculation.startingInventory)}
+                    {data.calculation.startingInventory == null ? (
+                      <EmptyValue kind="short" />
+                    ) : (
+                      count(data.calculation.startingInventory)
+                    )}
                     {data.calculation.startingInventoryEstimated && (
                       <small> 추정</small>
                     )}
@@ -411,15 +454,17 @@ export function SkuPage() {
                 </div>
                 <div>
                   <dt>입고 단위</dt>
-                  <dd>{count(data.calculation.inboundUnit)}</dd>
+                  <dd>{setting(data.calculation.inboundUnit, '개')}</dd>
                 </div>
                 <div>
                   <dt>리드타임</dt>
                   <dd>
-                    {data.settings.leadTimeDays ?? '—'}일
-                    <span className={styles.source}>
-                      {sourceLabels[data.settings.leadTimeSource]}
-                    </span>
+                    {setting(data.settings.leadTimeDays, '일')}
+                    {data.settings.leadTimeDays != null && (
+                      <span className={styles.source}>
+                        {sourceLabels[data.settings.leadTimeSource]}
+                      </span>
+                    )}
                   </dd>
                 </div>
                 {data.calculation.rawQuantity != null && (
@@ -429,6 +474,7 @@ export function SkuPage() {
                   </div>
                 )}
               </dl>
+              {settingsLink}
             </section>
           </div>
 
@@ -476,7 +522,9 @@ function AccuracyCard({
       <div className={styles.accuracyBoxes}>
         <div data-tone="cover">
           <span>커버 성공률</span>
-          <strong>{coverRate == null ? '—' : `${coverRate}%`}</strong>
+          <strong>
+            {coverRate == null ? <EmptyValue kind="short" /> : `${coverRate}%`}
+          </strong>
           {dots > 0 && (
             <span
               aria-label={`${coverTrials}번 중 ${coverSuccess}번 성공`}
@@ -496,13 +544,19 @@ function AccuracyCard({
         </div>
         <div data-tone="error">
           <span>예측 오차</span>
-          <strong>{errorRate == null ? '—' : `${errorRate}%`}</strong>
+          <strong>
+            {errorRate == null ? <EmptyValue kind="short" /> : `${errorRate}%`}
+          </strong>
           {errorRate != null && (
             <span aria-hidden="true" className={styles.bar}>
               <i style={{ width: `${Math.min(errorRate, 100)}%` }} />
             </span>
           )}
-          <p>예측이 실제 출고와 평균 이만큼 빗나갔어요. 낮을수록 좋아요.</p>
+          <p>
+            {errorRate == null
+              ? '비교할 지난 예측이 쌓이면 보여요.'
+              : '예측이 실제 출고와 평균 이만큼 빗나갔어요. 낮을수록 좋아요.'}
+          </p>
         </div>
       </div>
       {accuracy.range && (

@@ -621,22 +621,24 @@ export const handlers = [
   }),
   // K1 SKU 상세 (서버 ProductDetail 모양). 아이디로 상태를 고른다:
   // new-product = 계산 불가, no-result = 아직 계산 전, fallback-product = A를 못 써 B로 대체,
-  // reference-product = 참고용(정확도 낮음·추정 재고), no-trend = 추이 기록 없음(server #45 전).
+  // reference-product = 참고용(정확도 낮음·추정 재고), no-trend = 추이 기록 없음(server #45 전),
+  // empty-values = 서버가 값을 비워 보냄(출고지·입고 조건·단가·소진일·시작 재고·정확도 null).
   http.get('/api/products/:productId/detail', ({ params }) => {
     const id = String(params.productId)
+    const isEmpty = id === 'empty-values'
     const product = (skuName: string, skuBarcode: string) => ({
       productId: Number(id) || 1,
       skuBarcode,
       skuName,
-      fulfillment: '서울 풀필먼트',
+      fulfillment: isEmpty ? null : '서울 풀필먼트',
     })
     const settings = {
-      leadTimeDays: 5,
+      leadTimeDays: isEmpty ? null : 5,
       leadTimeSource: 'PRODUCT',
-      reviewCycleDays: 7,
+      reviewCycleDays: isEmpty ? null : 7,
       reviewCycleSource: 'ESTIMATED',
-      orderUnitQty: 12,
-      unitCost: 1800,
+      orderUnitQty: isEmpty ? null : 12,
+      unitCost: isEmpty ? null : 1800,
     }
     if (id === 'no-result') {
       return HttpResponse.json({
@@ -668,7 +670,7 @@ export const handlers = [
         : product('케어트릿 120g', '8800272420016'),
       needStatus: isUnavailable ? 'NOT_CALCULABLE' : 'NEED_NOW',
       asOfDate: '2026-10-14',
-      expectedShortageOn: isUnavailable ? null : '2026-10-22',
+      expectedShortageOn: isUnavailable || isEmpty ? null : '2026-10-22',
       settings,
       result: {
         // mock은 상품 아이디를 결과 번호로 그대로 써서, 아래 K2·K4 mock이 같은 아이디로 상태를 고른다.
@@ -684,13 +686,13 @@ export const handlers = [
         multiplier: 1.1,
         horizonDays: 12,
         forecastOutboundQty: isFallback ? 66 : 58,
-        startStockQty: 4,
+        startStockQty: isEmpty ? null : 4,
         startStockEstimated: isReference,
         plannedReceiptsInHorizon: 12,
         preArrivalUnmetQty: 0,
         requiredQtyBeforeRounding: null,
         recommendedQty: isUnavailable ? null : 72,
-        recommendedAmount: isUnavailable ? null : 129600,
+        recommendedAmount: isUnavailable || isEmpty ? null : 129600,
       },
       accuracy: isUnavailable
         ? null
@@ -698,9 +700,9 @@ export const handlers = [
             grade: isReference ? 'LOW' : 'HIGH',
             isReference,
             validObservationDays: isReference ? 21 : 120,
-            coverSuccessCount: isReference ? 5 : 9,
-            coverTrialCount: 10,
-            forecastErrorRate: isReference ? 0.38 : 0.12,
+            coverSuccessCount: isEmpty ? null : isReference ? 5 : 9,
+            coverTrialCount: isEmpty ? null : 10,
+            forecastErrorRate: isEmpty ? null : isReference ? 0.38 : 0.12,
             history: [],
             range: isReference ? { low: 40, high: 70 } : null,
             firstInboundOn: '2026-03-02',

@@ -195,6 +195,64 @@ describe('SettingsPage 표 모양', () => {
     server.events.removeAllListeners()
   })
 
+  it('서버에 원가가 없으면 0원 대신 빈칸(미입력)으로 두고, 안 건드리면 원가를 보내지 않는다', async () => {
+    const user = userEvent.setup()
+    const sent: { url: string; body: unknown }[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'PUT') {
+        sent.push({ url: request.url, body: await request.clone().json() })
+      }
+    })
+    server.use(
+      http.get('/api/products', () =>
+        HttpResponse.json({
+          items: [
+            {
+              productId: 1,
+              skuBarcode: '8800272420016',
+              skuName: '케어트릿 120g',
+              unitCost: null,
+              isActive: true,
+              settings: {
+                leadTimeDays: 5,
+                reviewCycleDays: 29,
+                orderUnitQty: 1,
+              },
+              overridden: [],
+            },
+          ],
+          total: 1,
+          page: 0,
+          size: 20,
+        }),
+      ),
+    )
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+
+    const cost = await screen.findByLabelText('케어트릿 120g cost')
+    expect(cost).toHaveValue('')
+    expect(cost).toHaveAttribute('placeholder', '미입력')
+
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    await waitFor(() =>
+      expect(sent.some((r) => r.url.includes('/replenishment-settings'))).toBe(
+        true,
+      ),
+    )
+    expect(
+      sent.some(
+        (r) => (r.body as { unitCost?: unknown }).unitCost !== undefined,
+      ),
+    ).toBe(false)
+    server.events.removeAllListeners()
+  })
+
   it('기본값과 다르게 바꾼 칸만 굵게 표시한다', async () => {
     render(
       <AppProviders>

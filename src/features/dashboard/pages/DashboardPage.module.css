@@ -279,3 +279,10 @@
 .soldNote b {
   font-size: 1.125rem;
 }
+
+/* 계산 불가 · 검산 제외가 비었을 때 */
+.none {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}

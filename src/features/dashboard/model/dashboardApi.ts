@@ -80,11 +80,15 @@ export function toDashboardData(raw: ReplenishmentNeeds): DashboardData {
       name: item.skuName,
       barcode: item.skuBarcode,
       stockoutDate: dotDate(item.expectedShortageOn),
-      leadTime: item.leadTimeDays ?? 0,
+      // 비었으면 0일·0%로 바꾸지 않는다(진짜 0처럼 보임). 화면이 "미입력"·"자료 부족"으로 보여 준다.
+      leadTime: item.leadTimeDays,
       quantity: item.recommendedQty,
       cost: item.recommendedAmount,
       // 서버는 0~1 비율, 화면은 퍼센트 숫자
-      risk: Math.round((item.preArrivalRisk ?? 0) * 100),
+      risk:
+        item.preArrivalRisk == null
+          ? null
+          : Math.round(item.preArrivalRisk * 100),
     })),
     unavailableItems: raw.notCalculable.map((item) => ({
       name: item.skuName,
