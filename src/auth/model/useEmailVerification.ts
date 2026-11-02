@@ -51,8 +51,9 @@ export function useEmailVerification(email: string) {
     }
   }
 
-  // 중복 확인에 통과하면 이어서 인증 코드를 보냅니다.
-  async function checkAndSend() {
+  // 중복 확인(A5)만 합니다. 통과하면 버튼이 "인증 코드 받기"로 바뀌고,
+  // 코드는 사용자가 그 버튼을 눌러야 보냅니다(한 번 눌러 둘 다 하면 이미 눌린 것처럼 보였음, 11/2).
+  async function check() {
     let result: { available: boolean }
     try {
       result = await checkEmailAvailability(email)
@@ -67,7 +68,6 @@ export function useEmailVerification(email: string) {
     }
 
     setState({ email, step: 'available' })
-    await sendCode(email)
   }
 
   async function confirm(code: string) {
@@ -95,8 +95,8 @@ export function useEmailVerification(email: string) {
     resendAt: sentAt === undefined ? undefined : sentAt + RESEND_INTERVAL_MS,
     // 코드를 보낸 순간보다 앞선 시각이 나오지 않게 합니다.
     now: Math.max(tick, sentAt ?? 0),
-    checkAndSend,
-    resend: () => sendCode(email),
+    check,
+    send: () => sendCode(email),
     confirm,
   }
 }
