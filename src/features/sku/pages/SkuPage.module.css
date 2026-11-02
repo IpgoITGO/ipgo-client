@@ -64,12 +64,12 @@
   border-radius: var(--radius-input);
 }
 
-/* 투톤 그라데이션 대신 다른 카드와 같은 흰 카드. 숫자에 테이프를 붙여 강조한다. */
+/* 투톤 그라데이션 대신 다른 카드와 같은 흰 카드. 테두리는 대시보드 급한 카드와 같은 노랑(검정은 톤에 안 맞음, 11/2) */
 .recommendation {
   padding: var(--space-6) var(--space-8);
   color: var(--color-primary);
   background: var(--color-card);
-  border: 2px solid var(--color-primary);
+  border: 2px solid var(--color-accent);
   border-radius: var(--radius-card);
 }
 
