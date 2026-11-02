@@ -1,42 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, useCallback, useState } from 'react'
 
-import { apiRequest } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import {
+  addCustomScenario,
+  getInsight,
+  getScenarios,
+  type Scenario,
+  toScenario,
+  toScenarios,
+} from '../model/resultApi'
 import styles from './ScenarioInsight.module.css'
-
-type Scenario = {
-  id: string
-  label: string
-  quantity: number
-  expectedStockoutDate: string
-  remainingAtNextInbound: number
-  preArrivalRisk: number | null
-  postArrivalRisk: number | null
-  estimated: boolean
-  sampleSize: number
-}
-
-type ScenarioResponse = {
-  recommendedQuantity: number
-  scenarios: Scenario[]
-}
-
-// ipgo-ai docs/decisions/0002-insight-contract.md 3-7·4장대로 Spring이 숫자를 채워 줄 모양.
-// ponytail: 서버에 인사이트 주소가 아직 없어 mock 경로(/skus/{id}/insight) 그대로. 주소가 생기면 경로만 바꾼다.
-type InsightResponse = {
-  // LLM = AI 문장, TEMPLATE = 기본 문장(AI 실패·안 부름), NONE = 기본 문장도 못 만듦(비교표만)
-  mode: 'LLM' | 'TEMPLATE' | 'NONE'
-  sentences: string[]
-  state: 'NORMAL' | 'CHECK_NEEDED' | 'ON_HOLD' | 'NOT_NEEDED' | 'NOT_CALCULABLE'
-  stateReason: string | null
-  failReason: 'LLM_ERROR' | 'LLM_TIMEOUT' | 'VALIDATION_FAILED' | null
-  // 입고 조건을 바꿨는데 아직 다시 계산 전
-  stale: boolean
-}
 
 // 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
 const TONE = { LLM: 'ai', TEMPLATE: 'template', NONE: 'none' } as const
@@ -88,10 +65,11 @@ function scenarioNote(scenario: Scenario, recommendedQuantity: number) {
 
 export function ScenarioInsight({
   inboundUnit,
-  skuId,
+  resultId,
 }: {
   inboundUnit: number
-  skuId: string
+  // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
+  resultId: number | string
 }) {
   const [quantity, setQuantity] = useState('')
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>([])
@@ -102,12 +80,12 @@ export function ScenarioInsight({
   const [expanded, setExpanded] = useState(false)
 
   const scenariosQuery = useQuery({
-    queryKey: ['sku', skuId, 'scenarios'],
-    queryFn: () => apiRequest<ScenarioResponse>(`/skus/${skuId}/scenarios`),
+    queryKey: ['result', resultId, 'scenarios'],
+    queryFn: () => getScenarios(resultId),
   })
   const insightQuery = useQuery({
-    queryKey: ['sku', skuId, 'insight'],
-    queryFn: () => apiRequest<InsightResponse>(`/skus/${skuId}/insight`),
+    queryKey: ['result', resultId, 'insight'],
+    queryFn: () => getInsight(resultId),
   })
 
   const insight = insightQuery.data
@@ -133,18 +111,22 @@ export function ScenarioInsight({
     async (inputQuantity: number) => {
       setActionError('')
       try {
-        const scenario = await apiRequest<Scenario>(
-          `/skus/${skuId}/scenarios`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity: inputQuantity }),
+        const item = await addCustomScenario(resultId, inputQuantity)
+        // 도착 전 위험·표본은 K2 응답에 하나만 오므로 직접 입력 카드도 그 값을 같이 쓴다.
+        const scenario = toScenario(
+          item,
+          scenariosQuery.data ?? {
+            isEstimate: true,
+            preArrivalRisk: null,
+            riskSampleSize: null,
           },
         )
-        // 직접 넣은 수량은 여러 개 쌓아 비교한다. 같은 수량을 다시 넣으면 새 값으로 바꾼다.
+        // 직접 넣은 수량은 화면에서 여러 개 쌓아 비교한다(서버는 마지막 1개만 저장). 같은 수량이면 새 값으로 바꾼다.
         setCustomScenarios((current) => [
-          ...current.filter((item) => item.quantity !== scenario.quantity),
-          { ...scenario, id: `custom-${scenario.quantity}` },
+          ...current.filter(
+            (existing) => existing.quantity !== scenario.quantity,
+          ),
+          scenario,
         ])
         setQuantity('')
         setAdding(false)
@@ -156,7 +138,7 @@ export function ScenarioInsight({
         )
       }
     },
-    [skuId],
+    [resultId, scenariosQuery.data],
   )
   const action = useActionLock(calculate)
 
@@ -173,7 +155,7 @@ export function ScenarioInsight({
     void action.run(parsed)
   }
 
-  const data = scenariosQuery.data
+  const data = scenariosQuery.data && toScenarios(scenariosQuery.data)
   const scenarios = data
     ? [
         ...(data.recommendedQuantity === 0 ? [] : data.scenarios),

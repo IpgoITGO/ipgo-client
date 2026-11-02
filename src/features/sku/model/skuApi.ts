@@ -68,6 +68,8 @@ export type ProductDetail = {
 
 export type SkuDetail = {
   id: string
+  // 시나리오(K2·K3)·AI 인사이트(K4)를 부를 계산 결과 번호. 계산 전이면 null
+  resultId: number | null
   name: string
   barcode: string
   fulfillment: string
@@ -120,6 +122,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
         : 'ready'
   return {
     id: String(raw.product.productId),
+    resultId: result?.resultId ?? null,
     name: raw.product.skuName,
     barcode: raw.product.skuBarcode,
     fulfillment: raw.product.fulfillment ?? '',

@@ -671,7 +671,8 @@ export const handlers = [
       expectedShortageOn: isUnavailable ? null : '2026-10-22',
       settings,
       result: {
-        resultId: 101,
+        // mock은 상품 아이디를 결과 번호로 그대로 써서, 아래 K2·K4 mock이 같은 아이디로 상태를 고른다.
+        resultId: Number(id) || id,
         status: isUnavailable ? 'NOT_CALCULABLE' : 'OK',
         reason: isUnavailable ? '판매한 날이 7일보다 적어요.' : null,
         method: isUnavailable ? null : isFallback ? 'B' : 'A',
@@ -715,66 +716,106 @@ export const handlers = [
             })),
     })
   }),
-  http.get('/api/skus/:skuId/scenarios', ({ params }) => {
-    const recommendedQuantity = params.skuId === 'zero-recommendation' ? 0 : 72
+  // K2 시나리오(명세 3.7 · ERD scenario_results). zero-recommendation = 권장량 0개라 비교표 없음
+  http.get('/api/results/:resultId/scenarios', ({ params }) => {
+    const id = String(params.resultId)
     return HttpResponse.json({
-      recommendedQuantity,
-      scenarios: [
-        {
-          id: '80',
-          label: '권장량의 80%',
-          quantity: 60,
-          expectedStockoutDate: '2026. 11. 18',
-          remainingAtNextInbound: 14,
-          preArrivalRisk: 18,
-          postArrivalRisk: 9,
-          estimated: true,
-          sampleSize: 44,
-        },
-        {
-          id: '100',
-          label: '권장량 100%',
-          quantity: 72,
-          expectedStockoutDate: '2026. 11. 27',
-          remainingAtNextInbound: 26,
-          preArrivalRisk: 8,
-          postArrivalRisk: 3,
-          estimated: true,
-          sampleSize: 44,
-        },
-        {
-          id: '120',
-          label: '권장량의 120%',
-          quantity: 84,
-          expectedStockoutDate: '2026. 12. 5',
-          remainingAtNextInbound: 38,
-          preArrivalRisk: null,
-          postArrivalRisk: null,
-          estimated: true,
-          sampleSize: 5,
-        },
-      ],
+      resultId: Number(id) || 101,
+      isEstimate: true,
+      preArrivalRisk: 0.08,
+      riskSampleSize: 44,
+      riskStatus: 'OK',
+      scenarios:
+        id === 'zero-recommendation'
+          ? []
+          : [
+              {
+                scenarioId: 1,
+                type: 'P80',
+                qty: 60,
+                isDuplicate: false,
+                expectedDepletionOn: '2026-11-18',
+                expectedEndingStock: 14,
+                unmetDemandQty: 6,
+                postArrivalRisk: 0.09,
+              },
+              {
+                scenarioId: 2,
+                type: 'P100',
+                qty: 72,
+                isDuplicate: false,
+                expectedDepletionOn: '2026-11-27',
+                expectedEndingStock: 26,
+                unmetDemandQty: 0,
+                postArrivalRisk: 0.03,
+              },
+              {
+                scenarioId: 3,
+                type: 'P120',
+                qty: 84,
+                isDuplicate: false,
+                expectedDepletionOn: '2026-12-05',
+                expectedEndingStock: 38,
+                unmetDemandQty: 0,
+                postArrivalRisk: null,
+              },
+            ],
     })
   }),
-  http.post('/api/skus/:skuId/scenarios', async ({ request }) => {
-    const body = (await request.json()) as { quantity: number }
+  // K3 직접 입력(명세 3.7). 결과 1건에 1개만 저장하고 새로 넣으면 덮어쓴다.
+  http.post('/api/results/:resultId/scenarios', async ({ request }) => {
+    const body = (await request.json()) as { qty: number }
+    if (!Number.isInteger(body.qty) || body.qty < 1) {
+      return HttpResponse.json(
+        { code: 'INVALID_INPUT', message: '1개 이상의 정수를 입력해 주세요.' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json(
+      {
+        scenarioId: 4,
+        type: 'CUSTOM',
+        qty: body.qty,
+        isDuplicate: false,
+        expectedDepletionOn: '2026-12-10',
+        expectedEndingStock: body.qty - 46,
+        unmetDemandQty: 0,
+        postArrivalRisk: 0.02,
+      },
+      { status: 201 },
+    )
+  }),
+  // C2 계산 상태(명세 3.4 · ERD calculation_runs). 999 = 실패
+  http.get('/api/calculation-runs/:runId', ({ params }) => {
+    const runId = Number(params.runId)
+    if (runId === 999) {
+      return HttpResponse.json({
+        runId,
+        status: 'FAILED',
+        errorMessage: '계산 시간이 너무 오래 걸렸어요',
+        previousRunId: 31,
+      })
+    }
     return HttpResponse.json({
-      id: 'custom',
-      label: '직접 입력',
-      quantity: body.quantity,
-      expectedStockoutDate: '2026. 12. 10',
-      remainingAtNextInbound: body.quantity - 46,
-      preArrivalRisk: 7,
-      postArrivalRisk: 2,
-      estimated: true,
-      sampleSize: 44,
+      runId,
+      status: 'DONE',
+      asOfDate: '2026-10-14',
+      engineVersion: '0.3.1',
+      summary: {
+        needCount: 6,
+        notNeededCount: 22,
+        notCalculableCount: 2,
+        excludedCount: 1,
+      },
+      startedAt: '2026-10-19T09:00:01+09:00',
+      completedAt: '2026-10-19T09:00:21+09:00',
     })
   }),
-  // AI 인사이트(ipgo-ai 0002 계약 모양). 아이디로 상태를 고른다:
+  // K4 AI 인사이트(명세 3.8 주소, ipgo-ai 0002 계약 모양). 결과 번호(= mock 상품 아이디)로 상태를 고른다:
   // ai-fallback = 기본 문장(AI 늦음), ai-none = 비교표만, ai-stale = 갱신 전,
   // reference-product = 확인 필요, zero-recommendation = 입고 불필요, new-product = 계산 불가
-  http.get('/api/skus/:skuId/insight', ({ params }) => {
-    const id = String(params.skuId)
+  http.get('/api/results/:resultId/insight', ({ params }) => {
+    const id = String(params.resultId)
     const base = {
       mode: 'LLM',
       sentences: [

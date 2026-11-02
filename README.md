@@ -130,6 +130,15 @@ MSW handler는 기능별 mock을 모아 `src/mocks/handlers.ts`에서 조립합�
 개발 브라우저와 Vitest에서 함께 사용하며, 실제 API 코드에는 mock 분기를 넣지 않습니다. 인증 API(A1~A7) mock은
 `src/auth/mocks/handlers.ts`에 있습니다.
 
+서버에 아직 없는 주소는 팀 API 명세(`docs/design/api-spec.docx`)와 ipgo-server ERD v1대로 요청 코드와
+mock을 먼저 만들어 둡니다. 서버가 열리면 `API_PROXY_TARGET`만 바꾸면 됩니다.
+
+| 명세           | 주소                                                    | 요청 코드                             |
+| -------------- | ------------------------------------------------------- | ------------------------------------- |
+| C2 계산 상태   | `GET /calculation-runs/{runId}`                         | `src/shared/api/calculationRunApi.ts` |
+| K2·K3 시나리오 | `GET·POST /results/{resultId}/scenarios`                | `src/features/sku/model/resultApi.ts` |
+| K4 AI 인사이트 | `GET /results/{resultId}/insight` (응답은 ipgo-ai 0002) | `src/features/sku/model/resultApi.ts` |
+
 모의 API 모드에서는 각 API 요청 전에 서비스 워커에 현재 탭을 다시 등록하고 준비 응답을
 기다립니다. 포커스된 탭에서 워커가 중단돼도 다음 요청으로 복구하며, 동시에 시작된 요청은
 같은 준비 검사를 공유합니다. 3초 안에 확인하지 못하면 HTTP 요청을 보내지 않고 기존 연결
