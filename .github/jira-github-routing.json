@@ -2,24 +2,220 @@
   "rules": [
     {
       "repository": "IpgoITGO/ipgo-client",
-      "summaryPrefixes": ["[화면]"]
+      "summaryPrefixes": [
+        "[화면]"
+      ]
     },
     {
       "repository": "IpgoITGO/ipgo-server",
-      "summaryPrefixes": ["[서버]", "[BE]"]
+      "summaryPrefixes": [
+        "[서버]",
+        "[BE]"
+      ]
     },
     {
       "repository": "IpgoITGO/ipgo-ai",
-      "summaryPrefixes": ["[AI]", "[AI·DB]", "[AI worker]"]
+      "summaryPrefixes": [
+        "[AI]",
+        "[AI·DB]",
+        "[AI worker]"
+      ]
     },
     {
       "repository": "IpgoITGO/ipgo-infra",
-      "summaryPrefixes": ["[인프라]"]
+      "summaryPrefixes": [
+        "[인프라]"
+      ]
     }
   ],
   "issueRepositories": {
     "IPGO-77": "IpgoITGO/ipgo-client",
     "IPGO-98": "IpgoITGO/ipgo-ai",
-    "IPGO-111": "IpgoITGO/ipgo-ai"
+    "IPGO-30": "IpgoITGO/ipgo-client"
+  },
+  "jiraOnlyKeys": [
+    "IPGO-39",
+    "IPGO-40",
+    "IPGO-41",
+    "IPGO-42",
+    "IPGO-43",
+    "IPGO-44",
+    "IPGO-45",
+    "IPGO-47",
+    "IPGO-48",
+    "IPGO-49",
+    "IPGO-50",
+    "IPGO-51",
+    "IPGO-52",
+    "IPGO-53",
+    "IPGO-54",
+    "IPGO-55",
+    "IPGO-111"
+  ],
+  "excludedIssues": {
+    "IpgoITGO/ipgo-client": [
+      56,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      101,
+      102,
+      103,
+      104,
+      107
+    ],
+    "IpgoITGO/ipgo-ai": [
+      42
+    ]
+  },
+  "canonicalIssues": {
+    "IPGO-36": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 34,
+      "mode": "reference"
+    },
+    "IPGO-73": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 39,
+      "mode": "reference"
+    },
+    "IPGO-74": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 40,
+      "mode": "reference"
+    },
+    "IPGO-75": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 41,
+      "mode": "reference"
+    },
+    "IPGO-76": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 42,
+      "mode": "reference"
+    },
+    "IPGO-78": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 49,
+      "mode": "reference"
+    },
+    "IPGO-79": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 50,
+      "mode": "reference"
+    },
+    "IPGO-83": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 54,
+      "mode": "reference"
+    },
+    "IPGO-70": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 45,
+      "mode": "reference"
+    },
+    "IPGO-80": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 26,
+      "mode": "reference"
+    },
+    "IPGO-81": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 27,
+      "mode": "reference"
+    },
+    "IPGO-82": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 28,
+      "mode": "reference"
+    },
+    "IPGO-84": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 33,
+      "mode": "reference"
+    },
+    "IPGO-94": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 45,
+      "mode": "reference"
+    },
+    "IPGO-5": {
+      "repository": "IpgoITGO/ipgo-ai",
+      "number": 4,
+      "mode": "reference"
+    },
+    "IPGO-6": {
+      "repository": "IpgoITGO/ipgo-ai",
+      "number": 5,
+      "mode": "reference"
+    },
+    "IPGO-7": {
+      "repository": "IpgoITGO/ipgo-server",
+      "number": 1,
+      "mode": "reference"
+    },
+    "IPGO-28": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 29,
+      "mode": "reference"
+    },
+    "IPGO-29": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 30,
+      "mode": "reference"
+    },
+    "IPGO-31": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 33,
+      "mode": "reference"
+    },
+    "IPGO-65": {
+      "repository": "IpgoITGO/ipgo-server",
+      "nodeId": "I_kwDOVUe92s8AAAABaiZo-w",
+      "mode": "reference"
+    },
+    "IPGO-69": {
+      "repository": "IpgoITGO/ipgo-server",
+      "nodeId": "I_kwDOVUe92s8AAAABaiZung",
+      "mode": "reference"
+    },
+    "IPGO-71": {
+      "repository": "IpgoITGO/ipgo-server",
+      "nodeId": "I_kwDOVUe92s8AAAABaiZ44g",
+      "mode": "reference"
+    },
+    "IPGO-46": {
+      "repository": "IpgoITGO/ipgo-client",
+      "number": 58,
+      "mode": "reference"
+    }
   }
 }

@@ -43,9 +43,135 @@ export function validateRoutingConfig(config, repository, projectKey) {
       throw new Error(`Jira 저장소 명시적 연결 ${key}를 확인하세요.`)
     }
   }
+  if (config.jiraOnlyKeys && !Array.isArray(config.jiraOnlyKeys)) {
+    throw new Error('jiraOnlyKeys 배열이 필요합니다.')
+  }
+  for (const key of config.jiraOnlyKeys ?? []) {
+    if (extractProjectJiraKeys(projectKey, key)[0] !== key) {
+      throw new Error(`Jira 전용 키 ${key}를 확인하세요.`)
+    }
+  }
+  for (const field of ['excludedIssues', 'canonicalIssues']) {
+    if (
+      config[field] !== undefined &&
+      (!config[field] ||
+        typeof config[field] !== 'object' ||
+        Array.isArray(config[field]))
+    ) {
+      throw new Error(`${field} 객체가 필요합니다.`)
+    }
+  }
+  for (const [target, numbers] of Object.entries(config.excludedIssues ?? {})) {
+    if (
+      !repositories.has(target) ||
+      !Array.isArray(numbers) ||
+      numbers.some((number) => !Number.isSafeInteger(number) || number < 1)
+    )
+      throw new Error(`동기화 제외 Issue 설정 ${target}를 확인하세요.`)
+  }
+  const managedTargets = new Set()
+  for (const [key, binding] of Object.entries(config.canonicalIssues ?? {})) {
+    const hasNumber = Object.hasOwn(binding ?? {}, 'number')
+    const hasNode = Object.hasOwn(binding ?? {}, 'nodeId')
+    if (
+      extractProjectJiraKeys(projectKey, key)[0] !== key ||
+      !repositories.has(binding?.repository) ||
+      !['sync', 'reference'].includes(binding?.mode) ||
+      hasNumber === hasNode ||
+      (hasNumber &&
+        (!Number.isSafeInteger(binding.number) || binding.number < 1)) ||
+      (hasNode &&
+        (typeof binding.nodeId !== 'string' || !binding.nodeId.trim())) ||
+      config.jiraOnlyKeys?.includes(key) ||
+      (hasNumber &&
+        config.excludedIssues?.[binding.repository]?.includes(binding.number))
+    )
+      throw new Error(`정본 연결 ${key}를 확인하세요.`)
+    if (binding.mode === 'sync') {
+      const target = `${binding.repository}:${binding.number ?? binding.nodeId}`
+      if (managedTargets.has(target))
+        throw new Error('하나의 정본에 여러 Jira 상태를 연결할 수 없습니다.')
+      managedTargets.add(target)
+    }
+  }
+}
+
+export function isExcludedGithubIssue(issue, repository, config) {
+  if (
+    !Number.isSafeInteger(issue.number) ||
+    issue.number < 1 ||
+    issue.pull_request ||
+    config.excludedIssues?.[repository]?.includes(issue.number)
+  )
+    return true
+  // 이관된 옛 URL을 따라가 다른 저장소의 Issue에 쓰지 않는다.
+  const location = issue.repository_url ?? issue.html_url ?? issue.url
+  if (location) {
+    const match = location.match(
+      /(?:api\.github\.com\/repos|github\.com)\/([^/]+\/[^/]+)/,
+    )
+    if (match && match[1].toLowerCase() !== repository.toLowerCase())
+      return true
+  }
+  return false
+}
+
+export function isJiraKeySyncEnabled(key, repository, config) {
+  if (config.jiraOnlyKeys?.includes(key)) return false
+  const binding = config.canonicalIssues?.[key]
+  return (
+    !binding || (binding.mode === 'sync' && binding.repository === repository)
+  )
+}
+
+export function matchesCanonicalIssue(issue, binding) {
+  return binding.number !== undefined
+    ? issue.number === binding.number
+    : issue.node_id === binding.nodeId
+}
+
+export function canSyncGithubIssue(
+  issue,
+  key,
+  repository,
+  config,
+  projectKey = 'IPGO',
+) {
+  if (
+    isExcludedGithubIssue(issue, repository, config) ||
+    !isJiraKeySyncEnabled(key, repository, config)
+  )
+    return false
+  const owners = Object.entries(config.canonicalIssues ?? {})
+    .filter(
+      ([, binding]) =>
+        binding.mode === 'sync' &&
+        binding.repository === repository &&
+        matchesCanonicalIssue(issue, binding),
+    )
+    .map(([owner]) => owner)
+  if (owners.length && (owners.length !== 1 || owners[0] !== key)) return false
+  const binding = config.canonicalIssues?.[key]
+  if (binding) return matchesCanonicalIssue(issue, binding)
+  const keys = extractProjectJiraKeys(projectKey, issue.title)
+  // 여러 업무를 언급한 계약/총괄 Issue는 자동 상태 전환의 정본으로 추측하지 않는다.
+  return keys.length === 1 && keys[0] === key
+}
+
+export function releaseJiraKeys(message, projectKey) {
+  const lines = String(message ?? '').split(/\r?\n/)
+  const headline = lines[0] ?? ''
+  // GitHub merge commit은 첫 줄이 merge 안내, 다음 비어 있지 않은 줄이 PR 제목이다.
+  const prTitle = /^Merge pull request #\d+ from \S+$/.test(headline)
+    ? (lines.slice(1).find((line) => line.trim()) ?? '')
+    : ''
+  return extractProjectJiraKeys(projectKey, headline, prTitle)
 }
 
 export function resolveJiraRepository(issue, config) {
+  if (config.jiraOnlyKeys?.includes(issue.key)) return null
+  if (config.canonicalIssues?.[issue.key])
+    return config.canonicalIssues[issue.key].repository
   if (Object.hasOwn(config.issueRepositories, issue.key)) {
     return config.issueRepositories[issue.key]
   }
@@ -76,7 +202,15 @@ export function planJiraSync({
     jiraCreatedAt: autoCreateAfter,
     autoCreateAfter,
   })
-  const byKey = indexGithubIssuesByJiraKey(githubIssues, projectKey)
+  const eligible = githubIssues.filter(
+    (issue) => !isExcludedGithubIssue(issue, repository, routing),
+  )
+  const byKey = indexGithubIssuesByJiraKey(eligible, projectKey)
+  const retiredKeys = new Set(
+    githubIssues
+      .filter((issue) => isExcludedGithubIssue(issue, repository, routing))
+      .flatMap((issue) => extractProjectJiraKeys(projectKey, issue.title)),
+  )
   const existing = []
   const candidates = []
   const skipped = []
@@ -89,15 +223,40 @@ export function planJiraSync({
     ) {
       continue
     }
-    const githubIssue = byKey.get(jiraIssue.key)
-    // 과거에 연결된 다른 영역의 Issue도 이동하거나 연결을 끊지 않는다.
-    if (githubIssue) {
+    const destination = resolveJiraRepository(jiraIssue, routing)
+    const binding = routing.canonicalIssues?.[jiraIssue.key]
+    if (!isJiraKeySyncEnabled(jiraIssue.key, repository, routing)) {
+      skipped.push({
+        jiraIssue,
+        destination,
+        reason: routing.jiraOnlyKeys?.includes(jiraIssue.key)
+          ? 'jira-only'
+          : 'canonical-reference',
+      })
+      continue
+    }
+    const githubIssue = binding
+      ? eligible.find((issue) => matchesCanonicalIssue(issue, binding))
+      : byKey.get(jiraIssue.key)
+    if (
+      githubIssue &&
+      destination === repository &&
+      canSyncGithubIssue(
+        githubIssue,
+        jiraIssue.key,
+        repository,
+        routing,
+        projectKey,
+      )
+    ) {
       existing.push({ jiraIssue, githubIssue })
       continue
     }
-    const destination = resolveJiraRepository(jiraIssue, routing)
     let reason = null
-    if (!destination) reason = 'manual-routing'
+    if (binding && !githubIssue) reason = 'canonical-missing'
+    else if (githubIssue) reason = 'non-canonical'
+    else if (retiredKeys.has(jiraIssue.key)) reason = 'retired-binding'
+    else if (!destination) reason = 'manual-routing'
     else if (destination !== repository) reason = 'other-repository'
     else if (
       !shouldAutoCreateGithubIssue({
