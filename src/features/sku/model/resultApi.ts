@@ -37,7 +37,8 @@ export type InsightResponse = {
   sentences: string[]
   state: 'NORMAL' | 'CHECK_NEEDED' | 'ON_HOLD' | 'NOT_NEEDED' | 'NOT_CALCULABLE'
   stateReason: string | null
-  failReason: 'LLM_ERROR' | 'LLM_TIMEOUT' | 'VALIDATION_FAILED' | null
+  // 아는 사유는 LLM_ERROR · LLM_TIMEOUT · VALIDATION_FAILED. 서버가 다른 사유(VALUE_MISMATCH 등)를 보내도 그대로 받는다(ai#44 U2)
+  failReason: string | null
   // 입고 조건을 바꿨는데 아직 다시 계산 전
   stale: boolean
 }
@@ -111,7 +112,49 @@ export function addCustomScenario(resultId: number | string, qty: number) {
   })
 }
 
-// K4
-export function getInsight(resultId: number | string) {
-  return apiRequest<InsightResponse>(`/results/${resultId}/insight`)
+// K4 서버 응답: 상태 이름이 아직 두 벌이고(0002: LLM·TEMPLATE·NONE / 명세·#24: AI·FIXED·TABLE_ONLY, ai#44 U1),
+// 문장은 배열(sentences)이나 글 하나(draft)로 올 수 있다(U4). 화면이 쓰기 전에 한 모양으로 맞춘다.
+export type InsightRaw = Omit<InsightResponse, 'mode' | 'sentences'> & {
+  mode: string
+  sentences?: string[] | null
+  draft?: string | null
+}
+
+const MODE: Record<string, InsightResponse['mode']> = {
+  LLM: 'LLM',
+  AI: 'LLM',
+  TEMPLATE: 'TEMPLATE',
+  FIXED: 'TEMPLATE',
+  NONE: 'NONE',
+  TABLE_ONLY: 'NONE',
+}
+
+export function toInsight(raw: InsightRaw): InsightResponse {
+  const { draft, ...rest } = raw
+  return {
+    ...rest,
+    // 모르는 이름이면 기본 문장으로 본다(AI 문장이라고 잘못 말하지 않게)
+    mode: MODE[raw.mode] ?? 'TEMPLATE',
+    sentences:
+      raw.sentences ??
+      (draft ?? '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean),
+  }
+}
+
+const FAIL_TEXT: Record<string, string> = {
+  LLM_ERROR: 'AI 응답에 문제가 있었어요',
+  LLM_TIMEOUT: 'AI 응답이 늦었어요',
+  VALIDATION_FAILED: 'AI 문장이 검사를 통과하지 못했어요',
+}
+
+// 화면에 붙일 실패 사유 문구. 모르는 사유는 한 문구로 묶는다(전엔 "undefined"가 찍혔음)
+export function failText(reason: string) {
+  return FAIL_TEXT[reason] ?? 'AI 문장을 쓰지 못했어요'
+}
+
+export async function getInsight(resultId: number | string) {
+  return toInsight(await apiRequest<InsightRaw>(`/results/${resultId}/insight`))
 }

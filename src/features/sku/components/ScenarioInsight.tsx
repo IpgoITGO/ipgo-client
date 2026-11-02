@@ -7,6 +7,7 @@ import { Button } from '../../../shared/ui/Button/Button'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import {
   addCustomScenario,
+  failText,
   getInsight,
   getScenarios,
   type Scenario,
@@ -22,11 +23,6 @@ const STATE_CHIP = {
   ON_HOLD: { label: '판단 보류', tone: 'muted' },
   NOT_NEEDED: { label: '입고 불필요', tone: 'info' },
   NOT_CALCULABLE: { label: '계산 불가', tone: 'danger' },
-} as const
-const FAIL_TEXT = {
-  LLM_ERROR: 'AI 응답에 문제가 있었어요',
-  LLM_TIMEOUT: 'AI 응답이 늦었어요',
-  VALIDATION_FAILED: 'AI 문장이 검사를 통과하지 못했어요',
 } as const
 
 // 품절 위험이 이 값 이상이면 빨간 글씨로 강조한다.
@@ -105,7 +101,7 @@ export function ScenarioInsight({
       : insight?.mode === 'NONE'
         ? '숫자는 위 표에 그대로 있어요'
         : 'AI 대신 미리 정해 둔 기본 문장이에요' +
-          (insight?.failReason ? ` · ${FAIL_TEXT[insight.failReason]}` : '')
+          (insight?.failReason ? ` · ${failText(insight.failReason)}` : '')
 
   const calculate = useCallback(
     async (inputQuantity: number) => {
