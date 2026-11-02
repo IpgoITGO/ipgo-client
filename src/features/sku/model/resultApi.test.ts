@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { type ScenariosResponse, toScenarios } from './resultApi'
+import {
+  failText,
+  type InsightRaw,
+  type ScenariosResponse,
+  toInsight,
+  toScenarios,
+} from './resultApi'
 
 const base: ScenariosResponse = {
   resultId: 9001,
@@ -66,5 +72,37 @@ describe('toScenarios (명세 K2 → 화면 카드)', () => {
       recommendedQuantity: 0,
       scenarios: [],
     })
+  })
+})
+
+describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
+  const raw: InsightRaw = {
+    mode: 'LLM',
+    sentences: ['권장량 72개를 입고하면 위험이 낮아져요.'],
+    state: 'NORMAL',
+    stateReason: null,
+    failReason: null,
+    stale: false,
+  }
+
+  it('명세 이름(AI·FIXED·TABLE_ONLY)도 0002 이름으로 알아듣고, 모르는 이름은 기본 문장으로 본다', () => {
+    expect(toInsight({ ...raw, mode: 'AI' }).mode).toBe('LLM')
+    expect(toInsight({ ...raw, mode: 'FIXED' }).mode).toBe('TEMPLATE')
+    expect(toInsight({ ...raw, mode: 'TABLE_ONLY' }).mode).toBe('NONE')
+    expect(toInsight({ ...raw, mode: 'SOMETHING_NEW' }).mode).toBe('TEMPLATE')
+  })
+
+  it('문장이 글 하나(draft)로 오면 줄마다 나눈다', () => {
+    const { sentences, ...rest } = raw
+    void sentences
+    expect(
+      toInsight({ ...rest, draft: '첫 문장이에요.\n\n 둘째 문장이에요. ' })
+        .sentences,
+    ).toEqual(['첫 문장이에요.', '둘째 문장이에요.'])
+  })
+
+  it('모르는 실패 사유도 문구로 보여 준다(undefined가 찍히지 않게)', () => {
+    expect(failText('LLM_TIMEOUT')).toBe('AI 응답이 늦었어요')
+    expect(failText('VALUE_MISMATCH')).toBe('AI 문장을 쓰지 못했어요')
   })
 })
