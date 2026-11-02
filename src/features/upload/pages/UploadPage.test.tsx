@@ -140,6 +140,46 @@ describe('UploadPage', () => {
     ])
   })
 
+  it('화면을 연 뒤에 올라간 기간도 고를 때 서버 목록을 다시 받아 덮어쓰기 확인을 띄운다', async () => {
+    const user = userEvent.setup()
+    // 처음 열 때는 빈 목록, 그 뒤(방금 올린 뒤)에는 9월이 있는 목록
+    let calls = 0
+    server.use(
+      http.get('/api/uploads/periods', () => {
+        calls += 1
+        return HttpResponse.json(
+          calls === 1
+            ? { items: [], latestUploadId: null }
+            : {
+                items: [
+                  {
+                    period: '2026-09',
+                    uploadId: 1,
+                    fileName: '2026-09.xlsx',
+                    periodStart: '2026-09-01',
+                    periodEnd: '2026-09-30',
+                    uploadedAt: '2026-11-02T16:41:32+09:00',
+                    status: 'PROCESSING',
+                  },
+                ],
+                latestUploadId: 1,
+              },
+        )
+      }),
+    )
+    renderPage()
+    await screen.findByText(/파일을 끌어 놓거나/)
+
+    await user.upload(
+      screen.getByLabelText('수불부 파일 선택'),
+      new File(['same'], '2026-09.xlsx'),
+    )
+
+    expect(
+      await screen.findByRole('dialog', { name: '이미 올린 기간이에요' }),
+    ).toBeInTheDocument()
+  })
+
   it('서버가 같은 기간이라고 거절하면 덮어쓰기 확인을 띄운다', async () => {
     const user = userEvent.setup()
     uploadFileMock.mockImplementation(async () => {
