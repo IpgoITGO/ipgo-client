@@ -42,6 +42,9 @@ function markDuplicate(
   }
 }
 
+// ipgo-server UploadException 중 "이 파일 때문"인 것: 형식이 틀림(400)·너무 큼(413)
+const SERVER_REJECTED = new Set(['UPLOAD_INVALID_FORMAT', 'FILE_TOO_LARGE'])
+
 export function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
@@ -163,6 +166,21 @@ export function UploadPage() {
           ),
         )
         setModalQueue([failedId])
+        return
+      }
+
+      // 서버가 이 파일만 거절했으면(형식 400·크기 413) 그 파일에 서버 이유를 붙여 팝업으로 보여 준다.
+      // 나머지 파일은 목록에 남아 바로 다시 올릴 수 있다.
+      if (
+        cause instanceof ApiError &&
+        SERVER_REJECTED.has(cause.code) &&
+        current
+      ) {
+        const failed = current
+        setFiles(remaining.filter((item) => item.id !== failed.id))
+        setRejected([{ ...failed, reason: cause.message, status: 'error' }])
+        setModalQueue([failed.id])
+        if (uploaded.size > 0) setError(`${uploaded.size}개는 올렸어요.`)
         return
       }
 

@@ -64,4 +64,47 @@ describe('UploadResultPage', () => {
       await screen.findByText('수불부를 처리하지 못했어요'),
     ).toBeInTheDocument()
   })
+
+  it('서버 쪽 실패면 파일을 고치라고 하지 않고 같은 파일을 다시 올리게 한다', async () => {
+    server.use(
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({
+          uploadId: 15,
+          status: 'FAILED',
+          error: {
+            code: 'ENGINE_UNAVAILABLE',
+            message: '정제 서비스를 사용할 수 없습니다.',
+          },
+        }),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText('서버에서 수불부를 처리하지 못했어요'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/파일 문제는 아니에요/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '같은 파일 다시 올리기' }),
+    ).toBeInTheDocument()
+  })
+
+  it('없거나 남의 업로드 기록이면 다시 시도 대신 업로드 화면으로 보낸다', async () => {
+    server.use(
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json(
+          { code: 'NOT_FOUND', message: '업로드 기록을 찾을 수 없습니다.' },
+          { status: 404 },
+        ),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText('이 업로드 결과를 찾을 수 없어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '업로드 화면으로' }),
+    ).toBeInTheDocument()
+  })
 })
