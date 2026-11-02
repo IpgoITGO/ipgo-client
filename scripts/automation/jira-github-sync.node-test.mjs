@@ -28,7 +28,7 @@ const calls = []
 process.on('exit', () => writeFileSync(process.env.SYNC_TEST_CALLS, JSON.stringify(calls)))
 globalThis.fetch = async (input, options = {}) => {
   const url = new URL(input)
-  const call = { method: options.method ?? 'GET', origin: url.origin, path: url.pathname + url.search, body: options.body ? JSON.parse(options.body) : null }
+  const call = { method: options.method ?? 'GET', origin: url.origin, path: url.pathname + url.search, redirect: options.redirect, body: options.body ? JSON.parse(options.body) : null }
   calls.push(call)
   const index = routes.findIndex(route => route.method === call.method && route.origin === call.origin && route.path === call.path && Object.entries(route.bodySubset ?? {}).every(([key, value]) => isDeepStrictEqual(call.body?.[key], value)))
   if (index < 0) throw new Error('정의하지 않은 통신 차단: ' + call.method + ' ' + call.origin + call.path)
@@ -80,6 +80,10 @@ const commentReads = (key, number) => [
   }),
   gh('GET', `${repoPath}/${number}/comments?per_page=100`, []),
 ]
+const jiraCurrent = (key, category = 'new', summary = '[화면] 개발 작업') =>
+  jira('GET', `/rest/api/3/issue/${key}?fields=summary,status`, {
+    fields: { summary, status: { statusCategory: { key: category } } },
+  })
 
 function runFixture(t, { command = 'poll', routes, event = {}, env = {} }) {
   const dir = mkdtempSync(join(tmpdir(), 'ipgo-sync-test-'))
@@ -356,6 +360,8 @@ test('PR 본문에 SHA-256과 다른 프로젝트 키가 있어도 IPGO 작업�
       },
     },
     routes: [
+      gh('GET', `${repoPath}?state=all&per_page=100&page=1`, [linkedIssue]),
+      jiraCurrent('IPGO-77'),
       jira('GET', '/rest/api/3/issue/IPGO-77/transitions', {
         transitions: [
           { id: '3', to: { statusCategory: { key: 'indeterminate' } } },
@@ -365,8 +371,8 @@ test('PR 본문에 SHA-256과 다른 프로젝트 키가 있어도 IPGO 작업�
     ],
   })
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(result.calls.length, 2)
-  assert.deepEqual(result.calls[1].body, { transition: { id: '3' } })
+  assert.equal(result.calls.length, 4)
+  assert.deepEqual(result.calls[3].body, { transition: { id: '3' } })
 })
 
 test('Issue 본문의 참고 키만으로 다른 작업의 상태나 댓글을 변경하지 않는다', (t) => {
@@ -391,17 +397,331 @@ test('운영 완료 경로도 IPGO 프로젝트 키만 처리한다', (t) => {
     command: 'complete',
     env: { SYNC_TEXT: 'SHA-256 OTHER-12 [IPGO-77]' },
     routes: [
+      gh('GET', `${repoPath}?state=all&per_page=100&page=1`, [
+        { ...linkedIssue, state: 'closed' },
+      ]),
+      gh('GET', `${repoPath}/47`, { ...linkedIssue, state: 'closed' }),
+      jiraCurrent('IPGO-77'),
       jira('GET', '/rest/api/3/issue/IPGO-77/transitions', {
         transitions: [{ id: 'done', to: { statusCategory: { key: 'done' } } }],
       }),
       jira('POST', '/rest/api/3/issue/IPGO-77/transitions', {}),
-      gh(
-        'GET',
-        '/search/issues?q=repo%3AIpgoITGO%2Fipgo-client+is%3Aissue+in%3Atitle+%22%5BIPGO-77%5D%22&per_page=20',
-        { items: [{ ...linkedIssue, state: 'closed' }] },
-      ),
     ],
   })
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 5)
+})
+
+test('닫힌 PM·서버 미러와 참조 정본은 poll에서 어떤 쓰기도 발생하지 않는다', (t) => {
+  const legacy = [
+    { ...linkedIssue, number: 59, title: '[IPGO-47] Scrum', state: 'closed' },
+    { ...linkedIssue, number: 101, title: '[IPGO-80] 서버', state: 'closed' },
+    { ...linkedIssue, number: 93, title: '[IPGO-73] 중복', state: 'closed' },
+  ]
+  const result = runFixture(t, {
+    routes: [
+      ...pollRoutes(
+        [task(47, '[공통] Scrum'), task(80, '[서버] 정제'), task(73)],
+        [...legacy, { number: 39, title: '원본 탭 제목', state: 'closed' }],
+      ),
+      ...legacy.flatMap((value) => [
+        gh('GET', `${repoPath}/${value.number}`, value),
+        gh(
+          'PATCH',
+          `${repoPath}/${value.number}`,
+          {},
+          { bodySubset: { state: 'open' } },
+        ),
+        ...commentReads(value.title.match(/IPGO-\d+/)[0], value.number),
+        gh('PATCH', `${repoPath}/${value.number}`, {}),
+      ]),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.filter((x) => x.method === 'PATCH').length, 0)
   assert.equal(result.calls.length, 3)
+  assert.match(result.stdout, /기존 연결 0건 갱신, 신규 0건 생성/)
+})
+
+test('제외 Issue의 종료·재오픈·담당 변경·댓글은 Jira에 접근하지 않는다', (t) => {
+  for (const [number, key] of [
+    [59, 'IPGO-47'],
+    [101, 'IPGO-80'],
+    [93, 'IPGO-73'],
+  ]) {
+    for (const action of [
+      'closed',
+      'reopened',
+      'assigned',
+      'unassigned',
+      'created',
+    ]) {
+      const result = runFixture(t, {
+        command: 'event',
+        routes: [],
+        env: {
+          GITHUB_EVENT_NAME: action === 'created' ? 'issue_comment' : 'issues',
+        },
+        event: {
+          action,
+          issue: { number, title: `[${key}] 미러`, assignees: [] },
+          comment: { id: 1, body: '정리 안내', user: { login: 'tester' } },
+        },
+      })
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(result.calls.length, 0)
+    }
+  }
+})
+
+test('다른 저장소에서 실행해도 Jira 전용 AI #42는 Jira에 쓰지 않는다', (t) => {
+  const result = runFixture(t, {
+    command: 'event',
+    routes: [],
+    env: { GITHUB_REPOSITORY: 'IpgoITGO/ipgo-ai', GITHUB_EVENT_NAME: 'issues' },
+    event: {
+      action: 'closed',
+      issue: { number: 42, title: '[IPGO-111] 전체 계획' },
+    },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 0)
+})
+
+test('정상 Client Issue 종료·댓글은 기존대로 동기화한다', (t) => {
+  const closed = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: { action: 'closed', issue: linkedIssue },
+    routes: [
+      jiraCurrent('IPGO-77'),
+      jira('GET', '/rest/api/3/issue/IPGO-77/transitions', {
+        transitions: [{ id: '41', to: { statusCategory: { key: 'done' } } }],
+      }),
+      jira('POST', '/rest/api/3/issue/IPGO-77/transitions', {}),
+    ],
+  })
+  assert.equal(closed.status, 0, closed.stderr)
+  assert.equal(closed.calls.at(-1).body.transition.id, '41')
+  const comment = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issue_comment' },
+    event: {
+      action: 'created',
+      issue: linkedIssue,
+      comment: { id: 9, body: '확인 의견', user: { login: 'tester' } },
+    },
+    routes: [
+      jira('GET', '/rest/api/3/issue/IPGO-77?fields=summary', {
+        fields: { summary: '[화면] 작업' },
+      }),
+      jira('POST', '/rest/api/3/issue/IPGO-77/comment', {}),
+    ],
+  })
+  assert.equal(comment.status, 0, comment.stderr)
+  assert.equal(comment.calls.length, 2)
+})
+
+test('PR 본문 참고·Jira 전용·타 저장소 정본 키는 상태 전환하지 않는다', (t) => {
+  for (const pr of [
+    { title: '문서 정리', body: '[IPGO-77]', head: { ref: 'feature/docs' } },
+    { title: '[IPGO-111] 전체 계획', head: { ref: 'feature/IPGO-111' } },
+    { title: '[IPGO-80] 서버', head: { ref: 'feature/IPGO-80' } },
+  ]) {
+    const result = runFixture(t, {
+      command: 'event',
+      routes: [],
+      env: { GITHUB_EVENT_NAME: 'pull_request_target' },
+      event: { action: 'opened', pull_request: pr },
+    })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.calls.length, 0)
+  }
+})
+
+test('완료된 Jira는 후속 PR을 열어도 진행 중으로 되돌리지 않는다', (t) => {
+  const result = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'pull_request_target' },
+    event: {
+      action: 'opened',
+      pull_request: {
+        title: '[IPGO-77] 후속',
+        head: { ref: 'feature/IPGO-77' },
+      },
+    },
+    routes: [
+      gh('GET', `${repoPath}?state=all&per_page=100&page=1`, [linkedIssue]),
+      jiraCurrent('IPGO-77', 'done'),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 2)
+})
+
+test('제외·참조 키 또는 commit 본문 참고 키는 운영 완료에서도 쓰지 않는다', (t) => {
+  for (const text of [
+    '[IPGO-111] 전체 계획',
+    '[IPGO-80] 서버',
+    '[IPGO-73] 이력',
+    '배포\n\n참고 IPGO-77',
+  ]) {
+    const result = runFixture(t, {
+      command: 'complete',
+      routes: [],
+      env: { SYNC_TEXT: text },
+    })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.calls.length, 0)
+  }
+})
+
+test('운영 완료에 유일한 살아 있는 정본이 없으면 Jira 완료도 하지 않는다', (t) => {
+  const result = runFixture(t, {
+    command: 'complete',
+    env: { SYNC_TEXT: '[IPGO-201] 완료' },
+    routes: [
+      gh('GET', `${repoPath}?state=all&per_page=100&page=1`, [
+        { number: 59, title: '[IPGO-201] 제외 미러' },
+      ]),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 1)
+})
+
+test('쓰는 직전에 이관된 정본 응답을 받으면 다른 저장소에 쓰지 않는다', (t) => {
+  const moved = {
+    ...linkedIssue,
+    html_url: 'https://github.com/IpgoITGO/ipgo-server/issues/47',
+  }
+  const result = runFixture(t, {
+    routes: [
+      ...pollRoutes([task(77)], [linkedIssue]),
+      gh('GET', `${repoPath}/47`, moved),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.filter((x) => x.method === 'PATCH').length, 0)
+  assert.equal(
+    result.calls
+      .filter((x) => x.origin === githubOrigin)
+      .every((x) => x.redirect === 'error'),
+    true,
+  )
+})
+
+test('새로 잘못 배치된 서버 작업의 상태 이벤트도 Jira 쓰기를 거부한다', (t) => {
+  const result = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: {
+      action: 'closed',
+      issue: { number: 250, title: '[IPGO-201] 서버' },
+    },
+    routes: [jiraCurrent('IPGO-201', 'new', '[서버] API')],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 1)
+})
+
+test('정상 정본의 담당자 배정·명시적 재오픈은 보존하고 댓글 반사는 차단한다', (t) => {
+  const assigned = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: {
+      action: 'assigned',
+      issue: { ...linkedIssue, assignees: [{ login: githubLogin }] },
+    },
+    routes: [
+      jira('GET', '/rest/api/3/issue/IPGO-77?fields=summary,assignee', {
+        fields: { summary: '[화면] 작업', assignee: null },
+      }),
+      jira('PUT', '/rest/api/3/issue/IPGO-77/assignee', {}),
+    ],
+  })
+  assert.equal(assigned.status, 0, assigned.stderr)
+  assert.equal(assigned.calls.at(-1).body.accountId, jiraAccountId)
+  const reopened = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: { action: 'reopened', issue: linkedIssue },
+    routes: [
+      jiraCurrent('IPGO-77', 'done'),
+      jira('GET', '/rest/api/3/issue/IPGO-77/transitions', {
+        transitions: [{ id: '11', to: { statusCategory: { key: 'new' } } }],
+      }),
+      jira('POST', '/rest/api/3/issue/IPGO-77/transitions', {}),
+    ],
+  })
+  assert.equal(reopened.status, 0, reopened.stderr)
+  const echo = runFixture(t, {
+    command: 'event',
+    routes: [],
+    env: { GITHUB_EVENT_NAME: 'issue_comment' },
+    event: {
+      action: 'created',
+      issue: linkedIssue,
+      comment: { body: '<!-- sync:jira-comment:1 -->', id: 1 },
+    },
+  })
+  assert.equal(echo.status, 0, echo.stderr)
+  assert.equal(echo.calls.length, 0)
+})
+
+test('유효한 main merge PR 제목은 정본을 완료하되 commit 참고 키는 무시한다', (t) => {
+  const result = runFixture(t, {
+    command: 'complete',
+    env: {
+      SYNC_TEXT:
+        'Merge pull request #7 from IpgoITGO/dev\n\n[IPGO-77] 운영 배포\n\n참고 IPGO-80',
+    },
+    routes: [
+      gh('GET', `${repoPath}?state=all&per_page=100&page=1`, [linkedIssue]),
+      gh('GET', `${repoPath}/47`, linkedIssue),
+      jiraCurrent('IPGO-77'),
+      jira('GET', '/rest/api/3/issue/IPGO-77/transitions', {
+        transitions: [{ id: '41', to: { statusCategory: { key: 'done' } } }],
+      }),
+      jira('POST', '/rest/api/3/issue/IPGO-77/transitions', {}),
+      gh('PATCH', `${repoPath}/47`, {}),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.at(-1).body.state, 'closed')
+  assert.equal(result.calls.length, 6)
+})
+
+test('새 공통 일정의 종료도 저장소 목적지가 불명확하면 Jira에 쓰지 않는다', (t) => {
+  const result = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: {
+      action: 'closed',
+      issue: { number: 250, title: '[IPGO-201] 공통' },
+    },
+    routes: [jiraCurrent('IPGO-201', 'new', '[공통] 일정')],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.length, 1)
+})
+
+test('Client 인증 #32의 [인증] 작업도 상태 동기화를 유지한다', (t) => {
+  const result = runFixture(t, {
+    command: 'event',
+    env: { GITHUB_EVENT_NAME: 'issues' },
+    event: {
+      action: 'closed',
+      issue: { number: 32, title: '[IPGO-30] 실서버 인증 연결' },
+    },
+    routes: [
+      jiraCurrent('IPGO-30', 'indeterminate', '[인증] 실서버 연동'),
+      jira('GET', '/rest/api/3/issue/IPGO-30/transitions', {
+        transitions: [{ id: '41', to: { statusCategory: { key: 'done' } } }],
+      }),
+      jira('POST', '/rest/api/3/issue/IPGO-30/transitions', {}),
+    ],
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.calls.at(-1).body.transition.id, '41')
 })

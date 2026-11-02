@@ -12,7 +12,14 @@ import {
   resolveDateSync,
   writeSyncMarker,
 } from './sync-lib.mjs'
-import { planJiraSync } from './sync-routing.mjs'
+import {
+  canSyncGithubIssue,
+  isJiraKeySyncEnabled,
+  planJiraSync,
+  releaseJiraKeys,
+  resolveJiraRepository,
+  validateRoutingConfig,
+} from './sync-routing.mjs'
 
 const command = process.argv[2]
 const repository = process.env.GITHUB_REPOSITORY
@@ -34,6 +41,14 @@ const userMap = JSON.parse(
     'utf8',
   ),
 )
+const routing = JSON.parse(
+  await readFile(
+    new URL('../../.github/jira-github-routing.json', import.meta.url),
+    'utf8',
+  ),
+)
+validateRoutingConfig(routing, repository, jiraProjectKey)
+let githubIssuesCache
 
 function requireEnvironment(names) {
   const missing = names.filter((name) => !process.env[name])
@@ -65,6 +80,7 @@ async function request(url, options = {}) {
 function github(path, options = {}, token = githubToken) {
   return request(`https://api.github.com${path}`, {
     ...options,
+    redirect: 'error',
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
@@ -121,14 +137,41 @@ function reverseUserMap() {
 }
 
 async function findGithubIssue(jiraKey) {
-  const query = new URLSearchParams({
-    q: `repo:${repository} is:issue in:title "[${jiraKey}]"`,
-    per_page: '20',
-  })
-  const result = await github(`/search/issues?${query}`)
-  return (
-    result.items.find((item) => item.title.includes(`[${jiraKey}]`)) ?? null
+  if (!isJiraKeySyncEnabled(jiraKey, repository, routing)) return null
+  githubIssuesCache ??= await listGithubIssues()
+  const matches = githubIssuesCache.filter((issue) =>
+    canSyncGithubIssue(issue, jiraKey, repository, routing, jiraProjectKey),
   )
+  if (matches.length > 1)
+    throw new Error(`${jiraKey}: 동기화 정본이 중복됩니다.`)
+  return matches[0] ?? null
+}
+
+function issueJiraKey(issue) {
+  const explicit = Object.entries(routing.canonicalIssues ?? {})
+    .filter(([key]) =>
+      canSyncGithubIssue(issue, key, repository, routing, jiraProjectKey),
+    )
+    .map(([key]) => key)
+  const keys = explicit.length
+    ? explicit
+    : extractProjectJiraKeys(jiraProjectKey, issue.title)
+  return keys.length === 1 &&
+    canSyncGithubIssue(issue, keys[0], repository, routing, jiraProjectKey)
+    ? keys[0]
+    : null
+}
+
+async function managedJiraIssue(jiraKey, fields) {
+  if (!isJiraKeySyncEnabled(jiraKey, repository, routing)) return null
+  const current = await jira(
+    `/rest/api/3/issue/${jiraKey}?fields=summary${fields ? `,${fields}` : ''}`,
+  )
+  const destination = resolveJiraRepository(
+    { key: jiraKey, fields: current.fields ?? {} },
+    routing,
+  )
+  return destination === repository ? current : null
 }
 
 async function getGithubIssue(number) {
@@ -189,7 +232,16 @@ async function createGithubIssue(jiraIssue) {
   return issue
 }
 
-async function transitionJira(jiraKey, categoryKey) {
+async function transitionJira(
+  jiraKey,
+  categoryKey,
+  { preserveDone = false } = {},
+) {
+  const current = await managedJiraIssue(jiraKey, 'status')
+  if (!current) return false
+  const category = current.fields?.status?.statusCategory?.key
+  if (preserveDone && category === 'done') return false
+  if (category === categoryKey) return true
   const data = await jira(`/rest/api/3/issue/${jiraKey}/transitions`)
   const transition = data.transitions.find(
     (item) => item.to?.statusCategory?.key === categoryKey,
@@ -198,12 +250,13 @@ async function transitionJira(jiraKey, categoryKey) {
     console.log(
       `${jiraKey}: ${categoryKey} 전환이 없어 상태 변경을 건너뜁니다.`,
     )
-    return
+    return false
   }
   await jira(`/rest/api/3/issue/${jiraKey}/transitions`, {
     method: 'POST',
     body: JSON.stringify({ transition: { id: transition.id } }),
   })
+  return true
 }
 
 async function syncGithubStateFromJira(jiraIssue, githubIssue) {
@@ -523,12 +576,6 @@ async function jiraPoll() {
     }
     pageTokens.add(nextPageToken)
   } while (nextPageToken)
-  const routing = JSON.parse(
-    await readFile(
-      new URL('../../.github/jira-github-routing.json', import.meta.url),
-      'utf8',
-    ),
-  )
   for (const jiraIssue of jiraIssues) {
     jiraIssue.fields.__startDate = startFieldId
       ? (jiraIssue.fields[startFieldId] ?? null)
@@ -567,6 +614,20 @@ async function jiraPoll() {
 
 async function syncLinkedIssue(jiraIssue, githubIssue, startFieldId) {
   githubIssue = await getGithubIssue(githubIssue.number)
+  if (
+    !canSyncGithubIssue(
+      githubIssue,
+      jiraIssue.key,
+      repository,
+      routing,
+      jiraProjectKey,
+    )
+  ) {
+    console.log(
+      `${jiraIssue.key}: 정본/제외 설정으로 기존 연결 쓰기를 건너뜁니다.`,
+    )
+    return
+  }
 
   await syncGithubStateFromJira(jiraIssue, githubIssue)
   await syncGithubAssigneeFromJira(jiraIssue, githubIssue)
@@ -577,13 +638,14 @@ async function syncLinkedIssue(jiraIssue, githubIssue, startFieldId) {
 
 async function syncIssueEvent(event) {
   const issue = event.issue
-  const [jiraKey] = extractProjectJiraKeys(jiraProjectKey, issue.title)
-  if (!jiraKey || issue.pull_request) return
+  const jiraKey = issueJiraKey(issue)
+  if (!jiraKey) return
 
   if (event.action === 'closed') await transitionJira(jiraKey, 'done')
   if (event.action === 'reopened') await transitionJira(jiraKey, 'new')
   if (['assigned', 'unassigned'].includes(event.action)) {
-    const jiraIssue = await jira(`/rest/api/3/issue/${jiraKey}?fields=assignee`)
+    const jiraIssue = await managedJiraIssue(jiraKey, 'assignee')
+    if (!jiraIssue) return
     const plan = planJiraAssigneeSync({
       githubAssignees: issue.assignees,
       jiraAccountId: jiraIssue.fields.assignee?.accountId,
@@ -610,8 +672,9 @@ async function syncIssueEvent(event) {
 
 async function syncCommentEvent(event) {
   if (event.issue.pull_request || event.action !== 'created') return
-  const [jiraKey] = extractProjectJiraKeys(jiraProjectKey, event.issue.title)
+  const jiraKey = issueJiraKey(event.issue)
   if (!jiraKey || isSyncedGithubComment(event.comment.body)) return
+  if (!(await managedJiraIssue(jiraKey))) return
   const body = `${event.comment.body}\n\n${jiraCommentMarker(event.comment.id)}\nGitHub의 ${event.comment.user.login} 댓글에서 동기화됨`
   await jira(`/rest/api/3/issue/${jiraKey}/comment`, {
     method: 'POST',
@@ -623,7 +686,6 @@ async function syncPullRequestEvent(event) {
   const keys = extractProjectJiraKeys(
     jiraProjectKey,
     event.pull_request.title,
-    event.pull_request.body,
     event.pull_request.head.ref,
   )
   if (
@@ -631,7 +693,11 @@ async function syncPullRequestEvent(event) {
       event.action,
     )
   ) {
-    for (const key of keys) await transitionJira(key, 'indeterminate')
+    for (const key of keys) {
+      if (await findGithubIssue(key)) {
+        await transitionJira(key, 'indeterminate', { preserveDone: true })
+      }
+    }
   }
 }
 
@@ -665,12 +731,18 @@ async function completeFromText() {
     'JIRA_USER_EMAIL',
     'JIRA_API_TOKEN',
   ])
-  for (const jiraKey of extractProjectJiraKeys(
-    jiraProjectKey,
+  for (const jiraKey of releaseJiraKeys(
     process.env.SYNC_TEXT,
+    jiraProjectKey,
   )) {
-    await transitionJira(jiraKey, 'done')
-    const issue = await findGithubIssue(jiraKey)
+    const candidate = await findGithubIssue(jiraKey)
+    if (!candidate) continue
+    const issue = await getGithubIssue(candidate.number)
+    if (
+      !canSyncGithubIssue(issue, jiraKey, repository, routing, jiraProjectKey)
+    )
+      continue
+    if (!(await transitionJira(jiraKey, 'done'))) continue
     if (issue && issue.state !== 'closed') {
       await github(`/repos/${owner}/${repo}/issues/${issue.number}`, {
         method: 'PATCH',
