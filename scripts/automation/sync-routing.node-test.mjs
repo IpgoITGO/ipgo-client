@@ -220,7 +220,7 @@ test('명시적으로 동기화한 정본만 키 없는 제목으로 연결하�
   assert.equal(missing.skipped[0].reason, 'canonical-missing')
 })
 
-test('이관 후 번호가 달라도 node id 정본을 식별하며 다른 저장소 URL은 거부한다', () => {
+test('조회한 node id로 정본을 식별하며 다른 저장소 URL은 거부한다', () => {
   const custom = {
     ...routing,
     canonicalIssues: {
@@ -339,6 +339,17 @@ test('실제 정리 설정은 Client 미러 37건과 AI 총괄 미러를 빠짐�
     ],
   )
   assert.deepEqual(routing.excludedIssues['IpgoITGO/ipgo-ai'], [42])
+  for (const [key, number] of [
+    ['IPGO-65', 59],
+    ['IPGO-69', 60],
+    ['IPGO-71', 61],
+  ]) {
+    assert.deepEqual(routing.canonicalIssues[key], {
+      repository: 'IpgoITGO/ipgo-server',
+      number,
+      mode: 'reference',
+    })
+  }
   assert.equal(Object.keys(routing.canonicalIssues).length, 24)
   assert.equal(
     Object.values(routing.canonicalIssues).every((x) => x.mode === 'reference'),
