@@ -78,8 +78,10 @@ export type SkuDetail = {
   unavailableReason?: string
   recommendation: {
     quantity: number
-    cost: number
-    expectedStockoutDate: string
+    // 단가가 없으면 서버가 사입비를 비워 보낸다(null). 0원으로 바꾸지 않는다.
+    cost: number | null
+    // 소진일을 계산할 자료가 모자라면 null
+    expectedStockoutDate: string | null
   }
   history: Array<{ date: string; inventory: number; outbound: number }>
   // 기획서: 평가로 정한 기본 방식을 쓰고, 그 방식을 못 쓰는 상품만 다른 방식으로 대체한다.
@@ -130,8 +132,10 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     unavailableReason: result?.reason ?? undefined,
     recommendation: {
       quantity: result?.recommendedQty ?? 0,
-      cost: result?.recommendedAmount ?? 0,
-      expectedStockoutDate: dotDate(raw.expectedShortageOn),
+      cost: result?.recommendedAmount ?? null,
+      expectedStockoutDate: raw.expectedShortageOn
+        ? dotDate(raw.expectedShortageOn)
+        : null,
     },
     history: raw.trend.map((day) => ({
       date: monthDay(day.date) ?? day.date,

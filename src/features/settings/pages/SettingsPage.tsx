@@ -37,10 +37,13 @@ const settingsSchema = z.object({
       leadTime: positiveInteger,
       orderCycle: positiveInteger,
       inboundUnit: positiveInteger,
+      // 서버에 단가가 없으면 null(빈칸 + "미입력"). 0원으로 채우면 넣은 값처럼 보인다.
+      // 있던 값을 지우면 NaN이라 "숫자를 입력해 주세요"가 뜬다(전과 같음).
       cost: z
         .number({ error: '숫자를 입력해 주세요.' })
         .int('0 이상의 정수로 넣어 주세요.')
-        .min(0, '0 이상의 정수로 넣어 주세요.'),
+        .min(0, '0 이상의 정수로 넣어 주세요.')
+        .nullable(),
       // 기본값 대신 상품별 값을 쓰는 칸(화면 칸 이름). 그 칸만 굵게 보여 준다.
       overridden: z.array(z.string()),
       isActive: z.boolean(),
@@ -91,7 +94,7 @@ async function loadSettings(): Promise<{
         leadTime: item.settings.leadTimeDays,
         orderCycle: item.settings.reviewCycleDays,
         inboundUnit: item.settings.orderUnitQty,
-        cost: item.unitCost ?? 0,
+        cost: item.unitCost,
         overridden: item.overridden.map((name) => FIELD_OF[name] ?? name),
         isActive: item.isActive,
       })),
@@ -206,7 +209,7 @@ export function SettingsPage() {
           leadTimeDays: item.leadTime,
           reviewCycleDays: item.orderCycle,
           orderUnitQty: item.inboundUnit,
-          ...(costChanged ? { unitCost: item.cost } : {}),
+          ...(costChanged && item.cost !== null ? { unitCost: item.cost } : {}),
         })
       }
       await saveDefaultSettings({
@@ -411,6 +414,7 @@ export function SettingsPage() {
                               className={styles.costInput}
                               inputMode="numeric"
                               onBlur={field.onBlur}
+                              placeholder="미입력"
                               readOnly={!product.isActive}
                               onChange={(event) => {
                                 const digits = event.target.value.replace(
@@ -424,6 +428,7 @@ export function SettingsPage() {
                               ref={field.ref}
                               type="text"
                               value={
+                                field.value != null &&
                                 Number.isFinite(field.value)
                                   ? field.value.toLocaleString('ko-KR')
                                   : ''

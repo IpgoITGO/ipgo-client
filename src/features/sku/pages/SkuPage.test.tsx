@@ -82,6 +82,28 @@ describe('SkuPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('서버가 값을 비워 보내면 —·0원 대신 미입력·자료 부족으로 알리고 고치는 곳을 잇는다', async () => {
+    renderSku('/sku/empty-values')
+
+    expect(
+      await screen.findByRole('heading', { name: '케어트릿 120g' }),
+    ).toBeInTheDocument()
+    // 출고지가 없으면 그 줄을 빼고, 비어 보이는 "—일"·"0원"은 없다
+    expect(screen.queryByText('서울 풀필먼트')).toBeNull()
+    expect(screen.queryByText(/—일/)).toBeNull()
+    expect(screen.queryByText('0원')).toBeNull()
+    // 사장님이 넣을 값: 리드타임·입고 단위 → 미입력
+    expect(screen.getAllByText('미입력').length).toBeGreaterThanOrEqual(2)
+    // 자료가 모자란 값: 소진일·시작 재고·정확도 → 자료 부족
+    expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(3)
+    expect(
+      screen.getByRole('link', { name: '단가를 넣으면 보여요 →' }),
+    ).toHaveAttribute('href', '/settings')
+    expect(
+      screen.getByRole('link', { name: '입고 조건에서 정하기 →' }),
+    ).toHaveAttribute('href', '/settings')
+  })
+
   it('추이 기록이 아직 없으면 그래프 자리에 모으는 중이라고 알린다', async () => {
     renderSku('/sku/no-trend')
 

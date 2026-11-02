@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { EmptyBoxIcon, SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
@@ -29,10 +30,10 @@ export type DashboardData = {
     name: string
     barcode: string
     stockoutDate: string
-    leadTime: number
+    leadTime: number | null
     quantity: number
     cost: number
-    risk: number
+    risk: number | null
   }>
   unavailableItems: Array<{ name: string; reason: string }>
   excludedItems: Array<{ name: string; reason: string }>
@@ -120,7 +121,8 @@ export function DashboardPage() {
     const source = [...(query.data?.neededItems ?? [])]
     return source.sort((a, b) => {
       if (sort === 'cost') return b.cost - a.cost
-      if (sort === 'risk') return b.risk - a.risk
+      // 위험을 모르는 상품은 맨 뒤로
+      if (sort === 'risk') return (b.risk ?? -1) - (a.risk ?? -1)
       return dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
     })
   }, [query.data?.neededItems, sort])
@@ -272,81 +274,116 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <section className={styles.card}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2>입고가 필요한 상품</h2>
-                <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
-              </div>
-              <div
-                aria-label="입고 필요 목록 정렬"
-                className={styles.sort}
-                role="radiogroup"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <button
-                    aria-checked={sort === option.value}
-                    key={option.value}
-                    onClick={() => setSort(option.value)}
-                    role="radio"
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className={styles.tableWrap}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>상품</th>
-                    <th>예상 소진일</th>
-                    <th className={styles.num}>리드타임</th>
-                    <th className={styles.num}>품절 위험</th>
-                    <th className={styles.num}>권장 입고량</th>
-                    <th className={styles.num}>사입비</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, index) => (
-                    // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
-                    <tr
-                      className={styles.rowLink}
-                      data-passed={daysPast(item.stockoutDate) > 0 || undefined}
-                      key={item.id}
-                      onClick={() => navigate(`/sku/${item.id}`)}
+          {items.length === 0 ? (
+            <AsyncState
+              description={
+                data.summary.safe > 0
+                  ? `기준일 ${data.baseDate} · ${data.summary.safe.toLocaleString()}개 상품 모두 다음 발주 주기까지 버텨요.`
+                  : `기준일 ${data.baseDate} · 입고가 필요한 상품이 없어요.`
+              }
+              onRetry={() => navigate('/upload')}
+              retryLabel="새 수불부 올리기"
+              status="empty"
+              title="지금 넣을 상품은 없어요"
+            />
+          ) : (
+            <section className={styles.card}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>입고가 필요한 상품</h2>
+                  <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
+                </div>
+                <div
+                  aria-label="입고 필요 목록 정렬"
+                  className={styles.sort}
+                  role="radiogroup"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <button
+                      aria-checked={sort === option.value}
+                      key={option.value}
+                      onClick={() => setSort(option.value)}
+                      role="radio"
+                      type="button"
                     >
-                      <td>
-                        <div className={styles.nameLine}>
-                          <Link to={`/sku/${item.id}`}>{item.name}</Link>
-                          {daysPast(item.stockoutDate) > 0 && (
-                            <SoldOutStamp tilt={STAMP_TILTS[index % 3]} />
-                          )}
-                        </div>
-                        <span>{item.barcode}</span>
-                      </td>
-                      <td>
-                        {item.stockoutDate}
-                        <LateText days={daysPast(item.stockoutDate)} />
-                      </td>
-                      <td className={styles.num}>{item.leadTime}일</td>
-                      <td className={styles.num}>{item.risk}%</td>
-                      <td className={styles.num}>
-                        <strong>{item.quantity}개</strong>
-                      </td>
-                      <td className={styles.num}>
-                        {item.cost.toLocaleString()}원
-                      </td>
-                    </tr>
+                      {option.label}
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                </div>
+              </div>
+              <div className={styles.tableWrap}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>상품</th>
+                      <th>예상 소진일</th>
+                      <th className={styles.num}>리드타임</th>
+                      <th className={styles.num}>품절 위험</th>
+                      <th className={styles.num}>권장 입고량</th>
+                      <th className={styles.num}>사입비</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, index) => (
+                      // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
+                      <tr
+                        className={styles.rowLink}
+                        data-passed={
+                          daysPast(item.stockoutDate) > 0 || undefined
+                        }
+                        key={item.id}
+                        onClick={() => navigate(`/sku/${item.id}`)}
+                      >
+                        <td>
+                          <div className={styles.nameLine}>
+                            <Link to={`/sku/${item.id}`}>{item.name}</Link>
+                            {daysPast(item.stockoutDate) > 0 && (
+                              <SoldOutStamp tilt={STAMP_TILTS[index % 3]} />
+                            )}
+                          </div>
+                          <span>{item.barcode}</span>
+                        </td>
+                        <td>
+                          {item.stockoutDate === '—' ? (
+                            <EmptyValue kind="short" />
+                          ) : (
+                            item.stockoutDate
+                          )}
+                          <LateText days={daysPast(item.stockoutDate)} />
+                        </td>
+                        <td className={styles.num}>
+                          {item.leadTime == null ? (
+                            <EmptyValue kind="unset" />
+                          ) : (
+                            `${item.leadTime}일`
+                          )}
+                        </td>
+                        <td className={styles.num}>
+                          {item.risk == null ? (
+                            <EmptyValue kind="short" />
+                          ) : (
+                            `${item.risk}%`
+                          )}
+                        </td>
+                        <td className={styles.num}>
+                          <strong>{item.quantity}개</strong>
+                        </td>
+                        <td className={styles.num}>
+                          {item.cost.toLocaleString()}원
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
           <div className={styles.lowerGrid}>
             <section className={styles.card}>
               <h2>계산 불가</h2>
+              {data.unavailableItems.length === 0 && (
+                <p className={styles.none}>계산 못 한 상품은 없어요.</p>
+              )}
               {data.unavailableItems.map((item) => (
                 <article className={styles.reason} key={item.name}>
                   <strong>{item.name}</strong>
@@ -356,6 +393,9 @@ export function DashboardPage() {
             </section>
             <section className={styles.card}>
               <h2>검산 제외</h2>
+              {data.excludedItems.length === 0 && (
+                <p className={styles.none}>검산에서 뺀 상품은 없어요.</p>
+              )}
               {data.excludedItems.map((item) => (
                 <article className={styles.reason} key={item.name}>
                   <strong>{item.name}</strong>

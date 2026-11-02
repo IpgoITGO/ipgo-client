@@ -554,3 +554,15 @@
   border-top-width: 2px;
   opacity: 0.75;
 }
+
+/* 빈 값 고치는 곳으로 가는 길: 입고 조건 · 단가 */
+.fixLink {
+  color: var(--color-link);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fixLink:hover {
+  text-decoration: underline;
+}

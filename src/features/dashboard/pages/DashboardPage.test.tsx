@@ -103,6 +103,71 @@ describe('DashboardPage', () => {
     expect(screen.queryByText('갱신 전 결과예요')).not.toBeInTheDocument()
   })
 
+  it('계산은 됐는데 넣을 상품이 없으면 빈 표 대신 안내와 수불부 올리기를 보여준다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...noResult(12),
+          asOfDate: '2026-11-01',
+          daysSinceAsOf: 0,
+          resultStatus: 'UP_TO_DATE',
+          runId: 3,
+          summary: { ...noResult(12).summary, notNeededCount: 158 },
+        }),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText('지금 넣을 상품은 없어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/158개 상품 모두 다음 발주 주기까지 버텨요/),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: '새 수불부 올리기' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('계산 못 한 상품은 없어요.')).toBeInTheDocument()
+  })
+
+  it('리드타임·품절 위험이 비어 오면 0일·0% 대신 미입력·자료 부족을 보여준다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...noResult(12),
+          asOfDate: '2026-11-01',
+          daysSinceAsOf: 0,
+          resultStatus: 'UP_TO_DATE',
+          runId: 3,
+          summary: { ...noResult(12).summary, needCount: 1 },
+          items: [
+            {
+              productId: 1,
+              resultId: 1,
+              skuBarcode: '8800272420016',
+              skuName: '케어트릿 120g',
+              recommendedQty: 72,
+              recommendedAmount: 129600,
+              expectedShortageOn: null,
+              leadTimeDays: null,
+              preArrivalRisk: null,
+            },
+          ],
+        }),
+      ),
+    )
+    renderPage()
+
+    const row = (
+      await screen.findByRole('link', { name: '케어트릿 120g' })
+    ).closest('tr')
+    expect(row).toHaveTextContent('미입력')
+    expect(row).toHaveTextContent('자료 부족')
+    expect(row).not.toHaveTextContent('0일')
+    expect(row).not.toHaveTextContent('0%')
+  })
+
   it('수불부를 아직 안 올렸으면 계산 전 안내의 버튼이 수불부 업로드다', async () => {
     server.use(
       http.get('/api/dashboard/replenishment-needs', () =>

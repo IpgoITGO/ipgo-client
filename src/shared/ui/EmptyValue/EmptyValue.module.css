@@ -1,0 +1,21 @@
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: var(--radius-chip);
+}
+
+/* 사장님이 넣을 값: 눈에 띄게 노랑 */
+.tag[data-kind='unset'] {
+  color: var(--color-warning);
+  font-weight: 700;
+  background: var(--color-warning-bg);
+}
+
+/* 자료가 쌓이면 채워지는 값: 회색 */
+.tag[data-kind='short'] {
+  color: var(--color-text-3);
+  background: var(--color-primary-soft);
+}
