@@ -124,11 +124,12 @@ export function SignUpPage() {
   const canResend = isCodeStep && resendAt !== undefined && now >= resendAt
 
   const checkEmail = useActionLock(async () => {
-    if (await trigger('email')) await verification.checkAndSend()
+    if (await trigger('email')) await verification.check()
   })
+  // 처음 받기와 다시 보내기가 같은 일을 한다
   const sendCode = useActionLock(async () => {
     setCode('')
-    await verification.resend()
+    await verification.send()
   })
   const confirmCode = useActionLock(async () => {
     await verification.confirm(code)
@@ -240,9 +241,14 @@ export function SignUpPage() {
               action={
                 <FieldButton
                   disabled={
-                    checkEmail.isPending || isCodeStep || step === 'verified'
+                    checkEmail.isPending ||
+                    sendCode.isPending ||
+                    isCodeStep ||
+                    step === 'verified'
                   }
-                  onClick={() => void checkEmail.run()}
+                  onClick={() =>
+                    void (step === 'available' ? sendCode : checkEmail).run()
+                  }
                 >
                   {step === 'available' ? '인증 코드 받기' : '중복 확인'}
                 </FieldButton>

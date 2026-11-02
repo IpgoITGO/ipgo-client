@@ -44,9 +44,16 @@ async function fillPassword(user: UserEvent, password = 'Abcd123!') {
   await user.type(screen.getByLabelText('비밀번호 확인'), password)
 }
 
-async function sendCode(user: UserEvent, email = newEmail) {
+async function checkEmail(user: UserEvent, email = newEmail) {
   await user.type(await screen.findByLabelText('이메일'), email)
   await user.click(screen.getByRole('button', { name: '중복 확인' }))
+}
+
+async function sendCode(user: UserEvent, email = newEmail) {
+  await checkEmail(user, email)
+  await user.click(
+    await screen.findByRole('button', { name: '인증 코드 받기' }),
+  )
 }
 
 async function verifyEmail(user: UserEvent) {
@@ -100,16 +107,21 @@ describe('SignUpPage', () => {
     )
   })
 
-  it('중복 확인을 통과하면 코드를 보내고 10분 타이머와 다시 보내기 대기 시간을 보여준다', async () => {
+  it('중복 확인만으로는 코드를 보내지 않고, 인증 코드 받기를 눌러야 10분 타이머가 시작된다', async () => {
     const user = userEvent.setup()
     renderSignUp()
 
     await goToEmail(user)
-    await sendCode(user)
+    await checkEmail(user)
 
     expect(
       await screen.findByText('사용할 수 있는 이메일이에요.'),
     ).toBeInTheDocument()
+    // 중복 확인 뒤엔 "인증 코드 받기"가 눌리기 전 상태로 기다린다
+    expect(screen.getByRole('button', { name: '인증 코드 받기' })).toBeEnabled()
+    expect(screen.queryByLabelText('인증 코드')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '인증 코드 받기' }))
     expect(await screen.findByLabelText('인증 코드')).toBeInTheDocument()
     expect(screen.getByLabelText('남은 시간')).toHaveTextContent(
       /^(10:00|09:59)$/,
@@ -122,7 +134,7 @@ describe('SignUpPage', () => {
     renderSignUp()
 
     await goToEmail(user)
-    await sendCode(user, 'seller@a.com')
+    await checkEmail(user, 'seller@a.com')
 
     expect(
       await screen.findByText('이미 가입한 이메일이에요.'),
