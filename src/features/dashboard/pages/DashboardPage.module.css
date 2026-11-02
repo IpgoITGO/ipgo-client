@@ -317,3 +317,49 @@
   background: var(--color-danger);
   border-radius: 50%;
 }
+
+/* 계산 전 안내 카드의 1·2·3 단계: 지금 할 단계만 노랗게, 끝난 단계는 ✓ */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+.steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px 6px 6px;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+}
+.steps li b {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  font-size: 12px;
+  background: var(--color-card);
+  border-radius: 50%;
+}
+.steps li[data-state='now'] {
+  color: var(--color-warning);
+  font-weight: 700;
+  background: var(--color-warning-bg);
+}
+.steps li[data-state='done'] {
+  color: var(--color-success);
+}
+
+/* 휴대폰에선 세 단계를 세로로(한 줄에 안 들어가 셋째만 아래로 떨어지지 않게) */
+@media (max-width: 480px) {
+  .steps {
+    flex-direction: column;
+    align-items: center;
+  }
+}

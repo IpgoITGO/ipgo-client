@@ -300,9 +300,11 @@ export function SettingsPage() {
               </div>
               <small>
                 {errors.defaults?.orderCycle?.message ??
-                  (query.data?.sourceIsEstimated
-                    ? '수불부 입고 간격으로 추정했어요'
-                    : '직접 정해 저장한 값이에요')}
+                  (query.data?.values.defaults.orderCycle == null
+                    ? '수불부를 올리면 입고 간격으로 추정해 채워요'
+                    : query.data.sourceIsEstimated
+                      ? '수불부 입고 간격으로 추정했어요'
+                      : '직접 정해 저장한 값이에요')}
               </small>
             </label>
             <label>
@@ -455,7 +457,11 @@ export function SettingsPage() {
             </p>
           )}
           {filteredProducts.length === 0 && (
-            <p className={styles.empty}>검색 결과가 없어요.</p>
+            <p className={styles.empty}>
+              {products.length === 0
+                ? '아직 상품이 없어요. 수불부를 올리면 상품이 생겨요.'
+                : '검색 결과가 없어요.'}
+            </p>
           )}
         </section>
       </form>

@@ -182,5 +182,16 @@ describe('DashboardPage', () => {
         '수불부를 올리고 입고 조건을 확인하면 권장 입고량이 나와요.',
       ),
     ).toBeInTheDocument()
+    // 숫자가 없으니 "—" 카드는 숨기고, 업로드 버튼은 안내 카드에 하나만
+    expect(screen.queryByLabelText('입고 예측 요약')).toBeNull()
+    expect(
+      screen.getAllByRole('button', { name: '수불부 업로드' }),
+    ).toHaveLength(1)
+    const steps = screen.getByRole('list', { name: '계산까지 순서' })
+    expect(steps).toHaveTextContent('1수불부 올리기2입고 조건 확인3결과 보기')
+    expect(screen.getByText('수불부 올리기')).toHaveAttribute(
+      'aria-current',
+      'step',
+    )
   })
 })

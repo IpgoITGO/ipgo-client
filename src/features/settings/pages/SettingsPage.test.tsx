@@ -195,6 +195,40 @@ describe('SettingsPage 표 모양', () => {
     server.events.removeAllListeners()
   })
 
+  it('수불부를 아직 안 올렸으면 상품 표와 입고 주기에 올리면 채워진다고 안내한다', async () => {
+    server.use(
+      http.get('/api/products', () =>
+        HttpResponse.json({ items: [], total: 0, page: 0, size: 20 }),
+      ),
+      http.get('/api/replenishment-settings', () =>
+        HttpResponse.json({
+          confirmed: false,
+          leadTimeDays: 5,
+          reviewCycleDays: null,
+          orderUnitQty: 1,
+          reviewCycleSource: 'ESTIMATED',
+        }),
+      ),
+    )
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+
+    expect(
+      await screen.findByText(
+        '아직 상품이 없어요. 수불부를 올리면 상품이 생겨요.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('수불부를 올리면 입고 간격으로 추정해 채워요'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('검색 결과가 없어요.')).toBeNull()
+  })
+
   it('서버에 원가가 없으면 0원 대신 빈칸(미입력)으로 두고, 안 건드리면 원가를 보내지 않는다', async () => {
     const user = userEvent.setup()
     const sent: { url: string; body: unknown }[] = []
