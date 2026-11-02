@@ -201,57 +201,63 @@ export function DashboardPage() {
             )}
           </div>
         </div>
-        <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
+        {/* 계산 전·재업로드 필요엔 아래 안내 카드가 버튼을 하나만 갖는다(버튼 두 번 → 한 번) */}
+        {!(noResult || refreshRequired) && (
+          <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
+        )}
       </header>
 
-      <section className={styles.summary} aria-label="입고 예측 요약">
-        {(
-          [
+      {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
+      {!(noResult || refreshRequired) && (
+        <section className={styles.summary} aria-label="입고 예측 요약">
+          {(
             [
-              '지금 넣어야 해요',
-              data.summary.needed,
-              'needed',
-              passedCount > 0 ? (
-                <span className={styles.soldNote}>
-                  <i aria-hidden="true" className={styles.soldDot} />
-                  <span>
-                    <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
+              [
+                '지금 넣어야 해요',
+                data.summary.needed,
+                'needed',
+                passedCount > 0 ? (
+                  <span className={styles.soldNote}>
+                    <i aria-hidden="true" className={styles.soldDot} />
+                    <span>
+                      <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
+                    </span>
                   </span>
-                </span>
-              ) : (
-                '오늘 발주해야 제때 도착해요'
-              ),
-            ],
-            [
-              '아직 괜찮아요',
-              data.summary.safe,
-              'safe',
-              '다음 입고까지 버텨요',
-            ],
-            [
-              '계산 불가',
-              data.summary.unavailable,
-              'unavailable',
-              '판매 기록이 부족해요',
-            ],
-            [
-              '검산 제외',
-              data.summary.excluded,
-              'excluded',
-              '재고 숫자가 맞지 않아요',
-            ],
-          ] as const
-        ).map(([label, value, state, note]) => (
-          <SummaryCard
-            empty={refreshRequired || noResult}
-            key={label}
-            label={label}
-            note={note}
-            state={state}
-            value={value}
-          />
-        ))}
-      </section>
+                ) : (
+                  '오늘 발주해야 제때 도착해요'
+                ),
+              ],
+              [
+                '아직 괜찮아요',
+                data.summary.safe,
+                'safe',
+                '다음 입고까지 버텨요',
+              ],
+              [
+                '계산 불가',
+                data.summary.unavailable,
+                'unavailable',
+                '판매 기록이 부족해요',
+              ],
+              [
+                '검산 제외',
+                data.summary.excluded,
+                'excluded',
+                '재고 숫자가 맞지 않아요',
+              ],
+            ] as const
+          ).map(([label, value, state, note]) => (
+            <SummaryCard
+              empty={refreshRequired || noResult}
+              key={label}
+              label={label}
+              note={note}
+              state={state}
+              value={value}
+            />
+          ))}
+        </section>
+      )}
 
       {noResult ? (
         <AsyncState
@@ -262,9 +268,32 @@ export function DashboardPage() {
           }
           onRetry={() => navigate(data.hasUpload ? '/settings' : '/upload')}
           retryLabel={data.hasUpload ? '입고 조건 확인하기' : '수불부 업로드'}
+          primaryAction
           status="empty"
           title="아직 계산 전이에요"
-        />
+        >
+          <ol aria-label="계산까지 순서" className={styles.steps}>
+            {['수불부 올리기', '입고 조건 확인', '결과 보기'].map(
+              (label, index) => {
+                const current = data.hasUpload ? 1 : 0
+                const state =
+                  index < current ? 'done' : index === current ? 'now' : 'next'
+                return (
+                  <li
+                    aria-current={state === 'now' ? 'step' : undefined}
+                    data-state={state}
+                    key={label}
+                  >
+                    <b aria-hidden="true">
+                      {state === 'done' ? '✓' : index + 1}
+                    </b>
+                    {label}
+                  </li>
+                )
+              },
+            )}
+          </ol>
+        </AsyncState>
       ) : refreshRequired ? (
         <AsyncState
           description="오래된 자료로 계산한 숫자를 보여주지 않아요. 풀필먼트에서 최근 수불부를 받아 올려 주세요."

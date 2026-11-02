@@ -1,8 +1,14 @@
+import type { ReactNode } from 'react'
+
 import { Button } from '../Button/Button'
 import styles from './AsyncState.module.css'
 
 type AsyncStateProps = {
+  // 설명과 버튼 사이에 넣을 것(예: 계산 전 1·2·3 단계)
+  children?: ReactNode
   description: string
+  // 이 화면에서 할 일이 이 버튼 하나뿐이면 노란 주 버튼으로
+  primaryAction?: boolean
   onRetry?: () => void
   retryLabel?: string
   status: 'loading' | 'error' | 'empty'
@@ -10,8 +16,10 @@ type AsyncStateProps = {
 }
 
 export function AsyncState({
+  children,
   description,
   onRetry,
+  primaryAction = false,
   retryLabel = '다시 시도',
   status,
   title,
@@ -29,9 +37,14 @@ export function AsyncState({
       </span>
       <h2>{title}</h2>
       <p>{description}</p>
+      {children}
       {status === 'loading' && <span className={styles.progress} />}
       {onRetry && (
-        <Button onClick={onRetry} variant="secondary">
+        <Button
+          onClick={onRetry}
+          className={primaryAction ? styles.mainAction : undefined}
+          variant={primaryAction ? 'primary' : 'secondary'}
+        >
           {retryLabel}
         </Button>
       )}
