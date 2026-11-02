@@ -42,6 +42,7 @@ export function AsyncState({
       {onRetry && (
         <Button
           onClick={onRetry}
+          className={primaryAction ? styles.mainAction : undefined}
           variant={primaryAction ? 'primary' : 'secondary'}
         >
           {retryLabel}

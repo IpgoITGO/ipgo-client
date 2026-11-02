@@ -89,3 +89,10 @@
     transform: translateX(122%);
   }
 }
+
+/* 화면의 할 일이 이 버튼 하나일 때: 얇아 보이지 않게 넓고 크게 */
+.mainAction {
+  min-width: 220px;
+  min-height: 52px;
+  font-size: 17px;
+}
