@@ -68,10 +68,12 @@ export function UploadPage() {
   )
 
   async function addFiles(selectedFiles: FileList | File[]) {
+    // 파일 칸을 비우면 브라우저가 같은 FileList를 비워 버리니, 기다리기 전에 배열로 옮겨 둔다.
+    const picked = Array.from(selectedFiles)
     // 고를 때마다 서버 목록을 새로 받아 비교한다. 저장해 둔 목록(30초)은 방금 올린 기간이나
     // 다른 창에서 올린 기간을 모를 수 있다(11/2: 올린 직후 같은 파일을 다시 골라도 팝업이 안 떴음).
     const uploaded = (await periods.refetch()).data ?? periods.data
-    const nextFiles = Array.from(selectedFiles).map((file) =>
+    const nextFiles = picked.map((file) =>
       markDuplicate(validateUploadFile(file), uploaded),
     )
     const ids = new Set(files.map((item) => item.id))

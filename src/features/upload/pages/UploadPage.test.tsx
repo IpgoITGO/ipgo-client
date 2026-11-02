@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -178,6 +178,29 @@ describe('UploadPage', () => {
     expect(
       await screen.findByRole('dialog', { name: '이미 올린 기간이에요' }),
     ).toBeInTheDocument()
+  })
+
+  it('파일 칸을 비워 고른 목록이 사라져도 기간 목록을 기다린 뒤 고른 파일을 넣는다', async () => {
+    // 크롬은 파일 칸 value를 비우면 손에 든 FileList까지 비운다. 그 동작을 흉내 낸다.
+    renderPage()
+    await screen.findByText(/파일을 끌어 놓거나/)
+    const input = screen.getByLabelText('수불부 파일 선택') as HTMLInputElement
+    const list = [new File(['ok'], '2026-10.xlsx')]
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      get: () => list,
+    })
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get: () => '',
+      set: () => {
+        list.length = 0
+      },
+    })
+
+    fireEvent.change(input)
+
+    expect(await screen.findByText('고른 파일 1개')).toBeInTheDocument()
   })
 
   it('서버가 같은 기간이라고 거절하면 덮어쓰기 확인을 띄운다', async () => {
