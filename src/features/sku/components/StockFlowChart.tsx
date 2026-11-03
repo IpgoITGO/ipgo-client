@@ -106,6 +106,8 @@ export function StockFlowChart({
     (selected.quantity / total) * (STEPS - 1),
     STEPS - 1,
   )
+  // 오른쪽 끝 가까이에서 바닥나면 글자가 잘리지 않게 점 왼쪽에 붙인다.
+  const nearRight = depletionIndex > (STEPS - 1) * 0.7
   const endLabel = depletes
     ? selected.expectedStockoutDate === '—'
       ? '재고가 바닥나요'
@@ -163,8 +165,8 @@ export function StockFlowChart({
             />
             <text
               className={styles.dangerLabel}
-              textAnchor="middle"
-              x={x(depletionIndex)}
+              textAnchor={nearRight ? 'end' : 'middle'}
+              x={x(depletionIndex) - (nearRight ? 10 : 0)}
               y={y(0) - 12}
             >
               {endLabel}
