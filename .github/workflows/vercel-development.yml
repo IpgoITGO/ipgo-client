@@ -43,10 +43,18 @@ jobs:
         run: npm install --global "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
 
       - name: Preview 환경 가져오기
-        run: vercel pull --yes --environment=preview --git-branch=dev
+        run: vercel pull --yes --environment=preview
 
       - name: Preview build
-        run: vercel build
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          const file = 'vercel.json'
+          const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+          config.buildCommand = 'VITE_ENABLE_MSW=false npm run build'
+          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n')
+          NODE
+          vercel build
 
       - id: deploy
         name: 개발 배포
