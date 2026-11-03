@@ -43,7 +43,7 @@ jobs:
         run: npm install --global "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
 
       - name: Preview 환경 가져오기
-        run: vercel pull --yes --environment=preview
+        run: vercel pull --yes --environment=preview --git-branch=dev
 
       - name: Preview build
         run: vercel build
@@ -56,6 +56,7 @@ jobs:
           deployment_url="$(vercel deploy --prebuilt --yes | tail -n 1)"
           DEPLOYMENT_URL="$deployment_url" node scripts/automation/validate-vercel-url.mjs
           vercel alias set "$deployment_url" ipgo-client-dev.vercel.app
+          vercel alias set "$deployment_url" ipgo-dev.iwhya.kr
           printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: 개발 주소 확인
