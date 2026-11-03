@@ -59,13 +59,39 @@ const CHART = {
   bottom: 180,
 }
 
-function TrendChart({ history }: { history: SkuDetail['history'] }) {
-  const max = Math.max(...history.map((item) => item.inventory), 1)
+function TrendChart({
+  coverDays,
+  forecastQty,
+  history,
+}: {
+  coverDays: number
+  forecastQty: number | null
+  history: SkuDetail['history']
+}) {
+  // 오늘 뒤로 "앞으로 N일" 구간을 붙인다(11/3 시안 ①). 예상 출고는 하루 평균으로 점선.
+  const future = coverDays > 0 && forecastQty != null ? coverDays : 0
+  const dailyForecast = future ? (forecastQty ?? 0) / future : 0
+  const max = Math.max(
+    ...history.map((item) => item.inventory),
+    dailyForecast,
+    1,
+  )
   // 눈금이 깔끔하도록 10 단위로 올린다.
   const top = Math.ceil(max / 10) * 10
   const plotWidth = CHART.right - CHART.left
-  const gap = history.length > 1 ? plotWidth / (history.length - 1) : 0
-  const x = (index: number) => CHART.left + index * gap
+  // 가로는 날짜 간격대로 둔다(기록이 주 단위여도 "앞으로 N일"과 같은 자로 잰다). 날짜를 못 읽으면 순서대로.
+  const first = Date.parse(history[0]?.day ?? '')
+  const dayAt = (index: number) => {
+    const at = Date.parse(history[index]?.day ?? '')
+    return Number.isNaN(first) || Number.isNaN(at)
+      ? index
+      : (at - first) / 864e5
+  }
+  const lastDay = history.length > 0 ? dayAt(history.length - 1) : 0
+  const span = lastDay + future
+  const perDay = span > 0 ? plotWidth / span : 0
+  const x = (index: number) => CHART.left + dayAt(index) * perDay
+  const gap = history.length > 1 ? (lastDay / (history.length - 1)) * perDay : 0
   const y = (value: number) =>
     CHART.bottom - (value / top) * (CHART.bottom - CHART.top)
   const barWidth = Math.min(14, Math.max(gap * 0.35, 4))
@@ -73,6 +99,8 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.inventory === 0)
   const middle = history[Math.floor((history.length - 1) / 2)]
+  const todayX = x(history.length - 1)
+  const last = history.at(-1)
 
   return (
     <>
@@ -97,6 +125,41 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
             </text>
           </g>
         ))}
+        {future > 0 && (
+          <g>
+            <rect
+              className={styles.forecastZone}
+              height={CHART.bottom - CHART.top}
+              rx="8"
+              width={CHART.right - todayX}
+              x={todayX}
+              y={CHART.top}
+            />
+            <text
+              className={styles.forecastLabel}
+              // 구간이 좁으면 가운데 대신 오른쪽 끝에 붙여 면 밖으로 나가지 않게 한다
+              style={
+                CHART.right - todayX < 150 ? { textAnchor: 'end' } : undefined
+              }
+              x={
+                CHART.right - todayX < 150
+                  ? CHART.right - 8
+                  : (todayX + CHART.right) / 2
+              }
+              y={CHART.top + 18}
+            >
+              앞으로 {future}일{' '}
+              <tspan className={styles.forecastQty}>
+                약 {count(forecastQty)}
+              </tspan>
+            </text>
+            <polyline
+              className={styles.forecastLine}
+              fill="none"
+              points={`${todayX},${y(last?.outbound ?? dailyForecast)} ${CHART.right},${y(dailyForecast)}`}
+            />
+          </g>
+        )}
         {history.map((item, index) => (
           <rect
             className={styles.outboundBar}
@@ -124,6 +187,14 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
             r="6"
           />
         ))}
+        {future > 0 && last && (
+          <circle
+            className={styles.todayPoint}
+            cx={todayX}
+            cy={y(last.inventory)}
+            r="5"
+          />
+        )}
         {stockouts.length > 0 && (
           <text
             className={styles.stockoutLabel}
@@ -134,11 +205,29 @@ function TrendChart({ history }: { history: SkuDetail['history'] }) {
           </text>
         )}
       </svg>
-      <div className={styles.dates}>
-        <span>{history[0]?.date}</span>
-        {history.length > 2 && <span>{middle?.date}</span>}
-        <span>{history.at(-1)?.date}</span>
-      </div>
+      {future > 0 ? (
+        // 날짜 글자를 그래프의 같은 가로 위치에 둔다: 첫날 · 오늘(노란 면 시작) · +N일(끝)
+        <div className={styles.datesPlaced}>
+          <span style={{ left: `${(x(0) / CHART.width) * 100}%` }}>
+            {history[0]?.date}
+          </span>
+          <span style={{ left: `${(todayX / CHART.width) * 100}%` }}>
+            오늘 {last?.date}
+          </span>
+          <span
+            data-edge="end"
+            style={{ left: `${(CHART.right / CHART.width) * 100}%` }}
+          >
+            +{future}일
+          </span>
+        </div>
+      ) : (
+        <div className={styles.dates}>
+          <span>{history[0]?.date}</span>
+          {history.length > 2 && <span>{middle?.date}</span>}
+          <span>{last?.date}</span>
+        </div>
+      )}
     </>
   )
 }
@@ -434,11 +523,19 @@ export function SkuPage() {
                     <span data-series="inventory">기말 재고</span>
                     <span data-series="outbound">출고</span>
                     <span data-series="stockout">품절일 (계산에서 제외)</span>
+                    {data.calculation.coverDays > 0 &&
+                      data.calculation.forecastQty != null && (
+                        <span data-series="forecast">앞으로 예상 출고</span>
+                      )}
                   </div>
                 )}
               </div>
               {data.history.length > 0 ? (
-                <TrendChart history={data.history} />
+                <TrendChart
+                  coverDays={data.calculation.coverDays}
+                  forecastQty={data.calculation.forecastQty}
+                  history={data.history}
+                />
               ) : (
                 <AsyncState
                   description="서버가 날짜별 기록을 보내 주면 여기에 그래프가 그려져요."
