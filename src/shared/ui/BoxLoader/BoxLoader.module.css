@@ -1,0 +1,752 @@
+.stage {
+  display: grid;
+  justify-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.scene {
+  position: relative;
+  width: 296px;
+  height: 134px;
+}
+
+.scene img {
+  display: block;
+}
+
+.box {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  width: 72px;
+  height: 72px;
+  transform-origin: 50% 100%;
+}
+
+.box img {
+  width: 72px;
+  height: 72px;
+}
+
+.chute {
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  width: 60px;
+  height: 90px;
+  overflow: hidden;
+}
+
+.slip {
+  position: absolute;
+  top: 24px;
+  left: 14px;
+  width: 30px;
+  height: 21px;
+  background:
+    linear-gradient(var(--color-chart-muted), var(--color-chart-muted)) 5px
+      5px / 16px 2px no-repeat,
+    linear-gradient(var(--color-chart-muted), var(--color-chart-muted)) 5px
+      11px / 10px 2px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) 20px 10px / 6px
+      6px no-repeat,
+    var(--color-card);
+  border: 1px solid var(--color-chart-muted);
+  border-radius: 3px;
+  opacity: 0;
+  transform: translate(var(--x), -22px) rotate(var(--r));
+}
+
+.slip:nth-child(1) {
+  --x: -4px;
+  --r: -16deg;
+  --r2: 4deg;
+}
+
+.slip:nth-child(2) {
+  --x: 6px;
+  --r: 12deg;
+  --r2: -6deg;
+  animation-delay: 0.7s !important;
+}
+
+.slip:nth-child(3) {
+  --x: -1px;
+  --r: -8deg;
+  --r2: 8deg;
+  animation-delay: 1.4s !important;
+}
+
+.slip:nth-child(4) {
+  --x: 4px;
+  --r: 18deg;
+  --r2: -3deg;
+  animation-delay: 2.1s !important;
+}
+
+.slip:nth-child(5) {
+  --x: -3px;
+  --r: -12deg;
+  --r2: 6deg;
+  animation-delay: 2.8s !important;
+}
+
+.pos {
+  position: absolute;
+  top: 4px;
+  left: 102px;
+}
+
+/* 수불부 문서: 제목줄 · 열 이름 · 줄무늬 5행 */
+.sheet {
+  position: relative;
+  width: 164px;
+  height: 122px;
+  overflow: hidden;
+  background: var(--color-card);
+  border: 1px solid var(--color-chart-muted);
+  border-radius: 8px;
+}
+
+.sheetHead {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--color-primary-soft);
+  border-bottom: 1px solid var(--color-chart-muted);
+}
+
+.sheetHead i {
+  width: 9px;
+  height: 9px;
+  background: var(--color-done);
+  border-radius: 2px;
+}
+
+.sheetHead b {
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.cols,
+.row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.cols {
+  height: 15px;
+  color: var(--color-text-3);
+  font-size: 7.5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cols span:nth-child(n + 2) {
+  text-align: right;
+}
+
+.row {
+  position: relative;
+  height: 16.5px;
+}
+
+.row:nth-child(odd) {
+  background: #fcfaf5;
+}
+
+.row::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: var(--color-accent-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.name,
+.num {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.name {
+  background: var(--color-chart-muted);
+  transform-origin: 0 50%;
+}
+
+.num {
+  justify-self: end;
+  width: 68%;
+  background: var(--color-text-3);
+  opacity: 0.5;
+  transform-origin: 100% 50%;
+}
+
+.row:nth-child(1) .name {
+  width: 78%;
+}
+
+.row:nth-child(2) .name {
+  width: 56%;
+}
+
+.row:nth-child(3) .name {
+  width: 88%;
+}
+
+.row:nth-child(4) .name {
+  width: 64%;
+}
+
+.row:nth-child(5) .name {
+  width: 72%;
+}
+
+.bandDot {
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  background: var(--color-warning);
+  border-radius: 50%;
+}
+
+/* 끝난 순간: 같은 장면에서 문서가 상자로 들어가고, 상자가 가운데로 오고, 초록 고리와 체크가 그려진다 */
+.ring {
+  position: absolute;
+  top: 46px;
+  left: 96px;
+  width: 104px;
+  height: 104px;
+  overflow: visible;
+  opacity: 0;
+}
+
+.ringLine {
+  fill: none;
+  stroke: var(--color-success);
+  stroke-dasharray: 302;
+  stroke-dashoffset: 302;
+  stroke-linecap: round;
+  stroke-width: 4;
+  transform: rotate(-90deg);
+  transform-origin: 52px 52px;
+}
+
+.badge {
+  position: absolute;
+  top: 41px;
+  left: 165px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--color-success);
+  border: 3px solid var(--color-card);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-chart-muted);
+  transform: scale(0);
+}
+
+.badge svg {
+  width: 28px;
+  height: 28px;
+}
+
+.check {
+  fill: none;
+  stroke: #fff;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.done .ring {
+  opacity: 1;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 0;
+    transform: translate(var(--x), -22px) rotate(var(--r));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+
+  1.5% {
+    opacity: 1;
+  }
+
+  10% {
+    opacity: 1;
+    transform: translate(var(--x), 56px) rotate(var(--r2));
+  }
+
+  12%,
+  100% {
+    opacity: 1;
+    transform: translate(var(--x), 70px) rotate(var(--r2));
+  }
+}
+
+@keyframes rowFill0 {
+  0%,
+  10% {
+    transform: scaleX(0);
+  }
+
+  13%,
+  94% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rowFlash0 {
+  0%,
+  10% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  20%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rowFill1 {
+  0%,
+  25.6% {
+    transform: scaleX(0);
+  }
+
+  28.6%,
+  94% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rowFlash1 {
+  0%,
+  25.6% {
+    opacity: 0;
+  }
+
+  27.6% {
+    opacity: 1;
+  }
+
+  35.6%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rowFill2 {
+  0%,
+  41% {
+    transform: scaleX(0);
+  }
+
+  44%,
+  94% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rowFlash2 {
+  0%,
+  41% {
+    opacity: 0;
+  }
+
+  43% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rowFill3 {
+  0%,
+  56.7% {
+    transform: scaleX(0);
+  }
+
+  59.7%,
+  94% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rowFlash3 {
+  0%,
+  56.7% {
+    opacity: 0;
+  }
+
+  58.7% {
+    opacity: 1;
+  }
+
+  66.7%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rowFill4 {
+  0%,
+  72.2% {
+    transform: scaleX(0);
+  }
+
+  75.2%,
+  94% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rowFlash4 {
+  0%,
+  72.2% {
+    opacity: 0;
+  }
+
+  74.2% {
+    opacity: 1;
+  }
+
+  82.2%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes boxCatch {
+  0% {
+    transform: none;
+  }
+
+  9.5% {
+    transform: none;
+  }
+
+  10% {
+    transform: scale(1.07, 0.9);
+  }
+
+  11.6% {
+    transform: scale(0.98, 1.04);
+  }
+
+  13.2% {
+    transform: none;
+  }
+
+  25.1% {
+    transform: none;
+  }
+
+  25.6% {
+    transform: scale(1.07, 0.9);
+  }
+
+  27.2% {
+    transform: scale(0.98, 1.04);
+  }
+
+  28.8% {
+    transform: none;
+  }
+
+  40.5% {
+    transform: none;
+  }
+
+  41% {
+    transform: scale(1.07, 0.9);
+  }
+
+  42.6% {
+    transform: scale(0.98, 1.04);
+  }
+
+  44.2% {
+    transform: none;
+  }
+
+  56.2% {
+    transform: none;
+  }
+
+  56.7% {
+    transform: scale(1.07, 0.9);
+  }
+
+  58.3% {
+    transform: scale(0.98, 1.04);
+  }
+
+  59.9% {
+    transform: none;
+  }
+
+  71.7% {
+    transform: none;
+  }
+
+  72.2% {
+    transform: scale(1.07, 0.9);
+  }
+
+  73.8% {
+    transform: scale(0.98, 1.04);
+  }
+
+  75.4% {
+    transform: none;
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes doneFlash {
+  0% {
+    opacity: 0;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes docIn {
+  0%,
+  14% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1) rotate(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translate(-142px, 33px) scale(0.3) rotate(-6deg);
+  }
+
+  44%,
+  100% {
+    opacity: 0;
+    transform: translate(-142px, 33px) scale(0.2) rotate(-6deg);
+  }
+}
+
+@keyframes boxFinish {
+  0%,
+  38% {
+    transform: translateX(0);
+  }
+
+  43% {
+    transform: translateX(0) scale(1.08, 0.9);
+  }
+
+  49% {
+    transform: translateX(0) scale(0.98, 1.03);
+  }
+
+  53% {
+    transform: translateX(0);
+  }
+
+  70%,
+  100% {
+    transform: translateX(106px);
+  }
+}
+
+@keyframes ringDraw {
+  0%,
+  64% {
+    stroke-dashoffset: 302;
+  }
+
+  92%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes badgePop {
+  0%,
+  82% {
+    transform: scale(0);
+  }
+
+  92% {
+    transform: scale(1.15);
+  }
+
+  97%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkDraw {
+  0%,
+  88% {
+    stroke-dashoffset: 40;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rowsFill .slip {
+    animation: fall 4.5s linear infinite both;
+  }
+
+  .rowsFill .box {
+    animation: boxCatch 4.5s ease-out infinite;
+  }
+
+  .rowsFill .row:nth-child(1) .name,
+  .rowsFill .row:nth-child(1) .num {
+    animation: rowFill0 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(1)::before {
+    animation: rowFlash0 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(2) .name,
+  .rowsFill .row:nth-child(2) .num {
+    animation: rowFill1 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(2)::before {
+    animation: rowFlash1 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(3) .name,
+  .rowsFill .row:nth-child(3) .num {
+    animation: rowFill2 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(3)::before {
+    animation: rowFlash2 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(4) .name,
+  .rowsFill .row:nth-child(4) .num {
+    animation: rowFill3 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(4)::before {
+    animation: rowFlash3 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(5) .name,
+  .rowsFill .row:nth-child(5) .num {
+    animation: rowFill4 4.5s infinite both;
+  }
+
+  .rowsFill .row:nth-child(5)::before {
+    animation: rowFlash4 4.5s infinite both;
+  }
+
+  .done .row:nth-child(1)::before {
+    animation: doneFlash 0.4s ease-out both;
+  }
+
+  .done .row:nth-child(2)::before {
+    animation: doneFlash 0.4s ease-out 0.05s both;
+  }
+
+  .done .row:nth-child(3)::before {
+    animation: doneFlash 0.4s ease-out 0.1s both;
+  }
+
+  .done .row:nth-child(4)::before {
+    animation: doneFlash 0.4s ease-out 0.15s both;
+  }
+
+  .done .row:nth-child(5)::before {
+    animation: doneFlash 0.4s ease-out 0.2s both;
+  }
+
+  .done .pos {
+    animation: docIn 1.4s ease-in both;
+  }
+
+  .done .box {
+    animation: boxFinish 1.4s ease-in-out both;
+  }
+
+  .done .ringLine {
+    animation: ringDraw 1.4s ease-in-out both;
+  }
+
+  .done .badge {
+    animation: badgePop 1.4s ease-out both;
+  }
+
+  .done .check {
+    animation: checkDraw 1.4s ease-out both;
+  }
+}
+
+@media (max-width: 420px) {
+  .scene {
+    zoom: 0.86;
+  }
+}

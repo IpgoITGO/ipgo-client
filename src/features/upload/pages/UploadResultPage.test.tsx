@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
@@ -8,16 +8,14 @@ import { server } from '../../../mocks/server'
 import { UploadResultPage } from './UploadResultPage'
 
 function renderPage() {
+  // 처리 중 나가기 확인(useBlocker)이 있어서 데이터 라우터로 그린다.
+  const router = createMemoryRouter(
+    [{ path: '/upload/:uploadId/result', element: <UploadResultPage /> }],
+    { initialEntries: ['/upload/15/result'] },
+  )
   return render(
     <AppProviders>
-      <MemoryRouter initialEntries={['/upload/15/result']}>
-        <Routes>
-          <Route
-            path="/upload/:uploadId/result"
-            element={<UploadResultPage />}
-          />
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </AppProviders>,
   )
 }
