@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
+import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
@@ -236,6 +237,7 @@ export function SkuPage() {
     return (
       <AsyncState
         description="입고 판단에 필요한 재고와 출고 기록을 모으고 있어요."
+        loader={<BoxLoader title="상품" />}
         status="loading"
         title="상품 상세를 불러오고 있어요"
       />
