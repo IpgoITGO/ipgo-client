@@ -34,11 +34,17 @@ describe('SkuPage', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('품절 2일')).toBeInTheDocument()
-    // 평가로 정한 기본 방식(A)을 썼고, B는 쓰지 않았다
-    expect(screen.getByText('적용 · 평가로 선정')).toBeInTheDocument()
-    expect(screen.getByText('평가에서 A가 더 정확했어요')).toBeInTheDocument()
-    expect(screen.getByText('평가 결과 기본 방식')).toBeInTheDocument()
+    // 쓴 방식 하나만 말로 보여 주고(A·B 글자 없음), 계산은 풀이 순서로 보여 준다
+    expect(
+      screen.getByText('작년 같은 시기와 최근 흐름으로 계산했어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('평가에서 이 방식이 가장 정확했어요'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/계산식 A|기준 B/)).not.toBeInTheDocument()
+    expect(screen.getByText('앞으로 12일 예상 출고')).toBeInTheDocument()
     expect(screen.getByText('58개')).toBeInTheDocument()
+    expect(screen.getByText(/입고 단위 \d+개로 올림/)).toBeInTheDocument()
     expect(screen.getByText('상품별')).toBeInTheDocument()
     // 정확도는 기획서 말: 커버 성공률과 예측 오차
     expect(screen.getByText('정확도 높음')).toBeInTheDocument()
@@ -52,9 +58,10 @@ describe('SkuPage', () => {
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {
     renderSku('/sku/fallback-product')
 
-    expect(await screen.findByText('적용 · 대체')).toBeInTheDocument()
-    expect(screen.getByText('쓸 수 없음')).toBeInTheDocument()
-    expect(screen.getByText('작년 자료 없어 B로 대체')).toBeInTheDocument()
+    expect(
+      await screen.findByText('작년 자료가 없어 최근 28일 평균으로 계산했어요'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/B로 대체/)).not.toBeInTheDocument()
     expect(screen.getByText('66개')).toBeInTheDocument()
   })
 
