@@ -34,6 +34,10 @@ describe('SkuPage', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('품절 2일')).toBeInTheDocument()
+    // 추이 그래프 뒤에 "앞으로 12일" 예상 구간이 붙는다
+    expect(screen.getByText('앞으로 예상 출고')).toBeInTheDocument()
+    expect(screen.getByText('+12일')).toBeInTheDocument()
+    expect(screen.getByText('약 58개')).toBeInTheDocument()
     // 쓴 방식 하나만 말로 보여 주고(A·B 글자 없음), 계산은 풀이 순서로 보여 준다
     expect(
       screen.getByText('작년 같은 시기와 최근 흐름으로 계산했어요'),

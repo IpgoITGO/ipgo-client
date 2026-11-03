@@ -85,7 +85,13 @@ export type SkuDetail = {
     // 소진일을 계산할 자료가 모자라면 null
     expectedStockoutDate: string | null
   }
-  history: Array<{ date: string; inventory: number; outbound: number }>
+  // date는 화면용 "9월 1일", day는 서버가 준 날짜(간격 계산용)
+  history: Array<{
+    date: string
+    day: string
+    inventory: number
+    outbound: number
+  }>
   // 기획서: 평가로 정한 기본 방식을 쓰고, 그 방식을 못 쓰는 상품만 다른 방식으로 대체한다.
   method: { applied: 'A' | 'B'; fallback: boolean; reason: string } | null
   calculation: {
@@ -142,6 +148,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     },
     history: raw.trend.map((day) => ({
       date: monthDay(day.date) ?? day.date,
+      day: day.date,
       inventory: day.closingQty,
       outbound: day.outboundQty,
     })),
