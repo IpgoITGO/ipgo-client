@@ -52,6 +52,42 @@ describe('UploadResultPage', () => {
     ).not.toHaveTextContent('재고 안 맞음')
   })
 
+  it('처리 중이던 화면이 끝나면 끝난 순간 연출을 보여준 뒤 결과를 보여준다', async () => {
+    server.use(
+      http.get(
+        '/api/uploads/:uploadId',
+        () => HttpResponse.json({ uploadId: 15, status: 'PROCESSING' }),
+        { once: true },
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText('수불부를 확인하고 있어요'),
+    ).toBeInTheDocument()
+    // 2초 뒤 다시 확인해 끝난 걸 알면 연출이 먼저 나온다
+    expect(
+      await screen.findByText('수불부 확인을 마쳤어요', {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    // 1.5초 뒤 결과로 넘어간다
+    expect(
+      await screen.findByRole(
+        'region',
+        { name: '158개 상품으로 계산했어요' },
+        { timeout: 3000 },
+      ),
+    ).toBeInTheDocument()
+  }, 10_000)
+
+  it('이미 끝난 기록을 열면 연출 없이 바로 결과를 보여준다', async () => {
+    renderPage()
+
+    expect(
+      await screen.findByRole('region', { name: '158개 상품으로 계산했어요' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('수불부 확인을 마쳤어요')).not.toBeInTheDocument()
+  })
+
   it('처리에 실패하면 다시 올리기 안내를 보여준다', async () => {
     server.use(
       http.get('/api/uploads/:uploadId', () =>
