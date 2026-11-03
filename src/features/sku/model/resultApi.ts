@@ -50,6 +50,8 @@ export type Scenario = {
   quantity: number
   expectedStockoutDate: string
   remainingAtNextInbound: number
+  // 이 수량으로도 못 채우는 수요(재고 흐름 그래프가 쓴다)
+  unmetDemandQty: number
   // 화면은 % 정수
   preArrivalRisk: number | null
   postArrivalRisk: number | null
@@ -80,6 +82,7 @@ export function toScenario(
     quantity: item.qty,
     expectedStockoutDate: dotDate(item.expectedDepletionOn),
     remainingAtNextInbound: item.expectedEndingStock,
+    unmetDemandQty: item.unmetDemandQty ?? 0,
     preArrivalRisk: percent(shared.preArrivalRisk),
     postArrivalRisk: percent(item.postArrivalRisk),
     estimated: shared.isEstimate,

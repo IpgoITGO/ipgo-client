@@ -66,14 +66,43 @@
   border-radius: var(--radius-input);
 }
 
-.scenario[data-recommended='true'] {
-  background: var(--color-primary-soft);
-  border: 2px solid var(--color-primary);
-}
-
 /* 직접 넣은 수량: 점선 대신 조금 진한 실선으로만 구분 */
 .scenario[data-custom='true'] {
   border-color: var(--color-input-border);
+}
+
+/* 눌러서 재고 흐름이 바뀌는 칸이라 테두리와 반응을 둔다 */
+.scenario {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease-out,
+    border-color 0.15s ease-out,
+    background 0.2s ease-out;
+}
+
+.scenario:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.scenario:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.scenario[data-selected='true'] {
+  background: var(--color-accent-soft);
+  border: 2px solid var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenario {
+    transition: none;
+  }
+
+  .scenario:hover {
+    transform: none;
+  }
 }
 
 /* 다음 빈 칸에 하나만 두는 "+" 카드 */
