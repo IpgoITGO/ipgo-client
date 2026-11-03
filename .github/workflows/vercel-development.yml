@@ -46,7 +46,15 @@ jobs:
         run: vercel pull --yes --environment=preview
 
       - name: Preview build
-        run: vercel build
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          const file = 'vercel.json'
+          const config = JSON.parse(fs.readFileSync(file, 'utf8'))
+          config.buildCommand = 'VITE_ENABLE_MSW=false npm run build'
+          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n')
+          NODE
+          vercel build
 
       - id: deploy
         name: 개발 배포
@@ -56,6 +64,7 @@ jobs:
           deployment_url="$(vercel deploy --prebuilt --yes | tail -n 1)"
           DEPLOYMENT_URL="$deployment_url" node scripts/automation/validate-vercel-url.mjs
           vercel alias set "$deployment_url" ipgo-client-dev.vercel.app
+          vercel alias set "$deployment_url" ipgo-dev.iwhya.kr
           printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
 
       - name: 개발 주소 확인
