@@ -448,12 +448,23 @@
   gap: var(--space-2);
   align-content: start;
   padding: var(--space-5);
-  border: 2px solid var(--color-success);
+  background: var(--color-bg);
   border-radius: var(--radius-input);
 }
 
-.accuracyBoxes > div[data-tone='error'] {
-  border-color: var(--color-primary);
+/* 눌러 볼 칸이 아니라서 테두리 없이 연한 면으로 두고, 색은 이름 앞 작은 점과 숫자 막대에만 쓴다 */
+.accuracyBoxes > div > span:first-child::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  content: '';
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.accuracyBoxes > div[data-tone='error'] > span:first-child::before {
+  background: var(--color-primary);
 }
 
 .accuracyBoxes span,
@@ -630,4 +641,65 @@
   font-weight: 700;
   background: var(--color-danger-bg);
   border-radius: var(--radius-input);
+}
+
+/* 정확도 점과 막대는 화면에 보일 때 한 번 채워진다 */
+@media (prefers-reduced-motion: no-preference) {
+  .dots i[data-on='true'] {
+    animation: dot-in 0.25s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  }
+
+  .dots i:nth-child(2) {
+    animation-delay: 45ms;
+  }
+
+  .dots i:nth-child(3) {
+    animation-delay: 90ms;
+  }
+
+  .dots i:nth-child(4) {
+    animation-delay: 135ms;
+  }
+
+  .dots i:nth-child(5) {
+    animation-delay: 180ms;
+  }
+
+  .dots i:nth-child(6) {
+    animation-delay: 225ms;
+  }
+
+  .dots i:nth-child(7) {
+    animation-delay: 270ms;
+  }
+
+  .dots i:nth-child(8) {
+    animation-delay: 315ms;
+  }
+
+  .dots i:nth-child(9) {
+    animation-delay: 360ms;
+  }
+
+  .dots i:nth-child(10) {
+    animation-delay: 405ms;
+  }
+
+  .bar i {
+    transform-origin: left;
+    animation: bar-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.25s both;
+  }
+}
+
+@keyframes dot-in {
+  from {
+    opacity: 0.35;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
 }
