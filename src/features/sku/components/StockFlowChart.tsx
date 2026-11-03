@@ -10,7 +10,7 @@ const RIGHT = 14
 const TOP = 16
 const BOTTOM = 34
 const STEPS = 17
-const TWEEN_MS = 380
+const TWEEN_MS = 600
 
 const canAnimate = () =>
   typeof window.matchMedia === 'function' &&
@@ -57,7 +57,7 @@ export function StockFlowChart({
     [key],
   )
 
-  // 고르면 그래프가 이전 모양에서 새 모양으로 ease-out으로 옮겨 간다.
+  // 고르면 그래프가 이전 모양에서 새 모양으로 ease-in-out으로 옮겨 간다(움직이는 과정이 보이게 0.6초).
   const shownRef = useRef(target)
   const [tween, setTween] = useState<number[] | null>(null)
   useEffect(() => {
@@ -74,7 +74,10 @@ export function StockFlowChart({
     let frame = 0
     const step = (now: number) => {
       const progress = Math.min((now - start) / TWEEN_MS, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
+      const eased =
+        progress < 0.5
+          ? 4 * progress ** 3
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2
       const current = from.map(
         (value, index) => value + (target[index] - value) * eased,
       )
@@ -154,7 +157,12 @@ export function StockFlowChart({
               points={points(valuesOf(item))}
             />
           ))}
-        <polyline className={styles.line} points={points(shown)} />
+        {/* 처음 보일 때 왼쪽부터 그려진다(pathLength=1로 길이를 1로 두고 CSS에서 dashoffset을 줄임). */}
+        <polyline
+          className={styles.line}
+          pathLength={1}
+          points={points(shown)}
+        />
         {depletes ? (
           <>
             <circle
