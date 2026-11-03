@@ -79,6 +79,11 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 | `VITE_ENABLE_MSW`   | 아니요 | `true`이면 브라우저에서 MSW를 시작합니다.                                                                                                                               |
 | `API_PROXY_TARGET`  | 아니요 | 개발 서버가 `/api` 요청을 넘겨 줄 서버 주소(예: `http://localhost:8080`). 브라우저에는 노출되지 않습니다. 실제 서버로 확인할 때는 `VITE_ENABLE_MSW`를 `false`로 둡니다. |
 
+배포 화면(Vercel)에서는 `vercel.json`이 `/api/*` 요청을 개발 서버
+`https://ipgo-dev-api.iwhya.kr/api/*`로 넘깁니다. 배포 화면을 실제 서버로 보려면 Vercel 환경 변수
+`VITE_ENABLE_MSW`를 `false`로 두고 다시 배포합니다. 운영 서버 주소가 따로 생기면 `main`에 반영하기 전에
+이 주소를 바꿉니다.
+
 `.env`와 `.env.*`는 Git에서 제외됩니다. `VITE_*` 값은 build 결과에 포함되어 브라우저에서
 확인할 수 있으므로 token, 비밀번호, private API key를 넣으면 안 됩니다. 실제 비밀값은
 백엔드 또는 배포 환경의 서버 전용 비밀 저장소에서 관리합니다.
