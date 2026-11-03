@@ -42,7 +42,8 @@ export type ProductDetail = {
     recommendedAmount: number | null
   } | null
   accuracy: {
-    grade: 'HIGH' | 'MEDIUM' | 'LOW'
+    // 유효 관측일이 모자라 등급을 못 정했으면 null
+    grade: 'HIGH' | 'MEDIUM' | 'LOW' | null
     isReference: boolean
     validObservationDays: number | null
     coverSuccessCount: number | null
@@ -54,7 +55,7 @@ export type ProductDetail = {
       forecastQty: number
       actualQty: number
       covered: boolean
-    }>
+    }> | null
     range: { low: number; high: number } | null
     firstInboundOn: string | null
   } | null
@@ -63,7 +64,7 @@ export type ProductDetail = {
     closingQty: number
     outboundQty: number
     isValidObservation: boolean
-  }>
+  }> | null
 }
 
 export type SkuDetail = {
@@ -106,7 +107,7 @@ export type SkuDetail = {
   }
   settings: ProductDetail['settings']
   accuracy: {
-    grade: 'high' | 'medium' | 'low'
+    grade: 'high' | 'medium' | 'low' | null
     coverSuccess: number | null
     coverTrials: number | null
     errorRate: number | null
@@ -146,7 +147,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
         ? dotDate(raw.expectedShortageOn)
         : null,
     },
-    history: raw.trend.map((day) => ({
+    history: (raw.trend ?? []).map((day) => ({
       date: monthDay(day.date) ?? day.date,
       day: day.date,
       inventory: day.closingQty,
@@ -171,7 +172,9 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     },
     settings: raw.settings,
     accuracy: accuracy && {
-      grade: accuracy.grade.toLowerCase() as 'high' | 'medium' | 'low',
+      grade: accuracy.grade
+        ? (accuracy.grade.toLowerCase() as 'high' | 'medium' | 'low')
+        : null,
       coverSuccess: accuracy.coverSuccessCount,
       coverTrials: accuracy.coverTrialCount,
       errorRate:
@@ -179,7 +182,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
           ? null
           : Math.round(accuracy.forecastErrorRate * 100),
       range: accuracy.range,
-      history: accuracy.history.map((item) => ({
+      history: (accuracy.history ?? []).map((item) => ({
         date: monthDay(item.originDate) ?? item.originDate,
         outbound: item.actualQty,
         predictedOutbound: item.forecastQty,

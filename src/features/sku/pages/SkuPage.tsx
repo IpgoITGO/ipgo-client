@@ -684,8 +684,13 @@ function AccuracyCard({
     <section className={styles.card}>
       <div className={styles.accuracyHeader}>
         <h2>예측 정확도</h2>
-        <span className={styles.accuracyGrade} data-grade={accuracy.grade}>
-          정확도 {accuracyLabels[accuracy.grade]}
+        <span
+          className={styles.accuracyGrade}
+          data-grade={accuracy.grade ?? 'none'}
+        >
+          {accuracy.grade
+            ? `정확도 ${accuracyLabels[accuracy.grade]}`
+            : '정확도 계산 전'}
         </span>
       </div>
       <div className={styles.accuracyBoxes}>
