@@ -227,6 +227,13 @@ describe('SettingsPage 표 모양', () => {
       screen.getByText('수불부를 올리면 입고 간격으로 추정해 채워요'),
     ).toBeInTheDocument()
     expect(screen.queryByText('검색 결과가 없어요.')).toBeNull()
+    // 상품이 없으면 계산할 게 없다: 계산 버튼은 막고 수불부 올리기로 안내한다
+    expect(
+      screen.getByRole('button', { name: '확인하고 계산하기' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: '수불부 올리기 →' }),
+    ).toBeInTheDocument()
   })
 
   it('서버에 원가가 없으면 0원 대신 빈칸(미입력)으로 두고, 안 건드리면 원가를 보내지 않는다', async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -166,6 +166,57 @@ describe('DashboardPage', () => {
     expect(row).toHaveTextContent('자료 부족')
     expect(row).not.toHaveTextContent('0일')
     expect(row).not.toHaveTextContent('0%')
+  })
+
+  it('마지막 업로드가 실패했으면 수불부 올리기를 끝낸 걸로 세지 않고 다시 올리게 한다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json(noResult(15)),
+      ),
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({ uploadId: 15, status: 'FAILED' }),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByText('아직 계산 전이에요')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '마지막으로 올린 수불부를 처리하지 못했어요. 파일을 확인하고 다시 올려 주세요.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '수불부 다시 올리기' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '입고 조건 확인하기' }),
+    ).toBeNull()
+    // 첫 단계(수불부 올리기)가 체크되지 않고 지금 단계로 남는다
+    const steps = screen.getByRole('list', { name: '계산까지 순서' })
+    expect(within(steps).getAllByRole('listitem')[0]).toHaveAttribute(
+      'data-state',
+      'now',
+    )
+  })
+
+  it('마지막 업로드가 아직 처리 중이면 입고 조건이 아니라 그 업로드 확인으로 안내한다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json(noResult(15)),
+      ),
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({ uploadId: 15, status: 'PROCESSING' }),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByText('아직 계산 전이에요')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '확인 중인 업로드 보기' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '입고 조건 확인하기' }),
+    ).toBeNull()
   })
 
   it('수불부를 아직 안 올렸으면 계산 전 안내의 버튼이 수불부 업로드다', async () => {

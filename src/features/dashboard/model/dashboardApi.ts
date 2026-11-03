@@ -1,4 +1,5 @@
 import { apiRequest } from '../../../shared/api/client'
+import { getUploadResult } from '../../upload/model/uploadApi'
 import type { DashboardData } from '../pages/DashboardPage'
 
 // ipgo-server README "대시보드와 SKU 상세"(D1). 화면 모양은 그대로 두고 서버 응답을 화면 값으로 옮긴다.
@@ -54,7 +55,10 @@ export function monthDay(iso: string | null) {
   return `${m}월 ${d}일`
 }
 
-export function toDashboardData(raw: ReplenishmentNeeds): DashboardData {
+export function toDashboardData(
+  raw: ReplenishmentNeeds,
+  uploadStatus?: DashboardData['uploadStatus'],
+): DashboardData {
   return {
     baseDate: dotDate(raw.asOfDate),
     today: dotDate(raw.today),
@@ -68,7 +72,13 @@ export function toDashboardData(raw: ReplenishmentNeeds): DashboardData {
             ? 'stale-result'
             : 'fresh',
     lastCalculatedAt: monthDay(raw.resultComputedAt),
-    hasUpload: raw.latestUploadId !== null,
+    // 올린 수불부가 실제로 끝났을 때만 "수불부 올리기" 단계를 끝냄으로 센다.
+    // 실패했거나 아직 처리 중인 업로드로 입고 조건 화면에 보내면 상품이 없어 막힌다.
+    hasUpload:
+      raw.latestUploadId !== null &&
+      (uploadStatus === undefined || uploadStatus === 'DONE'),
+    latestUploadId: raw.latestUploadId,
+    uploadStatus,
     summary: {
       needed: raw.summary.needCount,
       safe: raw.summary.notNeededCount,
@@ -103,7 +113,18 @@ export function toDashboardData(raw: ReplenishmentNeeds): DashboardData {
 
 // D1 입고 필요 목록. 정렬은 화면에서 하므로 서버 기본(소진일 순)으로 받는다.
 export async function getDashboard() {
-  return toDashboardData(
-    await apiRequest<ReplenishmentNeeds>('/dashboard/replenishment-needs'),
+  const raw = await apiRequest<ReplenishmentNeeds>(
+    '/dashboard/replenishment-needs',
   )
+  // 아직 계산 결과가 없을 때만 마지막 업로드가 끝났는지 한 번 더 본다.
+  // 확인하지 못하면(오류) 전과 같이 올린 걸로 본다.
+  let uploadStatus: DashboardData['uploadStatus']
+  if (raw.resultStatus === null && raw.latestUploadId !== null) {
+    try {
+      uploadStatus = (await getUploadResult(String(raw.latestUploadId))).status
+    } catch {
+      uploadStatus = undefined
+    }
+  }
+  return toDashboardData(raw, uploadStatus)
 }
