@@ -19,6 +19,9 @@ export type DashboardData = {
   lastCalculatedAt?: string
   /** 수불부를 한 번이라도 올렸는지. 계산 전 안내에서 어느 화면으로 보낼지 정한다 */
   hasUpload?: boolean
+  /** 마지막으로 올린 수불부의 업로드 번호와 처리 상태. 실패·처리 중이면 입고 조건이 아니라 업로드로 안내한다 */
+  latestUploadId?: number | null
+  uploadStatus?: 'PROCESSING' | 'DONE' | 'FAILED'
   summary: {
     needed: number
     safe: number
@@ -262,12 +265,32 @@ export function DashboardPage() {
       {noResult ? (
         <AsyncState
           description={
-            data.hasUpload
-              ? '입고 조건을 확인하고 계산하면 권장 입고량이 나와요.'
-              : '수불부를 올리고 입고 조건을 확인하면 권장 입고량이 나와요.'
+            data.uploadStatus === 'FAILED'
+              ? '마지막으로 올린 수불부를 처리하지 못했어요. 파일을 확인하고 다시 올려 주세요.'
+              : data.uploadStatus === 'PROCESSING'
+                ? '올린 수불부를 확인하고 있어요. 끝나면 입고 조건을 확인할 수 있어요.'
+                : data.hasUpload
+                  ? '입고 조건을 확인하고 계산하면 권장 입고량이 나와요.'
+                  : '수불부를 올리고 입고 조건을 확인하면 권장 입고량이 나와요.'
           }
-          onRetry={() => navigate(data.hasUpload ? '/settings' : '/upload')}
-          retryLabel={data.hasUpload ? '입고 조건 확인하기' : '수불부 업로드'}
+          onRetry={() =>
+            navigate(
+              data.uploadStatus === 'PROCESSING'
+                ? `/upload/${data.latestUploadId}/result`
+                : data.hasUpload
+                  ? '/settings'
+                  : '/upload',
+            )
+          }
+          retryLabel={
+            data.uploadStatus === 'FAILED'
+              ? '수불부 다시 올리기'
+              : data.uploadStatus === 'PROCESSING'
+                ? '확인 중인 업로드 보기'
+                : data.hasUpload
+                  ? '입고 조건 확인하기'
+                  : '수불부 업로드'
+          }
           primaryAction
           status="empty"
           title="아직 계산 전이에요"

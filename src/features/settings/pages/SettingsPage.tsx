@@ -191,6 +191,8 @@ export function SettingsPage() {
 
   async function save(values: SettingsValues) {
     setFormError(null)
+    // 상품이 없으면 계산할 게 없다. 계산 시작·완료 안내를 띄우지 않는다.
+    if (values.products.length === 0) return
     const before = new Map(
       (query.data?.values.products ?? []).map((item) => [item.productId, item]),
     )
@@ -463,6 +465,15 @@ export function SettingsPage() {
                 : '검색 결과가 없어요.'}
             </p>
           )}
+          {products.length === 0 && (
+            <Button
+              onClick={() => navigate('/upload')}
+              type="button"
+              variant="secondary"
+            >
+              수불부 올리기 →
+            </Button>
+          )}
         </section>
       </form>
 
@@ -479,9 +490,15 @@ export function SettingsPage() {
           ← 대시보드로
         </Button>
         <Button
+          disabled={products.length === 0}
           loading={isSubmitting}
           loadingLabel="계산 요청 중"
           form="inbound-settings-form"
+          title={
+            products.length === 0
+              ? '상품이 있어야 계산할 수 있어요. 수불부를 먼저 올려 주세요'
+              : undefined
+          }
           type="submit"
         >
           확인하고 계산하기
