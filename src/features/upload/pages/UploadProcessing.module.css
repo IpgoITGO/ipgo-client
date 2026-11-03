@@ -1,0 +1,105 @@
+/* 업로드 처리 중(조각이 상자로 떨어지고 문서 줄이 채워짐)과 끝난 순간(문서가 상자로 들어가고 고리·체크가 그려짐) */
+.container {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  min-height: 240px;
+  padding: 40px var(--space-6) 32px;
+  text-align: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.container h2,
+.container p {
+  margin: 0;
+}
+
+.container > p {
+  max-width: 520px;
+  color: var(--color-text-3);
+  line-height: 1.7;
+}
+
+/* 오래 걸릴 때 붙는 안내 띠 */
+.band {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  align-items: baseline;
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5) 18px;
+  text-align: left;
+  background: var(--color-warning-bg);
+  border-radius: 16px;
+}
+
+.band strong {
+  grid-column: 2;
+  font-size: 15px;
+}
+
+.band time {
+  grid-column: 3;
+  color: var(--color-warning);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.band p {
+  grid-column: 2 / 4;
+  max-width: none;
+  color: var(--color-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.band button {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: var(--space-3);
+}
+
+.fade {
+  animation: textIn 0.35s ease-out both;
+}
+
+@keyframes textIn {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 처리 중 뒤로 가려 할 때 뜨는 확인 팝업 */
+.leave {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave h2,
+.leave p {
+  margin: 0;
+}
+
+.leave p {
+  color: var(--color-text-3);
+  line-height: 1.7;
+}
+
+.leaveActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}

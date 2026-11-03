@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
@@ -10,10 +11,15 @@ import {
   formatDate,
   formatPeriod,
 } from '../model/uploadFormat'
+import { FINISH_MS, UploadProcessing } from './UploadProcessing'
 import styles from './UploadResultPage.module.css'
 
 // 정제·검산이 끝날 때까지 2초마다 다시 확인한다.
 const POLL_INTERVAL_MS = 2000
+
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function UploadResultPage() {
   const { uploadId } = useParams()
@@ -29,12 +35,34 @@ export function UploadResultPage() {
       query.state.data?.status === 'PROCESSING' ? POLL_INTERVAL_MS : false,
   })
 
-  if (result.isPending || result.data?.status === 'PROCESSING') {
+  const processing = result.isPending || result.data?.status === 'PROCESSING'
+
+  // 처리 중이던 화면이 정상으로 끝나면 1.5초 동안 끝난 순간 연출을 먼저 보여 준다.
+  // 이미 끝난 기록을 열 때와 움직임 줄이기 설정에서는 건너뛴다.
+  const [wasProcessing, setWasProcessing] = useState(processing)
+  const [finishing, setFinishing] = useState(false)
+  if (processing !== wasProcessing) {
+    setWasProcessing(processing)
+    if (
+      wasProcessing &&
+      result.data?.status === 'DONE' &&
+      !prefersReducedMotion()
+    ) {
+      setFinishing(true)
+    }
+  }
+  useEffect(() => {
+    if (!finishing) return
+    const timer = setTimeout(() => setFinishing(false), FINISH_MS)
+    return () => clearTimeout(timer)
+  }, [finishing])
+
+  // 확인 중과 끝난 순간은 같은 화면 요소라서 장면이 끊기지 않고 이어진다.
+  if (processing || finishing) {
     return (
-      <AsyncState
-        description="수불부 형식과 재고 숫자를 확인하고 있어요."
-        status="loading"
-        title="수불부를 확인하고 있어요"
+      <UploadProcessing
+        done={finishing}
+        onGoDashboard={() => navigate('/dashboard')}
       />
     )
   }
