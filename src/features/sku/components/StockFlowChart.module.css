@@ -93,3 +93,23 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* 끝 점과 이름표는 선이 다 그려질 즈음 나타난다. */
+@media (prefers-reduced-motion: no-preference) {
+  .ok,
+  .okLabel,
+  .danger,
+  .dangerLabel {
+    animation: appear 0.3s ease-out 0.75s both;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
