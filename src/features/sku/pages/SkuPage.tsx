@@ -29,11 +29,13 @@ const sourceLabels: Record<SettingSource, string> = {
   ESTIMATED: '추정',
 }
 
-// 기획서 계산식: A = 작년 같은 시기 × 올해 최근 흐름, B = 최근 28일 평균
-const methodLabels = {
-  A: '계산식 A · 작년 같은 시기 + 최근 흐름',
-  B: '기준 B · 최근 28일 평균',
-} as const
+// 기획서 계산식: A = 작년 같은 시기 × 올해 최근 흐름, B = 최근 28일 평균. 화면에는 A·B 글자 대신 말로 쓴다.
+function methodSentence(method: NonNullable<SkuDetail['method']>) {
+  if (method.applied === 'A') return '작년 같은 시기와 최근 흐름으로 계산했어요'
+  return method.fallback
+    ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
+    : '최근 28일 평균으로 계산했어요'
+}
 
 const count = (value: number | null) =>
   value == null ? '—' : `${value.toLocaleString()}개`
@@ -426,79 +428,96 @@ export function SkuPage() {
                 <h2>계산 근거</h2>
               </div>
               {data.method && (
-                <div className={styles.formulas}>
-                  {(['A', 'B'] as const).map((name) => {
-                    const applied = data.method?.applied === name
-                    const note = applied
-                      ? data.method?.fallback
-                        ? '적용 · 대체'
-                        : '적용 · 평가로 선정'
-                      : data.method?.fallback
-                        ? '쓸 수 없음'
-                        : `평가에서 ${data.method?.applied}가 더 정확했어요`
-                    return (
-                      <article data-selected={applied} key={name}>
-                        <span>{methodLabels[name]}</span>
-                        <strong>
-                          {applied ? count(data.calculation.forecastQty) : '—'}
-                        </strong>
-                        <em>{note}</em>
-                      </article>
-                    )
-                  })}
-                </div>
+                <p className={styles.methodSentence}>
+                  {methodSentence(data.method)}
+                  {!data.method.fallback && (
+                    <small>평가에서 이 방식이 가장 정확했어요</small>
+                  )}
+                </p>
               )}
-              {data.method?.reason && (
-                <p className={styles.methodReason}>{data.method.reason}</p>
-              )}
-              <dl className={styles.evidence}>
-                <div>
-                  <dt>여유 배수</dt>
-                  <dd>{data.calculation.multiplier}배</dd>
-                </div>
-                <div>
-                  <dt>커버 기간</dt>
-                  <dd>{data.calculation.coverDays}일</dd>
-                </div>
-                <div>
-                  <dt>시작 재고</dt>
-                  <dd>
+              <ol className={styles.steps}>
+                <li>
+                  <span aria-hidden="true" className={styles.stepOp} />
+                  <span>앞으로 {data.calculation.coverDays}일 예상 출고</span>
+                  <strong>{count(data.calculation.forecastQty)}</strong>
+                </li>
+                <li>
+                  <span aria-hidden="true" className={styles.stepOp}>
+                    ×
+                  </span>
+                  <span>여유 배수</span>
+                  <strong>{data.calculation.multiplier}배</strong>
+                </li>
+                <li>
+                  <span aria-hidden="true" className={styles.stepOp}>
+                    −
+                  </span>
+                  <span>
+                    시작 재고
+                    {data.calculation.startingInventoryEstimated && (
+                      <small> 추정</small>
+                    )}
+                  </span>
+                  <strong>
                     {data.calculation.startingInventory == null ? (
                       <EmptyValue kind="short" />
                     ) : (
                       count(data.calculation.startingInventory)
                     )}
-                    {data.calculation.startingInventoryEstimated && (
-                      <small> 추정</small>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>기존 발주</dt>
-                  <dd>{count(data.calculation.existingOrders)}</dd>
-                </div>
-                <div>
-                  <dt>입고 단위</dt>
-                  <dd>{setting(data.calculation.inboundUnit, '개')}</dd>
-                </div>
-                <div>
-                  <dt>리드타임</dt>
-                  <dd>
-                    {setting(data.settings.leadTimeDays, '일')}
-                    {data.settings.leadTimeDays != null && (
-                      <span className={styles.source}>
-                        {sourceLabels[data.settings.leadTimeSource]}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-                {data.calculation.rawQuantity != null && (
-                  <div>
-                    <dt>반올림 전 필요량</dt>
-                    <dd>{data.calculation.rawQuantity.toFixed(1)}개</dd>
-                  </div>
+                  </strong>
+                </li>
+                {Boolean(data.calculation.existingOrders) && (
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      −
+                    </span>
+                    <span>기존 발주</span>
+                    <strong>{count(data.calculation.existingOrders)}</strong>
+                  </li>
                 )}
-              </dl>
+                {data.calculation.rawQuantity != null && (
+                  <li className={styles.stepSum}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      =
+                    </span>
+                    <span>필요한 양</span>
+                    <strong>
+                      {data.calculation.rawQuantity.toLocaleString(undefined, {
+                        maximumFractionDigits: 1,
+                      })}
+                      개
+                    </strong>
+                  </li>
+                )}
+                <li className={styles.stepFinal}>
+                  <span aria-hidden="true" className={styles.stepOp}>
+                    ↑
+                  </span>
+                  <span>
+                    {data.calculation.inboundUnit == null
+                      ? '입고 단위로 올림'
+                      : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
+                    <small>
+                      권장 입고량
+                      {data.calculation.inboundUnit == null && (
+                        <>
+                          {' '}
+                          · 입고 단위 <EmptyValue kind="unset" />
+                        </>
+                      )}
+                    </small>
+                  </span>
+                  <strong>{count(data.recommendation.quantity)}</strong>
+                </li>
+              </ol>
+              <p className={styles.leadTime}>
+                리드타임 {setting(data.settings.leadTimeDays, '일')}
+                {data.settings.leadTimeDays != null && (
+                  <span className={styles.source}>
+                    {sourceLabels[data.settings.leadTimeSource]}
+                  </span>
+                )}
+              </p>
               {settingsLink}
             </section>
           </div>
