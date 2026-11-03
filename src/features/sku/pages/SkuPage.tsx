@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
@@ -227,6 +228,30 @@ function AccuracyChart({ history }: { history: AccuracyHistory }) {
   )
 }
 
+// 권장 입고량이 0에서 올라가며 나타난다(0.7초, ease-out). 움직임 줄이기 설정이나 확인 못 하는 환경에서는 바로 값을 보여 준다.
+const canAnimate = () =>
+  typeof window.matchMedia === 'function' &&
+  !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function CountUp({ value }: { value: number }) {
+  const [shown, setShown] = useState(() => (canAnimate() ? 0 : value))
+
+  useEffect(() => {
+    if (!canAnimate()) return
+    const start = performance.now()
+    let frame = 0
+    const step = (now: number) => {
+      const progress = Math.min((now - start) / 700, 1)
+      setShown(Math.round(value * (1 - Math.pow(1 - progress, 3))))
+      if (progress < 1) frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame)
+  }, [value])
+
+  return <>{(canAnimate() ? shown : value).toLocaleString()}</>
+}
+
 export function SkuPage() {
   const { skuId = '' } = useParams()
   const navigate = useNavigate()
@@ -369,7 +394,7 @@ export function SkuPage() {
               >
                 <Tape className={styles.recoTape} />
                 <span aria-hidden="true" className={styles.recoNum}>
-                  {data.recommendation.quantity.toLocaleString()}
+                  <CountUp value={data.recommendation.quantity} />
                   <small className={styles.recoUnit}>개</small>
                 </span>
               </strong>
@@ -526,6 +551,7 @@ export function SkuPage() {
 
           {data.resultId !== null && (
             <ScenarioInsight
+              horizonDays={data.calculation.coverDays}
               inboundUnit={data.calculation.inboundUnit ?? 1}
               key={data.resultId}
               resultId={data.resultId}

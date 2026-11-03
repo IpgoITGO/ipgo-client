@@ -15,6 +15,7 @@ import {
   toScenarios,
 } from '../model/resultApi'
 import styles from './ScenarioInsight.module.css'
+import { StockFlowChart } from './StockFlowChart'
 
 // 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
 const TONE = { LLM: 'ai', TEMPLATE: 'template', NONE: 'none' } as const
@@ -60,9 +61,12 @@ function scenarioNote(scenario: Scenario, recommendedQuantity: number) {
 }
 
 export function ScenarioInsight({
+  horizonDays = 0,
   inboundUnit,
   resultId,
 }: {
+  // 재고 흐름 그래프의 가로 길이(계산이 내다본 날 수)
+  horizonDays?: number
   inboundUnit: number
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
@@ -74,6 +78,8 @@ export function ScenarioInsight({
   // "+" 카드를 눌러 입력 중인지, 한 줄(5칸)을 넘는 카드를 펼쳤는지
   const [adding, setAdding] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  // 눌러서 고른 카드(처음엔 권장량). 고르면 아래 재고 흐름 그래프가 그 수량으로 바뀐다.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const scenariosQuery = useQuery({
     queryKey: ['result', resultId, 'scenarios'],
@@ -163,6 +169,12 @@ export function ScenarioInsight({
   const sharedPreArrivalRisk =
     preArrivalRisks.size === 1 ? scenarios[0].preArrivalRisk : undefined
   const isCustom = (scenario: Scenario) => scenario.id.startsWith('custom')
+  const selected =
+    scenarios.find((item) => item.id === selectedId) ??
+    scenarios.find(
+      (item) => !isCustom(item) && item.quantity === data?.recommendedQuantity,
+    ) ??
+    scenarios[0]
   // 한 줄에 5칸("+" 카드 포함). 넘치면 처음 5개만 보이고 나머지는 "더 보기"로 편다.
   const overflow = scenarios.length + 1 > ROW_SIZE
   const showAll = expanded || !overflow
@@ -211,7 +223,11 @@ export function ScenarioInsight({
           />
         ) : (
           <>
-            <div className={styles.cards}>
+            <div
+              aria-label="입고량 비교"
+              className={styles.cards}
+              role="radiogroup"
+            >
               {visible.map((scenario) => {
                 const recommended =
                   !isCustom(scenario) &&
@@ -221,11 +237,22 @@ export function ScenarioInsight({
                   data?.recommendedQuantity ?? 0,
                 )
                 return (
-                  <article
+                  <div
+                    aria-checked={selected?.id === scenario.id}
                     className={styles.scenario}
                     data-custom={isCustom(scenario)}
                     data-recommended={recommended}
+                    data-selected={selected?.id === scenario.id}
                     key={scenario.id}
+                    onClick={() => setSelectedId(scenario.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedId(scenario.id)
+                      }
+                    }}
+                    role="radio"
+                    tabIndex={0}
                   >
                     <div className={styles.scenarioTop}>
                       <span>{scenario.label}</span>
@@ -280,7 +307,7 @@ export function ScenarioInsight({
                       />
                     </div>
                     <p className={styles.note}>{note}</p>
-                  </article>
+                  </div>
                 )
               })}
 
@@ -357,6 +384,13 @@ export function ScenarioInsight({
                 </form>
               )}
             </div>
+            {selected && horizonDays > 0 && (
+              <StockFlowChart
+                horizonDays={horizonDays}
+                scenarios={scenarios}
+                selectedId={selected.id}
+              />
+            )}
             {overflow && (
               <div className={styles.more}>
                 {expanded ? (
