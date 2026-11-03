@@ -431,6 +431,11 @@
   background: var(--color-warning-bg);
 }
 
+.accuracyGrade[data-grade='none'] {
+  color: var(--color-text-3);
+  background: var(--color-primary-soft);
+}
+
 .accuracyGrade[data-grade='low'] {
   color: var(--color-danger);
   background: var(--color-danger-bg);
