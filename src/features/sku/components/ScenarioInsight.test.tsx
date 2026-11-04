@@ -128,7 +128,8 @@ describe('ScenarioInsight', () => {
     // 합계 13/5/5에서 입고 전 5개를 빼 8/0/0
     expect(
       await screen.findByRole('img', {
-        name: /32개보다 40개를 넣으면 못 채우는 주문이 8개에서 0개로 줄어요/,
+        // 손그림 둘째 줄은 항상 남는 재고(못 채우는 주문은 카드가 맡음)
+        name: /32개보다 40개를 넣으면 다음 입고 때 0개 더 남아요/,
       }),
     ).toBeInTheDocument()
     expect(

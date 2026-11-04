@@ -9,10 +9,8 @@ export type SketchValues = {
   postRisk: number | null
   // 권장량을 넣었을 때 다음 입고 때 남는 재고
   endRecommended: number
-  // 권장량을 넣어도 못 채우는 주문(시나리오 unmetDemandQty)
-  unmetRecommended: number
   // 비교 대상(80%) 수량과 그때 남는 재고. 80%가 권장량과 겹치면 없다.
-  lower: { quantity: number; end: number; unmet: number } | null
+  lower: { quantity: number; end: number } | null
 }
 
 // 같은 숫자면 매번 같은 손그림이 나오도록 씨앗을 고정한 난수
@@ -61,16 +59,109 @@ function roughEllipse(
   return d
 }
 
-function roughStar(cx: number, cy: number, radius: number, r: () => number) {
-  let d = ''
-  for (let pass = 0; pass < 2; pass += 1) {
-    for (let i = 0; i <= 10; i += 1) {
-      const angle = -Math.PI / 2 + (i * Math.PI) / 5
-      const length = (i % 2 ? radius * 0.45 : radius) * (1 + r() * 0.12)
-      d += `${i ? 'L' : 'M'}${n(cx + Math.cos(angle) * length + r() * 1.2)} ${n(cy + Math.sin(angle) * length + r() * 1.2)} `
-    }
+// 밑줄을 긋다가 펜을 떼지 않고 그대로 별의 가로선이 되게 이어 그린다.
+// 별은 밑줄 높이에 가로선이 오도록 아래쪽에 두고, 가로선(왼 → 오) 다음 왼쪽 아래 → 위 → 오른쪽 아래 → 왼쪽으로 한 붓에 닫는다.
+function underlineStar(x1: number, x2: number, y: number, r: () => number) {
+  const radius = 13
+  // 별 가로선(왼쪽·오른쪽 꼭짓점)은 중심보다 radius × sin18° 위에 있다
+  const cx = x2 + radius * 0.95
+  const cy = y + radius * 0.31
+  const vertex = (k: number) => {
+    const angle = ((-90 + 72 * k) * Math.PI) / 180
+    return [
+      cx + Math.cos(angle) * radius + r() * 1,
+      cy + Math.sin(angle) * radius + r() * 1,
+    ]
   }
+  let d = `M${n(x1)} ${n(y + 2)} Q${n((x1 + x2) / 2)} ${n(y - 2 + r() * 2)} ${n(x2)} ${n(y)}`
+  for (const [x, yy] of [1, 3, 0, 2, 4].map(vertex)) d += ` L${n(x)} ${n(yy)}`
   return d
+}
+
+// 칸 왼쪽 위 작은 전구 낙서: 선 두 번 긋기 + 색연필 빗금(선 밖으로 조금 삐져나감)
+function Bulb() {
+  const r = seeded(4242)
+  const arc = (
+    cx: number,
+    cy: number,
+    radius: number,
+    a0: number,
+    a1: number,
+    steps: number,
+  ) =>
+    Array.from({ length: steps + 1 }, (_, k) => {
+      const t = a0 + ((a1 - a0) * k) / steps
+      return [
+        cx + Math.cos(t) * radius * (1 + Math.sin(t * 3) * 0.03),
+        cy + Math.sin(t) * radius * (1 + Math.cos(t * 2) * 0.03),
+      ]
+    })
+  const twice = (points: number[][], width: number, className?: string) =>
+    [0, 1].map((pass) => (
+      <path
+        className={className ?? styles.doodle}
+        d={points
+          .map(
+            ([x, y], i) =>
+              `${i ? 'L' : 'M'}${n(x + r() * (pass ? 1.8 : 1))} ${n(y + r() * (pass ? 1.8 : 1))}`,
+          )
+          .join(' ')}
+        key={pass}
+        opacity={pass ? 0.65 : 1}
+        strokeWidth={pass ? width * 0.55 : width}
+      />
+    ))
+  const glass = [...arc(22, 17, 11, 2.25, 7.17, 22), [27, 30], [17, 30]]
+  const outline = [...glass, glass[0], glass[1]]
+  const rays = [
+    [
+      [22, 1],
+      [22, 3.5],
+    ],
+    [
+      [8, 6],
+      [10, 8],
+    ],
+    [
+      [36, 6],
+      [34, 8],
+    ],
+  ]
+  return (
+    <svg aria-hidden="true" className={styles.bulb} viewBox="0 0 44 44">
+      <clipPath id="sketch-bulb">
+        <path
+          d={`M${glass.map(([x, y]) => `${n(x * 1.04 - 0.4)} ${n(y * 1.04 + 0.2)}`).join(' L')}Z`}
+        />
+      </clipPath>
+      <g className={styles.crayon} clipPath="url(#sketch-bulb)">
+        {Array.from({ length: 40 }, (_, k) => -50 + k * 3.2).map((x) => (
+          <path
+            d={`M${n(x + r() * 1.5)} -6 L${n(x + 34 + r() * 2)} 52`}
+            key={x}
+          />
+        ))}
+      </g>
+      {twice(outline, 2.3)}
+      {twice(
+        [
+          [17, 33.5],
+          [27, 33],
+        ],
+        2,
+      )}
+      {twice(
+        [
+          [18.5, 37],
+          [25.5, 36.6],
+        ],
+        2,
+      )}
+      {rays.map((ray, i) => (
+        <g key={i}>{twice(ray, 1.7, `${styles.doodle} ${styles.ray}`)}</g>
+      ))}
+    </svg>
+  )
 }
 
 function Arrow({ y, r }: { y: number; r: () => number }) {
@@ -89,38 +180,22 @@ const ROW1 = 62
 const ROW2 = 152
 
 export function InsightSketch({ values }: { values: SketchValues }) {
-  const {
-    recommended,
-    preRisk,
-    postRisk,
-    endRecommended,
-    unmetRecommended,
-    lower,
-  } = values
+  const { recommended, preRisk, postRisk, endRecommended, lower } = values
   const r = seeded(recommended * 7 + endRecommended)
   const hasRisk = preRisk !== null && postRisk !== null
-  // 둘 다 남는 재고가 0이면(모자라는 경우) "0개 → 0개"가 되니 못 채우는 주문으로 바꿔 그린다
-  const anyUnmet = (lower?.unmet ?? 0) > 0 || unmetRecommended > 0
-  const shortage =
-    anyUnmet && (lower ? lower.end === endRecommended : endRecommended === 0)
-  const before = lower ? (shortage ? lower.unmet : lower.end) : null
-  const after = shortage ? unmetRecommended : endRecommended
-  const gain = before === null ? null : after - before
+  const gain = lower ? endRecommended - lower.end : null
   const label = [
     hasRisk
       ? `품절 위험 ${preRisk}%에서 ${postRisk}%로`
       : '품절 위험은 계산 전',
-    shortage
-      ? lower
-        ? `${lower.quantity}개보다 ${recommended}개를 넣으면 못 채우는 주문이 ${before}개에서 ${after}개로 줄어요`
-        : `${recommended}개를 넣어도 ${after}개 주문을 못 채워요`
-      : lower
-        ? `${lower.quantity}개보다 ${recommended}개를 넣으면 다음 입고 때 ${gain}개 더 남아요`
-        : `${recommended}개를 넣으면 다음 입고 때 ${endRecommended}개 남아요`,
+    lower
+      ? `${lower.quantity}개보다 ${recommended}개를 넣으면 다음 입고 때 ${gain}개 더 남아요`
+      : `${recommended}개를 넣으면 다음 입고 때 ${endRecommended}개 남아요`,
   ].join(', ')
 
   return (
     <figure className={styles.sketch}>
+      <Bulb />
       <svg aria-label={label} role="img" viewBox="0 0 360 210">
         <defs>
           <pattern
@@ -133,13 +208,13 @@ export function InsightSketch({ values }: { values: SketchValues }) {
             <line className={styles.hatchSage} x1="0" x2="0" y1="0" y2="6" />
           </pattern>
           <pattern
-            height="6"
+            height="5"
             id="sketch-yellow"
             patternTransform="rotate(-41)"
             patternUnits="userSpaceOnUse"
-            width="6"
+            width="5"
           >
-            <line className={styles.hatchYellow} x1="0" x2="0" y1="0" y2="6" />
+            <line className={styles.hatchYellow} x1="0" x2="0" y1="0" y2="5" />
           </pattern>
         </defs>
 
@@ -197,10 +272,10 @@ export function InsightSketch({ values }: { values: SketchValues }) {
         )}
 
         <text className={styles.caption} x="16" y={ROW2 - 30}>
-          {shortage ? '입고 뒤 못 채우는 주문' : '다음 입고 때 남는 재고'}
+          다음 입고 때 남는 재고
         </text>
         <path
-          d={`M${AFTER - 46} ${ROW2 + 2} L${AFTER + 46} ${ROW2 - 1} L${AFTER + 44} ${ROW2 + 12} L${AFTER - 44} ${ROW2 + 13}Z`}
+          d={`M${AFTER - 48} ${ROW2 - 4} L${AFTER + 48} ${ROW2 - 7} L${AFTER + 46} ${ROW2 + 13} L${AFTER - 46} ${ROW2 + 14}Z`}
           fill="url(#sketch-yellow)"
         />
         {lower && (
@@ -211,7 +286,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
               x={BEFORE}
               y={ROW2 + 9}
             >
-              {before}개
+              {lower.end}개
             </text>
             <Arrow r={r} y={ROW2 - 3} />
             <text
@@ -220,9 +295,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
               x="160"
               y={ROW2 - 12}
             >
-              {gain !== null && gain > 0
-                ? `+${gain}`
-                : `−${Math.abs(gain ?? 0)}`}
+              {gain !== null && gain < 0 ? `−${-gain}` : `+${gain}`}
             </text>
             <text
               className={styles.sub}
@@ -240,15 +313,11 @@ export function InsightSketch({ values }: { values: SketchValues }) {
           x={AFTER}
           y={ROW2 + 9}
         >
-          {after}개
+          {endRecommended}개
         </text>
         <path
-          className={`${styles.pen} ${styles.brown} ${styles.late}`}
-          d={roughLine(AFTER - 44, ROW2 + 15, AFTER + 44, ROW2 + 13, r)}
-        />
-        <path
-          className={`${styles.pen} ${styles.star} ${styles.last}`}
-          d={roughStar(AFTER + 66, ROW2 - 14, 11, r)}
+          className={`${styles.pen} ${styles.brown} ${styles.star} ${styles.late}`}
+          d={underlineStar(AFTER - 46, AFTER + 44, ROW2 + 15, r)}
         />
         <text
           className={styles.sub}

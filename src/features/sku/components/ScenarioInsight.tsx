@@ -207,12 +207,10 @@ export function ScenarioInsight({
           preRisk: p100.preArrivalRisk,
           postRisk: p100.postArrivalRisk,
           endRecommended: p100.remainingAtNextInbound,
-          unmetRecommended: afterArrival(p100.unmetDemandQty, preArrivalUnmet),
           lower: p80
             ? {
                 quantity: p80.quantity,
                 end: p80.remainingAtNextInbound,
-                unmet: afterArrival(p80.unmetDemandQty, preArrivalUnmet),
               }
             : null,
         }
