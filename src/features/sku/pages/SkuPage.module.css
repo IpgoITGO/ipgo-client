@@ -743,27 +743,101 @@
   }
 }
 
-/* 재고·출고 추이의 "앞으로" 구간(11/3 시안 ①): 테두리 없는 노란 면, 가벼운 이름표, 같은 남색의 점선 */
+/* 재고·출고 추이(11/4 시안 C): 결론 한 문장 → 그래프(눈금·단위·날짜) → 그림 그대로의 범례 */
+.trendHead {
+  margin: 0 0 var(--space-1);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.trendHead em {
+  font-style: normal;
+  color: var(--color-danger);
+}
+
+.trendWarn {
+  margin: 0 0 var(--space-2);
+  padding: 6px 10px;
+  color: var(--color-danger);
+  font-size: 13px;
+  background: rgb(200 38 28 / 8%);
+  border-radius: 10px;
+}
+
+.trendSub {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-3);
+  font-size: 13.5px;
+}
+
+.trendChart .tick,
+.trendChart .stockoutLabel {
+  font-size: 12px;
+}
+
+.unitLabel {
+  fill: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.dateLabel,
+.dateToday {
+  fill: var(--color-text-3);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.dateToday {
+  fill: var(--color-text);
+  font-weight: 800;
+}
+
 .forecastZone {
   fill: var(--color-accent-soft);
 }
 
-.forecastLabel {
+.chart .todayLine {
+  stroke: var(--color-primary);
+  stroke-dasharray: 2 3;
+  stroke-width: 1.5;
+}
+
+.forecastLabel,
+.forecastSum {
   fill: var(--color-accent-text);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
   text-anchor: middle;
 }
 
-.forecastQty {
-  font-size: 13px;
-  font-weight: 700;
+.forecastSum {
+  font-weight: 500;
+}
+
+.forecastBar {
+  fill: var(--color-accent);
 }
 
 .chart .forecastLine {
   stroke: var(--color-primary);
   stroke-dasharray: 1 6;
-  stroke-width: 2.5;
+  stroke-width: 2.6;
+}
+
+.chart .dropLine {
+  stroke: var(--color-danger);
+  stroke-width: 1.5;
+}
+
+.dropLabel {
+  fill: var(--color-danger);
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: start;
 }
 
 .todayPoint {
@@ -772,34 +846,64 @@
   stroke-width: 2;
 }
 
-.legend span[data-series='forecast']::before {
-  width: 16px;
-  height: 10px;
-  background: var(--color-accent-soft);
-  border-radius: 3px;
-  outline: 1px solid var(--color-accent);
-  vertical-align: middle;
+.trendLegend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 12px;
+  margin-top: var(--space-3);
+  color: var(--color-text-2);
+  font-size: 13px;
 }
 
-/* 앞으로 구간이 있을 때 날짜 글자를 그래프와 같은 가로 위치에 놓는다 */
-.datesPlaced {
-  position: relative;
-  height: 20px;
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
+.trendLegend span {
+  display: flex;
+  gap: 7px;
+  align-items: center;
 }
 
-.datesPlaced span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
+.trendLegend span::before {
+  flex: none;
+  width: 10px;
+  height: 12px;
+  border-radius: 2px;
+  content: '';
 }
 
-.datesPlaced span:first-child {
-  transform: none;
+.trendLegend span[data-series='inventory']::before {
+  width: 18px;
+  height: 0;
+  border-top: 3px solid var(--color-primary);
+  border-radius: 0;
 }
 
-.datesPlaced span[data-edge='end'] {
-  transform: translateX(-100%);
+.trendLegend span[data-series='outbound']::before {
+  background: var(--color-chart-muted);
+}
+
+.trendLegend span[data-series='forecast']::before {
+  background: var(--color-accent);
+}
+
+.trendLegend span[data-series='drop']::before {
+  width: 18px;
+  height: 0;
+  border-top: 3px dotted var(--color-primary);
+  border-radius: 0;
+}
+
+.trendLegend span[data-series='stockout']::before {
+  width: 11px;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+@media (max-width: 520px) {
+  .trendHead {
+    font-size: 16px;
+  }
+
+  .trendLegend {
+    grid-template-columns: 1fr 1fr;
+    font-size: 12.5px;
+  }
 }

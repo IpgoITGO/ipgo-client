@@ -624,6 +624,7 @@ export const handlers = [
   // K1 SKU 상세 (서버 ProductDetail 모양). 아이디로 상태를 고른다:
   // new-product = 계산 불가, no-result = 아직 계산 전, fallback-product = A를 못 써 B로 대체,
   // reference-product = 참고용(정확도 낮음·추정 재고), no-trend = 추이 기록 없음(server #45 전),
+  // stale-stock = 마지막 기록 재고와 계산 시작 재고가 다름,
   // empty-values = 서버가 값을 비워 보냄(출고지·입고 조건·단가·소진일·시작 재고·정확도 null).
   http.get('/api/products/:productId/detail', ({ params }) => {
     const id = String(params.productId)
@@ -694,7 +695,7 @@ export const handlers = [
         multiplier: 1.1,
         horizonDays: 12,
         forecastOutboundQty: isFallback ? 66 : 58,
-        startStockQty: isEmpty ? null : 4,
+        startStockQty: isEmpty ? null : id === 'stale-stock' ? 9 : 4,
         startStockEstimated: isReference,
         plannedReceiptsInHorizon: 12,
         preArrivalUnmetQty: 0,
