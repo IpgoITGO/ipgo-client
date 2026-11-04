@@ -38,7 +38,8 @@ function roughLine(
   return d
 }
 
-// 시작점을 조금 넘겨 한 바퀴 더 도는 손 동그라미
+// 시작점을 조금 넘겨 한 바퀴 더 도는 손 동그라미. 점마다 흔들면 각지니까
+// 흔들림은 둘레를 따라 천천히 바뀌는 사인으로 주고, 점을 촘촘히(72개) 찍어 둥글게 보이게 한다.
 function roughEllipse(
   cx: number,
   cy: number,
@@ -46,11 +47,13 @@ function roughEllipse(
   ry: number,
   r: () => number,
 ) {
-  const steps = 22
+  const steps = 72
+  const phase = r() * Math.PI * 2
   let d = ''
-  for (let i = 0; i <= steps * 1.12; i += 1) {
+  for (let i = 0; i <= steps * 1.1; i += 1) {
     const angle = -0.6 + (i / steps) * Math.PI * 2
-    const wobble = 1 + r() * 0.06
+    // 끝으로 갈수록 살짝 바깥으로 벌어져 손으로 한 번 더 감은 느낌
+    const wobble = 1 + Math.sin(angle * 2 + phase) * 0.035 + (i / steps) * 0.05
     d += `${i ? 'L' : 'M'}${n(cx + Math.cos(angle) * rx * wobble)} ${n(cy + Math.sin(angle) * ry * wobble)} `
   }
   return d

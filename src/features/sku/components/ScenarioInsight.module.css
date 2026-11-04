@@ -3,6 +3,276 @@
   gap: var(--space-4);
 }
 
+.card {
+  padding: var(--space-8);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.header h2,
+.header p {
+  margin: 0;
+}
+
+.header h2 {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-section);
+}
+
+.header p {
+  color: var(--color-text-3);
+}
+
+.sample {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  background: var(--color-bg);
+  border-radius: var(--radius-chip);
+}
+
+/* 한 줄 5칸 고정. 넘치면 "더 보기"로 다음 줄을 편다. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.more {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.scenario,
+.inputCard {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+
+/* 직접 넣은 수량: 점선 대신 조금 진한 실선으로만 구분 */
+.scenario[data-custom='true'] {
+  border-color: var(--color-input-border);
+}
+
+/* 눌러서 재고 흐름이 바뀌는 칸이라 테두리와 반응을 둔다 */
+.scenario {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease-out,
+    border-color 0.15s ease-out,
+    background 0.2s ease-out;
+}
+
+.scenario:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.scenario:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.scenario[data-selected='true'] {
+  background: var(--color-accent-soft);
+  border: 2px solid var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenario {
+    transition: none;
+  }
+
+  .scenario:hover {
+    transform: none;
+  }
+}
+
+/* 다음 빈 칸에 하나만 두는 "+" 카드 */
+.addCard {
+  display: grid;
+  min-height: 180px;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-3);
+  font-weight: 700;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+
+.addCard span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--color-primary);
+  font-size: 24px;
+  background: var(--color-card);
+  border-radius: 50%;
+}
+
+.addCard:focus-visible {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.scenarioTop {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+/* 권장 카드는 "권장"이라 쓴 테이프를 위쪽 테두리에 반쯤 걸쳐 붙인다 (입체감) */
+.badge {
+  position: absolute;
+  top: -13px;
+  right: var(--space-4);
+  display: grid;
+  width: 72px;
+  height: 26px;
+  place-items: center;
+}
+
+.badge b {
+  position: relative;
+  z-index: 3;
+  color: #5a3a00;
+  font-size: var(--text-caption);
+  font-weight: 900;
+}
+
+.badgeTape {
+  --tape-rotate: 3deg;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 26px;
+}
+
+.quantity {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.scenario dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.scenario dt {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.scenario dd {
+  margin: var(--space-1) 0 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.scenario dd[data-tone='warning'] {
+  color: var(--color-warning);
+}
+
+.scenario dd[data-tone='danger'] {
+  color: var(--color-danger);
+}
+
+.riskBar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: var(--radius-chip);
+}
+
+.riskBar span {
+  display: block;
+  height: 100%;
+  background: var(--color-danger);
+  border-radius: inherit;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.inputCard {
+  border: 1px solid var(--color-primary);
+}
+
+.inputCard label {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-3);
+}
+
+.inputRow input {
+  width: 100%;
+  min-width: 0;
+  height: var(--h-input);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-input);
+}
+
+.addButton {
+  width: 100%;
+}
+
+.hint,
+.error {
+  margin: 0;
+  font-size: var(--text-caption);
+}
+
+.hint {
+  color: var(--color-text-3);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.empty {
+  padding: var(--space-6) var(--space-6) 0;
+  color: var(--color-text-3);
+  text-align: center;
+}
+
+/* AI 인사이트: 테이프 붙인 흰 카드 */
 .insight {
   position: relative;
   display: grid;
@@ -19,7 +289,7 @@
   min-width: 0;
 }
 
-/* 그림이 있으면 문장 | 그림(360) 두 칸, 좁으면 그림이 문장 아래로 */
+/* 그림이 있으면 문장 | 손그림(360) 두 칸, 좁으면 그림이 문장 아래로 */
 .insight[data-sketch] {
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: var(--space-8);
@@ -237,5 +507,27 @@
   from {
     opacity: 0;
     transform: translateY(4px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .cards {
+    grid-template-columns: 1fr;
   }
 }

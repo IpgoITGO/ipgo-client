@@ -20,7 +20,7 @@
 }
 
 .sketch .caption {
-  fill: var(--color-text-3);
+  fill: var(--color-text);
   font-size: 19px;
 }
 

@@ -141,7 +141,7 @@ mock을 먼저 만들어 둡니다. 서버가 열리면 `API_PROXY_TARGET`만 �
 | 명세           | 주소                                                    | 요청 코드                             |
 | -------------- | ------------------------------------------------------- | ------------------------------------- |
 | C2 계산 상태   | `GET /calculation-runs/{runId}`                         | `src/shared/api/calculationRunApi.ts` |
-| K2 시나리오    | `GET /results/{resultId}/scenarios`                     | `src/features/sku/model/resultApi.ts` |
+| K2·K3 시나리오 | `GET·POST /results/{resultId}/scenarios`                | `src/features/sku/model/resultApi.ts` |
 | K4 AI 인사이트 | `GET /results/{resultId}/insight` (응답은 ipgo-ai 0002) | `src/features/sku/model/resultApi.ts` |
 
 모의 API 모드에서는 각 API 요청 전에 서비스 워커에 현재 탭을 다시 등록하고 준비 응답을

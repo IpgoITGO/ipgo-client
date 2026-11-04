@@ -647,7 +647,11 @@ export function SkuPage() {
           </div>
 
           {data.resultId !== null && (
-            <ScenarioInsight key={data.resultId} resultId={data.resultId} />
+            <ScenarioInsight
+              inboundUnit={data.calculation.inboundUnit ?? 1}
+              key={data.resultId}
+              resultId={data.resultId}
+            />
           )}
 
           {data.accuracy && <AccuracyCard accuracy={data.accuracy} />}
