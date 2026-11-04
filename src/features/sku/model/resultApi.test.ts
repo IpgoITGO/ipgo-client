@@ -69,6 +69,7 @@ describe('toScenarios (명세 K2 → 화면 카드)', () => {
 
   it('권장량이 0개면 시나리오가 비어 있다', () => {
     expect(toScenarios({ ...base, scenarios: [] })).toEqual({
+      preArrivalUnmet: 0,
       recommendedQuantity: 0,
       scenarios: [],
     })

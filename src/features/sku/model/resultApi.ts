@@ -14,7 +14,10 @@ export type ScenarioResult = {
   isDuplicate: boolean
   expectedDepletionOn: string | null
   expectedEndingStock: number
+  // 못 판 양 합계(도착 전 + 도착 후). 화면은 쓰지 않고 server #85 뒤 지울 예정
   unmetDemandQty: number
+  // 입고 뒤 못 판 양(server #85). 서버가 소수로 빼고 한 번만 올려서 보낸다
+  postArrivalUnmetQty?: number | null
   // 0~1. 표본이 모자라거나 정확도 등급이 LOW면 null
   postArrivalRisk: number | null
 }
@@ -26,6 +29,8 @@ export type ScenariosResponse = {
   preArrivalRisk: number | null
   riskSampleSize: number | null
   riskStatus: 'OK' | 'INSUFFICIENT_SAMPLE' | 'LOW_GRADE'
+  // 입고 전에 이미 못 파는 양. 입고량과 상관없어 결과에 하나만 온다(server #85)
+  preArrivalUnmetQty?: number | null
   scenarios: ScenarioResult[]
 }
 
@@ -51,7 +56,8 @@ export type Scenario = {
   expectedStockoutDate: string
   remainingAtNextInbound: number
   // 이 수량으로도 못 채우는 수요(재고 흐름 그래프가 쓴다)
-  unmetDemandQty: number
+  // 입고 뒤에 못 채우는 주문. 서버가 아직 안 보내면 null
+  postArrivalUnmet: number | null
   // 화면은 % 정수
   preArrivalRisk: number | null
   postArrivalRisk: number | null
@@ -82,7 +88,7 @@ export function toScenario(
     quantity: item.qty,
     expectedStockoutDate: dotDate(item.expectedDepletionOn),
     remainingAtNextInbound: item.expectedEndingStock,
-    unmetDemandQty: item.unmetDemandQty ?? 0,
+    postArrivalUnmet: item.postArrivalUnmetQty ?? null,
     preArrivalRisk: percent(shared.preArrivalRisk),
     postArrivalRisk: percent(item.postArrivalRisk),
     estimated: shared.isEstimate,
@@ -93,6 +99,7 @@ export function toScenario(
 // 권장량(P100)과 같은 수량으로 겹친 80%·120% 카드는 빼고, 권장량이 0개면 비교표가 비어 있다(K3만 씀).
 export function toScenarios(raw: ScenariosResponse) {
   return {
+    preArrivalUnmet: raw.preArrivalUnmetQty ?? 0,
     recommendedQuantity:
       raw.scenarios.find((item) => item.type === 'P100')?.qty ?? 0,
     scenarios: raw.scenarios

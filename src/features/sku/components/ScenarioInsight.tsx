@@ -60,20 +60,11 @@ function scenarioNote(scenario: Scenario, recommendedQuantity: number) {
   return '재고가 많이 남아요'
 }
 
-// 엔진은 시나리오 미충족을 "도착 전 + 도착 후" 합계로 보낸다(ipgo-ai engine/scenario.py unmet_demand).
-// 도착 전 몫은 입고량과 상관없이 같고 결과(preArrivalUnmetQty)에 따로 오니, 빼서 입고량으로 바꿀 수 있는 몫만 보여 준다.
-function afterArrival(unmet: number, preArrivalUnmet: number) {
-  return Math.max(0, unmet - preArrivalUnmet)
-}
-
 export function ScenarioInsight({
   inboundUnit,
-  preArrivalUnmet = 0,
   resultId,
 }: {
   inboundUnit: number
-  // 입고가 오기 전에 이미 놓치는 주문(K1 상세 result.preArrivalUnmetQty)
-  preArrivalUnmet?: number
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
 }) {
@@ -164,6 +155,8 @@ export function ScenarioInsight({
   }
 
   const data = scenariosQuery.data && toScenarios(scenariosQuery.data)
+  // 입고 전에 이미 못 파는 양(K2 맨 위, server #85)
+  const preArrivalUnmet = data?.preArrivalUnmet ?? 0
   const scenarios = data
     ? [
         ...(data.recommendedQuantity === 0 ? [] : data.scenarios),
@@ -190,7 +183,7 @@ export function ScenarioInsight({
   const showInput = adding || scenarios.length === 0
   // 한 카드라도 입고 뒤에 모자라면 모든 카드에 같은 줄을 넣어 아래 줄(품절 위험 막대)이 나란히 맞게 한다
   const showAfterArrival = scenarios.some(
-    (item) => afterArrival(item.unmetDemandQty, preArrivalUnmet) > 0,
+    (item) => (item.postArrivalUnmet ?? 0) > 0,
   )
   const maxRisk = Math.max(
     ...scenarios.map((item) => item.postArrivalRisk ?? 0),
@@ -321,19 +314,12 @@ export function ScenarioInsight({
                           <dt>입고 뒤 못 채우는 주문</dt>
                           <dd
                             data-tone={
-                              afterArrival(
-                                scenario.unmetDemandQty,
-                                preArrivalUnmet,
-                              ) > 0
+                              (scenario.postArrivalUnmet ?? 0) > 0
                                 ? 'danger'
                                 : undefined
                             }
                           >
-                            {afterArrival(
-                              scenario.unmetDemandQty,
-                              preArrivalUnmet,
-                            )}
-                            개
+                            {scenario.postArrivalUnmet ?? 0}개
                           </dd>
                         </div>
                       )}
