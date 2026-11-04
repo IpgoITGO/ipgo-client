@@ -749,6 +749,8 @@ export const handlers = [
       preArrivalRisk: 0.08,
       riskSampleSize: 44,
       riskStatus: 'OK',
+      // server #85: 입고 전 못 판 양(결과에 하나)과 시나리오마다 입고 뒤 못 판 양
+      preArrivalUnmetQty: 0,
       scenarios:
         id === 'zero-recommendation'
           ? []
@@ -761,6 +763,7 @@ export const handlers = [
                 expectedDepletionOn: '2026-11-18',
                 expectedEndingStock: 14,
                 unmetDemandQty: 6,
+                postArrivalUnmetQty: 6,
                 postArrivalRisk: 0.09,
               },
               {
@@ -771,6 +774,7 @@ export const handlers = [
                 expectedDepletionOn: '2026-11-27',
                 expectedEndingStock: 26,
                 unmetDemandQty: 0,
+                postArrivalUnmetQty: 0,
                 postArrivalRisk: 0.03,
               },
               {
@@ -781,6 +785,7 @@ export const handlers = [
                 expectedDepletionOn: '2026-12-05',
                 expectedEndingStock: 38,
                 unmetDemandQty: 0,
+                postArrivalUnmetQty: 0,
                 postArrivalRisk: null,
               },
             ],

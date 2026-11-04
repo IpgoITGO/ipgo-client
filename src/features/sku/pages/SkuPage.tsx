@@ -820,7 +820,6 @@ export function SkuPage() {
             <ScenarioInsight
               inboundUnit={data.calculation.inboundUnit ?? 1}
               key={data.resultId}
-              preArrivalUnmet={data.calculation.preArrivalUnmet ?? 0}
               resultId={data.resultId}
             />
           )}
