@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/model/useAuth'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
+import { CalculationStatus } from '../../shared/ui/CalculationStatus/CalculationStatus'
 import { Modal } from '../../shared/ui/Modal/Modal'
 import styles from './AppLayout.module.css'
 import { RouteToast } from './RouteToast'
@@ -77,6 +78,7 @@ export function AppLayout() {
         </div>
       </header>
       <main className={styles.main}>
+        <CalculationStatus />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
         <div className={styles.page} key={pathname}>
           <Outlet />

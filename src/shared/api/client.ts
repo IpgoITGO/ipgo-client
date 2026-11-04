@@ -102,6 +102,7 @@ export function refreshAccessToken() {
 export async function apiRequest<T>(
   path: string,
   init?: RequestInit,
+  onResponseHeaders?: (headers: Headers) => void,
 ): Promise<T> {
   const needsCsrf = !SAFE_METHODS.has((init?.method ?? 'GET').toUpperCase())
   let response = await send(path, init, needsCsrf)
@@ -143,6 +144,7 @@ export async function apiRequest<T>(
     )
   }
 
+  onResponseHeaders?.(response.headers)
   if (response.status === 204) {
     return undefined as T
   }

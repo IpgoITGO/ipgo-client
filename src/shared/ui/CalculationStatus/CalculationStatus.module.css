@@ -1,0 +1,10 @@
+.notice {
+  margin: 0 auto 1rem;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+}
+
+.notice p {
+  margin: 0.5rem 0;
+}

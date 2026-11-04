@@ -58,26 +58,47 @@ export function createPlannedReceipt(request: {
   quantity: number
   expectedOn: string | null
 }) {
-  return apiRequest<{ receiptId: number; reflected: boolean }>(
-    '/planned-receipts',
-    sendJson('POST', request),
-  )
+  return apiRequest<{
+    receiptId: number
+    reflected: boolean
+    runId: number | null
+  }>('/planned-receipts', sendJson('POST', request))
 }
 
 // R3 수정. 보낸 칸만 바뀐다.
-export function updatePlannedReceipt(
+export async function updatePlannedReceipt(
   receiptId: number,
   request: { quantity: number; expectedOn: string | null },
 ) {
-  return apiRequest<unknown>(
+  let runId: number | null = null
+  await apiRequest<unknown>(
     `/planned-receipts/${receiptId}`,
     sendJson('PATCH', request),
+    (headers) => {
+      runId = calculationId(headers)
+    },
   )
+  return { runId }
 }
 
 // R3 취소. 서버는 행을 지우지 않고 CANCELLED로 남긴다.
-export function cancelPlannedReceipt(receiptId: number) {
-  return apiRequest<void>(`/planned-receipts/${receiptId}`, {
-    method: 'DELETE',
-  })
+export async function cancelPlannedReceipt(receiptId: number) {
+  let runId: number | null = null
+  await apiRequest<void>(
+    `/planned-receipts/${receiptId}`,
+    {
+      method: 'DELETE',
+    },
+    (headers) => {
+      runId = calculationId(headers)
+    },
+  )
+  return { runId }
+}
+
+function calculationId(headers: Headers) {
+  const raw = headers.get('X-Calculation-Run-Id')
+  if (!raw || !/^\d+$/.test(raw)) return null
+  const id = Number(raw)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
 }
