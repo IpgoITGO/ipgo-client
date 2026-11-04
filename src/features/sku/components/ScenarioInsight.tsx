@@ -523,8 +523,16 @@ export function ScenarioInsight({
               )}
               {insight?.mode === 'NONE' ? (
                 <ol className={styles.lines} data-numberless="">
-                  <li data-tone="danger">
-                    <span>설명 문장을 만들지 못했어요.</span>
+                  <li
+                    data-tone={
+                      insight.explanationDisabled ? undefined : 'danger'
+                    }
+                  >
+                    <span>
+                      {insight.explanationDisabled
+                        ? 'AI 설명을 사용하지 않고 있어요.'
+                        : '설명 문장을 만들지 못했어요.'}
+                    </span>
                   </li>
                   <li>
                     <span>

@@ -107,3 +107,27 @@ describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
     expect(failText('VALUE_MISMATCH')).toBe('AI 문장을 쓰지 못했어요')
   })
 })
+
+it('실제 서버의 TABLE_ONLY 비활성과 실패를 구분한다', () => {
+  const raw: InsightRaw = {
+    mode: 'TABLE_ONLY',
+    isFallback: false,
+    text: null,
+    state: 'NORMAL',
+    stateReason: null,
+    failReason: null,
+    stale: false,
+  }
+  expect(toInsight(raw)).toMatchObject({
+    mode: 'NONE',
+    explanationDisabled: true,
+  })
+  expect(
+    toInsight({ ...raw, isFallback: true, failReason: 'LLM_TIMEOUT' })
+      .explanationDisabled,
+  ).toBe(false)
+  expect(
+    toInsight({ ...raw, mode: 'NONE', failReason: 'LLM_DISABLED' })
+      .explanationDisabled,
+  ).toBe(true)
+})

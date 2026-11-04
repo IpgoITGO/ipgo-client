@@ -26,14 +26,14 @@ describe('UploadResultPage', () => {
 
     // 카드 제목이 곧 결론
     const calculated = await screen.findByRole('region', {
-      name: '158개 상품으로 계산했어요',
+      name: '이번 파일의 158개 상품이 검산을 통과했어요',
     })
     expect(calculated).toHaveTextContent('자료 2026. 9. 1 ~ 2026. 10. 14')
     expect(calculated).toHaveTextContent('기준일 2026. 10. 14')
 
     // 뺀 상품 카드 안에 이유·고치는 방법·다시 올리기가 함께
     const excluded = screen.getByRole('region', {
-      name: '1개 상품은 빼고 계산했어요',
+      name: '이번 파일에서 1개 상품을 제외했어요',
     })
     expect(excluded).toHaveTextContent('덴탈껌 M 5입')
     expect(excluded).toHaveTextContent('재고 안 맞음')
@@ -71,7 +71,7 @@ describe('UploadResultPage', () => {
     expect(
       await screen.findByRole(
         'region',
-        { name: '158개 상품으로 계산했어요' },
+        { name: '이번 파일의 158개 상품이 검산을 통과했어요' },
         { timeout: 3000 },
       ),
     ).toBeInTheDocument()
@@ -81,7 +81,9 @@ describe('UploadResultPage', () => {
     renderPage()
 
     expect(
-      await screen.findByRole('region', { name: '158개 상품으로 계산했어요' }),
+      await screen.findByRole('region', {
+        name: '이번 파일의 158개 상품이 검산을 통과했어요',
+      }),
     ).toBeInTheDocument()
     expect(screen.queryByText('수불부 확인을 마쳤어요')).not.toBeInTheDocument()
   })

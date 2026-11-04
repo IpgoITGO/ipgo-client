@@ -66,3 +66,30 @@ describe('toSkuDetail', () => {
     expect(detail.history).toEqual([])
   })
 })
+
+it('저장된 계산이 OK여도 현재 판정이 재업로드 필요이면 권장값을 정상 상태로 노출하지 않는다', () => {
+  const input = raw(null)
+  input.needStatus = 'REUPLOAD_REQUIRED'
+  input.result = {
+    resultId: 1,
+    status: 'OK',
+    reason: null,
+    method: 'B',
+    methodReason: '요청 정책의 기본 방식',
+    multiplier: 1,
+    horizonDays: 14,
+    forecastOutboundQty: 42,
+    startStockQty: 0,
+    startStockEstimated: true,
+    plannedReceiptsInHorizon: 0,
+    preArrivalUnmetQty: 18,
+    requiredQtyBeforeRounding: 24,
+    recommendedQty: 24,
+    recommendedAmount: 43200,
+  }
+  expect(toSkuDetail(input)).toMatchObject({
+    status: 'unavailable',
+    reuploadRequired: true,
+  })
+  expect(toSkuDetail(input).unavailableReason).toContain('최신 수불부')
+})

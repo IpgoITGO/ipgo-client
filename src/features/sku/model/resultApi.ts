@@ -39,6 +39,7 @@ export type ScenariosResponse = {
 export type InsightResponse = {
   // LLM = AI 문장, TEMPLATE = 기본 문장(AI 실패·안 부름), NONE = 기본 문장도 못 만듦(비교표만)
   mode: 'LLM' | 'TEMPLATE' | 'NONE'
+  explanationDisabled?: boolean
   sentences: string[]
   state: 'NORMAL' | 'CHECK_NEEDED' | 'ON_HOLD' | 'NOT_NEEDED' | 'NOT_CALCULABLE'
   stateReason: string | null
@@ -126,6 +127,8 @@ export function addCustomScenario(resultId: number | string, qty: number) {
 // 문장은 배열(sentences)이나 글 하나(draft)로 올 수 있다(U4). 화면이 쓰기 전에 한 모양으로 맞춘다.
 export type InsightRaw = Omit<InsightResponse, 'mode' | 'sentences'> & {
   mode: string
+  isFallback?: boolean
+  text?: string | null
   sentences?: string[] | null
   draft?: string | null
 }
@@ -145,9 +148,14 @@ export function toInsight(raw: InsightRaw): InsightResponse {
     ...rest,
     // 모르는 이름이면 기본 문장으로 본다(AI 문장이라고 잘못 말하지 않게)
     mode: MODE[raw.mode] ?? 'TEMPLATE',
+    explanationDisabled:
+      raw.failReason === 'LLM_DISABLED' ||
+      (raw.mode === 'TABLE_ONLY' &&
+        raw.isFallback === false &&
+        !raw.failReason),
     sentences:
       raw.sentences ??
-      (draft ?? '')
+      (draft ?? raw.text ?? '')
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean),

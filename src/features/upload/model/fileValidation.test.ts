@@ -15,7 +15,20 @@ describe('validateUploadFile', () => {
       'XLSX 파일만 올릴 수 있어요.',
     )
     expect(validateUploadFile(new File(['data'], '재고현황.xlsx')).reason).toBe(
-      '파일명에서 연·월을 찾을 수 없어요.',
+      '파일명을 2026-09.xlsx처럼 연-월 형식으로 바꿔 주세요.',
     )
   })
+})
+
+for (const name of ['2026-09 1.xlsx', '2026-10 1.xlsx', '2026-09 (1).xlsx']) {
+  it(`복사본 이름 ${name}에서 기간을 읽는다`, () => {
+    expect(validateUploadFile(new File(['same bytes'], name)).status).toBe(
+      'ready',
+    )
+  })
+}
+it('서로 다른 월이 섞인 이름은 추측하지 않는다', () => {
+  expect(
+    validateUploadFile(new File(['data'], '2026-09 2026-10.xlsx')).status,
+  ).toBe('error')
 })
