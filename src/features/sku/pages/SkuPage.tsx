@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { calculationReason } from '../../../shared/lib/calculationReason'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
@@ -543,7 +544,7 @@ export function SkuPage() {
   const statusLabel = {
     ready: '계산 완료',
     reference: '참고용',
-    unavailable: '계산 불가',
+    unavailable: data.reuploadRequired ? '최신 자료 필요' : '계산 불가',
     pending: '계산 전',
   }[data.status]
   const settingRows = (
@@ -616,13 +617,30 @@ export function SkuPage() {
         </section>
       ) : data.status === 'unavailable' ? (
         <AsyncState
-          description={
+          description={calculationReason(
             data.unavailableReason ??
-            '판매 기록이 더 쌓이면 권장 입고량을 계산할 수 있어요.'
-          }
+              '판매 기록이 더 쌓이면 권장 입고량을 계산할 수 있어요.',
+          )}
           status="empty"
-          title="아직 계산할 데이터가 부족해요"
-        />
+          title={
+            data.reuploadRequired
+              ? '최신 수불부가 필요해요'
+              : '아직 계산할 데이터가 부족해요'
+          }
+          onRetry={
+            data.reuploadRequired ? () => navigate('/upload') : undefined
+          }
+          retryLabel="수불부 다시 올리기"
+        >
+          {data.unavailableReason &&
+            calculationReason(data.unavailableReason) !==
+              data.unavailableReason && (
+              <details>
+                <summary>자세한 계산 사유</summary>
+                {data.unavailableReason}
+              </details>
+            )}
+        </AsyncState>
       ) : (
         <>
           {stockoutPassed && data.shortageOn && (
@@ -707,7 +725,7 @@ export function SkuPage() {
                 <p className={styles.methodSentence}>
                   {methodSentence(data.method)}
                   {!data.method.fallback && (
-                    <small>평가에서 이 방식이 가장 정확했어요</small>
+                    <small>기본 계산 방식을 적용했어요</small>
                   )}
                 </p>
               )}
@@ -838,6 +856,8 @@ function AccuracyCard({
   accuracy: NonNullable<SkuDetail['accuracy']>
 }) {
   const { coverSuccess, coverTrials, errorRate } = accuracy
+  const evaluated =
+    (coverTrials ?? 0) > 0 && coverSuccess != null && errorRate != null
   const coverRate =
     coverSuccess != null && coverTrials
       ? Math.round((coverSuccess / coverTrials) * 100)
@@ -857,9 +877,9 @@ function AccuracyCard({
           className={styles.accuracyGrade}
           data-grade={accuracy.grade ?? 'none'}
         >
-          {accuracy.grade
+          {evaluated && accuracy.grade
             ? `정확도 ${accuracyLabels[accuracy.grade]}`
-            : '정확도 계산 전'}
+            : '실제 정확도 미평가'}
         </span>
       </div>
       <div className={styles.accuracyBoxes}>

@@ -45,8 +45,8 @@ describe('SkuPage', () => {
       screen.getByText('작년 같은 시기와 최근 흐름으로 계산했어요'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('평가에서 이 방식이 가장 정확했어요'),
-    ).toBeInTheDocument()
+      screen.queryByText('평가에서 이 방식이 가장 정확했어요'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText(/계산식 A|기준 B/)).not.toBeInTheDocument()
     expect(screen.getByText('앞으로 12일 예상 출고')).toBeInTheDocument()
     expect(screen.getByText('58개')).toBeInTheDocument()

@@ -13,7 +13,8 @@ export type UploadFileState = {
   status: 'ready' | 'duplicate' | 'sameFile' | 'error'
 }
 
-const filenamePattern = /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i
+const filenamePattern =
+  /^(\d{4})-(0[1-9]|1[0-2])(?:[ _-](?:\d+|\(\d+\)))?\.xlsx$/i
 
 export function validateUploadFile(file: File): UploadFileState {
   const id = `${file.name}-${file.size}-${file.lastModified}`
@@ -32,7 +33,7 @@ export function validateUploadFile(file: File): UploadFileState {
     return {
       file,
       id,
-      reason: '파일명에서 연·월을 찾을 수 없어요.',
+      reason: '파일명을 2026-09.xlsx처럼 연-월 형식으로 바꿔 주세요.',
       status: 'error',
     }
   }

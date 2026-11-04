@@ -180,7 +180,7 @@ export function UploadResultPage() {
           <i aria-hidden="true" className={styles.mark} data-tone="ok">
             ✓
           </i>
-          {targetSkuCount}개 상품으로 계산했어요
+          이번 파일의 {targetSkuCount}개 상품이 검산을 통과했어요
         </h2>
         <p className={styles.resultSub}>
           자료 {formatPeriod(data.periodStart, data.periodEnd)} · 기준일{' '}
@@ -191,6 +191,11 @@ export function UploadResultPage() {
         </p>
       </section>
 
+      <p>
+        계산 결과에는 이전 달의 검산 제외와 판매 기록 부족도 반영돼요. 최종 계산
+        상태와 상품 수는 대시보드에서 확인해 주세요.
+      </p>
+
       {excludedCount > 0 && (
         <section aria-labelledby="result-excluded" className={styles.result}>
           <div className={styles.resultHead}>
@@ -198,7 +203,7 @@ export function UploadResultPage() {
               <i aria-hidden="true" className={styles.mark} data-tone="warn">
                 !
               </i>
-              {excludedCount}개 상품은 빼고 계산했어요
+              이번 파일에서 {excludedCount}개 상품을 제외했어요
             </h2>
             <Button
               className={styles.retryButton}

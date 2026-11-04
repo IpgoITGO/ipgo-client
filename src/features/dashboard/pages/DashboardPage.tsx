@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
 
+import { calculationReason } from '../../../shared/lib/calculationReason'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
@@ -121,7 +122,7 @@ export type DashboardData = {
     risk: number | null
   }>
   unavailableItems: Array<{ name: string; reason: string }>
-  excludedItems: Array<{ name: string; reason: string }>
+  excludedItems: Array<{ name: string; reason: string; date?: string }>
 }
 
 // 숫자 카드. "지금 넣어야 해요"는 투톤 대신 흰 상자에 테이프를 붙여 급한 상자로 표시한다.
@@ -241,6 +242,11 @@ export function DashboardPage() {
   // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
   const today = dayNumber(data.today ?? localToday())
   const daysPast = (date: string) => today - dayNumber(date)
+  const beforeArrivalCount = data.neededItems.filter(
+    (item) =>
+      item.leadTime != null &&
+      dayNumber(item.stockoutDate) < today + item.leadTime,
+  ).length
   const passedCount = data.neededItems.filter(
     (item) => daysPast(item.stockoutDate) > 0,
   ).length
@@ -331,15 +337,17 @@ export function DashboardPage() {
                       <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
                     </span>
                   </span>
+                ) : beforeArrivalCount > 0 ? (
+                  `오늘 주문해도 ${beforeArrivalCount}개 상품은 배송 전 품절이 예상돼요`
                 ) : (
-                  '오늘 발주해야 제때 도착해요'
+                  '배송 기간과 예상 소진일을 확인해 주세요'
                 ),
               ],
               [
                 '아직 괜찮아요',
                 data.summary.safe,
                 'safe',
-                '다음 입고까지 버텨요',
+                '지금 발주가 급한 상품은 아니에요',
               ],
               [
                 '계산 불가',
@@ -467,7 +475,13 @@ export function DashboardPage() {
                   ))}
                 </div>
               </div>
-              <div className={styles.tableWrap}>
+              <p>표를 좌우로 움직이면 권장 입고량과 사입비를 볼 수 있어요.</p>
+              <div
+                className={styles.tableWrap}
+                tabIndex={0}
+                role="region"
+                aria-label="입고 필요 상품 표, 좌우 스크롤 가능"
+              >
                 <table>
                   <thead>
                     <tr>
@@ -547,7 +561,13 @@ export function DashboardPage() {
               {data.unavailableItems.map((item) => (
                 <article className={styles.reason} key={item.name}>
                   <strong>{item.name}</strong>
-                  <span>{item.reason}</span>
+                  <span>{calculationReason(item.reason)}</span>
+                  {calculationReason(item.reason) !== item.reason && (
+                    <details>
+                      <summary>자세한 계산 사유</summary>
+                      {item.reason}
+                    </details>
+                  )}
                 </article>
               ))}
             </div>
@@ -563,10 +583,23 @@ export function DashboardPage() {
               {data.excludedItems.length === 0 && (
                 <p className={styles.none}>검산에서 뺀 상품은 없어요.</p>
               )}
+              <p>
+                이전 달 자료의 검산 오류도 포함돼요. 아래 날짜가 속한 수불부를
+                고쳐 다시 올려 주세요.
+              </p>
               {data.excludedItems.map((item) => (
                 <article className={styles.reason} key={item.name}>
                   <strong>{item.name}</strong>
-                  <span>{item.reason}</span>
+                  {'date' in item && typeof item.date === 'string' && (
+                    <small>오류 자료 날짜 {String(item.date)}</small>
+                  )}
+                  <span>{calculationReason(item.reason)}</span>
+                  {calculationReason(item.reason) !== item.reason && (
+                    <details>
+                      <summary>자세한 계산 사유</summary>
+                      {item.reason}
+                    </details>
+                  )}
                 </article>
               ))}
             </div>

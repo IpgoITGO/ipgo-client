@@ -79,6 +79,7 @@ export type SkuDetail = {
   // pending = 아직 계산 전(결과 없음)
   status: 'ready' | 'reference' | 'unavailable' | 'pending'
   unavailableReason?: string
+  reuploadRequired?: boolean
   recommendation: {
     quantity: number
     // 단가가 없으면 서버가 사입비를 비워 보낸다(null). 0원으로 바꾸지 않는다.
@@ -128,7 +129,8 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
   const { result, accuracy } = raw
   const status: SkuDetail['status'] = !result
     ? 'pending'
-    : UNAVAILABLE.includes(result.status)
+    : UNAVAILABLE.includes(raw.needStatus ?? '') ||
+        UNAVAILABLE.includes(result.status)
       ? 'unavailable'
       : accuracy?.isReference
         ? 'reference'
@@ -141,7 +143,13 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     fulfillment: raw.product.fulfillment ?? '',
     shortageOn: raw.expectedShortageOn,
     status,
-    unavailableReason: result?.reason ?? undefined,
+    reuploadRequired:
+      raw.needStatus === 'REUPLOAD_REQUIRED' ||
+      result?.status === 'REUPLOAD_REQUIRED',
+    unavailableReason:
+      raw.needStatus === 'REUPLOAD_REQUIRED'
+        ? '자료 기준일이 7일 넘게 지났어요. 최신 수불부를 다시 올려 주세요.'
+        : (result?.reason ?? undefined),
     recommendation: {
       quantity: result?.recommendedQty ?? 0,
       cost: result?.recommendedAmount ?? null,

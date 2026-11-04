@@ -105,6 +105,7 @@ export function toDashboardData(
       reason: item.reason,
     })),
     excludedItems: raw.excluded.map((item) => ({
+      date: item.date ?? undefined,
       name: item.skuName,
       reason: item.reason,
     })),

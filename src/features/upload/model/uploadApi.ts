@@ -1,4 +1,5 @@
 import { apiRequest } from '../../../shared/api/client'
+import { validateUploadFile } from './fileValidation'
 
 // 연동 명세 3.2절 (U1·U2·U3)
 
@@ -59,7 +60,12 @@ export function getUploadPeriods() {
 // 같은 기간을 덮어쓸 때만 overwrite를 true로 보낸다.
 export function uploadFile(file: File, overwrite: boolean) {
   const formData = new FormData()
-  formData.append('file', file)
+  const validated = validateUploadFile(file)
+  if (validated.status !== 'ready' || !validated.periodKey) {
+    throw new Error(validated.reason ?? '올릴 수 없는 파일이에요.')
+  }
+  // 서버의 월별 원본 이름 계약에 맞추되 파일 내용은 그대로 보낸다.
+  formData.append('file', file, `${validated.periodKey}.xlsx`)
   formData.append('overwrite', String(overwrite))
 
   return apiRequest<{ uploadId: number; status: UploadResult['status'] }>(
