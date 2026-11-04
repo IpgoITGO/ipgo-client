@@ -47,7 +47,7 @@ function markDuplicate(
 const SERVER_REJECTED = new Set(['UPLOAD_INVALID_FORMAT', 'FILE_TOO_LARGE'])
 
 export function UploadPage() {
-  const { busy: calculationBusy } = useCalculation()
+  const { busy: calculationBusy, dismiss } = useCalculation()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const [files, setFiles] = useState<UploadFileState[]>([])
@@ -123,6 +123,7 @@ export function UploadPage() {
 
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0 || calculationBusy) return
+    dismiss()
 
     // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
     const uploaded = new Set<string>()
