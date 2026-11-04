@@ -273,6 +273,32 @@
 }
 
 /* AI 인사이트: 테이프 붙인 흰 카드 */
+/* 입고 전에 이미 놓치는 주문: 계산 근거와 같은 노란 느낌표 */
+.preArrival {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-warning);
+  font-weight: 700;
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-input);
+}
+
+.preArrival span {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--color-accent-press);
+  border-radius: 50%;
+}
+
 .insight {
   position: relative;
   display: grid;

@@ -102,6 +102,8 @@ export type SkuDetail = {
     startingInventory: number | null
     startingInventoryEstimated: boolean
     existingOrders: number | null
+    // 입고가 도착하기 전에 이미 못 파는 수요. 권장량 계산에서 뺀다(휘님 시험 자료 B조건 5개)
+    preArrivalUnmet: number | null
     inboundUnit: number | null
     rawQuantity: number | null
   }
@@ -167,6 +169,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
       startingInventory: result?.startStockQty ?? null,
       startingInventoryEstimated: result?.startStockEstimated ?? false,
       existingOrders: result?.plannedReceiptsInHorizon ?? null,
+      preArrivalUnmet: result?.preArrivalUnmetQty ?? null,
       inboundUnit: raw.settings.orderUnitQty,
       rawQuantity: result?.requiredQtyBeforeRounding ?? null,
     },

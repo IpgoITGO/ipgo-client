@@ -751,6 +751,24 @@ export function SkuPage() {
                     <strong>{count(data.calculation.existingOrders)}</strong>
                   </li>
                 )}
+                {/* 셀러가 꼭 봐야 하는 줄: 입고가 오기 전에 이미 놓치는 주문. 노란 느낌표로 강조 */}
+                {Boolean(data.calculation.preArrivalUnmet) && (
+                  <li className={styles.stepWarn}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      −
+                    </span>
+                    <span>
+                      <b className={styles.warnLabel}>
+                        <span aria-hidden="true" className={styles.warnMark}>
+                          !
+                        </span>
+                        도착 전에 못 파는 양
+                      </b>
+                      <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                    </span>
+                    <strong>{count(data.calculation.preArrivalUnmet)}</strong>
+                  </li>
+                )}
                 {data.calculation.rawQuantity != null && (
                   <li className={styles.stepSum}>
                     <span aria-hidden="true" className={styles.stepOp}>
@@ -802,6 +820,7 @@ export function SkuPage() {
             <ScenarioInsight
               inboundUnit={data.calculation.inboundUnit ?? 1}
               key={data.resultId}
+              preArrivalUnmet={data.calculation.preArrivalUnmet ?? 0}
               resultId={data.resultId}
             />
           )}

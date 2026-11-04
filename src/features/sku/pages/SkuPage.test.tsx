@@ -78,6 +78,8 @@ describe('SkuPage', () => {
       await screen.findByText('작년 자료가 없어 최근 28일 평균으로 계산했어요'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/B로 대체/)).not.toBeInTheDocument()
+    // 입고 전에 이미 놓친 주문은 계산 근거에 한 줄로 빼서 보여 준다(70 − 25 − 5 = 40처럼 풀이가 맞게)
+    expect(screen.getByText('도착 전에 못 파는 양')).toBeInTheDocument()
     expect(screen.getByText('66개')).toBeInTheDocument()
   })
 

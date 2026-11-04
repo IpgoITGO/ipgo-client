@@ -71,6 +71,76 @@ describe('ScenarioInsight', () => {
     ).toBeInTheDocument()
   })
 
+  it('입고 전 몫은 위에 한 번, 카드와 손그림에는 입고 뒤 못 채우는 주문만 보여 준다', async () => {
+    // 휘님 시험 자료 B조건(리드타임 7일): 32/40/48개, 기말 재고 0/0/8, 총 미충족 13/5/5
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json({
+          resultId: 101,
+          isEstimate: true,
+          preArrivalRisk: null,
+          riskSampleSize: null,
+          riskStatus: 'INSUFFICIENT_SAMPLE',
+          scenarios: [
+            {
+              scenarioId: 1,
+              type: 'P80',
+              qty: 32,
+              isDuplicate: false,
+              expectedDepletionOn: '2026-11-09',
+              expectedEndingStock: 0,
+              unmetDemandQty: 13,
+              postArrivalRisk: null,
+            },
+            {
+              scenarioId: 2,
+              type: 'P100',
+              qty: 40,
+              isDuplicate: false,
+              expectedDepletionOn: '2026-11-09',
+              expectedEndingStock: 0,
+              unmetDemandQty: 5,
+              postArrivalRisk: null,
+            },
+            {
+              scenarioId: 3,
+              type: 'P120',
+              qty: 48,
+              isDuplicate: false,
+              expectedDepletionOn: '2026-11-09',
+              expectedEndingStock: 8,
+              unmetDemandQty: 5,
+              postArrivalRisk: null,
+            },
+          ],
+        }),
+      ),
+    )
+    render(
+      <AppProviders>
+        <ScenarioInsight inboundUnit={12} preArrivalUnmet={5} resultId={101} />
+      </AppProviders>,
+    )
+
+    expect(
+      await screen.findByText(/입고 전에 이미 5개는 못 팔아요/),
+    ).toBeInTheDocument()
+    // 합계 13/5/5에서 입고 전 5개를 빼 8/0/0
+    expect(
+      await screen.findByRole('img', {
+        // 손그림 둘째 줄은 항상 남는 재고(못 채우는 주문은 카드가 맡음)
+        name: /32개보다 40개를 넣으면 다음 입고 때 0개 더 남아요/,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('8개', { selector: 'dd[data-tone="danger"]' }),
+    ).toBeInTheDocument()
+    // 모자라는 건 80%(32개) 하나지만 줄을 맞추려고 카드 3장 모두에 같은 줄(나머지는 0개)
+    expect(
+      screen.getAllByText('입고 뒤 못 채우는 주문', { selector: 'dt' }),
+    ).toHaveLength(3)
+  })
+
   it('키보드(엔터)로도 카드를 고를 수 있다', async () => {
     const user = userEvent.setup()
     renderInsight()

@@ -1,8 +1,9 @@
 /* 손그림 칸: 크림 종이 위 네이비 볼펜. 전 값은 회색, 후 값은 잉크, 위험이 줄면 세이지 동그라미, 남는 재고는 노랑 밑줄 + 주황 별 */
 .sketch {
+  position: relative;
   min-width: 0;
   margin: 0;
-  padding: var(--space-1) var(--space-1);
+  padding: 18px var(--space-1) var(--space-1);
   background: #fffaf0;
   border-radius: var(--radius-input);
 }
@@ -56,10 +57,11 @@
   opacity: 0.55;
 }
 
+/* 남는 재고 밑의 노랑은 형광펜처럼 진하게 */
 .hatchYellow {
   stroke: var(--color-accent);
-  stroke-width: 2.2;
-  opacity: 0.55;
+  stroke-width: 3.4;
+  opacity: 0.95;
 }
 
 .pen {
@@ -79,10 +81,38 @@
   stroke-width: 2;
 }
 
+/* 밑줄에서 이어진 별: 갈색 선 한 붓, 칠은 없음 */
 .star {
-  fill: rgb(255 197 61 / 35%);
-  stroke: var(--color-accent-press);
+  stroke-width: 2.3;
+}
+
+/* 칸 왼쪽 위 작은 전구 낙서 */
+.sketch .bulb {
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  width: 34px;
+  height: 34px;
+  transform: rotate(5deg);
+}
+
+.doodle {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ray {
+  stroke: var(--color-accent-text);
+}
+
+.crayon path {
+  fill: none;
+  stroke: var(--color-accent);
   stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.75;
 }
 
 /* 열 때 볼펜으로 한 번 그어지는 느낌. 모션 줄이기면 바로 다 보인다 */
