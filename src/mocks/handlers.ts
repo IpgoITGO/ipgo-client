@@ -275,6 +275,9 @@ function isoFromToday(n: number) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+// C2 mock이 번호마다 몇 번 불렸는지
+const runPolls = new Map<number, number>()
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
@@ -807,6 +810,12 @@ export const handlers = [
   // C2 계산 상태(명세 3.4 · ERD calculation_runs). 999 = 실패
   http.get('/api/calculation-runs/:runId', ({ params }) => {
     const runId = Number(params.runId)
+    // 같은 번호를 처음 물으면 계산 중, 두 번째부터 결과(브라우저에서 계산 중 띠가 잠깐 보이게)
+    const asked = (runPolls.get(runId) ?? 0) + 1
+    runPolls.set(runId, asked)
+    if (asked === 1 && runId !== 999) {
+      return HttpResponse.json({ runId, status: 'RUNNING' })
+    }
     if (runId === 999) {
       return HttpResponse.json({
         runId,

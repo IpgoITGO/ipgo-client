@@ -196,6 +196,7 @@ export function SettingsPage() {
     const before = new Map(
       (query.data?.values.products ?? []).map((item) => [item.productId, item]),
     )
+    let runId: number | null = null
     try {
       // 바꾼 상품만 먼저 저장하고, 마지막에 기본값을 저장하면서 계산을 시작한다.
       for (const item of values.products) {
@@ -214,12 +215,13 @@ export function SettingsPage() {
           ...(costChanged && item.cost !== null ? { unitCost: item.cost } : {}),
         })
       }
-      await saveDefaultSettings({
+      const saved = await saveDefaultSettings({
         leadTimeDays: values.defaults.leadTime,
         reviewCycleDays: values.defaults.orderCycle,
         orderUnitQty: values.defaults.inboundUnit,
         recalculate: true,
       })
+      runId = saved.runId
     } catch (error) {
       setFormError(
         error instanceof ApiError
@@ -230,7 +232,9 @@ export function SettingsPage() {
     }
     // 저장이 끝나면 대시보드로 보내고, 안내는 그 화면에서 토스트로 보여준다.
     const goDashboard = () =>
-      navigate('/dashboard', { state: { toast: '입고 조건을 저장했어요' } })
+      navigate(runId ? `/dashboard?run=${runId}` : '/dashboard', {
+        state: { toast: '입고 조건을 저장했어요' },
+      })
     const animate =
       typeof window.matchMedia === 'function' &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches
