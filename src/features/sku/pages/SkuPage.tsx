@@ -14,6 +14,7 @@ import {
   type SettingSource,
   type SkuDetail,
 } from '../model/skuApi'
+import { niceStep, tickText } from '../model/trendScale'
 import styles from './SkuPage.module.css'
 
 type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
@@ -53,8 +54,6 @@ const setting = (value: number | null, unit: string) =>
 // 재고·출고 추이 그래프(11/3~4 시안 C): 결론 한 문장을 위에 먼저 쓰고 그래프는 그 증거로 둔다.
 // 재고는 선, 출고는 막대, 재고가 0인 날은 빨간 점, 오늘 뒤 "앞으로 N일"은 노란 칸(예상 출고 막대)과
 // "이대로 나가면 줄어드는 재고"를 점선으로 그린다. 새 API 없이 마지막 재고와 앞으로 N일 합계로만 계산한다.
-const NICE_STEPS = [10, 20, 50, 100, 200, 500, 1000]
-
 function useWidth() {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(640)
@@ -82,10 +81,14 @@ function TrendChart({
   coverDays,
   forecastQty,
   history,
+  shortageOn,
+  startStock,
 }: {
   coverDays: number
   forecastQty: number | null
   history: SkuDetail['history']
+  shortageOn: string | null
+  startStock: number | null
 }) {
   const [wrapRef, width] = useWidth()
   const phone = width < 480
@@ -96,7 +99,7 @@ function TrendChart({
   const daily = future ? (forecastQty ?? 0) / future : 0
   const last = history.at(-1)
   const max = Math.max(...history.map((item) => item.inventory), daily, 1)
-  const step = NICE_STEPS.find((value) => max / value <= 5) ?? 1000
+  const step = niceStep(max)
   const top = Math.ceil(max / step) * step
   const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step)
 
@@ -127,6 +130,17 @@ function TrendChart({
   const daysLeft = daily > 0 ? stock / daily : Infinity
   const runsOut = future > 0 && stock > 0 && daysLeft <= future
   const outDays = Math.max(1, Math.round(daysLeft))
+  // 이 값은 "지금"이 아니라 마지막 기록일의 기말 재고다. 문장에 그 날짜를 적고 서버 계산과 다르면 알려 준다.
+  const baseDate = last ? slashDate(last.day, last.date) : ''
+  const lastMs = Date.parse(last?.day ?? '')
+  const outDate =
+    Number.isNaN(lastMs) || !Number.isFinite(daysLeft)
+      ? null
+      : new Date(lastMs + outDays * 864e5)
+  const outText = outDate
+    ? `${outDate.getUTCMonth() + 1}/${outDate.getUTCDate()}쯤`
+    : `약 ${outDays}일 뒤`
+  const serverDiffers = startStock != null && startStock !== stock
   const outX = xd(lastDay + daysLeft)
   const zoneWidth = box.right - todayX
   const flip = outX + 78 > box.right
@@ -144,23 +158,30 @@ function TrendChart({
           <p className={styles.trendHead}>
             {stock === 0 ? (
               <>
-                <em>지금 재고가 없어요</em> · 하루 약 {perDayText(daily)}개씩
-                나가요
+                <em>{baseDate} 기록 기준 재고가 없어요</em> · 하루 약{' '}
+                {perDayText(daily)}개씩 나가요
               </>
             ) : runsOut ? (
               <>
-                지금 재고 {stock.toLocaleString()}개 · 하루 약{' '}
-                {perDayText(daily)}개씩 나가서{' '}
-                <em>약 {outDays}일 뒤 바닥나요</em>
+                {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
+                {perDayText(daily)}개씩 나가면 <em>{outText} 바닥나요</em>
               </>
             ) : (
               <>
-                지금 재고 {stock.toLocaleString()}개 · 하루 약{' '}
+                {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
                 {perDayText(daily)}개씩 나가도{' '}
                 <em>앞으로 {future}일은 버텨요</em>
               </>
             )}
           </p>
+          {serverDiffers && (
+            <p className={styles.trendWarn}>
+              서버 계산은 시작 재고 {startStock.toLocaleString()}개 기준
+              {shortageOn
+                ? `이라 ${slashDate(shortageOn, shortageOn)} 소진으로 봐요.`
+                : '이에요.'}
+            </p>
+          )}
           <p className={styles.trendSub}>
             왼쪽은 최근 기록, 노란 칸은 앞으로 {future}일 예상이에요.
           </p>
@@ -187,7 +208,7 @@ function TrendChart({
               y2={y(tick)}
             />
             <text className={styles.tick} x={box.left - 8} y={y(tick) + 4}>
-              {tick}
+              {tickText(tick)}
             </text>
           </g>
         ))}
@@ -339,7 +360,7 @@ function TrendChart({
         {future > 0 && (
           <>
             <text className={styles.dateToday} x={todayX} y={box.bottom + 37}>
-              오늘
+              마지막 기록
             </text>
             <text
               className={styles.dateLabel}
@@ -666,6 +687,8 @@ export function SkuPage() {
                   coverDays={data.calculation.coverDays}
                   forecastQty={data.calculation.forecastQty}
                   history={data.history}
+                  shortageOn={data.shortageOn}
+                  startStock={data.calculation.startingInventory}
                 />
               ) : (
                 <AsyncState
