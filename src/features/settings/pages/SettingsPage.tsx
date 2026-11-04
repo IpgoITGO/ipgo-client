@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { ApiError } from '../../../shared/api/client'
+import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
@@ -106,6 +107,7 @@ async function loadSettings(): Promise<{
 const SHIP_MS = 900
 
 export function SettingsPage() {
+  const { trackRun, busy: calculationBusy } = useCalculation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -190,6 +192,7 @@ export function SettingsPage() {
   }
 
   async function save(values: SettingsValues) {
+    if (calculationBusy) return
     setFormError(null)
     // 상품이 없으면 계산할 게 없다. 계산 시작·완료 안내를 띄우지 않는다.
     if (values.products.length === 0) return
@@ -208,12 +211,13 @@ export function SettingsPage() {
           old.inboundUnit !== item.inboundUnit
         const costChanged = !old || old.cost !== item.cost
         if (!conditionsChanged && !costChanged) continue
-        await saveProductSettings(item.productId, {
+        const saved = await saveProductSettings(item.productId, {
           leadTimeDays: item.leadTime,
           reviewCycleDays: item.orderCycle,
           orderUnitQty: item.inboundUnit,
           ...(costChanged && item.cost !== null ? { unitCost: item.cost } : {}),
         })
+        trackRun(saved.runId)
       }
       const saved = await saveDefaultSettings({
         leadTimeDays: values.defaults.leadTime,
@@ -222,6 +226,8 @@ export function SettingsPage() {
         recalculate: true,
       })
       runId = saved.runId
+      trackRun(saved.runId)
+      await queryClient.invalidateQueries({ queryKey: ['inbound-settings'] })
     } catch (error) {
       setFormError(
         error instanceof ApiError
@@ -375,7 +381,9 @@ export function SettingsPage() {
                         aria-label={`${product.name} 사용`}
                         checked={product.isActive}
                         className={styles.switch}
-                        disabled={activeBusy === product.productId}
+                        disabled={
+                          activeBusy === product.productId || calculationBusy
+                        }
                         onChange={() => void toggleActive(index)}
                         role="switch"
                         type="checkbox"
@@ -494,7 +502,7 @@ export function SettingsPage() {
           ← 대시보드로
         </Button>
         <Button
-          disabled={products.length === 0}
+          disabled={products.length === 0 || calculationBusy}
           loading={isSubmitting}
           loadingLabel="계산 요청 중"
           form="inbound-settings-form"

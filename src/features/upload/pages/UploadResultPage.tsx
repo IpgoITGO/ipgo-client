@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
+import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { getUploadResult } from '../model/uploadApi'
@@ -22,6 +23,7 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function UploadResultPage() {
+  const { trackRun } = useCalculation()
   const { uploadId } = useParams()
   const navigate = useNavigate()
   // 업로드 화면에서 같은 기간을 덮어써 올렸으면 그 기간 목록이 넘어온다.
@@ -39,6 +41,12 @@ export function UploadResultPage() {
   // 업로드가 계산을 시작했으면 그 번호를 들고 가서 대시보드가 계산 상태를 보여 준다
   const runId = result.data?.runId
   const dashboardPath = runId ? `/dashboard?run=${runId}` : '/dashboard'
+
+  const calculationId =
+    result.data?.status === 'DONE' ? result.data.runId : null
+  useEffect(() => {
+    trackRun(calculationId)
+  }, [calculationId, trackRun])
 
   // 처리 중이던 화면이 정상으로 끝나면 1.5초 동안 끝난 순간 연출을 먼저 보여 준다.
   // 이미 끝난 기록을 열 때와 움직임 줄이기 설정에서는 건너뛴다.

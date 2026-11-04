@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { getCalculationRun } from '../../../shared/api/calculationRunApi'
+import { useCalculation } from '../../../shared/api/calculationContext'
 
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
@@ -14,8 +14,7 @@ import { getDashboard } from '../model/dashboardApi'
 import styles from './DashboardPage.module.css'
 
 // C2 계산 상태 띠. 입고 조건 저장·수불부 업로드 뒤 `/dashboard?run=번호`로 오면
-// 계산이 끝날 때까지 2초마다 묻고, 끝나면 표를 새로 받는다. 실패해도 이전 결과는 그대로 둔다(previousRunId).
-// ponytail: 끝없이 묻는다. 서버가 RUNNING에 멈추는 일이 생기면 시간 제한을 둔다.
+// 공통 추적기가 한 번만 조회한다. 기존 대시보드 상태 띠는 유지하며 다른 화면과 결과를 공유한다.
 function CalculationStatus({
   onClose,
   runId,
@@ -24,30 +23,19 @@ function CalculationStatus({
   runId: number
 }) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const run = useQuery({
-    queryKey: ['calculation-run', runId],
-    queryFn: () => getCalculationRun(runId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status
-      return status === 'DONE' || status === 'FAILED' ? false : 2000
-    },
-  })
-  const status = run.data?.status
+  const { run, phase, message, retry, trackRun } = useCalculation()
   useEffect(() => {
-    if (status === 'DONE') {
-      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    }
-  }, [queryClient, status])
-
-  const state = run.isError
-    ? 'unknown'
-    : status === 'DONE'
-      ? 'done'
-      : status === 'FAILED'
-        ? 'failed'
-        : 'running'
-  const summary = run.data?.summary
+    trackRun(runId)
+  }, [runId, trackRun])
+  const state =
+    phase === 'unknown'
+      ? 'unknown'
+      : phase === 'done'
+        ? 'done'
+        : phase === 'failed'
+          ? 'failed'
+          : 'running'
+  const summary = run?.summary
   return (
     <aside
       aria-live="polite"
@@ -61,7 +49,11 @@ function CalculationStatus({
       <div>
         <strong>
           {state === 'running'
-            ? '새로 계산하고 있어요'
+            ? phase === 'updating'
+              ? '새 계산 결과를 불러오고 있어요'
+              : run?.status === 'QUEUED'
+                ? '계산을 기다리고 있어요'
+                : '새로 계산하고 있어요'
             : state === 'done'
               ? '계산이 끝났어요'
               : state === 'failed'
@@ -72,17 +64,23 @@ function CalculationStatus({
           {state === 'running'
             ? '끝나면 이 화면이 저절로 바뀌어요. 다른 일을 해도 괜찮아요.'
             : state === 'done'
-              ? summary
+              ? summary && summary.notNeededCount != null
                 ? `입고가 필요한 상품 ${summary.needCount}개 · 지금은 괜찮은 상품 ${summary.notNeededCount}개`
-                : '아래 표를 새 결과로 바꿨어요.'
+                : summary?.needCount != null
+                  ? `입고가 필요한 상품 ${summary.needCount}개`
+                  : '아래 표를 새 결과로 바꿨어요.'
               : state === 'failed'
-                ? `${run.data?.errorMessage ?? '잠시 뒤 다시 시도해 주세요'} · 아래는 이전 결과예요.`
-                : '아래는 마지막으로 받은 결과예요. 잠시 뒤 새로고침해 주세요.'}
+                ? `${run?.errorMessage ?? '잠시 뒤 다시 시도해 주세요'} · 아래는 이전 결과예요.`
+                : `${message ?? '계산 상태를 확인하지 못했어요.'} 아래는 마지막으로 받은 결과예요.`}
         </span>
       </div>
       {state === 'failed' ? (
         <Button onClick={() => navigate('/settings')}>
           입고 조건에서 다시 계산
+        </Button>
+      ) : state === 'unknown' ? (
+        <Button onClick={retry} variant="secondary">
+          상태 다시 확인
         </Button>
       ) : (
         state !== 'running' && (
@@ -198,7 +196,11 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 export function DashboardPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const runId = Number(params.get('run')) || null
+  const calculation = useCalculation()
+  const routeRun = Number(params.get('run'))
+  const routeRunId =
+    Number.isSafeInteger(routeRun) && routeRun > 0 ? routeRun : null
+  const runId = calculation.runId ?? routeRunId
   const [sort, setSort] = useState<SortKey>('stockout')
   const query = useQuery({
     queryKey: ['dashboard'],
@@ -248,7 +250,17 @@ export function DashboardPage() {
       {runId !== null && (
         <CalculationStatus
           key={runId}
-          onClose={() => setParams({}, { replace: true })}
+          onClose={() => {
+            calculation.dismiss()
+            setParams(
+              (previous) => {
+                const next = new URLSearchParams(previous)
+                next.delete('run')
+                return next
+              },
+              { replace: true },
+            )
+          }}
           runId={runId}
         />
       )}

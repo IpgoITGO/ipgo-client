@@ -10,6 +10,7 @@ import { z } from 'zod'
 
 import { ApiError } from '../../../shared/api/client'
 import { Button } from '../../../shared/ui/Button/Button'
+import { useCalculation } from '../../../shared/api/calculationContext'
 import { DatePicker } from '../../../shared/ui/DatePicker/DatePicker'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import {
@@ -45,6 +46,7 @@ const statusView: Record<ReceiptStatus, { key: string; label: string }> = {
 const emptyOrder: OrderValues = { productId: '', quantity: 1, expectedOn: '' }
 
 export function PurchaseOrdersSection() {
+  const { trackRun, busy: calculationBusy } = useCalculation()
   const queryClient = useQueryClient()
   const [isOpen, setIsOpen] = useState(false)
   // 수정 중인 발주. null이면 새로 등록한다.
@@ -122,20 +124,23 @@ export function PurchaseOrdersSection() {
   }
 
   async function save(values: OrderValues) {
+    if (calculationBusy) return
     setSubmitError(null)
     const expectedOn = values.expectedOn || null
     try {
       if (editing) {
-        await updatePlannedReceipt(editing.receiptId, {
+        const saved = await updatePlannedReceipt(editing.receiptId, {
           quantity: values.quantity,
           expectedOn,
         })
+        trackRun(saved.runId)
       } else {
-        await createPlannedReceipt({
+        const saved = await createPlannedReceipt({
           productId: Number(values.productId),
           quantity: values.quantity,
           expectedOn,
         })
+        trackRun(saved.runId)
       }
       await refreshAfterChange()
     } catch (error) {
@@ -144,6 +149,7 @@ export function PurchaseOrdersSection() {
   }
 
   async function cancelOrder() {
+    if (calculationBusy) return
     if (!editing) return
     if (!confirmCancel) {
       setConfirmCancel(true)
@@ -151,7 +157,8 @@ export function PurchaseOrdersSection() {
     }
     setSubmitError(null)
     try {
-      await cancelPlannedReceipt(editing.receiptId)
+      const saved = await cancelPlannedReceipt(editing.receiptId)
+      trackRun(saved.runId)
       await refreshAfterChange()
     } catch (error) {
       showError(error)
@@ -173,7 +180,11 @@ export function PurchaseOrdersSection() {
           <h2>이미 발주한 물량</h2>
           <p>발주했지만 아직 안 온 물량은 그만큼 빼고 계산해요.</p>
         </div>
-        <Button onClick={() => openModal(null)} type="button">
+        <Button
+          disabled={calculationBusy}
+          onClick={() => openModal(null)}
+          type="button"
+        >
           등록
         </Button>
       </div>
@@ -220,6 +231,7 @@ export function PurchaseOrdersSection() {
                   <td>
                     <Button
                       aria-label={`${order.skuName} 수정`}
+                      disabled={calculationBusy}
                       onClick={() => openModal(order)}
                       type="button"
                       variant="secondary"
@@ -343,6 +355,7 @@ export function PurchaseOrdersSection() {
               {editing && (
                 <Button
                   onClick={() => void cancelOrder()}
+                  disabled={calculationBusy || isSubmitting}
                   type="button"
                   variant="text"
                 >
@@ -358,6 +371,7 @@ export function PurchaseOrdersSection() {
               </Button>
               <Button
                 loading={isSubmitting}
+                disabled={calculationBusy}
                 loadingLabel="저장 중"
                 type="submit"
               >

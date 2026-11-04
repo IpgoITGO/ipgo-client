@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 
 import { resetAuthMock } from '../auth/mocks/handlers'
 import { resetCsrfToken, setAccessToken } from '../shared/api/client'
+import { clearTrackedRun } from '../shared/api/calculationStorage'
 import { resetPlannedReceiptsMock, resetUploadMock } from '../mocks/handlers'
 import { server } from '../mocks/server'
 
@@ -20,5 +21,6 @@ afterEach(() => {
   resetPlannedReceiptsMock()
   resetCsrfToken()
   setAccessToken(null)
+  clearTrackedRun()
 })
 afterAll(() => server.close())

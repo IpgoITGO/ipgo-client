@@ -1,11 +1,12 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { DashboardPage } from './DashboardPage'
+import { AppLayout } from '../../../app/ui/AppLayout'
 
 // 서버가 아직 한 번도 계산하지 않았을 때의 D1 응답
 const noResult = (latestUploadId: number | null) => ({
@@ -47,6 +48,73 @@ const renderWithRun = (runId: number) =>
   )
 
 describe('DashboardPage', () => {
+  it('기존 run 주소와 공통 추적기를 함께 써도 조회와 상태 띠가 중복되지 않는다', async () => {
+    let reads = 0
+    server.use(
+      http.get('/api/calculation-runs/7125', () => {
+        reads++
+        return HttpResponse.json({
+          runId: 7125,
+          status: 'DONE',
+          summary: { needCount: 3, notNeededCount: 2 },
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/dashboard?run=7125']}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    expect(await screen.findByText('계산이 끝났어요')).toBeInTheDocument()
+    expect(screen.getAllByText('계산이 끝났어요')).toHaveLength(1)
+    expect(
+      screen.queryByRole('region', { name: '입고량 계산 상태' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    expect(screen.queryByText('계산이 끝났어요')).not.toBeInTheDocument()
+    expect(reads).toBe(1)
+  })
+
+  it('대시보드 조회 오류에서는 이전 표를 유지하고 같은 계산의 상태만 다시 확인한다', async () => {
+    let available = false
+    let reads = 0
+    server.use(
+      http.get('/api/calculation-runs/7126', () => {
+        reads++
+        return available
+          ? HttpResponse.json({ runId: 7126, status: 'DONE' })
+          : HttpResponse.json(
+              { code: 'TEMPORARY', message: '합성 조회 오류' },
+              { status: 503 },
+            )
+      }),
+    )
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/dashboard?run=7126']}>
+          <DashboardPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    expect(
+      await screen.findByRole('button', { name: '상태 다시 확인' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
+    ).toBeInTheDocument()
+    available = true
+    await user.click(screen.getByRole('button', { name: '상태 다시 확인' }))
+    expect(await screen.findByText('계산이 끝났어요')).toBeInTheDocument()
+    expect(reads).toBe(2)
+  })
   it('저장·업로드 뒤 계산 번호로 오면 계산 중이었다가 끝나면 결과 수를 알린다', async () => {
     renderWithRun(41)
 

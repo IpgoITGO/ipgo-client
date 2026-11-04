@@ -9,8 +9,49 @@ import { server } from '../../../mocks/server'
 import { RouteToast } from '../../../app/ui/RouteToast'
 import { DashboardPage } from '../../dashboard/pages/DashboardPage'
 import { SettingsPage } from './SettingsPage'
+import { CalculationStatus } from '../../../shared/ui/CalculationStatus/CalculationStatus'
 
 describe('SettingsPage', () => {
+  it('저장 응답 runId를 화면 이동 후에도 조회하고 실제 DONE을 알린다', async () => {
+    let status = 'RUNNING'
+    let reads = 0
+    server.use(
+      http.put('/api/replenishment-settings', () =>
+        HttpResponse.json({ saved: true, runId: 7123 }),
+      ),
+      http.get('/api/calculation-runs/7123', () => {
+        reads++
+        return HttpResponse.json({
+          runId: 7123,
+          status,
+          summary: { needCount: 6 },
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/settings']}>
+          <CalculationStatus />
+          <Routes>
+            <Route element={<SettingsPage />} path="/settings" />
+            <Route element={<DashboardPage />} path="/dashboard" />
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    await screen.findByText('케어트릿 120g')
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    expect(
+      await screen.findByText('입고량을 계산하고 있어요'),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
+    ).toBeInTheDocument()
+    status = 'DONE'
+    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
+    expect(reads).toBeGreaterThanOrEqual(2)
+  })
   it('확인하고 계산하기가 저장되면 대시보드로 가서 토스트를 보여준다', async () => {
     const user = userEvent.setup()
     render(

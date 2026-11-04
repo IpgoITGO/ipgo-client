@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
+import { useCalculation } from '../../../shared/api/calculationContext'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
@@ -46,6 +47,7 @@ function markDuplicate(
 const SERVER_REJECTED = new Set(['UPLOAD_INVALID_FORMAT', 'FILE_TOO_LARGE'])
 
 export function UploadPage() {
+  const { busy: calculationBusy } = useCalculation()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const [files, setFiles] = useState<UploadFileState[]>([])
@@ -120,7 +122,7 @@ export function UploadPage() {
   }
 
   const uploadAction = useActionLock(async () => {
-    if (readyFiles.length === 0) return
+    if (readyFiles.length === 0 || calculationBusy) return
 
     // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
     const uploaded = new Set<string>()
@@ -326,7 +328,7 @@ export function UploadPage() {
           취소
         </Button>
         <Button
-          disabled={readyFiles.length === 0}
+          disabled={readyFiles.length === 0 || calculationBusy}
           loading={uploadAction.isPending}
           loadingLabel="올리는 중"
           onClick={() => void uploadAction.run()}
