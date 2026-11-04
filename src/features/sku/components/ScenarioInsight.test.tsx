@@ -81,6 +81,7 @@ describe('ScenarioInsight', () => {
           preArrivalRisk: null,
           riskSampleSize: null,
           riskStatus: 'INSUFFICIENT_SAMPLE',
+          preArrivalUnmetQty: 5,
           scenarios: [
             {
               scenarioId: 1,
@@ -90,6 +91,7 @@ describe('ScenarioInsight', () => {
               expectedDepletionOn: '2026-11-09',
               expectedEndingStock: 0,
               unmetDemandQty: 13,
+              postArrivalUnmetQty: 8,
               postArrivalRisk: null,
             },
             {
@@ -100,6 +102,7 @@ describe('ScenarioInsight', () => {
               expectedDepletionOn: '2026-11-09',
               expectedEndingStock: 0,
               unmetDemandQty: 5,
+              postArrivalUnmetQty: 0,
               postArrivalRisk: null,
             },
             {
@@ -110,6 +113,7 @@ describe('ScenarioInsight', () => {
               expectedDepletionOn: '2026-11-09',
               expectedEndingStock: 8,
               unmetDemandQty: 5,
+              postArrivalUnmetQty: 0,
               postArrivalRisk: null,
             },
           ],
@@ -118,7 +122,7 @@ describe('ScenarioInsight', () => {
     )
     render(
       <AppProviders>
-        <ScenarioInsight inboundUnit={12} preArrivalUnmet={5} resultId={101} />
+        <ScenarioInsight inboundUnit={12} resultId={101} />
       </AppProviders>,
     )
 
