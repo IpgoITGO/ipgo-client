@@ -36,6 +36,9 @@ export function UploadResultPage() {
   })
 
   const processing = result.isPending || result.data?.status === 'PROCESSING'
+  // 업로드가 계산을 시작했으면 그 번호를 들고 가서 대시보드가 계산 상태를 보여 준다
+  const runId = result.data?.runId
+  const dashboardPath = runId ? `/dashboard?run=${runId}` : '/dashboard'
 
   // 처리 중이던 화면이 정상으로 끝나면 1.5초 동안 끝난 순간 연출을 먼저 보여 준다.
   // 이미 끝난 기록을 열 때와 움직임 줄이기 설정에서는 건너뛴다.
@@ -62,7 +65,7 @@ export function UploadResultPage() {
     return (
       <UploadProcessing
         done={finishing}
-        onGoDashboard={() => navigate('/dashboard')}
+        onGoDashboard={() => navigate(dashboardPath)}
       />
     )
   }
@@ -249,7 +252,7 @@ export function UploadResultPage() {
       )}
 
       <footer className={styles.actions}>
-        <Button onClick={() => navigate('/dashboard')} variant="secondary">
+        <Button onClick={() => navigate(dashboardPath)} variant="secondary">
           나중에 하기
         </Button>
         <Button onClick={() => navigate('/settings')}>

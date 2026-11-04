@@ -37,7 +37,43 @@ const renderPage = () =>
     </AppProviders>,
   )
 
+const renderWithRun = (runId: number) =>
+  render(
+    <AppProviders>
+      <MemoryRouter initialEntries={[`/dashboard?run=${runId}`]}>
+        <DashboardPage />
+      </MemoryRouter>
+    </AppProviders>,
+  )
+
 describe('DashboardPage', () => {
+  it('저장·업로드 뒤 계산 번호로 오면 계산 중이었다가 끝나면 결과 수를 알린다', async () => {
+    renderWithRun(41)
+
+    expect(await screen.findByText('새로 계산하고 있어요')).toBeInTheDocument()
+    // mock은 두 번째 물음부터 끝(2초 간격)
+    expect(
+      await screen.findByText('계산이 끝났어요', {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('입고가 필요한 상품 6개 · 지금은 괜찮은 상품 22개'),
+    ).toBeInTheDocument()
+  })
+
+  it('계산이 실패하면 이유와 이전 결과라는 안내, 다시 계산 버튼을 준다', async () => {
+    renderWithRun(999)
+
+    expect(await screen.findByText('계산하지 못했어요')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '계산 시간이 너무 오래 걸렸어요 · 아래는 이전 결과예요.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '입고 조건에서 다시 계산' }),
+    ).toBeInTheDocument()
+  })
+
   it('상태별 요약과 입고 필요 상품을 정렬한다', async () => {
     const user = userEvent.setup()
     render(
