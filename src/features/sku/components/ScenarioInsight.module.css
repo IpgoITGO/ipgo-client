@@ -283,6 +283,26 @@
   border-radius: var(--radius-card);
 }
 
+.insightMain {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* 그림이 있으면 문장 | 손그림(360) 두 칸, 좁으면 그림이 문장 아래로 */
+.insight[data-sketch] {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .insight[data-sketch] {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
 .insightTape {
   --tape-rotate: -2deg;
   top: -12px;

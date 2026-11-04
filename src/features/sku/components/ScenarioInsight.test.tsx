@@ -13,14 +13,10 @@ function sentence(pattern: RegExp) {
     element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
 }
 
-function renderInsight(resultId: number | string = 101, horizonDays = 0) {
+function renderInsight(resultId: number | string = 101) {
   return render(
     <AppProviders>
-      <ScenarioInsight
-        horizonDays={horizonDays}
-        inboundUnit={12}
-        resultId={resultId}
-      />
+      <ScenarioInsight inboundUnit={12} resultId={resultId} />
     </AppProviders>,
   )
 }
@@ -49,36 +45,35 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
   })
 
-  it('카드를 누르면 그 수량의 재고 흐름 그래프로 바뀐다', async () => {
+  it('카드를 누르면 그 카드가 골라진다', async () => {
     const user = userEvent.setup()
-    renderInsight(101, 34)
+    renderInsight()
 
     // 처음엔 권장량이 골라져 있다
     const recommended = await screen.findByRole('radio', {
       name: /권장량 100%/,
     })
     expect(recommended).toHaveAttribute('aria-checked', 'true')
-    expect(
-      screen.getByText('를 넣으면 재고가 이렇게 줄어요', { exact: false }),
-    ).toHaveTextContent('72개를 넣으면')
 
-    // 80%를 누르면 그 카드가 골라지고 그래프가 60개 기준으로 바뀐다
     const eighty = screen.getByRole('radio', { name: /권장량의 80%/ })
     await user.click(eighty)
     expect(eighty).toHaveAttribute('aria-checked', 'true')
     expect(recommended).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('AI 문장 옆에 같은 계산값을 손그림으로 요약한다', async () => {
+    renderInsight()
+
     expect(
-      screen.getByText('를 넣으면 재고가 이렇게 줄어요', { exact: false }),
-    ).toHaveTextContent('60개를 넣으면')
-    // 이 수량은 소진일이 있어 그래프에 바닥나는 날이 표시된다
-    expect(
-      screen.getByRole('img', { name: /60개를 넣었을 때.*2026. 11. 18 바닥/ }),
+      await screen.findByRole('img', {
+        name: /품절 위험 8%에서 3%로, 60개보다 72개를 넣으면 다음 입고 때 12개 더 남아요/,
+      }),
     ).toBeInTheDocument()
   })
 
   it('키보드(엔터)로도 카드를 고를 수 있다', async () => {
     const user = userEvent.setup()
-    renderInsight(101, 34)
+    renderInsight()
 
     const eighty = await screen.findByRole('radio', { name: /권장량의 80%/ })
     eighty.focus()

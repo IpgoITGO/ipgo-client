@@ -648,7 +648,6 @@ export function SkuPage() {
 
           {data.resultId !== null && (
             <ScenarioInsight
-              horizonDays={data.calculation.coverDays}
               inboundUnit={data.calculation.inboundUnit ?? 1}
               key={data.resultId}
               resultId={data.resultId}
