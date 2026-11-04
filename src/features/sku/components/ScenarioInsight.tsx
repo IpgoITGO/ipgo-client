@@ -188,6 +188,10 @@ export function ScenarioInsight({
   const hiddenCount = scenarios.length - visible.length
   // 권장량이 0이라 카드가 없으면 처음부터 입력칸을 연다.
   const showInput = adding || scenarios.length === 0
+  // 한 카드라도 입고 뒤에 모자라면 모든 카드에 같은 줄을 넣어 아래 줄(품절 위험 막대)이 나란히 맞게 한다
+  const showAfterArrival = scenarios.some(
+    (item) => afterArrival(item.unmetDemandQty, preArrivalUnmet) > 0,
+  )
   const maxRisk = Math.max(
     ...scenarios.map((item) => item.postArrivalRisk ?? 0),
     1,
@@ -314,11 +318,19 @@ export function ScenarioInsight({
                           {scenario.remainingAtNextInbound}개
                         </dd>
                       </div>
-                      {afterArrival(scenario.unmetDemandQty, preArrivalUnmet) >
-                        0 && (
+                      {showAfterArrival && (
                         <div>
                           <dt>입고 뒤 못 채우는 주문</dt>
-                          <dd data-tone="danger">
+                          <dd
+                            data-tone={
+                              afterArrival(
+                                scenario.unmetDemandQty,
+                                preArrivalUnmet,
+                              ) > 0
+                                ? 'danger'
+                                : undefined
+                            }
+                          >
                             {afterArrival(
                               scenario.unmetDemandQty,
                               preArrivalUnmet,

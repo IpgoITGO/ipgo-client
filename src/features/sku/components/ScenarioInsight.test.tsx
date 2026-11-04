@@ -134,10 +134,10 @@ describe('ScenarioInsight', () => {
     expect(
       screen.getByText('8개', { selector: 'dd[data-tone="danger"]' }),
     ).toBeInTheDocument()
-    // 입고 뒤에도 모자라는 건 80%(32개) 카드 하나뿐
+    // 모자라는 건 80%(32개) 하나지만 줄을 맞추려고 카드 3장 모두에 같은 줄(나머지는 0개)
     expect(
       screen.getAllByText('입고 뒤 못 채우는 주문', { selector: 'dt' }),
-    ).toHaveLength(1)
+    ).toHaveLength(3)
   })
 
   it('키보드(엔터)로도 카드를 고를 수 있다', async () => {
