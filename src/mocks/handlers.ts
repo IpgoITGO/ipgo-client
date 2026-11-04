@@ -697,7 +697,8 @@ export const handlers = [
         startStockQty: isEmpty ? null : 4,
         startStockEstimated: isReference,
         plannedReceiptsInHorizon: 12,
-        preArrivalUnmetQty: 0,
+        // fallback-product = 입고 전에 이미 놓친 주문이 있는 경우(휘님 시험 자료 B조건처럼 5개)
+        preArrivalUnmetQty: isFallback ? 5 : 0,
         requiredQtyBeforeRounding: null,
         recommendedQty: isUnavailable ? null : (needed?.recommendedQty ?? 72),
         recommendedAmount:

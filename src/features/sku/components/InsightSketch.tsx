@@ -9,8 +9,10 @@ export type SketchValues = {
   postRisk: number | null
   // 권장량을 넣었을 때 다음 입고 때 남는 재고
   endRecommended: number
+  // 권장량을 넣어도 못 채우는 주문(시나리오 unmetDemandQty)
+  unmetRecommended: number
   // 비교 대상(80%) 수량과 그때 남는 재고. 80%가 권장량과 겹치면 없다.
-  lower: { quantity: number; end: number } | null
+  lower: { quantity: number; end: number; unmet: number } | null
 }
 
 // 같은 숫자면 매번 같은 손그림이 나오도록 씨앗을 고정한 난수
@@ -87,17 +89,34 @@ const ROW1 = 62
 const ROW2 = 152
 
 export function InsightSketch({ values }: { values: SketchValues }) {
-  const { recommended, preRisk, postRisk, endRecommended, lower } = values
+  const {
+    recommended,
+    preRisk,
+    postRisk,
+    endRecommended,
+    unmetRecommended,
+    lower,
+  } = values
   const r = seeded(recommended * 7 + endRecommended)
   const hasRisk = preRisk !== null && postRisk !== null
-  const gain = lower ? endRecommended - lower.end : null
+  // 둘 다 남는 재고가 0이면(모자라는 경우) "0개 → 0개"가 되니 못 채우는 주문으로 바꿔 그린다
+  const anyUnmet = (lower?.unmet ?? 0) > 0 || unmetRecommended > 0
+  const shortage =
+    anyUnmet && (lower ? lower.end === endRecommended : endRecommended === 0)
+  const before = lower ? (shortage ? lower.unmet : lower.end) : null
+  const after = shortage ? unmetRecommended : endRecommended
+  const gain = before === null ? null : after - before
   const label = [
     hasRisk
       ? `품절 위험 ${preRisk}%에서 ${postRisk}%로`
       : '품절 위험은 계산 전',
-    lower
-      ? `${lower.quantity}개보다 ${recommended}개를 넣으면 다음 입고 때 ${gain}개 더 남아요`
-      : `${recommended}개를 넣으면 다음 입고 때 ${endRecommended}개 남아요`,
+    shortage
+      ? lower
+        ? `${lower.quantity}개보다 ${recommended}개를 넣으면 못 채우는 주문이 ${before}개에서 ${after}개로 줄어요`
+        : `${recommended}개를 넣어도 ${after}개 주문을 못 채워요`
+      : lower
+        ? `${lower.quantity}개보다 ${recommended}개를 넣으면 다음 입고 때 ${gain}개 더 남아요`
+        : `${recommended}개를 넣으면 다음 입고 때 ${endRecommended}개 남아요`,
   ].join(', ')
 
   return (
@@ -178,7 +197,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
         )}
 
         <text className={styles.caption} x="16" y={ROW2 - 30}>
-          다음 입고 때 남는 재고
+          {shortage ? '못 채우는 주문' : '다음 입고 때 남는 재고'}
         </text>
         <path
           d={`M${AFTER - 46} ${ROW2 + 2} L${AFTER + 46} ${ROW2 - 1} L${AFTER + 44} ${ROW2 + 12} L${AFTER - 44} ${ROW2 + 13}Z`}
@@ -192,7 +211,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
               x={BEFORE}
               y={ROW2 + 9}
             >
-              {lower.end}개
+              {before}개
             </text>
             <Arrow r={r} y={ROW2 - 3} />
             <text
@@ -201,7 +220,9 @@ export function InsightSketch({ values }: { values: SketchValues }) {
               x="160"
               y={ROW2 - 12}
             >
-              {gain !== null && gain >= 0 ? `+${gain}` : gain}
+              {gain !== null && gain > 0
+                ? `+${gain}`
+                : `−${Math.abs(gain ?? 0)}`}
             </text>
             <text
               className={styles.sub}
@@ -219,7 +240,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
           x={AFTER}
           y={ROW2 + 9}
         >
-          {endRecommended}개
+          {after}개
         </text>
         <path
           className={`${styles.pen} ${styles.brown} ${styles.late}`}

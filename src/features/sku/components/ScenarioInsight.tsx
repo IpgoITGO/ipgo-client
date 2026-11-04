@@ -194,8 +194,13 @@ export function ScenarioInsight({
           preRisk: p100.preArrivalRisk,
           postRisk: p100.postArrivalRisk,
           endRecommended: p100.remainingAtNextInbound,
+          unmetRecommended: p100.unmetDemandQty,
           lower: p80
-            ? { quantity: p80.quantity, end: p80.remainingAtNextInbound }
+            ? {
+                quantity: p80.quantity,
+                end: p80.remainingAtNextInbound,
+                unmet: p80.unmetDemandQty,
+              }
             : null,
         }
       : null
@@ -293,6 +298,14 @@ export function ScenarioInsight({
                           {scenario.remainingAtNextInbound}개
                         </dd>
                       </div>
+                      {scenario.unmetDemandQty > 0 && (
+                        <div>
+                          <dt>못 채우는 주문</dt>
+                          <dd data-tone="danger">
+                            {scenario.unmetDemandQty}개
+                          </dd>
+                        </div>
+                      )}
                       {sharedPreArrivalRisk === undefined && (
                         <div>
                           <dt>도착 전 품절 위험</dt>

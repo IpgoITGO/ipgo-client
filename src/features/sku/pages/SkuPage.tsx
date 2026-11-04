@@ -599,6 +599,18 @@ export function SkuPage() {
                     <strong>{count(data.calculation.existingOrders)}</strong>
                   </li>
                 )}
+                {Boolean(data.calculation.preArrivalUnmet) && (
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      −
+                    </span>
+                    <span>
+                      도착 전에 못 파는 양
+                      <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                    </span>
+                    <strong>{count(data.calculation.preArrivalUnmet)}</strong>
+                  </li>
+                )}
                 {data.calculation.rawQuantity != null && (
                   <li className={styles.stepSum}>
                     <span aria-hidden="true" className={styles.stepOp}>
