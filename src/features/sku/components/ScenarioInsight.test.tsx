@@ -71,7 +71,7 @@ describe('ScenarioInsight', () => {
     ).toBeInTheDocument()
   })
 
-  it('남는 재고가 둘 다 0이면 못 채우는 주문을 카드와 손그림에 보여 준다', async () => {
+  it('입고 전 몫은 위에 한 번, 카드와 손그림에는 입고 뒤 못 채우는 주문만 보여 준다', async () => {
     // 휘님 시험 자료 B조건(리드타임 7일): 32/40/48개, 기말 재고 0/0/8, 총 미충족 13/5/5
     server.use(
       http.get('/api/results/:resultId/scenarios', () =>
@@ -116,18 +116,28 @@ describe('ScenarioInsight', () => {
         }),
       ),
     )
-    renderInsight()
+    render(
+      <AppProviders>
+        <ScenarioInsight inboundUnit={12} preArrivalUnmet={5} resultId={101} />
+      </AppProviders>,
+    )
 
     expect(
+      await screen.findByText(/입고 전에 이미 5개는 못 팔아요/),
+    ).toBeInTheDocument()
+    // 합계 13/5/5에서 입고 전 5개를 빼 8/0/0
+    expect(
       await screen.findByRole('img', {
-        name: /32개보다 40개를 넣으면 못 채우는 주문이 13개에서 5개로 줄어요/,
+        name: /32개보다 40개를 넣으면 못 채우는 주문이 8개에서 0개로 줄어요/,
       }),
     ).toBeInTheDocument()
-    expect(screen.getByText('13개', { selector: 'dd' })).toBeInTheDocument()
-    // 카드 3장 모두(120%의 5개는 도착 전에 놓친 주문이 섞인 총량이라 서버 확인 필요)
     expect(
-      screen.getAllByText('못 채우는 주문', { selector: 'dt' }),
-    ).toHaveLength(3)
+      screen.getByText('8개', { selector: 'dd[data-tone="danger"]' }),
+    ).toBeInTheDocument()
+    // 입고 뒤에도 모자라는 건 80%(32개) 카드 하나뿐
+    expect(
+      screen.getAllByText('입고 뒤 못 채우는 주문', { selector: 'dt' }),
+    ).toHaveLength(1)
   })
 
   it('키보드(엔터)로도 카드를 고를 수 있다', async () => {

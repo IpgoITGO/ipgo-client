@@ -197,7 +197,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
         )}
 
         <text className={styles.caption} x="16" y={ROW2 - 30}>
-          {shortage ? '못 채우는 주문' : '다음 입고 때 남는 재고'}
+          {shortage ? '입고 뒤 못 채우는 주문' : '다음 입고 때 남는 재고'}
         </text>
         <path
           d={`M${AFTER - 46} ${ROW2 + 2} L${AFTER + 46} ${ROW2 - 1} L${AFTER + 44} ${ROW2 + 12} L${AFTER - 44} ${ROW2 + 13}Z`}
