@@ -106,15 +106,6 @@ export function getScenarios(resultId: number | string) {
   return apiRequest<ScenariosResponse>(`/results/${resultId}/scenarios`)
 }
 
-// K3 직접 입력. 결과 1건에 1개만 저장되고 새로 넣으면 이전 직접 입력을 덮어쓴다(명세 3.7).
-export function addCustomScenario(resultId: number | string, qty: number) {
-  return apiRequest<ScenarioResult>(`/results/${resultId}/scenarios`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ qty }),
-  })
-}
-
 // K4 서버 응답: 상태 이름이 아직 두 벌이고(0002: LLM·TEMPLATE·NONE / 명세·#24: AI·FIXED·TABLE_ONLY, ai#44 U1),
 // 문장은 배열(sentences)이나 글 하나(draft)로 올 수 있다(U4). 화면이 쓰기 전에 한 모양으로 맞춘다.
 export type InsightRaw = Omit<InsightResponse, 'mode' | 'sentences'> & {

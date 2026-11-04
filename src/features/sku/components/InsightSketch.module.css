@@ -1,0 +1,109 @@
+/* 손그림 칸: 크림 종이 위 네이비 볼펜. 전 값은 회색, 후 값은 잉크, 위험이 줄면 세이지 동그라미, 남는 재고는 노랑 밑줄 + 주황 별 */
+.sketch {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-1) var(--space-1);
+  background: #fffaf0;
+  border-radius: var(--radius-input);
+}
+
+.sketch svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.sketch text {
+  fill: var(--color-primary);
+  font-family: 'Nanum Pen Script', 'Segoe Script', cursive;
+}
+
+.sketch .caption {
+  fill: var(--color-text-3);
+  font-size: 19px;
+}
+
+.sketch .before {
+  fill: var(--color-text-3);
+  font-size: 38px;
+}
+
+.sketch .value {
+  font-size: 38px;
+}
+
+.sketch .pending {
+  fill: var(--color-text-3);
+  font-size: 26px;
+}
+
+.sketch .plus {
+  fill: var(--color-accent-text);
+  font-size: 22px;
+}
+
+/* 값 아래 설명은 읽기용이라 본문 글꼴 */
+.sketch .sub {
+  fill: var(--color-text-3);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+.hatchSage {
+  stroke: #8fbf9f;
+  stroke-width: 2.2;
+  opacity: 0.55;
+}
+
+.hatchYellow {
+  stroke: var(--color-accent);
+  stroke-width: 2.2;
+  opacity: 0.55;
+}
+
+.pen {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sage {
+  stroke: var(--color-done);
+}
+
+.brown {
+  stroke: var(--color-accent-text);
+  stroke-width: 2;
+}
+
+.star {
+  fill: rgb(255 197 61 / 35%);
+  stroke: var(--color-accent-press);
+  stroke-width: 2;
+}
+
+/* 열 때 볼펜으로 한 번 그어지는 느낌. 모션 줄이기면 바로 다 보인다 */
+@media (prefers-reduced-motion: no-preference) {
+  .pen {
+    stroke-dasharray: 900;
+    stroke-dashoffset: 900;
+    animation: pen 1s ease-out forwards;
+  }
+
+  .late {
+    animation-delay: 0.35s;
+  }
+
+  .last {
+    animation-delay: 0.7s;
+  }
+}
+
+@keyframes pen {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

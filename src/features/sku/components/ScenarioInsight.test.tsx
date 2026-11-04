@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
@@ -13,32 +12,18 @@ function sentence(pattern: RegExp) {
     element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
 }
 
-function renderInsight(resultId: number | string = 101, horizonDays = 0) {
+function renderInsight(resultId: number | string = 101) {
   return render(
     <AppProviders>
-      <ScenarioInsight
-        horizonDays={horizonDays}
-        inboundUnit={12}
-        resultId={resultId}
-      />
+      <ScenarioInsight resultId={resultId} />
     </AppProviders>,
   )
 }
 
 describe('ScenarioInsight', () => {
-  it('80%, 100%, 120% 비교와 AI 숫자를 함께 보여준다', async () => {
+  it('AI 문장 옆에 같은 계산값을 손그림으로 요약한다', async () => {
     renderInsight()
 
-    expect(await screen.findByText('권장량의 80%')).toBeInTheDocument()
-    expect(screen.getByText('권장량 100%')).toBeInTheDocument()
-    expect(screen.getByText('권장량의 120%')).toBeInTheDocument()
-    // 도착 전 위험은 결과에 하나라 위에 한 번만, 120%의 도착 후 위험만 표본 부족
-    expect(
-      screen.getByText(/도착하기 전 품절 위험은 8%로 모든 경우가 같아요/),
-    ).toBeInTheDocument()
-    expect(screen.getAllByText('표본 부족으로 미산출')).toHaveLength(1)
-    expect(screen.getByText('권장')).toBeInTheDocument()
-    expect(screen.getByText('예상 소진일 2026. 11. 18')).toBeInTheDocument()
     expect(
       await screen.findByText(/AI가 계산 결과를 읽고 정리했어요/),
     ).toBeInTheDocument()
@@ -47,101 +32,14 @@ describe('ScenarioInsight', () => {
     ).toBeInTheDocument()
     // 문장 속 숫자만 형광펜으로 강조한다
     expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
-  })
-
-  it('카드를 누르면 그 수량의 재고 흐름 그래프로 바뀐다', async () => {
-    const user = userEvent.setup()
-    renderInsight(101, 34)
-
-    // 처음엔 권장량이 골라져 있다
-    const recommended = await screen.findByRole('radio', {
-      name: /권장량 100%/,
-    })
-    expect(recommended).toHaveAttribute('aria-checked', 'true')
+    // 그림은 문장이 아니라 시나리오 응답(권장 72개·80% 60개)으로 그린다
     expect(
-      screen.getByText('를 넣으면 재고가 이렇게 줄어요', { exact: false }),
-    ).toHaveTextContent('72개를 넣으면')
-
-    // 80%를 누르면 그 카드가 골라지고 그래프가 60개 기준으로 바뀐다
-    const eighty = screen.getByRole('radio', { name: /권장량의 80%/ })
-    await user.click(eighty)
-    expect(eighty).toHaveAttribute('aria-checked', 'true')
-    expect(recommended).toHaveAttribute('aria-checked', 'false')
-    expect(
-      screen.getByText('를 넣으면 재고가 이렇게 줄어요', { exact: false }),
-    ).toHaveTextContent('60개를 넣으면')
-    // 이 수량은 소진일이 있어 그래프에 바닥나는 날이 표시된다
-    expect(
-      screen.getByRole('img', { name: /60개를 넣었을 때.*2026. 11. 18 바닥/ }),
-    ).toBeInTheDocument()
-  })
-
-  it('키보드(엔터)로도 카드를 고를 수 있다', async () => {
-    const user = userEvent.setup()
-    renderInsight(101, 34)
-
-    const eighty = await screen.findByRole('radio', { name: /권장량의 80%/ })
-    eighty.focus()
-    await user.keyboard('{Enter}')
-
-    expect(eighty).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('직접 입력을 검증하고 중복 요청 없이 비교를 추가한다', async () => {
-    const user = userEvent.setup()
-    let requestCount = 0
-    server.use(
-      http.post('/api/results/:resultId/scenarios', async ({ request }) => {
-        requestCount += 1
-        const body = (await request.json()) as { qty: number }
-        await delay(80)
-        return HttpResponse.json(
-          {
-            scenarioId: 4,
-            type: 'CUSTOM',
-            qty: body.qty,
-            isDuplicate: false,
-            expectedDepletionOn: '2026-12-10',
-            expectedEndingStock: 44,
-            unmetDemandQty: 0,
-            postArrivalRisk: 0.02,
-          },
-          { status: 201 },
-        )
+      await screen.findByRole('img', {
+        name: /품절 위험 8%에서 3%로, 60개보다 72개를 넣으면 다음 입고 때 12개 더 남아요/,
       }),
-    )
-    renderInsight()
-    await screen.findByText('권장량 100%')
-
-    // 빈 칸의 "+" 카드를 눌러야 입력칸이 열린다
-    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
-    const input = screen.getByLabelText('직접 입력')
-    await user.type(input, '0')
-    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '1개 이상의 정수를 입력해 주세요.',
-    )
-
-    await user.clear(input)
-    await user.type(input, '90')
-    await user.dblClick(screen.getByRole('button', { name: '비교에 추가' }))
-
-    expect(await screen.findByText('90개')).toBeInTheDocument()
-    expect(requestCount).toBe(1)
-    // 추가하면 입력칸이 닫히고 "+" 카드가 다음 칸으로 간다
-    expect(screen.queryByLabelText('직접 입력')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: '수량 넣어 비교' }),
     ).toBeInTheDocument()
-
-    // 권장 3 + 직접 2 = 5칸이 차면 "+"는 줄 아래 버튼으로 내려간다
-    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
-    await user.type(screen.getByLabelText('직접 입력'), '100')
-    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
-    expect(await screen.findByText('100개')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: '+ 수량 넣어 비교' }),
-    ).toBeInTheDocument()
+    // 입고량 비교 카드·직접 입력은 이 그림이 대신한다
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
   })
 
   it('AI 실패 응답은 기본 문장으로 구분하고 이유를 알린다', async () => {
@@ -157,18 +55,20 @@ describe('ScenarioInsight', () => {
     expect(
       screen.getByText(sentence(/권장 입고량 72개를 기준/)),
     ).toBeInTheDocument()
-    expect(await screen.findByText('권장량 100%')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('img', { name: /품절 위험/ }),
+    ).toBeInTheDocument()
   })
 
-  it('권장량이 0개면 직접 입력만 안내한다', async () => {
+  it('권장량이 0개면 그림 없이 문장만 둔다', async () => {
     renderInsight('zero-recommendation')
 
-    expect(await screen.findByText(/권장량이 0개라/)).toBeInTheDocument()
-    expect(screen.queryByText('권장량 100%')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('직접 입력')).toBeInTheDocument()
+    // 문장이 다 그려질 때까지 기다린 뒤 그림이 없는지 본다
+    expect((await screen.findAllByRole('listitem')).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('img', { name: /품절 위험/ })).toBeNull()
   })
 
-  it('시나리오와 AI 생성 진행 상태를 표시한다', () => {
+  it('AI 문장을 쓰는 중이라고 표시한다', () => {
     server.use(
       http.get('/api/results/:resultId/scenarios', async () => {
         await delay(100)
@@ -196,20 +96,19 @@ describe('ScenarioInsight', () => {
     renderInsight()
 
     expect(
-      screen.getByRole('heading', { name: '시나리오 계산 중' }),
-    ).toBeInTheDocument()
-    expect(
       screen.getByText('계산 결과를 읽고 정리하는 중이에요'),
     ).toBeInTheDocument()
   })
 
-  it('기본 문장도 못 만들면 표를 직접 비교하라고 알린다', async () => {
+  it('기본 문장도 못 만들면 그림 숫자를 보라고 알린다', async () => {
     renderInsight('ai-none')
 
     expect(
       await screen.findByText('설명 문장을 만들지 못했어요.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('숫자는 위 표에 그대로 있어요')).toBeInTheDocument()
+    expect(
+      screen.getByText('숫자는 오른쪽 그림에 계산값 그대로 있어요'),
+    ).toBeInTheDocument()
   })
 
   it('내용 상태 꼬리표와 이유를 보여 준다', async () => {
