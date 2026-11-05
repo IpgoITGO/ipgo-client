@@ -124,8 +124,8 @@ export function addCustomScenario(resultId: number | string, qty: number) {
   })
 }
 
-// K4 서버 응답: 상태 이름이 아직 두 벌이고(0002: LLM·TEMPLATE·NONE / 명세·#24: AI·FIXED·TABLE_ONLY, ai#44 U1),
-// 문장은 배열(sentences)이나 글 하나(draft)로 올 수 있다(U4). 화면이 쓰기 전에 한 모양으로 맞춘다.
+// 공개 K4는 AI·FIXED·TABLE_ONLY와 text 문자열/null을 사용한다(Server #25).
+// 기존 LLM·TEMPLATE·NONE / sentences·draft 응답도 화면 모양으로 변환해 호환한다.
 export type InsightRaw = Omit<InsightResponse, 'mode' | 'sentences'> & {
   mode: string
   isFallback?: boolean
