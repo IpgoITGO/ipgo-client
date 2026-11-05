@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { calculationReason } from './calculationReason'
+import { calculationReason, calculationReasonDetail } from './calculationReason'
 it('기록 부족을 최소 필요 일수로 설명하고 다른 오류를 기록 부족으로 바꾸지 않는다', () => {
   expect(
     calculationReason(
@@ -7,4 +7,25 @@ it('기록 부족을 최소 필요 일수로 설명하고 다른 오류를 기�
     ),
   ).toBe('판매 기록이 5일 쌓였어요. 계산하려면 최소 7일이 필요해요.')
   expect(calculationReason('재고 검산 불일치')).toBe('재고 검산 불일치')
+})
+
+it('엔진의 다른 계산 불가 사유도 쉬운 말로 바꾼다', () => {
+  expect(calculationReason('상품의 입고 설정이 없어요')).toBe(
+    '입고 조건이 비어 있어요. 입고 조건에서 리드타임을 넣어 주세요.',
+  )
+  expect(calculationReason('기준일의 기말 재고 기록이 없어요')).toBe(
+    '기준일 재고가 비어 있어요. 수불부 마지막 날 재고를 확인해 주세요.',
+  )
+})
+
+it('자세한 사유는 엔진 기호(A·B·P_H) 없이 한 줄씩 풀어 쓴다', () => {
+  expect(
+    calculationReasonDetail(
+      'A: P_H 구간(2025-11-06 ~ 2025-11-25) 판매한 날이 0일로 7일보다 적어요; B: 최근 28일 중 판매한 날(유효 관측일)이 4일로 7일보다 적어요',
+    ),
+  ).toEqual([
+    '작년 같은 기간(2025-11-06 ~ 2025-11-25) 판매한 날 0일 · 7일 필요',
+    '최근 28일 판매한 날 4일 · 7일 필요',
+  ])
+  expect(calculationReasonDetail('상품의 입고 설정이 없어요')).toBeNull()
 })

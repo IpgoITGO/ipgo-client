@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { calculationReason } from '../../../shared/lib/calculationReason'
+import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
@@ -632,14 +633,9 @@ export function SkuPage() {
           }
           retryLabel="수불부 다시 올리기"
         >
-          {data.unavailableReason &&
-            calculationReason(data.unavailableReason) !==
-              data.unavailableReason && (
-              <details>
-                <summary>자세한 계산 사유</summary>
-                {data.unavailableReason}
-              </details>
-            )}
+          {data.unavailableReason && (
+            <ReasonDetail reason={data.unavailableReason} />
+          )}
         </AsyncState>
       ) : (
         <>
