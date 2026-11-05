@@ -13,6 +13,10 @@ export type Plan = {
   calculations: string
   insights: string
   features: string[]
+  // 카드 아래 한 줄 설명(체험: 카드 없이·끝나면 보기만)
+  note?: string
+  // 함께 쓰는 계정. 없으면 null
+  seats: string | null
   recommended?: boolean
 }
 
@@ -26,6 +30,8 @@ export const PLANS: Plan[] = [
     calculations: '제한 없음',
     insights: '월 100회',
     features: ['셀러와 똑같이', '카드 등록 없이', '끝나면 보기만'],
+    note: '카드 등록 없이 · 끝나면 자료는 보기만',
+    seats: null,
   },
   {
     id: 'seller',
@@ -40,6 +46,7 @@ export const PLANS: Plan[] = [
       'AI 인사이트 월 100회',
       '보관 비용',
     ],
+    seats: null,
     recommended: true,
   },
   {
@@ -50,7 +57,23 @@ export const PLANS: Plan[] = [
     calculations: '제한 없음',
     insights: '제한 없음',
     features: ['상품 2,000개', 'AI 인사이트 제한 없음', '계정 5명 (준비 중)'],
+    seats: '5명 (준비 중)',
   },
+]
+
+// 요금제 카드의 같은 줄(11/5 사장님 — 카드끼리 무엇이 다른지 같은 높이에서 보이게). 없는 건 null → "—"
+export const COMPARE: {
+  label: string
+  value: (plan: Plan) => string | null
+}[] = [
+  {
+    label: '관리 상품',
+    value: (plan) => `${plan.products?.toLocaleString('ko-KR')}개`,
+  },
+  { label: '계산', value: (plan) => plan.calculations },
+  { label: 'AI 인사이트', value: (plan) => plan.insights },
+  { label: '보관 비용 보기', value: () => '✓' },
+  { label: '함께 쓰는 계정', value: (plan) => plan.seats },
 ]
 
 export const TRIAL_DAYS = 14
@@ -64,6 +87,12 @@ export type PayMethod = 'card' | 'kakaopay'
 export const METHOD_LABEL: Record<PayMethod, string> = {
   card: '카드(KG이니시스)',
   kakaopay: '카카오페이',
+}
+
+// 결제 수단 고르는 칸: 이름과 오른쪽 작은 결제사 표시
+export const METHOD_CHOICE: Record<PayMethod, { name: string; via: string }> = {
+  card: { name: '신용·체크카드', via: 'KG이니시스' },
+  kakaopay: { name: '카카오페이', via: '간편결제' },
 }
 
 export type Payment = {
@@ -82,6 +111,10 @@ export type Subscription = {
   history: Payment[]
   // 해지를 누르면 다음 결제일까지 쓰고 끝난다(#187). 그날을 적어 둔다.
   cancelOn?: string | null
+  // 카드면 끝 4자리(결제사가 돌려주는 값, 지금은 모의)
+  cardLast4?: string | null
+  // 매달 결제가 안 됐을 때(카드 한도·만료 등). 다시 결제하면 지운다.
+  renewalFailed?: { on: string; reason: string } | null
 }
 
 const KEY = 'ipgo:subscription'
@@ -176,16 +209,44 @@ export function subscribe(
   plan: PlanId,
   method: PayMethod,
   today = new Date(),
+  cardLast4: string | null = method === 'card' ? '4242' : null,
 ): Subscription {
   const paidOn = isoDate(today)
   const next: Subscription = {
     plan,
     startedOn: paidOn,
     method,
+    cardLast4,
+    renewalFailed: null,
     history: [
       { paidOn, plan, amount: planOf(plan).price, method },
       ...subscription.history,
     ],
+  }
+  saveSubscription(next)
+  return next
+}
+
+// 결제 수단만 바꾼다(다음 결제부터). 매달 결제가 실패한 상태는 다시 결제해야 풀린다.
+export function changeMethod(subscription: Subscription, method: PayMethod) {
+  const next: Subscription = {
+    ...subscription,
+    method,
+    cardLast4: method === 'card' ? '4242' : null,
+  }
+  saveSubscription(next)
+  return next
+}
+
+// 모의: 매달 결제가 안 된 상태로 만든다(가짜 서버로 볼 때만 — 내 계정 주소에 ?renewal=사유).
+export function markRenewalFailed(
+  subscription: Subscription,
+  reason: string,
+  today = new Date(),
+) {
+  const next: Subscription = {
+    ...subscription,
+    renewalFailed: { on: isoDate(today), reason },
   }
   saveSubscription(next)
   return next

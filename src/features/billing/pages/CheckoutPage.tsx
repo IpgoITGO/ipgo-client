@@ -5,6 +5,7 @@ import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
 import {
   loadSubscription,
+  METHOD_CHOICE,
   METHOD_LABEL,
   monthDayKo,
   nextBillingOn,
@@ -64,6 +65,9 @@ export function CheckoutPage() {
   if (!plan) return <Navigate replace to="/plans" />
   const was = planOf(before.plan)
   const amount = plan.price.toLocaleString('ko-KR')
+  // 매달 결제일 = 오늘 날짜(정기결제 고지에 금액·주기를 적는다)
+  const payDay = new Date().getDate()
+  const retry = params.get('retry') === '1' && before.renewalFailed
 
   if (result?.status === 'paid' && after) {
     const paid = after.history[0]
@@ -149,11 +153,25 @@ export function CheckoutPage() {
           <small>원</small>
         </p>
         <span className={styles.hint}>
-          {before.plan === 'trial'
-            ? '체험이 끝나도 자료는 그대로 남아요'
-            : `지금 ${planOf(before.plan).name} 요금제에서 바꿔요`}
+          {retry
+            ? `${monthDayKo(before.renewalFailed!.on)}에 안 된 결제를 다시 해요`
+            : before.plan === 'trial'
+              ? '체험이 끝나도 자료는 그대로 남아요'
+              : `지금 ${planOf(before.plan).name} 요금제에서 바꿔요`}
           {' · '}언제든 내 계정에서 해지
         </span>
+        <dl className={styles.dues}>
+          <div>
+            <dt>오늘 결제</dt>
+            <dd>{amount}원</dd>
+          </div>
+          <div>
+            <dt>다음부터</dt>
+            <dd>
+              매달 {payDay}일 {amount}원
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <fieldset className={styles.block}>
@@ -167,7 +185,8 @@ export function CheckoutPage() {
               type="radio"
               value={key}
             />
-            {METHOD_LABEL[key]}
+            {METHOD_CHOICE[key].name}
+            <span className={styles.via}>{METHOD_CHOICE[key].via}</span>
           </label>
         ))}
       </fieldset>
@@ -178,10 +197,16 @@ export function CheckoutPage() {
           onChange={(event) => setAgreed(event.target.checked)}
           type="checkbox"
         />
-        매달 자동 결제에 동의해요
+        <span>
+          매달 {payDay}일에 {amount}원이 자동으로 결제되는 것에 동의해요
+          <small className={styles.agreeSub}>
+            해지는 내 계정에서 언제든, 해지해도 다음 결제일까지 쓸 수 있어요
+          </small>
+        </span>
       </label>
 
       <Button
+        className={styles.payButton}
         disabled={!agreed}
         loading={isPending}
         loadingLabel="결제창 여는 중"
@@ -193,7 +218,7 @@ export function CheckoutPage() {
       </Button>
       {!agreed && (
         <span className={styles.hintCenter}>
-          자동 결제에 동의해야 누를 수 있어요
+          위의 자동 결제에 동의하면 누를 수 있어요
         </span>
       )}
       {failed ? (

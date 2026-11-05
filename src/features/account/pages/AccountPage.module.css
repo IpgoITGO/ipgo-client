@@ -59,8 +59,9 @@
   gap: 6px;
 }
 
+/* 막대는 눈에 들어오게 8px(11/5 사장님 — 체험 남은 날도 같은 막대) */
 .meter {
-  height: 6px;
+  height: 8px;
   overflow: hidden;
   background: var(--color-primary-soft);
   border-radius: 999px;
@@ -119,7 +120,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  justify-self: start;
+  justify-self: stretch;
   min-height: 44px;
   padding: 0 var(--space-4);
   color: var(--color-text);
@@ -127,6 +128,14 @@
   text-decoration: none;
   background: var(--color-primary-soft);
   border-radius: var(--radius-button);
+}
+
+.linkButton {
+  transition: transform 120ms ease;
+}
+
+.linkButton:active {
+  transform: translateY(1px);
 }
 
 .linkButton:focus-visible,
@@ -172,4 +181,77 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+/* 결제 수단: 이름 · 끝 4자리 · 결제사 */
+.card {
+  color: var(--color-text-2);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.via {
+  margin-left: var(--space-2);
+  padding: 2px 8px;
+  color: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: 1px;
+  background: var(--color-primary-soft);
+  border-radius: 6px;
+}
+
+.methods {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.method {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.method[aria-pressed='true'] {
+  font-weight: 700;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.method span {
+  color: var(--color-text-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.method:active {
+  transform: translateY(1px);
+}
+
+.method:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

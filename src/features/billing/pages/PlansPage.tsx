@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
-import { loadSubscription, PLANS, trialDaysLeft } from '../model/billing'
+import { RenewalFailedBanner } from '../components/RenewalFailedBanner'
+import {
+  COMPARE,
+  loadSubscription,
+  PLANS,
+  trialDaysLeft,
+} from '../model/billing'
 import styles from './Billing.module.css'
 
-// 요금제(#186): 카드 3장. 셀러에는 손글씨 메모 "추천!"을 붙인다(11/5 사장님 제안).
+// 요금제(#186): 카드 3장. 세 카드가 같은 항목을 같은 줄에 두어(COMPARE) 무엇이 다른지 한눈에,
+// 추천은 이름 옆 작은 표시 + 노란 테두리(11/5 사장님 — 손그림 메모는 뺌).
 export function PlansPage() {
   const navigate = useNavigate()
   const [subscription] = useState(() => loadSubscription())
@@ -24,34 +31,45 @@ export function PlansPage() {
         </p>
       </header>
 
+      <RenewalFailedBanner subscription={subscription} />
+
       <ul aria-label="요금제" className={styles.plans}>
         {PLANS.map((plan) => {
           const current = plan.id === subscription.plan
           return (
             <li
               className={styles.plan}
+              data-plan={plan.id}
               data-recommended={plan.recommended || undefined}
               key={plan.id}
             >
-              {plan.recommended && (
-                <span className={styles.memo}>
-                  <span aria-hidden="true">추천!</span>
-                  <span className={styles.srOnly}>추천 요금제</span>
-                </span>
-              )}
               <h2>
                 {plan.name}
+                {plan.recommended && (
+                  <span className={styles.recoBadge}>
+                    추천<span className={styles.srOnly}> 요금제</span>
+                  </span>
+                )}
                 {current && <span className={styles.nowBadge}>지금</span>}
               </h2>
               <p className={styles.price}>
                 {plan.price.toLocaleString('ko-KR')}
                 <small>{plan.price > 0 ? '원/월' : '원'}</small>
               </p>
-              <ul className={styles.features}>
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
+              <p className={styles.planNote}>{plan.note ?? ' '}</p>
+              <dl className={styles.compare}>
+                {COMPARE.map((row) => {
+                  const value = row.value(plan)
+                  return (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd data-none={value == null || undefined}>
+                        {value ?? '—'}
+                      </dd>
+                    </div>
+                  )
+                })}
+              </dl>
               {plan.id === 'trial' ? (
                 <Button disabled variant="secondary">
                   {current

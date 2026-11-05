@@ -55,7 +55,8 @@ describe('내 계정', () => {
     await user.click(await screen.findByRole('button', { name: /계정 메뉴/ }))
     await user.click(screen.getByRole('link', { name: '내 계정' }))
     expect(await screen.findByText('12월 5일 · 49,000원')).toBeInTheDocument()
-    expect(screen.getByText('카드(KG이니시스)')).toBeInTheDocument()
+    expect(screen.getByText(/신용·체크카드/)).toBeInTheDocument()
+    expect(screen.getByText(/•••• 4242/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '구독 해지' }))
     await user.click(screen.getByRole('button', { name: '해지하기' }))

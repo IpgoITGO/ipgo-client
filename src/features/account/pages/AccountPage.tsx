@@ -1,16 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../../auth/model/useAuth'
+import { env } from '../../../shared/config/env'
 import { Button } from '../../../shared/ui/Button/Button'
+import { RenewalFailedBanner } from '../../billing/components/RenewalFailedBanner'
 import {
+  changeMethod,
   loadSubscription,
+  markRenewalFailed,
+  METHOD_CHOICE,
   METHOD_LABEL,
   monthDayKo,
   nextBillingOn,
+  type PayMethod,
   planOf,
   setCancel,
+  TRIAL_DAYS,
   trialDaysLeft,
 } from '../../billing/model/billing'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
@@ -23,7 +30,16 @@ const NEAR = 0.8
 // 결제 수단 → 결제 내역 → 계정 → 맨 아래 작은 글씨로 해지(11/5 사장님 승인 시안).
 export function AccountPage() {
   const { user } = useAuth()
-  const [subscription, setSubscription] = useState(() => loadSubscription())
+  const [params] = useSearchParams()
+  // 가짜 서버로 볼 때만: ?renewal=LIMIT_EXCEEDED 처럼 붙이면 매달 결제가 안 된 화면을 본다.
+  const [subscription, setSubscription] = useState(() => {
+    const loaded = loadSubscription()
+    const mock = env.enableMsw ? params.get('renewal') : null
+    return mock && loaded.plan !== 'trial'
+      ? markRenewalFailed(loaded, mock)
+      : loaded
+  })
+  const [editMethod, setEditMethod] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const products = useQuery({
     queryKey: ['products', 'count'],
@@ -35,26 +51,49 @@ export function AccountPage() {
   const used = products.data?.total
   const limit = plan.products
   const ratio = used != null && limit ? Math.min(used / limit, 1) : 0
+  const daysUsed = trial ? TRIAL_DAYS - trialDaysLeft(subscription) : 0
 
   return (
     <div className={styles.page}>
       <h1>내 계정</h1>
+
+      <RenewalFailedBanner subscription={subscription} />
 
       <section aria-labelledby="plan-title" className={styles.block}>
         <div className={styles.row}>
           <h2 id="plan-title">지금 요금제</h2>
           <span className={styles.badge}>{plan.name}</span>
         </div>
-        <p className={styles.row}>
-          <span>{trial ? '체험' : '다음 결제'}</span>
-          <b>
-            {trial
-              ? `${trialDaysLeft(subscription)}일 남음`
-              : subscription.cancelOn
+        {trial ? (
+          <div className={styles.meterRow}>
+            <p className={styles.row}>
+              <span>체험</span>
+              <b>
+                {TRIAL_DAYS}일 중 {daysUsed}일 씀 ·{' '}
+                {trialDaysLeft(subscription)}일 남음
+              </b>
+            </p>
+            <div
+              aria-label={`체험 ${TRIAL_DAYS}일 중 ${daysUsed}일 씀`}
+              aria-valuemax={TRIAL_DAYS}
+              aria-valuemin={0}
+              aria-valuenow={daysUsed}
+              className={styles.meter}
+              role="meter"
+            >
+              <span style={{ width: `${(daysUsed / TRIAL_DAYS) * 100}%` }} />
+            </div>
+          </div>
+        ) : (
+          <p className={styles.row}>
+            <span>다음 결제</span>
+            <b>
+              {subscription.cancelOn
                 ? `${monthDayKo(subscription.cancelOn)}에 끝나요`
                 : `${monthDayKo(nextOn!)} · ${plan.price.toLocaleString('ko-KR')}원`}
-          </b>
-        </p>
+            </b>
+          </p>
+        )}
         <div className={styles.meterRow}>
           <p className={styles.row}>
             <span>관리 상품</span>
@@ -85,12 +124,56 @@ export function AccountPage() {
       </section>
 
       <section aria-labelledby="method-title" className={styles.block}>
-        <h2 id="method-title">결제 수단</h2>
-        <p className={styles.value}>
-          {subscription.method
-            ? METHOD_LABEL[subscription.method]
-            : '아직 없어요 · 체험은 카드 없이 써요'}
-        </p>
+        <div className={styles.row}>
+          <h2 id="method-title">결제 수단</h2>
+          {subscription.method && !editMethod && (
+            <button
+              className={styles.textButton}
+              onClick={() => setEditMethod(true)}
+              type="button"
+            >
+              바꾸기
+            </button>
+          )}
+        </div>
+        {!subscription.method ? (
+          <p className={styles.value}>아직 없어요 · 체험은 카드 없이 써요</p>
+        ) : editMethod ? (
+          <fieldset className={styles.methods}>
+            <legend className={styles.srOnly}>
+              다음 결제부터 쓸 결제 수단
+            </legend>
+            {(Object.keys(METHOD_CHOICE) as PayMethod[]).map((key) => (
+              <button
+                aria-pressed={subscription.method === key}
+                className={styles.method}
+                key={key}
+                onClick={() => {
+                  setSubscription(changeMethod(subscription, key))
+                  setEditMethod(false)
+                }}
+                type="button"
+              >
+                {METHOD_CHOICE[key].name}
+                <span>{METHOD_CHOICE[key].via}</span>
+              </button>
+            ))}
+            <p className={styles.note}>다음 결제부터 이 수단으로 결제돼요.</p>
+          </fieldset>
+        ) : (
+          <p className={styles.value}>
+            {METHOD_CHOICE[subscription.method].name}
+            {subscription.method === 'card' && subscription.cardLast4 && (
+              <span className={styles.card}>
+                {' '}
+                •••• {subscription.cardLast4}
+              </span>
+            )}
+            <span className={styles.via}>
+              {METHOD_CHOICE[subscription.method].via}
+            </span>
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="history-title" className={styles.block}>
