@@ -24,45 +24,55 @@
 
 /* 오래 걸릴 때 붙는 안내 띠 */
 .band {
-  display: grid;
-  grid-template-columns: 8px 1fr auto;
-  column-gap: var(--space-3);
-  row-gap: 2px;
-  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   margin-top: var(--space-4);
-  padding: var(--space-4) var(--space-5) 18px;
+  padding: var(--space-4) var(--space-5);
   text-align: left;
   background: var(--color-warning-bg);
   border-radius: 16px;
 }
 
 .band strong {
-  grid-column: 2;
   font-size: 15px;
 }
 
 .band time {
-  grid-column: 3;
+  margin-left: auto;
   color: var(--color-warning);
   font-size: 13px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-.band p {
-  grid-column: 2 / 4;
+.bandRow {
+  display: flex;
+  flex-basis: 100%;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bandRow p {
   max-width: none;
   color: var(--color-text-2);
   font-size: 14px;
   line-height: 1.6;
+  white-space: nowrap;
 }
 
-.band button {
-  grid-column: 2;
-  justify-self: start;
-  margin-top: var(--space-3);
+@media (width < 480px) {
+  .bandRow {
+    flex-wrap: wrap;
+  }
+
+  .bandRow p {
+    white-space: normal;
+  }
 }
 
 .fade {

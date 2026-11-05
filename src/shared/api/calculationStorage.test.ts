@@ -1,12 +1,21 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   clearTrackedRun,
+  readTrackedUpload,
+  writeTrackedUpload,
   readTrackedRun,
   writeTrackedRun,
 } from './calculationStorage'
 
 afterEach(clearTrackedRun)
 describe('탭 계산 상태 복구', () => {
+  it('확인 중인 업로드는 같은 사용자에게만 시작 시각과 함께 복구한다', () => {
+    writeTrackedUpload('o', { uploadId: '9', startedAt: 1000 })
+    expect(readTrackedUpload('o')).toEqual({ uploadId: '9', startedAt: 1000 })
+    expect(readTrackedUpload('x')).toBeNull()
+    clearTrackedRun()
+    expect(readTrackedUpload('o')).toBeNull()
+  })
   it('같은 사용자만 저장된 runId를 복구한다', () => {
     writeTrackedRun('synthetic-owner', 71)
     expect(readTrackedRun('synthetic-owner')).toBe(71)

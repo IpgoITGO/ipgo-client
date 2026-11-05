@@ -61,9 +61,7 @@ describe('UploadProcessing', () => {
 
     expect(screen.getByText('생각보다 오래 걸려요')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '창을 닫아도 처리는 계속돼요. 끝나면 대시보드에서 볼 수 있어요.',
-      ),
+      screen.getByText('창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요'),
     ).toBeInTheDocument()
     // 지난 시간은 화면에만 보이고 화면 읽기에서는 뺀다
     expect(screen.getByText('2분 14초째')).toHaveAttribute(
@@ -119,7 +117,7 @@ describe('UploadProcessing', () => {
     expect(
       screen.getByRole('dialog', { name: '수불부를 확인하는 중이에요' }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/지금 나가도 처리는 계속돼요/)).toBeInTheDocument()
+    expect(screen.getByText(/지금 나가도 괜찮아요/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '계속 기다리기' }))
 

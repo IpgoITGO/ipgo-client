@@ -16,14 +16,14 @@ import {
 import { useCalculation } from './calculationContext'
 import { CalculationProvider } from './CalculationProvider'
 import * as runApi from './calculationRunApi'
-import { readTrackedRun } from './calculationStorage'
+import { readTrackedRun, readTrackedUpload } from './calculationStorage'
 
 function Harness({
   getResult = async () => '새 계산 결과',
 }: {
   getResult?: () => Promise<string>
 }) {
-  const { trackRun, busy, runId } = useCalculation()
+  const { trackRun, trackUpload, busy, runId, phase } = useCalculation()
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: getResult,
@@ -31,6 +31,8 @@ function Harness({
   })
   return (
     <>
+      <button onClick={() => trackUpload('9')}>업로드 번호 받기</button>
+      <span data-testid="phase">{phase}</span>
       <button onClick={() => trackRun(71)}>계산 번호 받기</button>
       <button onClick={() => trackRun(72)}>새 계산 번호 받기</button>
       <button onClick={() => trackRun(null)}>계산 없음</button>
@@ -65,6 +67,62 @@ function setup(
   )
   return { client, user: userEvent.setup(), unmount: view.unmount }
 }
+
+describe('수불부 확인 단계 추적', () => {
+  const upload = (body: object) =>
+    http.get('/api/uploads/9', () =>
+      HttpResponse.json({ uploadId: 9, ...body }),
+    )
+
+  it('다시 열어도 저장된 업로드로 확인 중을 이어가고, 끝나면 계산 추적으로 넘긴다', async () => {
+    let done = false
+    server.use(
+      http.get('/api/uploads/9', () =>
+        HttpResponse.json(
+          done
+            ? { uploadId: 9, status: 'DONE', runId: 71 }
+            : { uploadId: 9, status: 'PROCESSING', runId: null },
+        ),
+      ),
+      http.get('/api/calculation-runs/71', () =>
+        HttpResponse.json({ runId: 71, status: 'RUNNING' }),
+      ),
+    )
+    const first = setup(2000, undefined, 'up-test')
+    await first.user.click(screen.getByText('업로드 번호 받기'))
+    expect(readTrackedUpload('up-test')?.uploadId).toBe('9')
+    const startedAt = readTrackedUpload('up-test')!.startedAt
+    first.unmount()
+
+    setup(2000, undefined, 'up-test')
+    expect(screen.getByTestId('phase')).toHaveTextContent('checking')
+    expect(await screen.findByText('수불부를 확인하고 있어요')).toBeVisible()
+    expect(readTrackedUpload('up-test')?.startedAt).toBe(startedAt)
+    expect(
+      screen.getByText(/1분째 · 끝나면 화면이 저절로 바뀌어요/),
+    ).toBeVisible()
+
+    done = true
+    await waitFor(() =>
+      expect(screen.getByTestId('tracked-run')).toHaveTextContent('71'),
+    )
+    expect(screen.getByTestId('phase')).toHaveTextContent('pending')
+    expect(readTrackedUpload('up-test')).toBeNull()
+  })
+
+  it('확인에 실패하면 서버가 준 이유를 보여 준다', async () => {
+    server.use(
+      upload({
+        status: 'FAILED',
+        error: { code: 'INVALID_SOURCE', message: '합성 실패 이유' },
+      }),
+    )
+    const { user } = setup(2000)
+    await user.click(screen.getByText('업로드 번호 받기'))
+    expect(await screen.findByText('합성 실패 이유')).toBeVisible()
+    expect(screen.getByTestId('phase')).toHaveTextContent('failed')
+  })
+})
 
 describe('계산 완료·실패 추적', () => {
   it('취소 응답이 늦어도 로컬 추적과 저장 번호를 즉시 지우고 실패 뒤 새로고침해도 복원하지 않는다', async () => {
