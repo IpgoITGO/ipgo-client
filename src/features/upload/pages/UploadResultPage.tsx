@@ -23,7 +23,7 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function UploadResultPage() {
-  const { trackRun } = useCalculation()
+  const { trackRun, trackUpload } = useCalculation()
   const { uploadId } = useParams()
   const navigate = useNavigate()
   // 업로드 화면에서 같은 기간을 덮어써 올렸으면 그 기간 목록이 넘어온다.
@@ -41,6 +41,12 @@ export function UploadResultPage() {
   // 업로드가 계산을 시작했으면 그 번호를 들고 가서 대시보드가 계산 상태를 보여 준다
   const runId = result.data?.runId
   const dashboardPath = runId ? `/dashboard?run=${runId}` : '/dashboard'
+
+  // 확인 단계도 오른쪽 아래 작은 창·대시보드가 따라가도록 알린다
+  const stillProcessing = result.data?.status === 'PROCESSING'
+  useEffect(() => {
+    if (stillProcessing) trackUpload(uploadId)
+  }, [stillProcessing, uploadId, trackUpload])
 
   const calculationId =
     result.data?.status === 'DONE' ? result.data.runId : null

@@ -35,6 +35,8 @@ import {
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
+import { shortDate } from '../../../shared/lib/elapsed'
+import { BusyStrip } from './BusyStrip'
 import styles from './DashboardPage.module.css'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
@@ -235,6 +237,9 @@ export function DashboardPage() {
     Number.isSafeInteger(routeRun) && routeRun > 0 ? routeRun : null
   // 업로드·입고 조건 저장 뒤 `/dashboard?run=번호`로 오면 공통 추적기(오른쪽 아래 작은 창)에 넘기고 주소는 정리한다
   const { trackRun } = calculation
+  const working = ['checking', 'pending', 'updating'].includes(
+    calculation.phase,
+  )
   useEffect(() => {
     if (routeRunId === null) return
     trackRun(routeRunId)
@@ -459,6 +464,7 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
+      <BusyStrip baseDate={noResult ? undefined : data.baseDate} />
       {(refreshRequired || data.freshness === 'stale-result') && (
         <aside className={styles.banner} data-state={data.freshness}>
           <span aria-hidden="true" className={styles.bannerMark}>
@@ -484,13 +490,20 @@ export function DashboardPage() {
 
       <header className={styles.intro}>
         <div>
-          <h1>
-            {noResult
-              ? '아직 계산한 결과가 없어요'
-              : refreshRequired
-                ? '수불부를 올리면 다시 계산해요'
-                : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
-          </h1>
+          <div className={styles.titleRow}>
+            <h1>
+              {noResult
+                ? '아직 계산한 결과가 없어요'
+                : refreshRequired
+                  ? '수불부를 올리면 다시 계산해요'
+                  : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
+            </h1>
+            {working && !noResult && (
+              <small className={styles.titleNote}>
+                {shortDate(data.baseDate)} 기준
+              </small>
+            )}
+          </div>
           <div className={styles.meta}>
             <span>{noResult ? '기준일 없음' : `기준일 ${data.baseDate}`}</span>
             {!noResult && (
