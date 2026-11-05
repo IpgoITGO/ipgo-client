@@ -29,7 +29,6 @@ import {
   isOwnPlan,
   isStale,
   shortBasis,
-  shortDate,
   usePlanned,
 } from '../../sku/model/plannedQuantity'
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'

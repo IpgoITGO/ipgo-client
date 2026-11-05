@@ -1,3 +1,7 @@
+import { shortDate } from '../../../shared/lib/elapsed'
+
+// 상세·테스트가 여기서 가져다 쓴다(날짜 짧게 쓰기는 shared 한 곳)
+export { shortDate }
 // 내 입고량: 상품 상세에서 시나리오·직접 넣은 수량을 보고 "이걸로 정함"을 남긴다. 대시보드·엑셀이 이어 쓴다.
 // ponytail: 서버 API가 아직 없어 이 브라우저에만 저장한다(ipgo-server#119). 생기면 load/save만 API 호출로 바꾼다.
 import { useMemo, useSyncExternalStore } from 'react'
@@ -72,15 +76,9 @@ export const isStale = (planned: Planned, currentBasis: string) =>
   planned.basis !== currentBasis
 
 /** "2026-11-05" → "11/5" */
-export function shortDate(iso: string) {
-  const [, m, d] = iso.slice(0, 10).split('-').map(Number)
-  return `${m}/${d}`
-}
-
 /** "2026. 11. 4" → "11/4" */
 export function shortBasis(basis: string) {
-  const [, m, d] = basis.split('.').map((part) => Number(part.trim()))
-  return `${m}/${d}`
+  return shortDate(basis)
 }
 
 export function todayIso() {
