@@ -148,6 +148,11 @@ mock을 먼저 만들어 둡니다. 서버가 열리면 `API_PROXY_TARGET`만 �
 | K2·K3 시나리오 | `GET·POST /results/{resultId}/scenarios`                | `src/features/sku/model/resultApi.ts` |
 | K4 AI 인사이트 | `GET /results/{resultId}/insight` (응답은 ipgo-ai 0002) | `src/features/sku/model/resultApi.ts` |
 
+K4가 `202 {"status":"GENERATING"}`을 반환하면 설명 생성 중 표시를 유지하고 2초마다
+재조회합니다. AI/FIXED/TABLE_ONLY로 완료되면 재조회를 멈춥니다. 생성 중에는 비활성/빈 설명으로
+표시하지 않으며 시나리오 표는 계속 볼 수 있습니다. 조회 오류에는 기존 다시 불러오기 안내를 사용합니다.
+설명 GET 재조회는 유료 생성 요청을 시작하지 않습니다.
+
 모의 API 모드에서는 각 API 요청 전에 서비스 워커에 현재 탭을 다시 등록하고 준비 응답을
 기다립니다. 포커스된 탭에서 워커가 중단돼도 다음 요청으로 복구하며, 동시에 시작된 요청은
 같은 준비 검사를 공유합니다. 3초 안에 확인하지 못하면 HTTP 요청을 보내지 않고 기존 연결
