@@ -33,13 +33,12 @@ describe('SkuPage', () => {
         /재고가 바닥났을 수 있어요 · 권장 72개를 지금 넣어 주세요/,
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText('품절 2일')).toBeInTheDocument()
+    expect(screen.getByText('재고 없던 날 2일')).toBeInTheDocument()
     // 추이 그래프 뒤에 "앞으로 12일" 예상 구간이 붙는다
     // 결론 문장이 그래프 위에 먼저 나오고, 범례·눈금·합계가 그림과 같은 말로 붙는다
     expect(screen.getByText(/기록 기준 재고가 없어요/)).toBeInTheDocument()
-    expect(screen.getByText('예상 하루 출고(노란 막대)')).toBeInTheDocument()
-    expect(screen.getByText('+12일')).toBeInTheDocument()
-    expect(screen.getByText('합계 약 58개')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '앞으로 재고' })).toBeInTheDocument()
+    expect(screen.getByText(/합계 약 58개/)).toBeInTheDocument()
     // 쓴 방식 하나만 말로 보여 주고(A·B 글자 없음), 계산은 풀이 순서로 보여 준다
     expect(
       screen.getByText('작년 같은 시기와 최근 흐름으로 계산했어요'),
@@ -66,9 +65,7 @@ describe('SkuPage', () => {
 
     expect(await screen.findByText(/기록 기준 재고 4개/)).toBeInTheDocument()
     expect(screen.queryByText(/지금 재고/)).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/서버 계산은 시작 재고 9개 기준/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/서버는 시작 재고 9개 기준/)).toBeInTheDocument()
   })
 
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {

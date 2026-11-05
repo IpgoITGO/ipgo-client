@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { calculationReason } from '../../../shared/lib/calculationReason'
@@ -86,34 +93,204 @@ const slashDate = (day: string, fallback: string) => {
 const perDayText = (value: number) =>
   value >= 10 ? String(Math.round(value)) : String(Math.round(value * 10) / 10)
 
+type Pt = [number, number]
+type Tone = 'danger' | 'ok' | 'ink'
+type Tip = {
+  title: string
+  rows: Array<{ color: string; label: string; value: string }>
+}
+type Note = {
+  tone: Tone
+  x: number
+  y: number
+  main: string
+  small: string[]
+  arrow: [number, number, number, number] | null
+}
+type LegendItem = {
+  kind: 'line' | 'dash' | 'bar' | 'dot' | 'band'
+  color: string
+  text: string
+}
+type View = {
+  g: ReactNode
+  count: number
+  xs: (index: number) => number
+  tip: (index: number) => Tip
+  head: ReactNode
+  sub: string
+  legend: LegendItem[]
+  note: Note | null
+}
+
+type TabKey = 'flow' | 'week' | 'ahead'
+const tabLabels: Record<TabKey, string> = {
+  flow: '재고·출고',
+  week: '주별 출고',
+  ahead: '앞으로 재고',
+}
+
+const INK = 'var(--color-primary)'
+const BAD = 'var(--color-danger)'
+const OK = 'var(--color-success)'
+const MUTED = 'var(--color-text-3)'
+const BAR = 'var(--color-chart-muted)'
+const FUT = 'var(--color-accent)'
+const toneColor: Record<Tone, string> = { danger: BAD, ok: OK, ink: INK }
+
+// 선을 부드럽게 잇는다. 값이 튀지 않게 제어점은 이웃 두 점 높이 안에 가둔다.
+function smooth(pts: Pt[]) {
+  if (pts.length === 0) return ''
+  let d = `M${pts[0][0]},${pts[0][1]}`
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const [x0, y0] = pts[i - 1] ?? pts[i]
+    const [x1, y1] = pts[i]
+    const [x2, y2] = pts[i + 1]
+    const [x3, y3] = pts[i + 2] ?? pts[i + 1]
+    const t = 0.18
+    const lo = Math.min(y1, y2)
+    const hi = Math.max(y1, y2)
+    const c1 = Math.min(hi, Math.max(lo, y1 + (y2 - y0) * t))
+    const c2 = Math.min(hi, Math.max(lo, y2 - (y3 - y1) * t))
+    d += `C${x1 + (x2 - x0) * t},${c1} ${x2 - (x3 - x1) * t},${c2} ${x2},${y2}`
+  }
+  return d
+}
+
+// 위만 둥근 막대
+const barPath = (x: number, w: number, yTop: number, base: number, r = 2.5) => {
+  const rr = Math.min(r, w / 2, Math.max(0, base - yTop))
+  return `M${x},${base}V${yTop + rr}q0,-${rr} ${rr},-${rr}h${w - 2 * rr}q${rr},0 ${rr},${rr}V${base}Z`
+}
+
+const mdOf = (ms: number) => {
+  const d = new Date(ms)
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
+}
+
+const noReduce = () =>
+  typeof window.matchMedia === 'function' &&
+  !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function Swatch({ kind, color }: { kind: LegendItem['kind']; color: string }) {
+  return (
+    <svg aria-hidden="true" className={styles.swatch} viewBox="0 0 22 12">
+      {kind === 'line' && (
+        <path
+          d="M1 6H21"
+          stroke={color}
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      )}
+      {kind === 'dash' && (
+        <path
+          d="M1 6H21"
+          stroke={color}
+          strokeDasharray="4 3"
+          strokeWidth="2"
+        />
+      )}
+      {kind === 'bar' && (
+        <rect fill={color} height="11" rx="2" width="8" x="7" y="1" />
+      )}
+      {kind === 'dot' && <circle cx="11" cy="6" fill={color} r="4.5" />}
+      {kind === 'band' && (
+        <rect fill={color} height="10" rx="2" width="20" x="1" y="1" />
+      )}
+    </svg>
+  )
+}
+
+function NoteArrow({
+  arrow,
+  tone,
+}: {
+  arrow: [number, number, number, number]
+  tone: Tone
+}) {
+  const [x1, y1, x2, y2] = arrow
+  const mx = (x1 + x2) / 2 + (y2 - y1) * 0.2
+  const my = (y1 + y2) / 2 - (x2 - x1) * 0.2
+  const ang = Math.atan2(y2 - my, x2 - mx)
+  const h = 8
+  return (
+    <g className={styles.arrow} style={{ color: toneColor[tone] }}>
+      <path d={`M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}`} pathLength="1" />
+      <path
+        d={`M${x2 - h * Math.cos(ang - 0.5)} ${y2 - h * Math.sin(ang - 0.5)}L${x2} ${y2}L${x2 - h * Math.cos(ang + 0.5)} ${y2 - h * Math.sin(ang + 0.5)}`}
+        pathLength="1"
+      />
+    </g>
+  )
+}
+
 function TrendChart({
   coverDays,
   forecastQty,
   history,
+  leadDays,
+  orderQty,
   shortageOn,
   startStock,
 }: {
   coverDays: number
   forecastQty: number | null
   history: SkuDetail['history']
+  leadDays: number | null
+  orderQty: number
   shortageOn: string | null
   startStock: number | null
 }) {
   const [wrapRef, width] = useWidth()
-  const phone = width < 480
-  const height = phone ? 250 : 280
-  const box = { left: 44, right: width - 12, top: 30, bottom: height - 48 }
+  const svgRef = useRef<SVGSVGElement>(null)
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const [tab, setTab] = useState<TabKey>('flow')
+  const [started, setStarted] = useState<TabKey | null>(null)
+  const [finished, setFinished] = useState<TabKey | null>(null)
+  const [hover, setHover] = useState<number | null>(null)
 
+  const phone = width < 480
   const future = coverDays > 0 && forecastQty != null ? coverDays : 0
   const daily = future ? (forecastQty ?? 0) / future : 0
   const last = history.at(-1)
-  const max = Math.max(...history.map((item) => item.inventory), daily, 1)
-  const step = niceStep(max)
-  const top = Math.ceil(max / step) * step
-  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step)
+  const stock = last?.inventory ?? 0
+  const tabs: TabKey[] =
+    daily > 0 ? ['flow', 'week', 'ahead'] : ['flow', 'week']
+  const active: TabKey = tabs.includes(tab) ? tab : 'flow'
 
-  // 가로는 날짜 간격대로 둔다(기록이 주 단위여도 "앞으로 N일"과 같은 자로 잰다). 날짜를 못 읽으면 순서대로.
+  // 처음 한 번 그려진 뒤 핵심 한 곳만 짚는다. 움직임 줄이기면 끝난 모습을 바로 보여 준다.
+  useEffect(() => {
+    if (!noReduce()) {
+      setStarted(active)
+      setFinished(active)
+      return
+    }
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setStarted(active))
+    })
+    const timer = setTimeout(() => setFinished(active), 1350)
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+      clearTimeout(timer)
+    }
+  }, [active])
+  const go = started === active
+  const done = finished === active
+
+  const height = (phone ? 250 : 280) + (active === 'week' ? 12 : 0)
+  const box = {
+    left: phone ? 36 : 44,
+    right: width - 12,
+    top: 34,
+    bottom: height - (active === 'week' ? 60 : 48),
+  }
+
+  // 가로는 날짜 간격대로 둔다(기록이 주 단위여도 같은 자로 잰다). 날짜를 못 읽으면 순서대로.
   const first = Date.parse(history[0]?.day ?? '')
+  const lastMs = Date.parse(last?.day ?? '')
   const dayAt = (index: number) => {
     const at = Date.parse(history[index]?.day ?? '')
     return Number.isNaN(first) || Number.isNaN(at)
@@ -121,287 +298,824 @@ function TrendChart({
       : (at - first) / 864e5
   }
   const lastDay = history.length > 0 ? dayAt(history.length - 1) : 0
-  const span = lastDay + future
-  const perDay = span > 0 ? (box.right - box.left) / span : 0
-  const xd = (day: number) => box.left + day * perDay
-  const x = (index: number) => xd(dayAt(index))
-  const y = (value: number) =>
-    box.bottom - (value / top) * (box.bottom - box.top)
-  const gap = history.length > 1 ? (lastDay / (history.length - 1)) * perDay : 0
-  const barWidth = Math.min(14, Math.max(gap * 0.35, 4))
-  const stockouts = history
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => item.inventory === 0)
-  const todayX = x(history.length - 1)
+  const dateAfter = (days: number) =>
+    Number.isNaN(lastMs)
+      ? `+${Math.round(days)}일`
+      : mdOf(lastMs + Math.round(days) * 864e5)
+  const baseDate = last ? slashDate(last.day, last.date) : ''
 
-  // 지금 재고가 하루 평균으로 줄어들면 며칠 뒤 0이 되는지
-  const stock = last?.inventory ?? 0
   const daysLeft = daily > 0 ? stock / daily : Infinity
   const runsOut = future > 0 && stock > 0 && daysLeft <= future
   const outDays = Math.max(1, Math.round(daysLeft))
-  // 이 값은 "지금"이 아니라 마지막 기록일의 기말 재고다. 문장에 그 날짜를 적고 서버 계산과 다르면 알려 준다.
-  const baseDate = last ? slashDate(last.day, last.date) : ''
-  const lastMs = Date.parse(last?.day ?? '')
-  const outDate =
-    Number.isNaN(lastMs) || !Number.isFinite(daysLeft)
-      ? null
-      : new Date(lastMs + outDays * 864e5)
-  const outText = outDate
-    ? `${outDate.getUTCMonth() + 1}/${outDate.getUTCDate()}쯤`
-    : `약 ${outDays}일 뒤`
-  const serverDiffers = startStock != null && startStock !== stock
-  const outX = xd(lastDay + daysLeft)
-  const zoneWidth = box.right - todayX
-  const flip = outX + 78 > box.right
+  const outText = Number.isFinite(daysLeft) ? `${dateAfter(outDays)}쯤` : ''
+  const arrive = leadDays != null ? 1 + leadDays : null
 
-  // 날짜 글자: 점 사이가 좁으면 건너뛰어 겹치지 않게
-  const every = Math.max(1, Math.ceil(46 / Math.max(gap, 1)))
-  const dateIndexes = history
-    .map((_, index) => index)
-    .filter((index) => (history.length - 1 - index) % every === 0)
-
-  return (
-    <div className={styles.trendChart} ref={wrapRef}>
-      {future > 0 && last && (
-        <>
-          <p className={styles.trendHead}>
-            {stock === 0 ? (
-              <>
-                <em>{baseDate} 기록 기준 재고가 없어요</em> · 하루 약{' '}
-                {perDayText(daily)}개씩 나가요
-              </>
-            ) : runsOut ? (
-              <>
-                {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
-                {perDayText(daily)}개씩 나가면 <em>{outText} 바닥나요</em>
-              </>
-            ) : (
-              <>
-                {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
-                {perDayText(daily)}개씩 나가도{' '}
-                <em>앞으로 {future}일은 버텨요</em>
-              </>
-            )}
-          </p>
-          {serverDiffers && (
-            <p className={styles.trendWarn}>
-              서버 계산은 시작 재고 {startStock.toLocaleString()}개 기준
-              {shortageOn
-                ? `이라 ${slashDate(shortageOn, shortageOn)} 소진으로 봐요.`
-                : '이에요.'}
-            </p>
-          )}
-          <p className={styles.trendSub}>
-            왼쪽은 최근 기록, 노란 칸은 앞으로 {future}일 예상이에요.
-          </p>
-        </>
-      )}
-      <svg
-        aria-label="최근 재고와 출고 추이 그래프"
-        className={styles.chart}
-        role="img"
-        style={{ height }}
-        viewBox={`0 0 ${width} ${height}`}
-      >
-        <title>최근 재고와 출고 추이</title>
-        <text className={styles.unitLabel} x={box.left - 8} y={box.top - 14}>
-          개
-        </text>
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line
-              className={styles.gridLine}
-              x1={box.left}
-              x2={box.right}
-              y1={y(tick)}
-              y2={y(tick)}
-            />
-            <text className={styles.tick} x={box.left - 8} y={y(tick) + 4}>
-              {tickText(tick)}
-            </text>
-          </g>
-        ))}
-        {future > 0 && (
-          <g>
-            <rect
-              className={styles.forecastZone}
-              height={box.bottom - box.top}
-              rx="8"
-              width={zoneWidth}
-              x={todayX}
-              y={box.top}
-            />
-            <line
-              className={styles.todayLine}
-              x1={todayX}
-              x2={todayX}
-              y1={box.top - 6}
-              y2={box.bottom + 6}
-            />
-            <text
-              className={styles.forecastLabel}
-              x={todayX + zoneWidth / 2}
-              y={box.top + 16}
-            >
-              앞으로 {future}일
-            </text>
-            {!phone && (
-              <text
-                className={styles.forecastSum}
-                x={todayX + zoneWidth / 2}
-                y={box.top + 32}
-              >
-                합계 약 {count(forecastQty)}
-              </text>
-            )}
-            {Array.from({ length: future }, (_, i) => (
-              <rect
-                className={styles.forecastBar}
-                height={box.bottom - y(daily)}
-                key={i}
-                width={Math.max(2, perDay * 0.55)}
-                x={xd(lastDay + i + 1) - Math.max(2, perDay * 0.55) / 2}
-                y={y(daily)}
-              />
-            ))}
-            {!phone && (
-              <text
-                className={styles.forecastLabel}
-                x={todayX + zoneWidth / 2}
-                y={y(daily) - 7}
-              >
-                하루 약 {perDayText(daily)}개
-              </text>
-            )}
-          </g>
-        )}
-        {history.map((item, index) => (
-          <rect
-            className={styles.outboundBar}
-            height={box.bottom - y(item.outbound)}
-            key={item.date}
-            style={{ animationDelay: `${index * 60}ms` }}
-            width={barWidth}
-            x={x(index) - barWidth / 2}
-            y={y(item.outbound)}
+  const axis = (top: number, step: number, y: (v: number) => number) => (
+    <>
+      {Array.from(
+        { length: Math.round(top / step) + 1 },
+        (_, i) => i * step,
+      ).map((tick) => (
+        <g key={tick}>
+          <line
+            className={tick === 0 ? styles.baseLine : styles.gl}
+            x1={box.left}
+            x2={box.right}
+            y1={y(tick)}
+            y2={y(tick)}
           />
-        ))}
-        <polyline
-          className={styles.inventoryLine}
-          fill="none"
-          points={history
-            .map((item, index) => `${x(index)},${y(item.inventory)}`)
-            .join(' ')}
-        />
-        {runsOut && last && (
-          <>
-            <polyline
-              className={styles.forecastLine}
-              fill="none"
-              points={`${todayX},${y(stock)} ${outX},${y(0)}`}
-            />
-            <line
-              className={styles.dropLine}
-              x1={outX}
-              x2={outX}
-              y1={y(0) - 8}
-              y2={y(top * 0.5)}
-            />
-            <text
-              className={styles.dropLabel}
-              style={flip ? { textAnchor: 'end' } : undefined}
-              x={outX + (flip ? -6 : 6)}
-              y={y(top * 0.5) + 4}
-            >
-              약 {outDays}일 뒤
-            </text>
-            <text
-              className={styles.dropLabel}
-              style={flip ? { textAnchor: 'end' } : undefined}
-              x={outX + (flip ? -6 : 6)}
-              y={y(top * 0.5) + 19}
-            >
-              바닥
-            </text>
-            <circle className={styles.zeroPoint} cx={outX} cy={y(0)} r="6" />
-          </>
-        )}
-        {stockouts.map(({ item, index }) => (
-          <circle
-            className={styles.zeroPoint}
-            cx={x(index)}
-            cy={box.bottom}
-            key={item.date}
-            r="6"
-          />
-        ))}
-        {future > 0 && last && stock > 0 && (
-          <circle
-            className={styles.todayPoint}
-            cx={todayX}
-            cy={y(last.inventory)}
-            r="5.5"
-          />
-        )}
-        {stockouts.length > 0 && (
-          <text
-            className={styles.stockoutLabel}
-            x={x(stockouts[Math.floor(stockouts.length / 2)].index)}
-            y={box.bottom - 12}
-          >
-            품절 {stockouts.length}일
+          <text className={styles.tick2} x={box.left - 8} y={y(tick) + 4}>
+            {tickText(tick)}
           </text>
-        )}
-        {dateIndexes.map((index) => (
-          <text
-            className={
-              index === history.length - 1 && future > 0
-                ? styles.dateToday
-                : styles.dateLabel
-            }
-            key={history[index].date}
-            x={x(index)}
-            y={box.bottom + 20}
-          >
-            {slashDate(history[index].day, history[index].date)}
-          </text>
-        ))}
-        {future > 0 && (
-          <>
-            <text className={styles.dateToday} x={todayX} y={box.bottom + 37}>
-              마지막 기록
-            </text>
-            <text
-              className={styles.dateLabel}
-              style={{ textAnchor: 'end' }}
-              x={box.right}
-              y={box.bottom + 20}
-            >
-              +{future}일
-            </text>
-          </>
-        )}
-      </svg>
-      <div className={styles.trendLegend}>
-        <span data-series="inventory">재고(선)</span>
-        <span data-series="outbound">
-          {future > 0
-            ? phone
-              ? '지난 출고(막대)'
-              : '지난 하루 출고(막대)'
-            : '출고(막대)'}
+        </g>
+      ))}
+      <text className={styles.unit} x={box.left - 8} y={box.top - 16}>
+        개
+      </text>
+    </>
+  )
+  const ripple = (cx: number, cy: number, tone: Tone) => (
+    <circle
+      className={styles.ripple}
+      cx={cx}
+      cy={cy}
+      r="6"
+      style={{ stroke: toneColor[tone] }}
+    />
+  )
+  // 위 문장과 서버 계산이 다르면 같은 문장 끝에 괄호로 붙인다(따로 빨간 경고를 두지 않는다).
+  const head = (main: ReactNode) => (
+    <>
+      {main}
+      {startStock != null && startStock !== stock && (
+        <span className={styles.trendAside}>
+          {' '}
+          (서버는 시작 재고 {startStock.toLocaleString()}개 기준이라{' '}
+          {shortageOn
+            ? `${slashDate(shortageOn, shortageOn)} 소진으로 봐요`
+            : '따로 계산해요'}
+          )
         </span>
+      )}
+    </>
+  )
+
+  function flowView(): View {
+    const max = Math.max(
+      ...history.map((h) => Math.max(h.inventory, h.outbound)),
+      daily,
+      1,
+    )
+    const step = niceStep(max)
+    const top = Math.ceil(max / step) * step
+    const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
+    const span = lastDay + future
+    const perDay = span > 0 ? (box.right - box.left) / span : 0
+    const xd = (d: number) => box.left + d * perDay
+    const x = (i: number) => xd(dayAt(i))
+    const gap =
+      history.length > 1 ? (lastDay / (history.length - 1)) * perDay : 0
+    const bw = Math.min(10, Math.max(gap * 0.4, 3))
+    const todayX = x(history.length - 1)
+    const zone = box.right - todayX
+    const outX = xd(lastDay + daysLeft)
+    const pts = history.map((h, i): Pt => [x(i), y(h.inventory)])
+    const stockouts = history
+      .map((h, i) => ({ h, i }))
+      .filter(({ h }) => h.inventory === 0)
+    const fw = Math.max(2, Math.min(10, perDay * 0.55))
+    const every = Math.max(1, Math.ceil(46 / Math.max(gap, 1)))
+    const labels = history
+      .map((_, i) => i)
+      .filter((i) => (history.length - 1 - i) % every === 0)
+    const focus: [number, number, Tone] | null = runsOut
+      ? [outX, y(0), 'danger']
+      : stock === 0
+        ? [todayX, y(0), 'danger']
+        : future > 0
+          ? [todayX, y(stock), 'ink']
+          : null
+
+    const g = (
+      <>
         {future > 0 && (
-          <span data-series="forecast">
-            {phone ? '예상 출고(노란 막대)' : '예상 하루 출고(노란 막대)'}
-          </span>
+          <rect
+            className={styles.futBand}
+            height={box.bottom - box.top + 6}
+            rx="6"
+            width={zone}
+            x={todayX}
+            y={box.top - 6}
+          />
+        )}
+        {stockouts.map(({ h, i }) => (
+          <rect
+            className={`${styles.outBand} ${styles.later}`}
+            height="14"
+            key={h.day}
+            width={Math.max(gap, 4)}
+            x={x(i) - Math.max(gap, 4) / 2}
+            y={box.bottom - 14}
+          />
+        ))}
+        {axis(top, step, y)}
+        {history.map((h, i) =>
+          h.outbound > 0 ? (
+            <path
+              className={`${styles.bar} ${styles.grow}`}
+              d={barPath(x(i) - bw / 2, bw, y(h.outbound), box.bottom)}
+              key={h.day}
+              style={{ ['--i' as string]: i }}
+            />
+          ) : null,
+        )}
+        {future > 0 &&
+          Array.from({ length: future }, (_, k) => (
+            <path
+              className={`${styles.bar} ${styles.barFut} ${styles.grow}`}
+              d={barPath(
+                xd(lastDay + k + 1) - fw / 2,
+                fw,
+                y(daily),
+                box.bottom,
+              )}
+              key={k}
+              style={{ ['--i' as string]: history.length + k }}
+            />
+          ))}
+        {pts.length > 1 && (
+          <path
+            className={`${styles.area} ${styles.later}`}
+            d={`${smooth(pts)}L${pts[pts.length - 1][0]},${box.bottom}L${pts[0][0]},${box.bottom}Z`}
+          />
+        )}
+        <path
+          className={`${styles.line} ${styles.draw}`}
+          d={smooth(pts)}
+          pathLength="1"
+        />
+        {runsOut && (
+          <path
+            className={`${styles.line} ${styles.later} ${styles.projLine}`}
+            d={`M${todayX},${y(stock)}L${outX},${y(0)}`}
+          />
+        )}
+        {stockouts.map(({ h, i }) => (
+          <circle
+            className={`${styles.dotRed} ${styles.later}`}
+            cx={x(i)}
+            cy={box.bottom}
+            key={h.day}
+            r="4.5"
+          />
+        ))}
+        {stock > 0 && future > 0 && (
+          <circle
+            className={`${styles.dotInk} ${styles.later}`}
+            cx={todayX}
+            cy={y(stock)}
+            r="4.5"
+          />
         )}
         {runsOut && (
-          <span data-series="drop">
-            {phone ? '줄어드는 재고' : '이대로면 줄어드는 재고'}
-          </span>
+          <circle
+            className={`${styles.dotRed} ${styles.later}`}
+            cx={outX}
+            cy={y(0)}
+            r="5"
+          />
         )}
-        <span data-series="stockout">재고 0(품절)</span>
+        {focus && ripple(...focus)}
+        {labels.map((i) => (
+          <text
+            className={
+              i === history.length - 1 && future > 0 ? styles.xNow : styles.xt
+            }
+            key={history[i].day}
+            x={x(i)}
+            y={box.bottom + 20}
+          >
+            {slashDate(history[i].day, history[i].date)}
+          </text>
+        ))}
+        {future > 0 && (
+          <>
+            {zone >= 44 && (
+              <text
+                className={styles.xt}
+                style={{ textAnchor: 'end' }}
+                x={box.right}
+                y={box.bottom + 20}
+              >
+                {dateAfter(future)}
+              </text>
+            )}
+            <text className={styles.xSmall} x={todayX} y={box.bottom + 36}>
+              마지막 기록
+            </text>
+            {zone >= 96 && (
+              <text
+                className={`${styles.tag} ${styles.later}`}
+                x={todayX + zone / 2}
+                y={box.top + 8}
+              >
+                예상 하루 {perDayText(daily)}개
+              </text>
+            )}
+          </>
+        )}
+      </>
+    )
+
+    let note: Note | null = null
+    if (runsOut) {
+      const small: string[] = []
+      if (arrive != null) {
+        const when = `${dateAfter(arrive)} 도착`
+        small.push(
+          arrive < daysLeft ? `지금 넣으면 ${when}` : `지금 넣어도 ${when}`,
+          arrive < daysLeft
+            ? `${Math.round(daysLeft - arrive)}일 여유`
+            : '그사이 비어요',
+        )
+      }
+      const nx = Math.min(box.right - 4, outX + 40)
+      note = {
+        tone: 'danger',
+        x: nx,
+        y: box.top + 30,
+        main: `${outText} 바닥`,
+        small,
+        arrow: [
+          nx - 12,
+          box.top + 36 + small.length * 14 + 8,
+          outX,
+          Math.min(y(daily) - 7, y(0) - 9),
+        ],
+      }
+    }
+
+    const perDayWord = perDayText(daily)
+    const mainHead =
+      stock === 0 ? (
+        <>
+          <em>{baseDate} 기록 기준 재고가 없어요</em> · 하루 약 {perDayWord}
+          개씩 나가요
+        </>
+      ) : runsOut ? (
+        <>
+          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
+          {perDayWord}개씩 나가면 <em>{outText} 바닥나요</em>
+        </>
+      ) : future > 0 ? (
+        <>
+          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
+          {perDayWord}개씩 나가도 <em>앞으로 {future}일은 버텨요</em>
+        </>
+      ) : (
+        <>
+          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개예요
+        </>
+      )
+
+    return {
+      g,
+      count: history.length + future,
+      xs: (i) =>
+        i < history.length ? x(i) : xd(lastDay + i - history.length + 1),
+      tip: (i) =>
+        i < history.length
+          ? {
+              title: slashDate(history[i].day, history[i].date),
+              rows: [
+                {
+                  color: INK,
+                  label: '재고',
+                  value: `${history[i].inventory.toLocaleString()}개`,
+                },
+                {
+                  color: BAR,
+                  label: '출고',
+                  value: `${history[i].outbound.toLocaleString()}개`,
+                },
+              ],
+            }
+          : {
+              title: dateAfter(i - history.length + 1),
+              rows: [
+                {
+                  color: FUT,
+                  label: '예상 출고',
+                  value: `${perDayWord}개`,
+                },
+                {
+                  color: INK,
+                  label: '예상 재고',
+                  value: `${Math.max(0, Math.round(stock - daily * (i - history.length + 1))).toLocaleString()}개`,
+                },
+              ],
+            },
+      head: head(mainHead),
+      sub:
+        future > 0
+          ? `노란 칸은 앞으로 ${future}일 예상이에요(합계 약 ${count(forecastQty)}).`
+          : '지난 재고와 출고 기록이에요.',
+      legend: [
+        { kind: 'line', color: INK, text: '재고' },
+        ...(runsOut
+          ? [{ kind: 'dash' as const, color: INK, text: '예상 재고' }]
+          : []),
+        { kind: 'bar', color: BAR, text: '하루 출고' },
+        ...(future > 0
+          ? [{ kind: 'bar' as const, color: FUT, text: '예상 출고' }]
+          : []),
+        ...(stockouts.length > 0
+          ? [
+              {
+                kind: 'band' as const,
+                color: 'rgb(200 38 28 / 22%)',
+                text: `재고 없던 날 ${stockouts.length}일`,
+              },
+            ]
+          : []),
+      ],
+      note,
+    }
+  }
+
+  function weekView(): View {
+    const buckets = new Map<number, { v: number; out: number }>()
+    history.forEach((h, i) => {
+      const b = Math.floor(dayAt(i) / 7)
+      const cur = buckets.get(b) ?? { v: 0, out: 0 }
+      cur.v += h.outbound
+      cur.out += h.inventory === 0 ? 1 : 0
+      buckets.set(b, cur)
+    })
+    const keys = [...buckets.keys()].sort((a, b) => a - b)
+    const weeks = keys.map((b) => {
+      const w = buckets.get(b) ?? { v: 0, out: 0 }
+      const startMs = first + b * 7 * 864e5
+      const endMs = Math.min(startMs + 6 * 864e5, lastMs)
+      return {
+        ...w,
+        label: Number.isNaN(startMs) ? `${b + 1}주` : mdOf(startMs),
+        end: Number.isNaN(endMs) ? '' : mdOf(endMs),
+        part: b === keys[keys.length - 1] && lastDay - b * 7 + 1 < 7,
+      }
+    })
+    const full = weeks.filter((w) => !w.part && w.out === 0)
+    const pool = full.length > 0 ? full : weeks.filter((w) => !w.part)
+    const avg =
+      pool.length > 0
+        ? Math.round(pool.reduce((s, w) => s + w.v, 0) / pool.length)
+        : null
+    const peak = Math.max(...weeks.map((w) => w.v), avg ?? 0, 1)
+    const step = niceStep(peak * 1.45)
+    const top = Math.ceil((peak * 1.45) / step) * step
+    const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
+    const slot = (box.right - box.left) / weeks.length
+    const bw = Math.min(24, slot * 0.5)
+    const cx = (i: number) => box.left + slot * (i + 0.5)
+    const every = Math.max(1, Math.ceil(46 / slot))
+    const tipX = box.left + slot * (weeks.length - 1)
+
+    const g = (
+      <>
+        {axis(top, step, y)}
+        {weeks.map((w, i) => (
+          <g key={w.label}>
+            <path
+              className={`${w.part || w.out ? styles.barPart : styles.bar} ${styles.grow}`}
+              d={barPath(cx(i) - bw / 2, bw, y(w.v), box.bottom, 4)}
+              style={{ ['--i' as string]: i * 5 }}
+            />
+            {i % every === 0 && (
+              <>
+                <text className={styles.xt} x={cx(i)} y={box.bottom + 19}>
+                  {w.label}
+                </text>
+                {w.end && w.end !== w.label && (
+                  <text className={styles.xSmall} x={cx(i)} y={box.bottom + 33}>
+                    ~{w.end}
+                  </text>
+                )}
+                {(w.out > 0 || w.part) && (
+                  <text
+                    className={`${styles.xSmall} ${styles.later}`}
+                    style={w.out ? { fill: BAD, fontWeight: 700 } : undefined}
+                    x={cx(i)}
+                    y={box.bottom + 48}
+                  >
+                    {w.out ? `품절 ${w.out}일` : '덜 찬 주'}
+                  </text>
+                )}
+              </>
+            )}
+          </g>
+        ))}
+        {avg != null && (
+          <>
+            <line
+              className={`${styles.avgLine} ${styles.later}`}
+              x1={box.left}
+              x2={box.right}
+              y1={y(avg)}
+              y2={y(avg)}
+            />
+            {ripple(tipX, y(avg), 'ink')}
+          </>
+        )}
+      </>
+    )
+    return {
+      g,
+      count: weeks.length,
+      xs: cx,
+      tip: (i) => ({
+        title: `${weeks[i].label}–${weeks[i].end || weeks[i].label}`,
+        rows: [
+          {
+            color: BAR,
+            label: '출고',
+            value: `${weeks[i].v.toLocaleString()}개`,
+          },
+          ...(weeks[i].out
+            ? [
+                {
+                  color: BAD,
+                  label: '재고 없던 날',
+                  value: `${weeks[i].out}일`,
+                },
+              ]
+            : []),
+        ],
+      }),
+      head:
+        avg != null ? (
+          <>
+            한 주에 평균{' '}
+            <em className={styles.hlInk}>{avg.toLocaleString()}개</em> 나가요
+          </>
+        ) : (
+          <>아직 한 주를 다 채운 기록이 없어요</>
+        ),
+      sub: '재고가 없던 날이 있는 주와 덜 찬 주는 옅게 그리고 평균에서 빼요.',
+      legend: [
+        { kind: 'bar', color: BAR, text: '주별 출고' },
+        {
+          kind: 'bar',
+          color: 'var(--chart-part)',
+          text: '재고 없던 날이 있는 주·덜 찬 주',
+        },
+        { kind: 'dash', color: INK, text: '평균' },
+      ],
+      note:
+        avg != null
+          ? {
+              tone: 'ink',
+              x: box.right - 2,
+              y: box.top + 6,
+              main: `한 주 평균 ${avg.toLocaleString()}개`,
+              small: ['다 판 주만 셌어요'],
+              arrow:
+                weeks.length > 1
+                  ? [tipX + 14, box.top + 40, tipX, y(avg) - 7]
+                  : null,
+            }
+          : null,
+    }
+  }
+
+  function aheadView(): View {
+    const N = 30
+    const keep = orderQty > 0 && arrive != null
+    const atArrive = Math.max(0, stock - daily * (arrive ?? 0)) + orderQty
+    const level = (i: number, order: boolean) =>
+      order && arrive != null && i >= arrive
+        ? Math.max(0, atArrive - daily * (i - arrive))
+        : Math.max(0, stock - daily * i)
+    const yes = Array.from({ length: N + 1 }, (_, i) => level(i, keep))
+    const no = Array.from({ length: N + 1 }, (_, i) => level(i, false))
+    const peak = Math.max(...yes, ...no, 1)
+    const step = niceStep(peak * 1.45)
+    const top = Math.ceil((peak * 1.45) / step) * step
+    const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
+    const xs = (i: number) => box.left + (i / N) * (box.right - box.left)
+    const zi = no.findIndex((v) => v === 0)
+    const zy =
+      keep && arrive != null
+        ? yes.findIndex((v, i) => i > arrive && v === 0)
+        : -1
+    const coverEnd =
+      keep && arrive != null ? arrive + atArrive / daily : daysLeft
+    const line = (arr: number[]) =>
+      arr.map((v, i) => `${i ? 'L' : 'M'}${xs(i)},${y(v)}`).join('')
+    const endI = keep ? zy : zi
+    const arriveFlip = arrive != null && xs(arrive) > box.right - 90
+
+    const g = (
+      <>
+        {axis(top, step, y)}
+        {keep && arrive != null && (
+          <>
+            <line
+              className={`${styles.vline} ${styles.later}`}
+              x1={xs(arrive)}
+              x2={xs(arrive)}
+              y1={box.top - 6}
+              y2={box.bottom}
+            />
+            <text
+              className={`${styles.tag} ${styles.later}`}
+              style={{ textAnchor: arriveFlip ? 'end' : 'start' }}
+              x={xs(arrive) + (arriveFlip ? -6 : 6)}
+              y={box.top - 14}
+            >
+              {dateAfter(arrive)} 도착
+            </text>
+          </>
+        )}
+        {keep && (
+          <path
+            className={`${styles.area} ${styles.areaOk} ${styles.later}`}
+            d={`${line(yes)}L${xs(N)},${box.bottom}L${xs(0)},${box.bottom}Z`}
+          />
+        )}
+        <path
+          className={`${styles.line} ${styles.noLine} ${keep ? styles.later : styles.draw}`}
+          d={line(no)}
+          pathLength={keep ? undefined : '1'}
+        />
+        {keep && (
+          <path
+            className={`${styles.line} ${styles.planLine} ${styles.draw}`}
+            d={line(yes)}
+            pathLength="1"
+          />
+        )}
+        {zi >= 0 && (
+          <circle
+            className={`${styles.dotRed} ${styles.later}`}
+            cx={xs(zi)}
+            cy={y(0)}
+            r="4.5"
+          />
+        )}
+        {keep && zy >= 0 && (
+          <circle
+            className={`${styles.dotOk} ${styles.later}`}
+            cx={xs(zy)}
+            cy={y(0)}
+            r="5"
+          />
+        )}
+        {endI >= 0 && ripple(xs(endI), y(0), keep ? 'ok' : 'danger')}
+        {[0, 5, 10, 15, 20, 25, 30].map((k) => (
+          <text
+            className={k === 0 ? styles.xNow : styles.xt}
+            key={k}
+            x={xs(k)}
+            y={box.bottom + 20}
+          >
+            {dateAfter(k)}
+          </text>
+        ))}
+      </>
+    )
+    const nx = Math.min(box.right - 4, (endI >= 0 ? xs(endI) : box.right) + 40)
+    return {
+      g,
+      count: N + 1,
+      xs,
+      tip: (i) => ({
+        title: dateAfter(i),
+        rows: [
+          ...(keep
+            ? [
+                {
+                  color: OK,
+                  label: `${orderQty.toLocaleString()}개 넣으면`,
+                  value: `${Math.round(yes[i]).toLocaleString()}개`,
+                },
+              ]
+            : []),
+          {
+            color: MUTED,
+            label: '안 넣으면',
+            value: `${Math.round(no[i]).toLocaleString()}개`,
+          },
+        ],
+      }),
+      head: head(
+        keep ? (
+          <>
+            권장 <em className={styles.hlInk}>{orderQty.toLocaleString()}개</em>
+            를 지금 넣으면 {dateAfter(coverEnd)}까지 버텨요
+          </>
+        ) : Number.isFinite(daysLeft) && daysLeft <= N ? (
+          <>
+            안 넣으면 <em>{outText} 바닥나요</em>
+          </>
+        ) : (
+          <>앞으로 {N}일은 재고가 남아요</>
+        ),
+      ),
+      sub: `${baseDate} 재고 ${stock.toLocaleString()}개에서 하루 ${perDayText(daily)}개씩 줄어드는 계산이에요.${
+        arrive != null ? ` 지금 주문하면 ${dateAfter(arrive)}에 도착해요.` : ''
+      }`,
+      legend: [
+        ...(keep
+          ? [
+              {
+                kind: 'line' as const,
+                color: OK,
+                text: `${orderQty.toLocaleString()}개 넣으면`,
+              },
+            ]
+          : []),
+        { kind: 'dash', color: MUTED, text: '안 넣으면' },
+        { kind: 'dot', color: BAD, text: '바닥나는 날' },
+      ],
+      note: keep
+        ? {
+            tone: 'ok',
+            x: nx,
+            y: box.top + 6,
+            main: `${orderQty.toLocaleString()}개 넣으면`,
+            small: [`${dateAfter(coverEnd)}까지`],
+            arrow:
+              zy >= 0 ? [nx - 12, box.top + 40, xs(zy) + 2, y(0) - 9] : null,
+          }
+        : null,
+    }
+  }
+
+  const view =
+    active === 'flow'
+      ? flowView()
+      : active === 'week'
+        ? weekView()
+        : aheadView()
+  const note = view.note
+  const hoverTip = hover != null ? view.tip(hover) : null
+  const hoverX = hover != null ? view.xs(hover) : 0
+
+  const onMove = (event: PointerEvent<SVGRectElement>) => {
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const px = event.clientX - rect.left
+    let best = 0
+    for (let i = 1; i < view.count; i += 1) {
+      if (Math.abs(view.xs(i) - px) < Math.abs(view.xs(best) - px)) best = i
+    }
+    setHover(best)
+  }
+  const onKey = (event: KeyboardEvent, index: number) => {
+    const next =
+      event.key === 'ArrowRight'
+        ? (index + 1) % tabs.length
+        : event.key === 'ArrowLeft'
+          ? (index + tabs.length - 1) % tabs.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? tabs.length - 1
+              : -1
+    if (next < 0) return
+    event.preventDefault()
+    setTab(tabs[next])
+    setHover(null)
+    tabRefs.current[next]?.focus()
+  }
+
+  const svgClass = [styles.tsvg, go && styles.go, done && styles.done]
+    .filter(Boolean)
+    .join(' ')
+  return (
+    <div className={styles.trendChart} ref={wrapRef}>
+      <div aria-label="차트 고르기" className={styles.tabs} role="tablist">
+        {tabs.map((key, index) => (
+          <button
+            aria-controls="trend-panel"
+            aria-selected={key === active}
+            className={styles.tab}
+            id={`trend-tab-${key}`}
+            key={key}
+            onClick={() => {
+              setTab(key)
+              setHover(null)
+            }}
+            onKeyDown={(event) => onKey(event, index)}
+            ref={(node) => {
+              tabRefs.current[index] = node
+            }}
+            role="tab"
+            tabIndex={key === active ? 0 : -1}
+            type="button"
+          >
+            {tabLabels[key]}
+          </button>
+        ))}
+      </div>
+      <div
+        aria-labelledby={`trend-tab-${active}`}
+        id="trend-panel"
+        role="tabpanel"
+      >
+        <p className={styles.trendHead}>{view.head}</p>
+        <p className={styles.trendSub}>{view.sub}</p>
+        <div className={styles.stage}>
+          <svg
+            aria-label={`${tabLabels[active]} 그래프`}
+            className={svgClass}
+            key={active}
+            ref={svgRef}
+            role="img"
+            style={{ height }}
+            viewBox={`0 0 ${width} ${height}`}
+          >
+            <title>{tabLabels[active]}</title>
+            {view.g}
+            {hover != null && (
+              <line
+                className={styles.hoverLine}
+                x1={hoverX}
+                x2={hoverX}
+                y1={box.top - 6}
+                y2={box.bottom}
+              />
+            )}
+            {!phone && note && (
+              <>
+                {note.arrow && (
+                  <NoteArrow arrow={note.arrow} tone={note.tone} />
+                )}
+                <text
+                  className={styles.note}
+                  style={{ fill: toneColor[note.tone] }}
+                  x={note.x}
+                  y={note.y + 12}
+                >
+                  {note.main}
+                  {note.small.map((line, i) => (
+                    <tspan
+                      className={styles.noteSmall}
+                      dy={i === 0 ? 16 : 14}
+                      key={line}
+                      x={note.x}
+                    >
+                      {line}
+                    </tspan>
+                  ))}
+                </text>
+              </>
+            )}
+            <rect
+              fill="transparent"
+              height={box.bottom - box.top + 10}
+              onPointerLeave={() => setHover(null)}
+              onPointerMove={onMove}
+              width={box.right - box.left}
+              x={box.left}
+              y={box.top - 10}
+            />
+          </svg>
+          {hoverTip && (
+            <div
+              className={styles.tip}
+              style={{
+                left: Math.min(width - 80, Math.max(80, hoverX)),
+                top: box.top + 4,
+              }}
+            >
+              <b>{hoverTip.title}</b>
+              {hoverTip.rows.map((row) => (
+                <span key={row.label}>
+                  <i style={{ background: row.color }} />
+                  {row.label} <strong>{row.value}</strong>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {phone && note && (
+          <p
+            className={`${styles.phoneNote} ${done ? styles.noteOn : ''}`}
+            style={{ color: toneColor[note.tone] }}
+          >
+            {note.main}
+            {note.small.length > 0 && <small>{note.small.join(' · ')}</small>}
+          </p>
+        )}
+      </div>
+      <div className={styles.trendLegend}>
+        {view.legend.map((item) => (
+          <span key={item.text}>
+            <Swatch color={item.color} kind={item.kind} />
+            {item.text}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -734,6 +1448,8 @@ export function SkuPage() {
                   coverDays={data.calculation.coverDays}
                   forecastQty={data.calculation.forecastQty}
                   history={data.history}
+                  leadDays={data.settings.leadTimeDays}
+                  orderQty={data.recommendation.quantity}
                   shortageOn={data.shortageOn}
                   startStock={data.calculation.startingInventory}
                 />
