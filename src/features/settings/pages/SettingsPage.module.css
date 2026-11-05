@@ -55,6 +55,11 @@
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-input);
 }
+/* 보관 요율: 금액이라 오른쪽 정렬, 자릿수 맞춤 */
+.defaultGrid input.rateInput {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .defaultGrid small,
 .tableWrap td small {
   min-height: 18px;

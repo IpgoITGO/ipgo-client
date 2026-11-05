@@ -7,6 +7,7 @@ import {
   loadStorageSettings,
   positiveNumber,
   saveStorageSettings,
+  withCommas,
 } from '../model/storageCost'
 import styles from '../pages/SettingsPage.module.css'
 
@@ -94,10 +95,14 @@ export function StorageCostSection({ products }: { products: Product[] }) {
             <input
               aria-invalid={Boolean(errors.rate)}
               aria-label="창고 보관 요율"
+              className={styles.rateInput}
               defaultValue={settings.ratePerCbm?.toLocaleString('ko-KR') ?? ''}
               id="storage-rate"
               inputMode="numeric"
               onBlur={(event) => saveRate(event.target.value)}
+              onChange={(event) => {
+                event.target.value = withCommas(event.target.value)
+              }}
               placeholder="미입력"
               type="text"
             />

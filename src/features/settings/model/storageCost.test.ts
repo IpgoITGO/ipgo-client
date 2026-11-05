@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   cbmOf,
   formatCbm,
+  withCommas,
   loadStorageSettings,
   monthlyStorageCost,
   positiveNumber,
@@ -55,4 +56,11 @@ describe('보관 비용', () => {
       boxes: { '1': blanket },
     })
   })
+})
+
+it('금액 칸은 치는 동안 천 단위 쉼표를 붙이고 숫자 말고는 지운다', () => {
+  expect(withCommas('12000')).toBe('12,000')
+  expect(withCommas('1,2a3 4')).toBe('1,234')
+  expect(withCommas('007')).toBe('7')
+  expect(withCommas('')).toBe('')
 })

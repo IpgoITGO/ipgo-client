@@ -80,3 +80,9 @@ export function positiveNumber(text: string) {
     ? value
     : null
 }
+
+// 금액 칸을 치는 동안 천 단위 쉼표(12000 → 12,000). 숫자 말고는 지운다. 저장은 positiveNumber가 쉼표를 뺀다.
+export function withCommas(text: string) {
+  const digits = text.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  return digits === '' ? '' : Number(digits).toLocaleString('ko-KR')
+}
