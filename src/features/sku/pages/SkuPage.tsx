@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { ApiError } from '../../../shared/api/client'
 import { calculationReason } from '../../../shared/lib/calculationReason'
 import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
@@ -1249,9 +1250,22 @@ export function SkuPage() {
   }
 
   if (query.isError) {
+    // 없는 상품(404)은 다시 해 봐야 소용없으니 대시보드로 보낸다
+    if (query.error instanceof ApiError && query.error.status === 404) {
+      return (
+        <AsyncState
+          description="지웠거나 주소가 바뀌었을 수 있어요"
+          onRetry={() => navigate('/dashboard')}
+          primaryAction
+          retryLabel="대시보드로"
+          status="error"
+          title="이 상품을 찾을 수 없어요"
+        />
+      )
+    }
     return (
       <AsyncState
-        description={query.error.message}
+        description="잠시 뒤에 다시 시도해 주세요. 계속되면 알려 주세요."
         onRetry={() => void query.refetch()}
         status="error"
         title="상품 상세를 불러오지 못했어요"
@@ -1271,6 +1285,17 @@ export function SkuPage() {
   // 예상 소진일이 오늘보다 앞이면 "품절 주의"(대시보드 표와 같은 기준). 품절은 확인 못 했으니 단정하지 않는다
   const stockoutPassed =
     data.shortageOn !== null && data.shortageOn < localIsoToday()
+  // 판매일 부족이면 "N일이에요 · M일이 되면" 말과 진행 막대로 보여 준다
+  const salesMatch = /최근 (\d+)일 중 판매한 날이 (\d+)일로 (\d+)일/.exec(
+    data.unavailableReason ?? '',
+  )
+  const salesDays = salesMatch
+    ? {
+        window: Number(salesMatch[1]),
+        have: Number(salesMatch[2]),
+        need: Number(salesMatch[3]),
+      }
+    : null
   const statusLabel = {
     ready: '계산 완료',
     reference: '참고용',
@@ -1328,9 +1353,12 @@ export function SkuPage() {
           </div>
           <p>바코드 {data.barcode}</p>
         </div>
-        <span className={styles.status} data-status={data.status}>
-          {statusLabel}
-        </span>
+        {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
+        {data.status !== 'reference' && (
+          <span className={styles.status} data-status={data.status}>
+            {statusLabel}
+          </span>
+        )}
       </header>
 
       {data.status === 'pending' ? (
@@ -1347,10 +1375,14 @@ export function SkuPage() {
         </section>
       ) : data.status === 'unavailable' ? (
         <AsyncState
-          description={calculationReason(
-            data.unavailableReason ??
-              '판매 기록이 더 쌓이면 권장 입고량을 계산할 수 있어요.',
-          )}
+          description={
+            salesDays
+              ? `판매한 날이 ${salesDays.have}일이에요 · ${salesDays.need}일이 되면 계산돼요`
+              : calculationReason(
+                  data.unavailableReason ??
+                    '판매 기록이 더 쌓이면 권장 입고량을 계산할 수 있어요.',
+                )
+          }
           status="empty"
           title={
             data.reuploadRequired
@@ -1362,24 +1394,48 @@ export function SkuPage() {
           }
           retryLabel="수불부 다시 올리기"
         >
+          {salesDays && (
+            <div className={styles.salesProgress}>
+              <progress
+                aria-label={`판매한 날 ${salesDays.have}일 / ${salesDays.need}일`}
+                max={salesDays.need}
+                value={salesDays.have}
+              />
+              <small>
+                최근 {salesDays.window}일 기준 ·{' '}
+                {salesDays.need - salesDays.have}일 더 팔리면 다음 계산에
+                들어가요
+              </small>
+            </div>
+          )}
           {data.unavailableReason && (
             <ReasonDetail reason={data.unavailableReason} />
           )}
         </AsyncState>
       ) : (
         <>
-          {stockoutPassed && data.shortageOn && (
-            <aside className={styles.soldBanner}>
-              {monthDay(data.shortageOn)}에 재고가 바닥났을 수 있어요 · 권장{' '}
-              {data.recommendation.quantity.toLocaleString()}개를 지금 넣어
-              주세요
+          {data.status === 'reference' ? (
+            <aside className={styles.refNotice}>
+              <strong>
+                {stockoutPassed && data.shortageOn
+                  ? `${monthDay(data.shortageOn)}에 바닥났을 수 있어요 · 참고용 계산이에요`
+                  : '참고용 계산이에요'}
+              </strong>
+              <span>
+                판매 기록이 짧아 예측 범위가 넓어요. 권장{' '}
+                {data.recommendation.quantity.toLocaleString()}개는 넉넉히 잡은
+                값이라, 최근 판매를 보고 넣어 주세요.
+              </span>
             </aside>
-          )}
-          {data.status === 'reference' && (
-            <aside className={styles.notice}>
-              판매 기록이 짧아 예측 범위가 넓어요. 권장량은 참고용으로 확인해
-              주세요.
-            </aside>
+          ) : (
+            stockoutPassed &&
+            data.shortageOn && (
+              <aside className={styles.soldBanner}>
+                {monthDay(data.shortageOn)}에 재고가 바닥났을 수 있어요 · 권장{' '}
+                {data.recommendation.quantity.toLocaleString()}개를 지금 넣어
+                주세요
+              </aside>
+            )
           )}
           <section className={styles.recommendation}>
             <div>
@@ -1455,9 +1511,11 @@ export function SkuPage() {
                 />
               ) : (
                 <AsyncState
-                  description="서버가 날짜별 기록을 보내 주면 여기에 그래프가 그려져요."
+                  description="수불부를 올리면 바로 채워져요"
+                  onRetry={() => navigate('/upload')}
+                  retryLabel="수불부 올리기"
                   status="empty"
-                  title="재고·출고 기록을 모으는 중이에요"
+                  title="판매 기록이 쌓이면 여기에 그래프가 보여요"
                 />
               )}
             </section>

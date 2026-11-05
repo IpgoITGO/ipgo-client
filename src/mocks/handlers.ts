@@ -632,6 +632,11 @@ export const handlers = [
   http.get('/api/products/:productId/detail', ({ params }) => {
     const id = String(params.productId)
     const isEmpty = id === 'empty-values'
+    if (id === 'missing-product')
+      return HttpResponse.json(
+        { code: 'PRODUCT_NOT_FOUND', message: 'Product not found' },
+        { status: 404 },
+      )
     const needed = NEEDED_ITEMS.find((item) => String(item.productId) === id)
     const product = (skuName: string, skuBarcode: string) => ({
       productId: Number(id) || 1,
@@ -688,7 +693,9 @@ export const handlers = [
         // mock은 상품 아이디를 결과 번호로 그대로 써서, 아래 K2·K4 mock이 같은 아이디로 상태를 고른다.
         resultId: Number(id) || id,
         status: isUnavailable ? 'NOT_CALCULABLE' : 'OK',
-        reason: isUnavailable ? '판매한 날이 7일보다 적어요.' : null,
+        reason: isUnavailable
+          ? '최근 28일 중 판매한 날이 5일로 7일보다 적어요'
+          : null,
         method: isUnavailable ? null : isFallback ? 'B' : 'A',
         methodReason: isUnavailable
           ? null
