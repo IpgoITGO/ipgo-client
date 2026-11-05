@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -17,7 +23,9 @@ import {
   loadStorageSettings,
   storageCostTotal,
 } from '../../settings/model/storageCost'
+import { getProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
+import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import styles from './DashboardPage.module.css'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
@@ -160,36 +168,70 @@ export type DashboardData = {
     cost: number
     risk: number | null
   }>
-  unavailableItems: Array<{ name: string; reason: string }>
-  excludedItems: Array<{ name: string; reason: string; date?: string }>
+  /** 아직 괜찮은 상품(서버 #103). 없으면 화면이 상품 목록으로 이름·바코드만 채운다 */
+  safeItems?: Array<{
+    id: string
+    name: string
+    barcode: string
+    stockoutDate: string
+    leadTime: number | null
+  }>
+  unavailableItems: Array<{ id?: string; name: string; reason: string }>
+  excludedItems: Array<{
+    id?: string
+    name: string
+    reason: string
+    date?: string
+  }>
 }
 
-// 숫자 카드. "지금 넣어야 해요"는 투톤 대신 흰 상자에 테이프를 붙여 급한 상자로 표시한다.
+// 숫자 상자 = 아래 목록을 고르는 탭. 고른 상자는 주소(?tab=)에 남는다.
+const TABS = ['need', 'safe', 'na', 'ex'] as const
+type Tab = (typeof TABS)[number]
+// 여유(소진일 − 오늘 − 리드타임)가 이 날수 이하면 "곧 넣어야 해요"
+const SOON_DAYS = 7
+
+// 숫자 상자. 누르면 아래 판이 그 상자의 상품으로 바뀐다. 고른 상자에는 노란 테두리와
+// 테이프가 날아와 붙는다(테이프는 고를 때 새로 그려져 붙는 연출이 매번 다시 돈다).
 function SummaryCard({
-  empty,
   label,
   note,
+  onSelect,
+  selected,
   state,
+  tab,
   value,
 }: {
-  empty: boolean
   label: string
   note: ReactNode
+  onSelect: () => void
+  selected: boolean
   state: string
+  tab: Tab
   value: number
 }) {
   const shown = useCountUp(value)
 
   return (
-    <article data-state={state}>
-      {state === 'needed' && !empty && <Tape className={styles.tape} />}
-      <span>{label}</span>
+    <button
+      aria-controls="dashboard-list"
+      aria-selected={selected}
+      className={styles.box}
+      data-state={state}
+      id={`dashboard-tab-${tab}`}
+      onClick={onSelect}
+      role="tab"
+      tabIndex={selected ? 0 : -1}
+      type="button"
+    >
+      {selected && <Tape className={styles.tape} />}
+      <span className={styles.boxLabel}>{label}</span>
       <strong>
-        {empty ? '—' : shown}
-        <small>{empty ? '' : '개'}</small>
+        {shown}
+        <small>개</small>
       </strong>
-      {!empty && <em>{note}</em>}
-    </article>
+      <em>{note}</em>
+    </button>
   )
 }
 
@@ -233,6 +275,24 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'cost', label: '금액 큰 순' },
 ]
 
+const PANEL_TITLE: Record<Tab, string> = {
+  need: '입고가 필요한 상품',
+  safe: '아직 괜찮은 상품',
+  na: '계산 불가',
+  ex: '검산 제외',
+}
+
+const PANEL_DESCRIPTION: Record<Tab, string> = {
+  need: '오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.',
+  safe: '다음 입고 전에 재고가 버텨요. 소진일이 가까운 순이에요.',
+  na: '수불부는 정상이지만 아직 계산할 수 없는 상품이에요.',
+  ex: '재고 숫자가 맞지 않아 계산에서 뺐어요. 그 날짜가 든 수불부를 고쳐 다시 올려 주세요. 이전 달 자료의 오류도 포함돼요.',
+}
+
+function NoMatch({ search }: { search: string }) {
+  return <p className={styles.none}>"{search}"에 맞는 상품이 없어요.</p>
+}
+
 export function DashboardPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -242,10 +302,43 @@ export function DashboardPage() {
     Number.isSafeInteger(routeRun) && routeRun > 0 ? routeRun : null
   const runId = calculation.runId ?? routeRunId
   const [sort, setSort] = useState<SortKey>('stockout')
+  const [search, setSearch] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const tabParam = params.get('tab')
+  const tab: Tab = TABS.find((value) => value === tabParam) ?? 'need'
   const query = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
   })
+  // 서버가 아직 괜찮은 상품 목록을 주기 전(#103)에는 상품 목록에서 나머지를 채운다
+  const products = useQuery({
+    queryKey: ['products', 'dashboard-safe'],
+    queryFn: () => getProducts(''),
+    enabled:
+      tab === 'safe' && query.data !== undefined && !query.data.safeItems,
+  })
+
+  function selectTab(next: Tab) {
+    setSearch('')
+    setParams(
+      (previous) => {
+        const nextParams = new URLSearchParams(previous)
+        if (next === 'need') nextParams.delete('tab')
+        else nextParams.set('tab', next)
+        return nextParams
+      },
+      { replace: true },
+    )
+  }
+
+  function moveTab(event: KeyboardEvent<HTMLDivElement>) {
+    const step = { ArrowRight: 1, ArrowLeft: TABS.length - 1 }[event.key]
+    if (!step) return
+    event.preventDefault()
+    const next = TABS[(TABS.indexOf(tab) + step) % TABS.length]
+    selectTab(next)
+    document.getElementById(`dashboard-tab-${next}`)?.focus()
+  }
 
   const items = useMemo(() => {
     const source = [...(query.data?.neededItems ?? [])]
@@ -289,6 +382,90 @@ export function DashboardPage() {
   const passedCount = data.neededItems.filter(
     (item) => daysPast(item.stockoutDate) > 0,
   ).length
+
+  // 표 안 검색: 상품명(대소문자 무시)·바코드
+  const keyword = search.trim().toLowerCase()
+  const matches = (item: { name: string; barcode?: string }) =>
+    !keyword ||
+    item.name.toLowerCase().includes(keyword) ||
+    (item.barcode ?? '').includes(keyword)
+  // 아직 괜찮은 상품: 서버 목록(#103)이 없으면 상품 목록에서 다른 세 상자에 든 상품을 뺀다
+  const listedIds = new Set(
+    [...data.neededItems, ...data.unavailableItems, ...data.excludedItems].map(
+      (item) => item.id,
+    ),
+  )
+  const safeItems = (
+    data.safeItems ??
+    (products.data?.items ?? [])
+      .filter((item) => item.isActive && !listedIds.has(String(item.productId)))
+      .map((item) => ({
+        id: String(item.productId),
+        name: item.skuName,
+        barcode: item.skuBarcode,
+        stockoutDate: '—',
+        leadTime: null,
+      }))
+  )
+    .slice()
+    .sort((a, b) =>
+      dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate)),
+    )
+  // 다음 입고가 도착한 뒤 며칠 더 버티는지(소진일 − 오늘 − 리드타임). 모르면 null
+  const slack = (item: { stockoutDate: string; leadTime: number | null }) =>
+    item.stockoutDate === '—' || item.leadTime == null
+      ? null
+      : dayNumber(item.stockoutDate) - today - item.leadTime
+  const soonCount = safeItems.filter((item) => {
+    const room = slack(item)
+    return room !== null && room <= SOON_DAYS
+  }).length
+  const shownNeed = items.filter(matches)
+  const shownSafe = safeItems.filter(matches)
+  const reasonItems = tab === 'ex' ? data.excludedItems : data.unavailableItems
+  const shownReasons = reasonItems.filter(matches)
+  const tabCount: Record<Tab, number> = {
+    need: data.summary.needed,
+    safe: data.summary.safe,
+    na: data.summary.unavailable,
+    ex: data.summary.excluded,
+  }
+
+  // 발주 목록: 고른 상품의 수량·사입비 합계와 엑셀(CSV) 받기
+  const pickedItems = items.filter((item) => picked.has(item.id))
+  const pickedQty = pickedItems.reduce((sum, item) => sum + item.quantity, 0)
+  const pickedCost = pickedItems.reduce((sum, item) => sum + item.cost, 0)
+  function togglePick(id: string) {
+    setPicked((previous) => {
+      const next = new Set(previous)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  function pickAll(checked: boolean) {
+    setPicked((previous) => {
+      const next = new Set(previous)
+      shownNeed.forEach((item) =>
+        checked ? next.add(item.id) : next.delete(item.id),
+      )
+      return next
+    })
+  }
+  function exportOrder() {
+    downloadCsv(
+      orderFileName(),
+      toOrderCsv(
+        pickedItems.map(({ name, barcode, quantity, cost, stockoutDate }) => ({
+          name,
+          barcode,
+          quantity,
+          cost,
+          stockoutDate,
+        })),
+      ),
+    )
+  }
 
   return (
     <div className={styles.page}>
@@ -362,10 +539,16 @@ export function DashboardPage() {
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
       {!(noResult || refreshRequired) && (
-        <section className={styles.summary} aria-label="입고 예측 요약">
+        <div
+          aria-label="상품 나눠 보기"
+          className={styles.summary}
+          onKeyDown={moveTab}
+          role="tablist"
+        >
           {(
             [
               [
+                'need',
                 '지금 넣어야 해요',
                 data.summary.needed,
                 'needed',
@@ -383,35 +566,42 @@ export function DashboardPage() {
                 ),
               ],
               [
+                'safe',
                 '아직 괜찮아요',
                 data.summary.safe,
                 'safe',
-                '지금 발주가 급한 상품은 아니에요',
+                soonCount > 0
+                  ? `그중 ${soonCount}개는 곧 넣어야 해요`
+                  : '지금 발주가 급한 상품은 아니에요',
               ],
               [
+                'na',
                 '계산 불가',
                 data.summary.unavailable,
                 'unavailable',
                 '판매 기록이 부족해요',
               ],
               [
+                'ex',
                 '검산 제외',
                 data.summary.excluded,
                 'excluded',
                 '재고 숫자가 맞지 않아요',
               ],
             ] as const
-          ).map(([label, value, state, note]) => (
+          ).map(([key, label, value, state, note]) => (
             <SummaryCard
-              empty={refreshRequired || noResult}
-              key={label}
+              key={key}
               label={label}
               note={note}
+              onSelect={() => selectTab(key)}
+              selected={tab === key}
               state={state}
+              tab={key}
               value={value}
             />
           ))}
-        </section>
+        </div>
       )}
 
       {noResult ? (
@@ -476,27 +666,38 @@ export function DashboardPage() {
           title="입고 필요 목록이 비어 있어요"
         />
       ) : (
-        <>
-          {items.length === 0 ? (
-            <AsyncState
-              description={
-                data.summary.safe > 0
-                  ? `기준일 ${data.baseDate} · ${data.summary.safe.toLocaleString()}개 상품 모두 다음 발주 주기까지 버텨요.`
-                  : `기준일 ${data.baseDate} · 입고가 필요한 상품이 없어요.`
-              }
-              onRetry={() => navigate('/upload')}
-              retryLabel="새 수불부 올리기"
-              status="empty"
-              title="지금 넣을 상품은 없어요"
-            />
-          ) : (
-            <section className={styles.card}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <h2>입고가 필요한 상품</h2>
-                  <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
-                  <StorageTotal items={items} />
-                </div>
+        <section
+          aria-labelledby={`dashboard-tab-${tab}`}
+          className={styles.panel}
+          data-tab={tab}
+          id="dashboard-list"
+          role="tabpanel"
+        >
+          <span aria-hidden="true" className={styles.notch} />
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2>
+                {PANEL_TITLE[tab]}
+                <span className={styles.count}>{tabCount[tab]}개</span>
+              </h2>
+              <p>{PANEL_DESCRIPTION[tab]}</p>
+              {tab === 'need' && <StorageTotal items={items} />}
+            </div>
+            <div className={styles.tools}>
+              <label className={styles.search}>
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-4-4" />
+                </svg>
+                <input
+                  aria-label="목록에서 상품 찾기"
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="상품명·바코드"
+                  type="search"
+                  value={search}
+                />
+              </label>
+              {tab === 'need' && items.length > 0 && (
                 <div
                   aria-label="입고 필요 목록 정렬"
                   className={styles.sort}
@@ -514,17 +715,40 @@ export function DashboardPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <p>표를 좌우로 움직이면 권장 입고량과 사입비를 볼 수 있어요.</p>
-              <div
-                className={styles.tableWrap}
-                tabIndex={0}
-                role="region"
-                aria-label="입고 필요 상품 표, 좌우 스크롤 가능"
-              >
+              )}
+            </div>
+          </div>
+
+          {tab === 'need' &&
+            (items.length === 0 ? (
+              <AsyncState
+                description={
+                  data.summary.safe > 0
+                    ? `기준일 ${data.baseDate} · ${data.summary.safe.toLocaleString()}개 상품 모두 다음 발주 주기까지 버텨요.`
+                    : `기준일 ${data.baseDate} · 입고가 필요한 상품이 없어요.`
+                }
+                onRetry={() => navigate('/upload')}
+                retryLabel="새 수불부 올리기"
+                status="empty"
+                title="지금 넣을 상품은 없어요"
+              />
+            ) : shownNeed.length === 0 ? (
+              <NoMatch search={search} />
+            ) : (
+              <div className={styles.tableWrap}>
                 <table>
                   <thead>
                     <tr>
+                      <th className={styles.pick}>
+                        <input
+                          aria-label="보이는 상품 모두 고르기"
+                          checked={shownNeed.every((item) =>
+                            picked.has(item.id),
+                          )}
+                          onChange={(event) => pickAll(event.target.checked)}
+                          type="checkbox"
+                        />
+                      </th>
                       <th>상품</th>
                       <th>예상 소진일</th>
                       <th className={styles.num}>리드타임</th>
@@ -534,17 +758,29 @@ export function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item) => (
+                    {shownNeed.map((item) => (
                       // 줄 전체를 눌러 상세로 간다. 키보드·화면 읽기용으로 상품명은 링크로 둔다.
                       <tr
                         className={styles.rowLink}
                         data-passed={
                           daysPast(item.stockoutDate) > 0 || undefined
                         }
+                        data-picked={picked.has(item.id) || undefined}
                         key={item.id}
                         onClick={() => navigate(`/sku/${item.id}`)}
                       >
-                        <td>
+                        <td
+                          className={styles.pick}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            aria-label={`${item.name} 발주 목록에 넣기`}
+                            checked={picked.has(item.id)}
+                            onChange={() => togglePick(item.id)}
+                            type="checkbox"
+                          />
+                        </td>
+                        <td className={styles.nameCell}>
                           <div className={styles.nameLine}>
                             <Link to={`/sku/${item.id}`}>{item.name}</Link>
                             {daysPast(item.stockoutDate) > 0 && (
@@ -553,7 +789,7 @@ export function DashboardPage() {
                           </div>
                           <span>{item.barcode}</span>
                         </td>
-                        <td>
+                        <td data-label="예상 소진일">
                           {item.stockoutDate === '—' ? (
                             <EmptyValue kind="short" />
                           ) : (
@@ -561,24 +797,27 @@ export function DashboardPage() {
                           )}
                           <LateText days={daysPast(item.stockoutDate)} />
                         </td>
-                        <td className={styles.num}>
+                        <td className={styles.num} data-label="리드타임">
                           {item.leadTime == null ? (
                             <EmptyValue kind="unset" />
                           ) : (
                             `${item.leadTime}일`
                           )}
                         </td>
-                        <td className={styles.num}>
+                        <td className={styles.num} data-label="품절 위험">
                           {item.risk == null ? (
                             <EmptyValue kind="short" />
                           ) : (
                             `${item.risk}%`
                           )}
                         </td>
-                        <td className={styles.num}>
+                        <td
+                          className={`${styles.num} ${styles.qtyCell}`}
+                          data-label="권장 입고량"
+                        >
                           <span className={styles.qty}>{item.quantity}개</span>
                         </td>
-                        <td className={styles.num}>
+                        <td className={styles.num} data-label="사입비">
                           {item.cost.toLocaleString()}원
                         </td>
                       </tr>
@@ -586,55 +825,140 @@ export function DashboardPage() {
                   </tbody>
                 </table>
               </div>
-            </section>
-          )}
-          {/* 한 줄씩뿐이라 한 카드에 두 칸. 제목 앞 점 색은 위 숫자 카드와 짝 */}
-          <section className={`${styles.card} ${styles.lowerGrid}`}>
-            <div>
-              <h2>
-                <i aria-hidden="true" className={styles.dot} data-tone="warn" />
-                계산 불가
-              </h2>
-              {data.unavailableItems.length === 0 && (
-                <p className={styles.none}>계산 못 한 상품은 없어요.</p>
-              )}
-              {data.unavailableItems.map((item) => (
-                <article className={styles.reason} key={item.name}>
-                  <strong>{item.name}</strong>
-                  <span>{calculationReason(item.reason)}</span>
-                  <ReasonDetail reason={item.reason} />
-                </article>
-              ))}
-            </div>
-            <div>
-              <h2>
-                <i
-                  aria-hidden="true"
-                  className={styles.dot}
-                  data-tone="danger"
-                />
-                검산 제외
-              </h2>
-              {data.excludedItems.length === 0 && (
-                <p className={styles.none}>검산에서 뺀 상품은 없어요.</p>
-              )}
-              <p>
-                이전 달 자료의 검산 오류도 포함돼요. 아래 날짜가 속한 수불부를
-                고쳐 다시 올려 주세요.
+            ))}
+
+          {tab === 'safe' &&
+            (!data.safeItems && products.isPending ? (
+              <p className={styles.none}>상품을 불러오고 있어요.</p>
+            ) : safeItems.length === 0 ? (
+              <p className={styles.none}>아직 괜찮은 상품이 없어요.</p>
+            ) : shownSafe.length === 0 ? (
+              <NoMatch search={search} />
+            ) : (
+              <div className={styles.tableWrap}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>상품</th>
+                      <th>예상 소진일</th>
+                      <th>다음 입고 뒤 여유</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownSafe.map((item) => {
+                      const room = slack(item)
+                      const soon = room !== null && room <= SOON_DAYS
+                      return (
+                        <tr
+                          className={styles.rowLink}
+                          data-soon={soon || undefined}
+                          key={item.id}
+                          onClick={() => navigate(`/sku/${item.id}`)}
+                        >
+                          <td className={styles.nameCell}>
+                            <div className={styles.nameLine}>
+                              <Link to={`/sku/${item.id}`}>{item.name}</Link>
+                              {soon && (
+                                <span className={styles.soon}>
+                                  곧 넣어야 해요
+                                </span>
+                              )}
+                            </div>
+                            <span>{item.barcode}</span>
+                          </td>
+                          <td data-label="예상 소진일">
+                            {item.stockoutDate === '—' ? (
+                              <span className={styles.muted}>—</span>
+                            ) : (
+                              item.stockoutDate
+                            )}
+                          </td>
+                          <td data-label="다음 입고 뒤 여유">
+                            {room === null ? (
+                              <span className={styles.muted}>—</span>
+                            ) : (
+                              <span className={styles.room}>
+                                <span
+                                  aria-hidden="true"
+                                  className={styles.track}
+                                >
+                                  <i
+                                    style={{
+                                      width: `${Math.min(100, Math.max(4, (room / 40) * 100))}%`,
+                                    }}
+                                  />
+                                </span>
+                                {room}일
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+          {(tab === 'na' || tab === 'ex') &&
+            (reasonItems.length === 0 ? (
+              <p className={styles.none}>
+                {tab === 'na'
+                  ? '계산 못 한 상품은 없어요.'
+                  : '검산에서 뺀 상품은 없어요.'}
               </p>
-              {data.excludedItems.map((item) => (
-                <article className={styles.reason} key={item.name}>
-                  <strong>{item.name}</strong>
-                  {'date' in item && typeof item.date === 'string' && (
-                    <small>오류 자료 날짜 {String(item.date)}</small>
-                  )}
-                  <span>{calculationReason(item.reason)}</span>
-                  <ReasonDetail reason={item.reason} />
-                </article>
-              ))}
+            ) : shownReasons.length === 0 ? (
+              <NoMatch search={search} />
+            ) : (
+              <ul className={styles.reasons}>
+                {shownReasons.map((item) => (
+                  <li key={item.id ?? item.name}>
+                    <div className={styles.nameCell}>
+                      {item.id ? (
+                        <Link to={`/sku/${item.id}`}>{item.name}</Link>
+                      ) : (
+                        <strong>{item.name}</strong>
+                      )}
+                    </div>
+                    <div className={styles.reasonText}>
+                      {'date' in item && item.date && (
+                        <small className={styles.errorDate}>
+                          오류 자료 날짜 {item.date}
+                        </small>
+                      )}
+                      <span>{calculationReason(item.reason)}</span>
+                      <ReasonDetail reason={item.reason} />
+                    </div>
+                    {tab === 'ex' && (
+                      <Button
+                        onClick={() => navigate('/upload')}
+                        variant="secondary"
+                      >
+                        수불부 다시 올리기
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ))}
+
+          {tab === 'need' && pickedItems.length > 0 && (
+            <div
+              aria-label="발주 목록"
+              className={styles.orderBar}
+              role="region"
+            >
+              <b aria-live="polite">
+                {pickedItems.length}개 골랐어요 · {pickedQty}개
+              </b>
+              <span>사입비 {pickedCost.toLocaleString()}원</span>
+              <Button onClick={() => setPicked(new Set())} variant="text">
+                선택 해제
+              </Button>
+              <Button onClick={exportOrder}>엑셀로 받기</Button>
             </div>
-          </section>
-        </>
+          )}
+        </section>
       )}
     </div>
   )

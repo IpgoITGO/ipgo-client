@@ -154,7 +154,6 @@ describe('DashboardPage', () => {
     expect(
       await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('판매한 날이 7일보다 적어요.')).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('오리 큐브 100g')
 
@@ -184,7 +183,7 @@ describe('DashboardPage', () => {
     expect(firstRow).toHaveAttribute('data-passed')
     expect(firstRow).toHaveTextContent('케어트릿 120g')
     expect(
-      screen.getByText('지금 넣어야 해요').closest('article'),
+      screen.getByRole('tab', { name: /지금 넣어야 해요/ }),
     ).toHaveTextContent('2개는 이미 소진됐을 수 있어요')
   })
 
@@ -232,7 +231,57 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('button', { name: '새 수불부 올리기' }),
     ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: /계산 불가/ }))
     expect(screen.getByText('계산 못 한 상품은 없어요.')).toBeInTheDocument()
+  })
+
+  // 11/5: 숫자 상자를 누르면 아래 판이 그 상자의 상품으로 바뀐다(맨 아래 따로 있던 칸은 없앰)
+  it('숫자 상자를 누르면 그 상자의 상품 목록을 보여 주고 찾을 수 있다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const need = await screen.findByRole('tab', { name: /지금 넣어야 해요/ })
+    expect(need).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('입고가 필요한 상품')
+
+    await user.click(screen.getByRole('tab', { name: /계산 불가/ }))
+    expect(screen.getByRole('tab', { name: /계산 불가/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('tabpanel')).toHaveTextContent(
+      '판매한 날이 7일보다 적어요.',
+    )
+
+    await user.click(screen.getByRole('tab', { name: /지금 넣어야 해요/ }))
+    await user.type(screen.getByLabelText('목록에서 상품 찾기'), '연어')
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('연어 져키 80g')
+  })
+
+  it('고른 상품의 수량·사입비 합계를 보여 주고 발주 목록으로 받을 수 있다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: '케어트릿 120g 발주 목록에 넣기',
+      }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: '연어 져키 80g 발주 목록에 넣기' }),
+    )
+    const bar = screen.getByRole('region', { name: '발주 목록' })
+    expect(bar).toHaveTextContent('2개 골랐어요 · 112개')
+    expect(bar).toHaveTextContent('사입비 181,600원')
+    expect(
+      screen.getByRole('button', { name: '엑셀로 받기' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '선택 해제' }))
+    expect(
+      screen.queryByRole('region', { name: '발주 목록' }),
+    ).not.toBeInTheDocument()
   })
 
   it('리드타임·품절 위험이 비어 오면 0일·0% 대신 미입력·자료 부족을 보여준다', async () => {

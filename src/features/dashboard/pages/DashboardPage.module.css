@@ -77,24 +77,41 @@
   gap: var(--space-4);
   padding-top: var(--space-2);
 }
-.summary article {
+/* 숫자 상자 = 탭. 고른 상자에 노란 테두리 + 테이프(날아와 붙고 → 눌리고 → 한 번 문질러 반짝) */
+.box {
   position: relative;
   display: grid;
+  align-content: start;
   gap: var(--space-2);
   padding: var(--space-8);
+  color: inherit;
+  font: inherit;
+  text-align: left;
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: border-color 0.2s;
 }
-/* 급한 상자: 다른 카드와 같은 흰 상자에 노란 테두리와 테이프(검정 테두리는 톤에 안 맞음, 11/2) */
-.summary article[data-state='needed'] {
-  border: 2px solid var(--color-accent);
+.box:hover {
+  border-color: var(--color-chart-muted);
 }
-.summary article[data-state='needed'] span {
+.box:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 3px;
+}
+.box[aria-selected='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.boxLabel {
+  color: var(--color-text-3);
+}
+.box[aria-selected='true'] .boxLabel {
   color: var(--color-primary);
   font-weight: 700;
 }
-.summary article[data-state='needed'] em {
+.box[data-state='needed'] em {
   color: var(--color-danger);
   font-weight: 700;
 }
@@ -102,23 +119,77 @@
   top: -11px;
   left: var(--space-5);
 }
-.summary span {
-  color: var(--color-text-3);
-}
-.summary strong {
+.box strong {
   color: var(--color-primary);
   font-size: 48px;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
-.summary em {
+.box em {
   color: var(--color-text-3);
   font-size: var(--text-caption);
   font-style: normal;
 }
-.summary small {
+.box small {
   margin-left: var(--space-1);
   font-size: var(--text-body);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .box[aria-selected='true'] {
+    animation: press 0.32s 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* Tape의 기본 연출(옆으로 펴짐) 대신 위에서 날아와 붙는다 */
+  .box .tape {
+    animation: fly 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .box .tape i::after {
+    position: absolute;
+    inset: 0 auto 0 -45%;
+    width: 40%;
+    content: '';
+    background: linear-gradient(
+      100deg,
+      transparent,
+      rgb(255 255 255 / 55%),
+      transparent
+    );
+    animation: rub 0.5s ease-out 0.55s both;
+  }
+}
+@keyframes press {
+  35% {
+    transform: translateY(1.5px) scale(0.992);
+  }
+}
+@keyframes fly {
+  0% {
+    opacity: 0;
+    transform: translate(-26px, -34px) rotate(-18deg) scale(1.18);
+    filter: drop-shadow(0 14px 10px rgb(60 40 0 / 16%));
+  }
+  20% {
+    opacity: 1;
+  }
+  58% {
+    transform: translate(0, 1.5px) rotate(-2deg) scale(1.02, 0.86);
+    filter: drop-shadow(0 1px 1px rgb(60 40 0 / 28%));
+  }
+  80% {
+    transform: rotate(-3.6deg) scale(0.995, 1.03);
+  }
+  100% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes rub {
+  0% {
+    opacity: 1;
+    left: -45%;
+  }
+  100% {
+    opacity: 0;
+    left: 110%;
+  }
 }
 .card {
   padding: var(--space-8);
@@ -188,46 +259,217 @@
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-.tableWrap td:first-child {
+.tableWrap .nameCell {
   min-width: 190px;
 }
-.tableWrap td:first-child strong,
-.tableWrap td:first-child span {
+.tableWrap .nameCell strong,
+.tableWrap .nameCell > span {
   display: block;
 }
-.tableWrap td:first-child span {
+.tableWrap .nameCell > span {
   color: var(--color-text-3);
   font-size: var(--text-caption);
 }
-.lowerGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-8);
+/* 고른 상자의 목록 판. 위 꼭지가 고른 상자 밑으로 미끄러진다 */
+.panel {
+  position: relative;
+  margin-top: var(--space-2);
+  padding: var(--space-8);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
 }
-.lowerGrid h2 {
+.panel h2,
+.panel p {
+  margin: 0;
+}
+.panel h2 {
   display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-section);
+}
+.notch {
+  position: absolute;
+  top: -11px;
+  left: calc(
+    (100% - 3 * var(--space-4)) / 8 - 11px + var(--i) *
+      ((100% - 3 * var(--space-4)) / 4 + var(--space-4))
+  );
+  width: 22px;
+  height: 22px;
+  background: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  border-top-left-radius: 4px;
+  transform: rotate(45deg);
+  transition: left 0.42s var(--ease-spring);
+}
+.panel[data-tab='need'] .notch {
+  --i: 0;
+}
+.panel[data-tab='safe'] .notch {
+  --i: 1;
+}
+.panel[data-tab='na'] .notch {
+  --i: 2;
+}
+.panel[data-tab='ex'] .notch {
+  --i: 3;
+}
+.count {
+  padding: 2px 9px;
+  color: var(--color-accent-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-chip);
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 220px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: 12px;
 }
-.dot[data-tone='warn'] {
-  background: var(--color-warning);
+.search:focus-within {
+  border-color: var(--color-primary);
+  outline: 3px solid var(--color-primary-soft);
 }
-.dot[data-tone='danger'] {
-  background: var(--color-danger);
+.search svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--color-text-3);
+  stroke-width: 2;
 }
-.reason {
+.search input {
+  width: 100%;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-caption);
+  background: none;
+  border: 0;
+  outline: 0;
+}
+.pick {
+  width: 36px;
+}
+.pick input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent-text);
+  cursor: pointer;
+}
+.tableWrap tr[data-picked] td {
+  background: var(--color-accent-soft);
+}
+.soon {
+  padding: 1px 8px;
+  color: var(--color-accent-text);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-chip);
+}
+.tableWrap tr[data-soon] td {
+  background: rgb(255 197 61 / 8%);
+}
+.tableWrap tr[data-soon] .nameCell {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+.muted {
+  color: var(--color-text-3);
+}
+.room {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.track {
+  width: 110px;
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-primary-soft);
+  border-radius: 3px;
+}
+.track i {
+  display: block;
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 3px;
+}
+tr[data-soon] .track i {
+  background: var(--color-accent);
+}
+.reasons {
   display: grid;
-  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reasons li {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 2fr auto;
+  align-items: center;
+  gap: var(--space-4);
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
 }
-.reason span {
-  color: var(--color-text-3);
+.reasons li:last-child {
+  border-bottom: 0;
+}
+.reasons a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+.reasonText {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+.errorDate {
+  padding: 2px 8px;
+  color: var(--color-danger);
+  font-weight: 700;
+  background: var(--color-danger-bg);
+  border-radius: 6px;
+}
+/* 고른 상품 막대: 판 아래쪽에 붙어 스크롤해도 보인다 */
+.orderBar {
+  position: sticky;
+  bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: 16px;
+}
+.orderBar span {
+  opacity: 0.75;
+  font-size: var(--text-caption);
+}
+.orderBar > :nth-child(3) {
+  margin-left: auto;
+  color: #fff;
 }
 
 @media (max-width: 800px) {
@@ -240,8 +482,80 @@
     align-items: stretch;
     flex-direction: column;
   }
-  .lowerGrid {
+  .notch {
+    display: none;
+  }
+  .reasons li {
     grid-template-columns: 1fr;
+  }
+}
+/* 휴대폰: 표 대신 상품마다 카드(가로 막대 없음). 권장 입고량은 오른쪽 위에 크게 */
+@media (max-width: 720px) {
+  .tableWrap thead {
+    display: none;
+  }
+  .tableWrap table,
+  .tableWrap tbody {
+    display: block;
+  }
+  .tableWrap tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+  }
+  .tableWrap td {
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  .tableWrap td.num {
+    text-align: left;
+  }
+  .tableWrap tr[data-picked] {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+  .tableWrap tr[data-picked] td,
+  .tableWrap tr[data-soon] td,
+  .rowLink:hover td {
+    background: none;
+  }
+  .tableWrap tr[data-soon] {
+    background: rgb(255 197 61 / 8%);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+  .tableWrap tr[data-soon] .nameCell {
+    box-shadow: none;
+  }
+  .tableWrap td[data-label]::before {
+    display: block;
+    color: var(--color-text-3);
+    font-size: 12px;
+    font-weight: 400;
+    content: attr(data-label);
+  }
+  .tableWrap .nameCell {
+    grid-column: 1 / -1;
+    padding-right: 32px;
+  }
+  .tableWrap .pick {
+    position: absolute;
+    top: var(--space-4);
+    left: auto;
+    right: var(--space-4);
+    width: auto;
+  }
+  .tableWrap tr:has(.pick) .nameCell {
+    padding-left: 0;
+  }
+  .tableWrap .qtyCell {
+    font-size: 18px;
+    font-weight: 800;
   }
 }
 /* 줄 전체가 링크: 올리면 연한 노랑, 상품명은 남색 굵게 */
@@ -288,8 +602,8 @@
   font-style: normal;
 }
 /* 카드 라벨(span)의 남색 규칙보다 우선해서 빨강으로 */
-.summary article[data-state='needed'] .soldNote,
-.summary article[data-state='needed'] .soldNote span {
+.box[data-state='needed'] .soldNote,
+.box[data-state='needed'] .soldNote span {
   color: var(--color-danger);
   font-weight: 700;
 }

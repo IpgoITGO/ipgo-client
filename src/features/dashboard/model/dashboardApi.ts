@@ -29,6 +29,14 @@ export type ReplenishmentNeeds = {
     leadTimeDays: number | null
     preArrivalRisk: number | null
   }>
+  /** 아직 괜찮은 상품 목록(ipgo-server#103 요청 중). 오기 전에는 없다 */
+  notNeededItems?: Array<{
+    productId: number
+    skuBarcode: string
+    skuName: string
+    expectedShortageOn: string | null
+    leadTimeDays: number | null
+  }>
   notCalculable: Array<{ productId: number; skuName: string; reason: string }>
   excluded: Array<{
     productId: number
@@ -100,11 +108,21 @@ export function toDashboardData(
           ? null
           : Math.round(item.preArrivalRisk * 100),
     })),
+    // 서버가 목록을 주기 전에는 undefined: 화면이 상품 목록 API로 이름·바코드만 채운다
+    safeItems: raw.notNeededItems?.map((item) => ({
+      id: String(item.productId),
+      name: item.skuName,
+      barcode: item.skuBarcode,
+      stockoutDate: dotDate(item.expectedShortageOn),
+      leadTime: item.leadTimeDays,
+    })),
     unavailableItems: raw.notCalculable.map((item) => ({
+      id: String(item.productId),
       name: item.skuName,
       reason: item.reason,
     })),
     excludedItems: raw.excluded.map((item) => ({
+      id: String(item.productId),
       date: item.date ?? undefined,
       name: item.skuName,
       reason: item.reason,
