@@ -10,8 +10,11 @@ export type SketchValues = {
   // 권장량을 넣었을 때 다음 입고 때 남는 재고
   endRecommended: number
   // 비교 대상(80%) 수량과 그때 남는 재고. 80%가 권장량과 겹치면 없다.
-  lower: { quantity: number; end: number } | null
+  lower: { quantity: number; end: number; risk: number | null } | null
 }
+
+// 품절 위험이 이 값(%) 이상이면 빨강. AI 문장의 강조와 같은 기준이다.
+const HIGH_RISK = 20
 
 // 같은 숫자면 매번 같은 손그림이 나오도록 씨앗을 고정한 난수
 function seeded(seed: number) {
@@ -182,11 +185,18 @@ const ROW2 = 152
 export function InsightSketch({ values }: { values: SketchValues }) {
   const { recommended, preRisk, postRisk, endRecommended, lower } = values
   const r = seeded(recommended * 7 + endRecommended)
-  const hasRisk = preRisk !== null && postRisk !== null
+  // 첫 줄은 같은 기간(도착 후)끼리 비교한다: 80% 넣을 때 → 권장량 넣을 때
+  const hasRisk = postRisk !== null
+  // 80%가 권장량과 겹치거나 80%의 위험이 표본 부족이면 비교 없이 권장량 값만 그린다
+  const lowerRisk = lower?.risk ?? null
+  const preHigh = preRisk !== null && preRisk >= HIGH_RISK
+  const postHigh = postRisk !== null && postRisk >= HIGH_RISK
   const gain = lower ? endRecommended - lower.end : null
   const label = [
     hasRisk
-      ? `품절 위험 ${preRisk}%에서 ${postRisk}%로`
+      ? lowerRisk !== null
+        ? `도착 후 품절 위험 ${lowerRisk}%에서 ${postRisk}%로`
+        : `도착 후 품절 위험 ${postRisk}%`
       : '품절 위험은 계산 전',
     lower
       ? `${lower.quantity}개보다 ${recommended}개를 넣으면 다음 입고 때 ${gain}개 더 남아요`
@@ -195,6 +205,11 @@ export function InsightSketch({ values }: { values: SketchValues }) {
 
   return (
     <figure className={styles.sketch}>
+      {preHigh && (
+        <figcaption className={styles.warn}>
+          입고 전에 바닥날 위험 {preRisk}% · 넣는 양과 상관없어요
+        </figcaption>
+      )}
       <Bulb />
       <svg aria-label={label} role="img" viewBox="0 0 360 210">
         <defs>
@@ -219,7 +234,7 @@ export function InsightSketch({ values }: { values: SketchValues }) {
         </defs>
 
         <text className={styles.caption} x="16" y={ROW1 - 30}>
-          품절 위험
+          도착 후 품절 위험
         </text>
         {hasRisk ? (
           <>
@@ -227,17 +242,31 @@ export function InsightSketch({ values }: { values: SketchValues }) {
               d={`${roughEllipse(AFTER, ROW1 - 4, 40, 22, r)}Z`}
               fill="url(#sketch-sage)"
             />
-            <text
-              className={styles.before}
-              textAnchor="middle"
-              x={BEFORE}
-              y={ROW1 + 9}
-            >
-              {preRisk}%
-            </text>
-            <Arrow r={r} y={ROW1 - 3} />
+            {lowerRisk !== null && (
+              <>
+                <text
+                  className={styles.before}
+                  data-high={lowerRisk >= HIGH_RISK || undefined}
+                  textAnchor="middle"
+                  x={BEFORE}
+                  y={ROW1 + 9}
+                >
+                  {lowerRisk}%
+                </text>
+                <Arrow r={r} y={ROW1 - 3} />
+                <text
+                  className={styles.sub}
+                  textAnchor="middle"
+                  x={BEFORE}
+                  y={ROW1 + 33}
+                >
+                  {lower?.quantity}개 넣으면
+                </text>
+              </>
+            )}
             <text
               className={styles.value}
+              data-high={postHigh || undefined}
               textAnchor="middle"
               x={AFTER}
               y={ROW1 + 9}
@@ -251,18 +280,10 @@ export function InsightSketch({ values }: { values: SketchValues }) {
             <text
               className={styles.sub}
               textAnchor="middle"
-              x={BEFORE}
-              y={ROW1 + 33}
-            >
-              도착 전
-            </text>
-            <text
-              className={styles.sub}
-              textAnchor="middle"
               x={AFTER}
               y={ROW1 + 33}
             >
-              도착 후(권장량)
+              {recommended}개(권장) 넣으면
             </text>
           </>
         ) : (

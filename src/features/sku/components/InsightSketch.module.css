@@ -1,4 +1,4 @@
-/* 손그림 칸: 크림 종이 위 네이비 볼펜. 전 값은 회색, 후 값은 잉크, 위험이 줄면 세이지 동그라미, 남는 재고는 노랑 밑줄 + 주황 별 */
+/* 손그림 칸: 크림 종이 위 네이비 볼펜. 권장량 쪽 값은 세이지 동그라미, 위험 20% 이상 숫자는 빨강(문장과 같은 기준), 남는 재고는 노랑 밑줄 + 주황 별 */
 .sketch {
   position: relative;
   min-width: 0;
@@ -28,6 +28,21 @@
 .sketch .before {
   fill: var(--color-text-3);
   font-size: 38px;
+}
+
+.sketch [data-high] {
+  fill: var(--color-danger);
+}
+
+/* 도착 전 위험이 높으면 그림 위에 따로 한 줄(같은 화살표로 잇지 않는다) */
+.warn {
+  margin: -6px var(--space-2) var(--space-3) 44px;
+  padding: 6px 10px;
+  color: var(--color-danger);
+  font-size: 12.5px;
+  font-weight: 500;
+  background: var(--color-danger-bg);
+  border-radius: 8px;
 }
 
 .sketch .value {
