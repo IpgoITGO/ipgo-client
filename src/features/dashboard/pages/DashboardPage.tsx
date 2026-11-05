@@ -22,7 +22,7 @@ import {
   loadStorageSettings,
   storageCostTotal,
 } from '../../settings/model/storageCost'
-import { getProducts } from '../../settings/model/plannedReceiptsApi'
+import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import styles from './DashboardPage.module.css'
@@ -243,7 +243,7 @@ export function DashboardPage() {
   // 서버가 아직 괜찮은 상품 목록을 주기 전(#103)에는 상품 목록에서 나머지를 채운다
   const products = useQuery({
     queryKey: ['products', 'dashboard-safe'],
-    queryFn: () => getProducts(''),
+    queryFn: getAllProducts,
     enabled:
       tab === 'safe' && query.data !== undefined && !query.data.safeItems,
   })
@@ -741,7 +741,14 @@ export function DashboardPage() {
             ))}
 
           {tab === 'safe' &&
-            (!data.safeItems && products.isPending ? (
+            (!data.safeItems && products.isError ? (
+              <AsyncState
+                description="상품 목록을 확인하지 못했어요. 다시 불러와 주세요."
+                onRetry={() => void products.refetch()}
+                status="error"
+                title="아직 괜찮은 상품을 불러오지 못했어요"
+              />
+            ) : !data.safeItems && products.isPending ? (
               <p className={styles.none}>상품을 불러오고 있어요.</p>
             ) : safeItems.length === 0 ? (
               <p className={styles.none}>아직 괜찮은 상품이 없어요.</p>
@@ -834,11 +841,13 @@ export function DashboardPage() {
                       )}
                     </div>
                     <div className={styles.reasonText}>
-                      {'date' in item && item.date && (
-                        <small className={styles.errorDate}>
-                          오류 자료 날짜 {item.date}
-                        </small>
-                      )}
+                      {'date' in item &&
+                        typeof item.date === 'string' &&
+                        item.date && (
+                          <small className={styles.errorDate}>
+                            오류 자료 날짜 {item.date}
+                          </small>
+                        )}
                       <span>{calculationReason(item.reason)}</span>
                       <ReasonDetail reason={item.reason} />
                     </div>
