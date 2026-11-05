@@ -27,3 +27,34 @@ it('고른 상품을 합계 줄까지 붙여 CSV로 만든다', () => {
 it('파일 이름에 날짜를 붙인다', () => {
   expect(orderFileName(new Date(2026, 10, 5))).toBe('발주목록_20261105.csv')
 })
+
+it.each([
+  '=1+1',
+  '+1+1',
+  '-1+1',
+  '@SUM(1)',
+  '  =1+1',
+  '\t=1+1',
+  '\r=1+1',
+  '\n=1+1',
+])('문자열 %j가 수식으로 해석되지 않게 내보낸다', (value) => {
+  const csv = toOrderCsv([
+    { name: value, barcode: value, quantity: 1, cost: 10, stockoutDate: '—' },
+  ])
+  const escaped = `'${value}`.replaceAll('"', '""')
+  const expected = /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped
+  expect(csv).toContain(`\r\n${expected},${expected},1,10,—\r\n`)
+})
+
+it('CR만 있는 셀도 감싸고 실제 숫자 값은 문자열 방어를 적용하지 않는다', () => {
+  const csv = toOrderCsv([
+    {
+      name: '상품\r이름',
+      barcode: '8800000000001',
+      quantity: -1,
+      cost: -10,
+      stockoutDate: '—',
+    },
+  ])
+  expect(csv).toContain('"상품\r이름",8800000000001,-1,-10,—')
+})
