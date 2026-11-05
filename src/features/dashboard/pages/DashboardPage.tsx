@@ -21,6 +21,7 @@ import { Tape } from '../../../shared/ui/Tape/Tape'
 import {
   loadStorageSettings,
   storageCostTotal,
+  STORAGE_LINK,
 } from '../../settings/model/storageCost'
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
@@ -38,11 +39,15 @@ function StorageTotal({
   const { total, missing, counted } = storageCostTotal(items, settings)
   if (settings.ratePerCbm == null || counted === 0) {
     return (
-      <p className={styles.storageLine}>
-        <Link to="/settings">
-          상자 크기와 보관 요율을 넣으면 한 달 보관비를 보여 드려요 →
-        </Link>
-      </p>
+      // 아직 안 넣었으면 문장 대신 누를 곳이 보이는 작은 칸 하나(11/5 사장님 — 줄글은 지저분하고 안 눌림)
+      <Link className={styles.storageCta} to={STORAGE_LINK}>
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M3 8l9-5 9 5v8l-9 5-9-5z" />
+          <path d="M3 8l9 5 9-5M12 13v8" />
+        </svg>
+        한 달 보관비 보기
+        <small>상자 크기·요율 넣기</small>
+      </Link>
     )
   }
   return (
@@ -51,7 +56,7 @@ function StorageTotal({
       {missing > 0 && (
         <span>
           {' '}
-          · 크기 미입력 {missing}개 빠짐 <Link to="/settings">넣기 →</Link>
+          · 크기 미입력 {missing}개 빠짐 <Link to={STORAGE_LINK}>넣기 →</Link>
         </span>
       )}
     </p>

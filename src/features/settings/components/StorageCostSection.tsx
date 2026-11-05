@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import {
   type Box,
@@ -7,6 +8,7 @@ import {
   loadStorageSettings,
   positiveNumber,
   saveStorageSettings,
+  STORAGE_ANCHOR,
   withCommas,
 } from '../model/storageCost'
 import styles from '../pages/SettingsPage.module.css'
@@ -25,6 +27,25 @@ export function StorageCostSection({ products }: { products: Product[] }) {
   const [drafts, setDrafts] = useState<Record<string, Partial<Box>>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
+  const foldRef = useRef<HTMLDetailsElement>(null)
+  const location = useLocation()
+
+  // 대시보드·상품 상세의 "보관비 보기"로 오면(#storage-cost) 펼쳐서 이 칸으로 내려온다.
+  useEffect(() => {
+    const fold = foldRef.current
+    if (location.hash !== '#' + STORAGE_ANCHOR || !fold) return
+    fold.open = true
+    const still = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    fold.scrollIntoView?.({
+      behavior: still ? 'auto' : 'smooth',
+      block: 'start',
+    })
+    fold.dataset.arrived = ''
+    const id = window.setTimeout(() => delete fold.dataset.arrived, 1600)
+    return () => window.clearTimeout(id)
+  }, [location.hash, location.key])
 
   function setError(key: string, message: string | null) {
     setErrors((prev) => {
@@ -82,7 +103,11 @@ export function StorageCostSection({ products }: { products: Product[] }) {
 
   return (
     // 선택 항목이라 기본은 접어 둔다. 접혀 있어도 요율·입력한 상자 수는 한 줄로 보인다.
-    <details className={`${styles.card} ${styles.fold}`}>
+    <details
+      className={`${styles.card} ${styles.fold}`}
+      id={STORAGE_ANCHOR}
+      ref={foldRef}
+    >
       <summary aria-describedby="storage-cost-summary">
         <span className={styles.foldTitle}>
           <h2 id="storage-cost-title">보관 비용</h2>

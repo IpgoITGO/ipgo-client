@@ -15,6 +15,7 @@ import {
   formatCbm,
   loadStorageSettings,
   monthlyStorageCost,
+  STORAGE_LINK,
 } from '../../settings/model/storageCost'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import {
@@ -698,7 +699,7 @@ export function SkuPage() {
                 <dt>한 달 보관비</dt>
                 <dd>
                   {storageCost == null ? (
-                    <Link className={styles.fixLink} to="/settings">
+                    <Link className={styles.fixLink} to={STORAGE_LINK}>
                       상자 크기를 넣으면 보여요 →
                     </Link>
                   ) : (
