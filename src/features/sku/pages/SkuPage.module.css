@@ -650,15 +650,19 @@
 }
 
 /* 빈 값 고치는 곳으로 가는 길: 입고 조건 · 단가 */
+/* 고치러 가는 링크: 파란 링크 대신 우리 톤(짙은 회색 + 노란 밑줄) */
 .fixLink {
-  color: var(--color-link);
+  color: var(--color-text-2);
   font-size: var(--text-caption);
-  font-weight: 500;
-  text-decoration: none;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .fixLink:hover {
-  text-decoration: underline;
+  color: var(--color-text);
 }
 
 /* 휴대폰에선 그래프가 줄어 축 글자가 7px쯤 된다. 그림 단위로 키워 실제 12px 안팎으로 */
