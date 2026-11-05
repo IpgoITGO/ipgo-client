@@ -14,6 +14,7 @@ import { Button } from '../../shared/ui/Button/Button'
 import { CalculationStatus } from '../../shared/ui/CalculationStatus/CalculationStatus'
 import { Modal } from '../../shared/ui/Modal/Modal'
 import styles from './AppLayout.module.css'
+import { AccountMenu } from './AccountMenu'
 import { RouteToast } from './RouteToast'
 
 const navigation = [
@@ -77,12 +78,6 @@ export function AppLayout() {
           ))}
         </nav>
         <div className={styles.account}>
-          <span
-            aria-label={`${user?.name} · ${user?.companyName}`}
-            className={styles.identity}
-          >
-            {user?.name} <span aria-hidden="true">·</span> {user?.companyName}
-          </span>
           <NavLink
             aria-label={`지금 요금제: ${planLabel}`}
             className={styles.planPill}
@@ -90,14 +85,12 @@ export function AppLayout() {
           >
             {planLabel}
           </NavLink>
-          <Button
-            loading={signingOut && !logoutFailed}
-            loadingLabel="로그아웃 중"
-            onClick={() => void handleSignOut()}
-            variant="secondary"
-          >
-            로그아웃
-          </Button>
+          <AccountMenu
+            company={user?.companyName ?? ''}
+            name={user?.name ?? ''}
+            onSignOut={() => void handleSignOut()}
+            signingOut={signingOut && !logoutFailed}
+          />
         </div>
       </header>
       <main className={styles.main}>

@@ -80,6 +80,8 @@ export type Subscription = {
   startedOn: string
   method: PayMethod | null
   history: Payment[]
+  // 해지를 누르면 다음 결제일까지 쓰고 끝난다(#187). 그날을 적어 둔다.
+  cancelOn?: string | null
 }
 
 const KEY = 'ipgo:subscription'
@@ -157,6 +159,16 @@ export function trialDaysLeft(subscription: Subscription, today = new Date()) {
 // 유료는 시작일에서 한 달 뒤가 다음 결제일
 export function nextBillingOn(subscription: Subscription) {
   return subscription.plan === 'trial' ? null : addMonth(subscription.startedOn)
+}
+
+// 해지: 다음 결제일까지 쓰고 끝난다. 다시 누르면 해지를 취소한다.
+export function setCancel(subscription: Subscription, cancel: boolean) {
+  const next = {
+    ...subscription,
+    cancelOn: cancel ? nextBillingOn(subscription) : null,
+  }
+  saveSubscription(next)
+  return next
 }
 
 export function subscribe(

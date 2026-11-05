@@ -10,3 +10,9 @@ export async function signInAsSeller(user: UserEvent) {
   await user.paste('pass1234')
   await user.click(screen.getByRole('button', { name: '로그인' }))
 }
+
+// 로그아웃은 위쪽 이름을 눌러 여는 계정 메뉴 안에 있다(#187).
+export async function clickSignOut(user: UserEvent) {
+  await user.click(await screen.findByRole('button', { name: /계정 메뉴/ }))
+  await user.click(screen.getByRole('button', { name: '로그아웃' }))
+}

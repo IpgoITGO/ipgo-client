@@ -65,6 +65,8 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 아직 없습니다. 구독 상태는 브라우저 `localStorage`(`ipgo:subscription`)에만 두고 처음 열면 14일
 체험이 시작됩니다. 결제창·승인 확인은 `src/features/billing/model/payment.ts`가 모의로 성공을
 돌려주며, 포트원 키와 서버 승인 API가 생기면 이 함수만 바꿉니다. 실제로 돈이 나가지 않습니다.
+위쪽 오른쪽 이름을 누르면 계정 메뉴(내 계정·요금제·결제·로그아웃)가 열리고, 내 계정(`/account`)은
+같은 구독 상태로 요금제·사용량·결제 내역·해지 예정일을 보여 줍니다.
 
 ## 명령
 

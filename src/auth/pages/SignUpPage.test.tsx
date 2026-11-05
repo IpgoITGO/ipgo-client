@@ -259,7 +259,9 @@ describe('SignUpPage', () => {
     await user.click(screen.getByRole('button', { name: '로그인' }))
 
     expect(
-      await screen.findByLabelText('김담당 · 다음스낵'),
+      await screen.findByRole('button', {
+        name: '김담당 · 다음스낵 계정 메뉴',
+      }),
     ).toBeInTheDocument()
   })
 
