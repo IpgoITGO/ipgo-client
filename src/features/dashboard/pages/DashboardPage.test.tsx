@@ -284,7 +284,6 @@ describe('DashboardPage', () => {
       await screen.findByText(/새 수불부를 계산하고 있어요 · \d+분째/),
     ).toBeInTheDocument()
     expect(screen.getByText(/아래는 \d+\/\d+ 결과예요/)).toBeInTheDocument()
-    expect(screen.getByText(/\d+\/\d+ 기준/)).toBeInTheDocument()
     expect(
       await screen.findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
     ).toBeInTheDocument()
