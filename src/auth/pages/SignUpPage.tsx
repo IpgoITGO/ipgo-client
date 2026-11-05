@@ -320,7 +320,8 @@ export function SignUpPage() {
             <PasswordField
               autoComplete="new-password"
               autoFocus
-              error={errors.password?.message}
+              // 오류 문장 대신 아래 조건 목록이 빨강 ✕로 알린다(칸 밀림 없음)
+              aria-invalid={errors.password ? true : undefined}
               hint={<PasswordStrength value={password ?? ''} />}
               label="비밀번호"
               required

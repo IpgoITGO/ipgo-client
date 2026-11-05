@@ -221,12 +221,17 @@ describe('SignUpPage', () => {
     await user.type(screen.getByLabelText('비밀번호 확인'), 'abcdefgx')
     await user.click(screen.getByRole('button', { name: '가입하기' }))
 
+    // 비밀번호 칸은 오류 문장 대신 조건 목록(빨강 ✕)과 빨간 테두리로 알린다
     expect(
-      await screen.findByText(
-        '8~16자로 영문 대문자·소문자·숫자·특수문자를 모두 넣어 주세요.',
-      ),
+      await screen.findByText('비밀번호가 서로 달라요.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('비밀번호가 서로 달라요.')).toBeInTheDocument()
+    expect(screen.getByLabelText('비밀번호')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    expect(
+      screen.getByRole('list', { name: '비밀번호 조건' }),
+    ).toHaveTextContent('미충족: 영문 대문자 1개 이상')
 
     await user.click(screen.getByRole('button', { name: '이전' }))
     expect(screen.getByLabelText('이메일')).toHaveValue(newEmail)

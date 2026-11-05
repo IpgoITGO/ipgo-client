@@ -6,10 +6,7 @@ export const PASSWORD_RULE =
 export const PASSWORD_RULE_MESSAGE =
   '8~16자로 영문 대문자·소문자·숫자·특수문자를 모두 넣어 주세요.'
 
-export const PASSWORD_RULE_HINT =
-  '영문 대문자·소문자, 숫자, 특수문자를 모두 넣어 8~16자로 정해 주세요. 공백·한글은 쓸 수 없어요.'
-
-// 강도 표시선: 위 규칙을 조건 하나씩 나눈 것. 다 채우면 PASSWORD_RULE도 통과한다.
+// 조건 목록: 위 규칙을 조건 하나씩 나눈 것. 다 채우면 PASSWORD_RULE도 통과한다.
 export const PASSWORD_CHECKS = [
   { label: '8~16자', test: (v: string) => v.length >= 8 && v.length <= 16 },
   { label: '대문자', test: (v: string) => /[A-Z]/.test(v) },
@@ -18,5 +15,5 @@ export const PASSWORD_CHECKS = [
   { label: '특수문자', test: (v: string) => /[!-/:-@[-`{-~]/.test(v) },
 ] as const
 
-// 공백·한글·이모지처럼 쓸 수 없는 글자가 섞였는지
-export const hasInvalidPasswordChar = (v: string) => /[^!-~]/.test(v)
+// 비밀번호 칸에 들어오면 바로 지울 글자: 규칙(! 부터 ~ 까지 ASCII) 밖의 한글·공백·이모지
+export const stripInvalidPasswordChars = (v: string) => v.replace(/[^!-~]/g, '')

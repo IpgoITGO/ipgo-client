@@ -1,28 +1,40 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 
+import { PasswordField } from './PasswordField'
 import { PasswordStrength } from './PasswordStrength'
 
 describe('PasswordStrength', () => {
-  it('빠진 조건만 알려 준다', () => {
-    render(<PasswordStrength value="abcd" />)
-    expect(screen.getByRole('img')).toHaveAccessibleName(
-      '비밀번호 조건 5개 중 1개 충족',
-    )
-    expect(
-      screen.getByText(
-        '대문자·숫자·특수문자를 넣어 주세요. 8자 이상으로 해 주세요.',
-      ),
-    ).toBeInTheDocument()
+  it('조건 5줄을 늘 보여 주고 채운 줄만 충족으로 읽힌다', () => {
+    render(<PasswordStrength value="abcd1" />)
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(5)
+    expect(items.map((item) => item.textContent)).toEqual([
+      '미충족: 8~16자',
+      '미충족: 영문 대문자 1개 이상',
+      '충족: 영문 소문자 1개 이상',
+      '충족: 숫자 1개 이상',
+      '미충족: 특수문자 1개 이상',
+    ])
+  })
+})
+
+describe('PasswordField', () => {
+  it('한글·공백은 들어오자마자 지우고 알린다', async () => {
+    const onChange = vi.fn()
+    render(<PasswordField label="비밀번호" onChange={onChange} />)
+    const input = screen.getByLabelText('비밀번호')
+    await userEvent.type(input, 'Ab 가1')
+    expect(input).toHaveValue('Ab1')
+    expect(screen.getByRole('status')).toHaveTextContent('한글·공백은 못 써요')
   })
 
-  it('규칙을 다 채우면 쓸 수 있다고 알린다', () => {
-    render(<PasswordStrength value="Abcd1234!" />)
-    expect(screen.getByText('쓸 수 있는 비밀번호예요.')).toBeInTheDocument()
-  })
-
-  it('공백·한글을 막는다', () => {
-    render(<PasswordStrength value="Abcd 1234!" />)
-    expect(screen.getByText('공백·한글은 쓸 수 없어요.')).toBeInTheDocument()
+  it('보기 버튼으로 적은 글자를 보여 준다', async () => {
+    render(<PasswordField label="비밀번호" />)
+    const input = screen.getByLabelText('비밀번호')
+    expect(input).toHaveAttribute('type', 'password')
+    await userEvent.click(screen.getByRole('button', { name: '비밀번호 보기' }))
+    expect(input).toHaveAttribute('type', 'text')
   })
 })
