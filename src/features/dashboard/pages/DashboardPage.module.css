@@ -745,3 +745,28 @@ tr[data-soon] .track i {
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+/* 내 입고량: 정했으면 권장 숫자에 취소선, 아래에 정한 날 / 지난 계산 기준이면 노란 꼬리표 */
+.qty[data-struck] {
+  color: var(--color-text-3);
+  text-decoration: line-through;
+  box-shadow: none;
+}
+
+.planSub {
+  display: block;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.staleTag {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  white-space: nowrap;
+}

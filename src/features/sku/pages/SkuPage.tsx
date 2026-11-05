@@ -1639,8 +1639,10 @@ export function SkuPage() {
 
           {data.resultId !== null && (
             <ScenarioInsight
+              baseDate={data.baseDate}
               inboundUnit={data.calculation.inboundUnit ?? 1}
               key={data.resultId}
+              productId={skuId}
               resultId={data.resultId}
             />
           )}

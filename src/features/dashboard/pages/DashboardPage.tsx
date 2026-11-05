@@ -25,6 +25,13 @@ import {
   storageCostTotal,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
+import {
+  isOwnPlan,
+  isStale,
+  shortBasis,
+  shortDate,
+  usePlanned,
+} from '../../sku/model/plannedQuantity'
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
@@ -218,6 +225,7 @@ function NoMatch({ search }: { search: string }) {
 }
 
 export function DashboardPage() {
+  const planned = usePlanned()
   const navigate = useNavigate()
   const lock = useCalcLock()
   const [params, setParams] = useSearchParams()
@@ -371,8 +379,42 @@ export function DashboardPage() {
 
   // 발주 목록: 고른 상품의 수량·사입비 합계와 엑셀(CSV) 받기
   const pickedItems = items.filter((item) => picked.has(item.id))
-  const pickedQty = pickedItems.reduce((sum, item) => sum + item.quantity, 0)
-  const pickedCost = pickedItems.reduce((sum, item) => sum + item.cost, 0)
+  // 상세에서 정한 내 입고량이 있으면 합계·사입비는 그 수량으로(사입비 = 권장 기준 단가 × 수량)
+  const planOf = (item: { id: string }) =>
+    isOwnPlan(planned[item.id]) ? planned[item.id] : undefined
+  const orderQtyOf = (item: { id: string; quantity: number }) =>
+    planOf(item)?.quantity ?? item.quantity
+  const orderCostOf = (item: { id: string; quantity: number; cost: number }) =>
+    item.quantity > 0
+      ? Math.round((item.cost / item.quantity) * orderQtyOf(item))
+      : item.cost
+  const struck = (item: { id: string }) => {
+    const plan = planOf(item)
+    return !!plan && !isStale(plan, data.baseDate)
+  }
+  const planCell = (item: { id: string }) => {
+    const plan = planOf(item)
+    if (!plan) return '—'
+    return (
+      <>
+        <b>{plan.quantity.toLocaleString()}개</b>
+        {isStale(plan, data.baseDate) ? (
+          <span className={styles.staleTag}>
+            ⟲ {shortBasis(plan.basis)} 계산 기준
+          </span>
+        ) : (
+          <small className={styles.planSub}>
+            {shortDate(plan.decidedAt)} 정함
+          </small>
+        )}
+      </>
+    )
+  }
+  const pickedQty = pickedItems.reduce((sum, item) => sum + orderQtyOf(item), 0)
+  const pickedCost = pickedItems.reduce(
+    (sum, item) => sum + orderCostOf(item),
+    0,
+  )
   function togglePick(id: string) {
     setPicked((previous) => {
       const next = new Set(previous)
@@ -394,12 +436,13 @@ export function DashboardPage() {
     downloadCsv(
       orderFileName(),
       toOrderCsv(
-        pickedItems.map(({ name, barcode, quantity, cost, stockoutDate }) => ({
-          name,
-          barcode,
-          quantity,
-          cost,
-          stockoutDate,
+        pickedItems.map((item) => ({
+          name: item.name,
+          barcode: item.barcode,
+          quantity: item.quantity,
+          planned: planOf(item)?.quantity ?? null,
+          cost: orderCostOf(item),
+          stockoutDate: item.stockoutDate,
         })),
       ),
     )
@@ -678,6 +721,7 @@ export function DashboardPage() {
                       <th className={styles.num}>리드타임</th>
                       <th className={styles.num}>품절 위험</th>
                       <th className={styles.num}>권장 입고량</th>
+                      <th className={styles.num}>내 입고량</th>
                       <th className={styles.num}>사입비</th>
                     </tr>
                   </thead>
@@ -739,10 +783,18 @@ export function DashboardPage() {
                           className={`${styles.num} ${styles.qtyCell}`}
                           data-label="권장 입고량"
                         >
-                          <span className={styles.qty}>{item.quantity}개</span>
+                          <span
+                            className={styles.qty}
+                            data-struck={struck(item) || undefined}
+                          >
+                            {item.quantity}개
+                          </span>
+                        </td>
+                        <td className={styles.num} data-label="내 입고량">
+                          {planCell(item)}
                         </td>
                         <td className={styles.num} data-label="사입비">
-                          {item.cost.toLocaleString()}원
+                          {orderCostOf(item).toLocaleString()}원
                         </td>
                       </tr>
                     ))}

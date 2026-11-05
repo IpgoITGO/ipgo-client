@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
@@ -16,7 +16,12 @@ function sentence(pattern: RegExp) {
 function renderInsight(resultId: number | string = 101) {
   return render(
     <AppProviders>
-      <ScenarioInsight inboundUnit={12} resultId={resultId} />
+      <ScenarioInsight
+        baseDate="2026. 11. 4"
+        inboundUnit={12}
+        productId="7"
+        resultId={resultId}
+      />
     </AppProviders>,
   )
 }
@@ -249,7 +254,12 @@ describe('ScenarioInsight', () => {
     )
     render(
       <AppProviders>
-        <ScenarioInsight inboundUnit={12} resultId={101} />
+        <ScenarioInsight
+          baseDate="2026. 11. 4"
+          inboundUnit={12}
+          productId="7"
+          resultId={101}
+        />
       </AppProviders>,
     )
 
@@ -438,5 +448,92 @@ describe('ScenarioInsight', () => {
     expect(
       screen.getByRole('button', { name: '다시 불러오기' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('내 입고량 정하기', () => {
+  const PLAN_KEY = 'ipgo:planned-quantity'
+  afterEach(() => localStorage.clear())
+
+  it('카드에서 정하면 저장하고 "내가 정함"·배너를 보이고 되돌리면 지운다', async () => {
+    const user = userEvent.setup()
+    renderInsight()
+    await screen.findByText('권장량의 80%')
+
+    await user.click(
+      screen.getAllByRole('button', { name: '이 수량으로 정하기' })[0],
+    )
+    const saved = JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7']
+    expect(saved).toMatchObject({
+      quantity: 60,
+      source: 'SCENARIO_80',
+      basis: '2026. 11. 4',
+    })
+    expect(screen.getByText('내가 정함')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '✓ 정함' })).toBeInTheDocument()
+    expect(
+      screen.getByText(/권장량의 80% 카드에서 정함/, { selector: 'span' }),
+    ).toHaveTextContent('내 입고량 60개')
+
+    await user.click(screen.getByRole('button', { name: '되돌리기' }))
+    expect(
+      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
+    ).toBeUndefined()
+    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
+  })
+
+  it('권장(100%) 카드는 배너 없이 "✓ 권장대로 정함"만 보인다', async () => {
+    const user = userEvent.setup()
+    renderInsight()
+    await screen.findByText('권장량 100%')
+
+    await user.click(
+      screen.getAllByRole('button', { name: '이 수량으로 정하기' })[1],
+    )
+    expect(
+      screen.getByRole('button', { name: '✓ 권장대로 정함' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
+    expect(screen.queryByText(/내 입고량/)).not.toBeInTheDocument()
+  })
+
+  it('직접 넣은 수량 버튼은 올바른 수량을 넣은 뒤에만 눌린다', async () => {
+    const user = userEvent.setup()
+    renderInsight()
+    await screen.findByText('권장량 100%')
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+
+    const buttons = () =>
+      screen.getAllByRole('button', { name: '이 수량으로 정하기' })
+    expect(buttons().at(-1)).toBeDisabled()
+    await user.type(screen.getByLabelText('직접 입력'), '55')
+    await user.click(buttons().at(-1) as HTMLElement)
+    expect(
+      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
+    ).toMatchObject({ quantity: 55, source: 'MANUAL' })
+  })
+
+  it('지난 계산 기준이면 노란 배너에서 그대로 두거나 새 권장으로 바꾼다', async () => {
+    localStorage.setItem(
+      PLAN_KEY,
+      JSON.stringify({
+        '7': {
+          quantity: 50,
+          source: 'MANUAL',
+          decidedAt: '2026-11-01',
+          basis: '2026. 11. 1',
+        },
+      }),
+    )
+    const user = userEvent.setup()
+    renderInsight()
+    expect(await screen.findByText(/11\/1 계산 기준이에요/)).toBeInTheDocument()
+    expect(screen.getByText('새 계산의 권장은 72개')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '50개 그대로' }))
+    expect(
+      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
+    ).toMatchObject({ quantity: 50, basis: '2026. 11. 4' })
+    expect(screen.queryByText(/계산 기준이에요/)).not.toBeInTheDocument()
   })
 })
