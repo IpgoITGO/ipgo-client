@@ -196,3 +196,100 @@
   outline: 3px solid var(--color-info);
   outline-offset: 2px;
 }
+
+/* 계정 메뉴(#187): 이름을 누르면 아래로 작은 목록 */
+.menuBox {
+  position: relative;
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding-inline: var(--space-4);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: var(--text-caption);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+}
+
+.menuButton:hover,
+.menuButton[aria-expanded='true'] {
+  color: var(--color-text);
+  background: var(--color-primary-soft);
+}
+
+.menuButton:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.account .chevron {
+  flex: none;
+  transition: transform 150ms ease;
+}
+
+.menuButton[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.account .menuShort {
+  display: none;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgb(25 31 40 / 8%);
+}
+
+.menu a,
+.menu button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 12px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-caption);
+  text-align: left;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.menu a:hover,
+.menu button:hover,
+.menu a:focus-visible,
+.menu button:focus-visible {
+  background: var(--color-primary-soft);
+  outline: none;
+}
+
+.menu li:last-child {
+  padding-top: 2px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .account .menuShort {
+    display: inline;
+  }
+}

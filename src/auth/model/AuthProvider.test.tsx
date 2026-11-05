@@ -8,7 +8,7 @@ import { AppProviders } from '../../app/providers/AppProviders'
 import { routes } from '../../app/router/router'
 import { server } from '../../mocks/server'
 import { apiRequest, setAccessToken } from '../../shared/api/client'
-import { signInAsSeller } from '../../test/signIn'
+import { clickSignOut, signInAsSeller } from '../../test/signIn'
 import { expireMockAccessTokens } from '../mocks/handlers'
 
 function renderApp(path: string) {
@@ -46,7 +46,7 @@ describe('로그인 상태', () => {
     const first = renderApp('/login')
 
     await signInAsSeller(user)
-    await user.click(await screen.findByRole('button', { name: '로그아웃' }))
+    await clickSignOut(user)
     expect(
       await screen.findByRole('heading', { name: '로그인' }),
     ).toBeInTheDocument()
@@ -129,7 +129,7 @@ describe('로그아웃 실패 (#32)', () => {
           : new HttpResponse(null, { status: 204 }),
       ),
     )
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await clickSignOut(user)
 
     expect(
       await screen.findByRole('dialog', { name: '로그아웃을 끝내지 못했어요' }),
@@ -153,7 +153,7 @@ describe('로그아웃 실패 (#32)', () => {
     await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ })
 
     server.use(http.post('/api/auth/logout', () => HttpResponse.error()))
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await clickSignOut(user)
     await user.click(
       await screen.findByRole('button', { name: '그래도 이 화면에서 나가기' }),
     )

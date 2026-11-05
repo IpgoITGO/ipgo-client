@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
-import { signInAsSeller } from '../../test/signIn'
+import { clickSignOut, signInAsSeller } from '../../test/signIn'
 import { AppProviders } from '../providers/AppProviders'
 import { routes } from '../router/router'
 
@@ -24,10 +24,12 @@ describe('AppLayout', () => {
       await screen.findByRole('link', { name: '대시보드' }),
     ).toHaveAttribute('aria-current', 'page')
     expect(
-      await screen.findByLabelText('박셀러 · 펫스낵랩'),
+      await screen.findByRole('button', {
+        name: '박셀러 · 펫스낵랩 계정 메뉴',
+      }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await clickSignOut(user)
 
     expect(
       await screen.findByRole('heading', { name: '로그인' }),
