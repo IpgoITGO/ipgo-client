@@ -76,17 +76,31 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     commit({ ...settings, boxes }, product.name)
   }
 
+  const boxCount = products.filter(
+    (product) => settings.boxes[String(product.productId)],
+  ).length
+
   return (
-    <section className={styles.card} aria-labelledby="storage-cost-title">
-      <div className={styles.sectionHeader}>
-        <div>
+    // 선택 항목이라 기본은 접어 둔다. 접혀 있어도 요율·입력한 상자 수는 한 줄로 보인다.
+    <details className={`${styles.card} ${styles.fold}`}>
+      <summary aria-describedby="storage-cost-summary">
+        <span className={styles.foldTitle}>
           <h2 id="storage-cost-title">보관 비용</h2>
-          <p>
-            상자 크기와 창고 요율을 넣으면 권장 입고량의 한 달 보관비를 보여
-            줘요. 칸을 벗어나면 바로 저장돼요.
-          </p>
-        </div>
-      </div>
+          <span className={styles.optional}>선택</span>
+        </span>
+        <span className={styles.foldSummary} id="storage-cost-summary">
+          {settings.ratePerCbm == null && boxCount === 0
+            ? '넣으면 권장 입고량의 한 달 보관비를 보여 줘요'
+            : `요율 ${settings.ratePerCbm == null ? '미입력' : `${settings.ratePerCbm.toLocaleString('ko-KR')}원`} · 상자 크기 ${boxCount}/${products.length}개`}
+        </span>
+        <svg aria-hidden="true" className={styles.foldIcon} viewBox="0 0 24 24">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+      <p className={styles.foldLead}>
+        상자 크기와 창고 요율을 넣으면 권장 입고량의 한 달 보관비를 보여 줘요.
+        칸을 벗어나면 바로 저장돼요.
+      </p>
 
       <div className={styles.defaultGrid}>
         <label>
@@ -178,6 +192,6 @@ export function StorageCostSection({ products }: { products: Product[] }) {
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   )
 }
