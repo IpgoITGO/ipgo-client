@@ -542,18 +542,6 @@ export function DashboardPage() {
             <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
           ))}
       </header>
-      {lock?.reason === 'TRIAL_ENDED' && (
-        <aside className={styles.ended}>
-          <div>
-            <strong>체험이 끝났어요</strong>
-            <span>
-              지금까지 올린 자료와 계산 결과는 그대로 볼 수 있어요. 새 수불부를
-              올리고 계산하려면 요금제를 골라 주세요.
-            </span>
-          </div>
-          <Button onClick={() => navigate('/plans')}>요금제 고르기</Button>
-        </aside>
-      )}
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
       {!(noResult || refreshRequired) && (

@@ -95,9 +95,21 @@
   border-radius: 999px;
 }
 
+/* 결제 안 됨: 상태 줄과 같은 모양(빨간 점 + 글자, 바탕 없음) */
 .nowBadge[data-warn] {
-  color: var(--color-accent-text);
-  background: var(--color-accent-soft);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--color-danger);
+  background: none;
+}
+
+.nowBadge[data-warn]::before {
+  width: 7px;
+  height: 7px;
+  content: '';
+  background: var(--color-danger);
+  border-radius: 50%;
 }
 
 .price {

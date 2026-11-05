@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
-import { RenewalFailedBanner } from '../components/RenewalFailedBanner'
 import {
   COMPARE,
   loadSubscription,
@@ -32,8 +31,6 @@ export function PlansPage() {
         </p>
       </header>
 
-      <RenewalFailedBanner subscription={subscription} />
-
       <ul aria-label="요금제" className={styles.plans}>
         {PLANS.map((plan) => {
           const current = plan.id === subscription.plan
@@ -57,7 +54,7 @@ export function PlansPage() {
                     data-warn={failed || undefined}
                   >
                     {failed
-                      ? '결제 필요'
+                      ? '결제 안 됨'
                       : plan.id === 'trial' && daysLeft <= 0
                         ? '끝남'
                         : '지금'}

@@ -286,3 +286,45 @@ export function monthDayKo(iso: string) {
   const [, m, d] = iso.split('-').map(Number)
   return `${m}월 ${d}일`
 }
+
+// 가짜 서버로 볼 때만: 주소에 ?demo=trial-ended 처럼 붙이면 그 구독 상태로 바꿔 둔다(예외 화면 확인용, #214).
+export const DEMO_STATES = [
+  'trial',
+  'trial-ended',
+  'seller',
+  'pay-failed',
+  'pay-locked',
+] as const
+
+export function demoSubscription(
+  name: (typeof DEMO_STATES)[number],
+  today = new Date(),
+): Subscription {
+  const ago = (days: number) => addDays(isoDate(today), -days)
+  if (name === 'trial' || name === 'trial-ended') {
+    const on = ago(name === 'trial' ? 0 : 20)
+    return {
+      plan: 'trial',
+      startedOn: on,
+      method: null,
+      history: [{ paidOn: on, plan: 'trial', amount: 0, method: null }],
+    }
+  }
+  const paid: Subscription = {
+    plan: 'seller',
+    startedOn: ago(32),
+    method: 'card',
+    cardLast4: '4242',
+    history: [
+      { paidOn: ago(32), plan: 'seller', amount: 49000, method: 'card' },
+    ],
+  }
+  if (name === 'seller') return paid
+  return {
+    ...paid,
+    renewalFailed: {
+      on: ago(name === 'pay-failed' ? 1 : 10),
+      reason: 'LIMIT_EXCEEDED',
+    },
+  }
+}

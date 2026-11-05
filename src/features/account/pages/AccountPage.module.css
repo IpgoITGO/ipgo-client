@@ -274,3 +274,34 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* 상태 줄(#214): 빨간 점 + 글자, 고칠 곳은 바로 옆 글자 링크 */
+.row > .status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--color-text);
+  font-size: inherit;
+}
+
+.status i {
+  width: 7px;
+  height: 7px;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.status b {
+  color: var(--color-danger);
+}
+
+.status a {
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
