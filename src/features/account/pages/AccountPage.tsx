@@ -5,8 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/model/useAuth'
 import { env } from '../../../shared/config/env'
 import { Button } from '../../../shared/ui/Button/Button'
-import { RenewalFailedBanner } from '../../billing/components/RenewalFailedBanner'
 import {
+  calcLock,
   changeMethod,
   loadSubscription,
   markRenewalFailed,
@@ -16,6 +16,7 @@ import {
   nextBillingOn,
   type PayMethod,
   planOf,
+  renewalDeadline,
   setCancel,
   TRIAL_DAYS,
   trialDaysLeft,
@@ -52,18 +53,41 @@ export function AccountPage() {
   const limit = plan.products
   const ratio = used != null && limit ? Math.min(used / limit, 1) : 0
   const daysUsed = trial ? TRIAL_DAYS - trialDaysLeft(subscription) : 0
+  // 체험 끝·매달 결제 실패는 따로 띠를 두지 않고 요금제 칸의 "상태" 줄로(#214, Google Workspace 식)
+  const lock = calcLock(subscription)
+  const failed = trial ? null : subscription.renewalFailed
+  const status =
+    lock?.reason === 'TRIAL_ENDED'
+      ? { text: '체험 끝남', to: '/plans', label: '요금제 고르기' }
+      : failed
+        ? {
+            text: lock
+              ? '결제 안 됨 · 새 계산 멈춤'
+              : `결제 안 됨 (${monthDayKo(failed.on)}) · ${monthDayKo(renewalDeadline(failed.on))}까지`,
+            to: `/checkout?plan=${subscription.plan}&retry=1`,
+            label: '다시 결제',
+          }
+        : null
 
   return (
     <div className={styles.page}>
       <h1>내 계정</h1>
-
-      <RenewalFailedBanner subscription={subscription} />
 
       <section aria-labelledby="plan-title" className={styles.block}>
         <div className={styles.row}>
           <h2 id="plan-title">지금 요금제</h2>
           <span className={styles.badge}>{plan.name}</span>
         </div>
+        {status && (
+          <p className={styles.row}>
+            <span>상태</span>
+            <span className={styles.status}>
+              <i aria-hidden="true" />
+              <b>{status.text}</b>
+              <Link to={status.to}>{status.label}</Link>
+            </span>
+          </p>
+        )}
         {trial ? (
           <div className={styles.meterRow}>
             <p className={styles.row}>
@@ -84,7 +108,8 @@ export function AccountPage() {
               <span style={{ width: `${(daysUsed / TRIAL_DAYS) * 100}%` }} />
             </div>
           </div>
-        ) : (
+        ) : failed ? null : (
+          // 결제가 안 됐으면 지난 날짜가 "다음 결제"로 보이지 않게 상태 줄만 둔다
           <p className={styles.row}>
             <span>다음 결제</span>
             <b>

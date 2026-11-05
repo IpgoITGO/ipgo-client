@@ -1,0 +1,14 @@
+.icon {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+/* 이유는 소리로만(화면엔 위 띠가 이미 말한다) */
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

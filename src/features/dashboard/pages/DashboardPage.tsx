@@ -16,6 +16,8 @@ import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
+import { LockedButton } from '../../billing/components/LockedButton'
+import { useCalcLock } from '../../billing/model/useCalcLock'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import {
@@ -217,6 +219,7 @@ function NoMatch({ search }: { search: string }) {
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const lock = useCalcLock()
   const [params, setParams] = useSearchParams()
   const calculation = useCalculation()
   const routeRun = Number(params.get('run'))
@@ -450,9 +453,12 @@ export function DashboardPage() {
           </div>
         </div>
         {/* 계산 전·재업로드 필요엔 아래 안내 카드가 버튼을 하나만 갖는다(버튼 두 번 → 한 번) */}
-        {!(noResult || refreshRequired) && (
-          <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
-        )}
+        {!(noResult || refreshRequired) &&
+          (lock ? (
+            <LockedButton>수불부 업로드</LockedButton>
+          ) : (
+            <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
+          ))}
       </header>
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}

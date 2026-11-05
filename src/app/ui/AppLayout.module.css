@@ -188,6 +188,11 @@
   border-radius: 999px;
 }
 
+.planPill[data-ended] {
+  color: var(--color-accent-text);
+  background: var(--color-accent-soft);
+}
+
 .planPill:hover {
   color: var(--color-text);
 }

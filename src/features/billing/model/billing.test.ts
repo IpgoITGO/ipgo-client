@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  calcLock,
   loadSubscription,
   nextBillingOn,
   planOf,
@@ -36,5 +37,27 @@ describe('요금제·구독', () => {
   it('추천은 셀러 하나', () => {
     expect(planOf('seller').recommended).toBe(true)
     expect(planOf('business').recommended).toBeUndefined()
+  })
+})
+
+describe('계산 막기(calcLock)', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('체험 중이면 안 막고, 끝나는 날부터 TRIAL_ENDED', () => {
+    const sub = loadSubscription(nov5)
+    expect(calcLock(sub, new Date(2026, 10, 18))).toBeNull()
+    expect(calcLock(sub, new Date(2026, 10, 19))).toEqual({
+      reason: 'TRIAL_ENDED',
+    })
+  })
+
+  it('유료는 결제 실패 마감(실패일+7일)이 지나야 PAYMENT_FAILED', () => {
+    const paid = subscribe(loadSubscription(nov5), 'seller', 'card', nov5)
+    expect(calcLock(paid, new Date(2026, 11, 30))).toBeNull()
+    const failed = { ...paid, renewalFailed: { on: '2026-11-04', reason: 'x' } }
+    expect(calcLock(failed, new Date(2026, 10, 11))).toBeNull()
+    expect(calcLock(failed, new Date(2026, 10, 12))).toEqual({
+      reason: 'PAYMENT_FAILED',
+    })
   })
 })

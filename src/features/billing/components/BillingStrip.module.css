@@ -1,0 +1,48 @@
+/* 메뉴 바로 아래 전체 폭 한 줄. 카드·아이콘·버튼 없이 */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  justify-content: center;
+  padding: 9px var(--space-5);
+  color: var(--color-text);
+  font-size: var(--text-caption);
+  background: var(--color-accent-soft);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.action {
+  color: var(--color-text);
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.action:hover {
+  color: var(--color-text-2);
+}
+
+.action:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .strip {
+    justify-content: flex-start;
+    padding-inline: var(--space-4);
+  }
+}

@@ -9,6 +9,8 @@ import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { LockedButton } from '../../billing/components/LockedButton'
+import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
 import { StorageCostSection } from '../components/StorageCostSection'
 import {
@@ -110,6 +112,7 @@ const SHIP_MS = 900
 export function SettingsPage() {
   const { trackRun, busy: calculationBusy } = useCalculation()
   const navigate = useNavigate()
+  const lock = useCalcLock()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   // 저장 뒤 상자가 오른쪽으로 출고되는 짧은 효과를 보여 준 다음 대시보드로 간다.
@@ -514,20 +517,24 @@ export function SettingsPage() {
         >
           ← 대시보드로
         </Button>
-        <Button
-          disabled={products.length === 0 || calculationBusy}
-          loading={isSubmitting}
-          loadingLabel="계산 요청 중"
-          form="inbound-settings-form"
-          title={
-            products.length === 0
-              ? '상품이 있어야 계산할 수 있어요. 수불부를 먼저 올려 주세요'
-              : undefined
-          }
-          type="submit"
-        >
-          확인하고 계산하기
-        </Button>
+        {lock ? (
+          <LockedButton>확인하고 계산하기</LockedButton>
+        ) : (
+          <Button
+            disabled={products.length === 0 || calculationBusy}
+            loading={isSubmitting}
+            loadingLabel="계산 요청 중"
+            form="inbound-settings-form"
+            title={
+              products.length === 0
+                ? '상품이 있어야 계산할 수 있어요. 수불부를 먼저 올려 주세요'
+                : undefined
+            }
+            type="submit"
+          >
+            확인하고 계산하기
+          </Button>
+        )}
       </footer>
       {shipping && (
         <div aria-live="polite" className={styles.ship} role="status">

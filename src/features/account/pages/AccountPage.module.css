@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
 }
 
 .page > :not(section),
@@ -13,6 +13,17 @@
 
 .page > section:first-of-type {
   grid-row: span 2;
+  /* 왼쪽 요금제 상자를 오른쪽 두 상자 높이에 맞추고, 버튼은 맨 아래로(11/5 사장님) */
+  display: flex;
+  flex-direction: column;
+}
+
+.page > section:first-of-type > :last-child {
+  margin-top: auto;
+}
+
+.page > :not(section) {
+  align-self: start;
 }
 
 @media (max-width: 800px) {
@@ -273,4 +284,35 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* 상태 줄(#214): 빨간 점 + 글자, 고칠 곳은 바로 옆 글자 링크 */
+.row > .status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--color-text);
+  font-size: inherit;
+}
+
+.status i {
+  width: 7px;
+  height: 7px;
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.status b {
+  color: var(--color-danger);
+}
+
+.status a {
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
