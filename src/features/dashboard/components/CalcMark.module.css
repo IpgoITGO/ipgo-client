@@ -1,0 +1,230 @@
+.mark {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.dock {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-primary-soft);
+  border-radius: 14px;
+}
+
+.dock img {
+  position: absolute;
+  bottom: 5px;
+  left: 8px;
+  transform-origin: 50% 100%;
+}
+
+/* 조각은 상자 입구에서 사라진다: 통로를 입구 높이까지만 보이게 자른다 */
+.chute {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  width: 24px;
+  height: 20px;
+  overflow: hidden;
+}
+
+/* 작은 수불부: 회색 줄 두 개 + 노란 점 (BoxLoader .slip과 같은 모양) */
+.chute i {
+  position: absolute;
+  top: 0;
+  left: 5px;
+  width: 14px;
+  height: 10px;
+  background:
+    linear-gradient(var(--color-chart-muted), var(--color-chart-muted)) 2px
+      2px / 7px 1.5px no-repeat,
+    linear-gradient(var(--color-chart-muted), var(--color-chart-muted)) 2px
+      5px / 5px 1.5px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) 9px 4px / 3px 3px
+      no-repeat,
+    var(--color-card);
+  border: 1px solid var(--color-chart-muted);
+  border-radius: 2px;
+  opacity: 0;
+}
+
+.ring {
+  position: absolute;
+  inset: -5px;
+  width: 58px;
+  height: 58px;
+  overflow: visible;
+}
+
+.ring circle {
+  fill: none;
+  stroke: var(--color-success);
+  stroke-dasharray: 170;
+  stroke-dashoffset: 170;
+  stroke-linecap: round;
+  stroke-width: 2.5;
+  transform: rotate(-90deg);
+  transform-origin: 29px 29px;
+}
+
+.badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  border: 2px solid var(--color-card);
+  border-radius: 50%;
+  transform: scale(0);
+}
+
+.badge svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.6;
+}
+
+.mark[data-state='done'] .badge {
+  background: var(--color-success);
+  transform: scale(1);
+}
+
+.mark[data-state='done'] .ring circle {
+  stroke-dashoffset: 0;
+}
+
+.mark[data-state='failed'] .badge {
+  background: var(--color-danger);
+  transform: scale(1);
+}
+
+.mark[data-state='failed'] .dock img {
+  opacity: 0.85;
+  filter: saturate(0.6);
+}
+
+/* 움직임을 줄인 설정: 조각 하나가 입구에 걸린 멈춘 그림 */
+.mark[data-state='running'] .chute i:first-child {
+  opacity: 1;
+  transform: translate(0, 4px) rotate(-6deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mark[data-state='running'] .chute i {
+    animation: drop 1.5s cubic-bezier(0.5, 0, 0.85, 0.55) infinite;
+  }
+
+  .mark[data-state='running'] .chute i:nth-child(2) {
+    left: 6px;
+    animation-delay: 0.75s;
+  }
+
+  .mark[data-state='running'] .dock img {
+    animation: catch 1.5s infinite;
+  }
+
+  .mark[data-state='done'] .dock img {
+    animation: hop 0.5s var(--ease-spring) both;
+  }
+
+  .mark[data-state='done'] .ring circle {
+    animation: draw 0.55s ease-in-out 0.2s both;
+  }
+
+  .mark[data-state='done'] .badge {
+    animation: pop 0.35s var(--ease-spring) 0.6s both;
+  }
+
+  .mark[data-state='done'] .badge path {
+    animation: tick 0.22s ease-out 0.78s both;
+    stroke-dasharray: 14;
+  }
+}
+
+@keyframes drop {
+  0% {
+    opacity: 0;
+    transform: translate(-1px, -12px) rotate(-14deg);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  42% {
+    opacity: 1;
+    transform: translate(0, 14px) rotate(4deg);
+  }
+
+  43%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 16px) rotate(4deg);
+  }
+}
+
+@keyframes catch {
+  0%,
+  40%,
+  60%,
+  100% {
+    transform: none;
+  }
+
+  44% {
+    transform: scale(1.07, 0.9);
+  }
+
+  52% {
+    transform: scale(0.98, 1.04);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: none;
+  }
+
+  35% {
+    transform: translateY(-4px) scale(0.98, 1.03);
+  }
+
+  70% {
+    transform: scale(1.05, 0.94);
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 170;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0);
+  }
+
+  70% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes tick {
+  from {
+    stroke-dashoffset: 14;
+  }
+}
