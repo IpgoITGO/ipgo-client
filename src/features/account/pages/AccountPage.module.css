@@ -1,9 +1,28 @@
-/* 내 계정(#187): 폭 520px 한 쪽에 차례로 */
+/* 내 계정(#187): 다른 화면처럼 넓게, 두 칸(요금제·사용량 | 결제 수단·내역), 계정은 아래 한 줄(11/5 사장님) */
 .page {
   display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: var(--space-3);
-  width: min(100%, 520px);
-  margin: 0 auto;
+  align-items: start;
+}
+
+.page > :not(section),
+.page > section:last-of-type {
+  grid-column: 1 / -1;
+}
+
+.page > section:first-of-type {
+  grid-row: span 2;
+}
+
+@media (max-width: 800px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page > section:first-of-type {
+    grid-row: auto;
+  }
 }
 
 .page h1 {

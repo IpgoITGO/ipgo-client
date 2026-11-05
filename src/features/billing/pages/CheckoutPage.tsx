@@ -80,6 +80,11 @@ export function CheckoutPage() {
           </span>
           <h1>{plan.name} 요금제를 시작했어요</h1>
         </div>
+        {was.id === 'trial' && (
+          <p className={styles.keepNote}>
+            체험이 끝나도 계산과 AI 인사이트가 계속돼요
+          </p>
+        )}
         <section aria-label="달라진 것" className={styles.receipt}>
           <dl className={styles.changes}>
             <div>
@@ -112,11 +117,10 @@ export function CheckoutPage() {
             <b>{amount}원</b>
           </p>
         </section>
-        <Button onClick={() => navigate('/settings')}>
-          보관 비용 넣으러 가기
-        </Button>
-        <Button onClick={() => navigate('/dashboard')} variant="secondary">
-          대시보드로
+        {/* 결제 뒤 할 일은 대시보드로(11/5 사장님 — 보관 비용은 요금제와 상관없어 뺌) */}
+        <Button onClick={() => navigate('/dashboard')}>대시보드로 가기</Button>
+        <Button onClick={() => navigate('/account')} variant="secondary">
+          결제 내역 보기
         </Button>
       </div>
     )

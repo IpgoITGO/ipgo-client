@@ -13,8 +13,8 @@ export type Plan = {
   calculations: string
   insights: string
   features: string[]
-  // 카드 아래 한 줄 설명(체험: 카드 없이·끝나면 보기만)
-  note?: string
+  // 가격 밑 한 줄 설명(세 카드 모두 있어야 아래 줄이 맞는다)
+  note: string
   // 함께 쓰는 계정. 없으면 null
   seats: string | null
   recommended?: boolean
@@ -30,7 +30,7 @@ export const PLANS: Plan[] = [
     calculations: '제한 없음',
     insights: '월 100회',
     features: ['셀러와 똑같이', '카드 등록 없이', '끝나면 보기만'],
-    note: '카드 등록 없이 · 끝나면 자료는 보기만',
+    note: '카드 등록 없이 · 셀러와 똑같이',
     seats: null,
   },
   {
@@ -46,6 +46,7 @@ export const PLANS: Plan[] = [
       'AI 인사이트 월 100회',
       '보관 비용',
     ],
+    note: '매달 같은 날 자동 결제 · 언제든 해지',
     seats: null,
     recommended: true,
   },
@@ -57,14 +58,19 @@ export const PLANS: Plan[] = [
     calculations: '제한 없음',
     insights: '제한 없음',
     features: ['상품 2,000개', 'AI 인사이트 제한 없음', '계정 5명 (준비 중)'],
+    note: '상품이 많은 곳 · 함께 쓰는 계정 5명(준비 중)',
     seats: '5명 (준비 중)',
   },
 ]
+
+export const TRIAL_DAYS = 14
 
 // 요금제 카드의 같은 줄(11/5 사장님 — 카드끼리 무엇이 다른지 같은 높이에서 보이게). 없는 건 null → "—"
 export const COMPARE: {
   label: string
   value: (plan: Plan) => string | null
+  // 체험과 유료가 갈리는 줄은 노랗게(11/5 사장님 — 왜 결제하는지 한 줄에)
+  highlight?: boolean
 }[] = [
   {
     label: '관리 상품',
@@ -72,11 +78,12 @@ export const COMPARE: {
   },
   { label: '계산', value: (plan) => plan.calculations },
   { label: 'AI 인사이트', value: (plan) => plan.insights },
-  { label: '보관 비용 보기', value: () => '✓' },
-  { label: '함께 쓰는 계정', value: (plan) => plan.seats },
+  {
+    label: `${TRIAL_DAYS}일 뒤`,
+    value: (plan) => (plan.id === 'trial' ? '보기만 (계산 멈춤)' : '계속 계산'),
+    highlight: true,
+  },
 ]
-
-export const TRIAL_DAYS = 14
 
 export function planOf(id: PlanId) {
   return PLANS.find((plan) => plan.id === id) ?? PLANS[0]
