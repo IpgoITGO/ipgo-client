@@ -40,7 +40,7 @@ describe('SettingsPage', () => {
         </MemoryRouter>
       </AppProviders>,
     )
-    await screen.findByText('케어트릿 120g')
+    await screen.findByRole('switch', { name: '케어트릿 120g 사용' })
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     expect(
       await screen.findByText('입고량을 계산하고 있어요'),
@@ -66,7 +66,7 @@ describe('SettingsPage', () => {
       </AppProviders>,
     )
 
-    await screen.findByText('케어트릿 120g')
+    await screen.findByRole('switch', { name: '케어트릿 120g 사용' })
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
 
     expect(
@@ -90,7 +90,9 @@ describe('SettingsPage', () => {
       </AppProviders>,
     )
 
-    expect(await screen.findByText('케어트릿 120g')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('switch', { name: '케어트릿 120g 사용' }),
+    ).toBeInTheDocument()
     await user.type(screen.getByLabelText('상품명 또는 바코드 검색'), '덴탈껌')
     const productSection = screen
       .getByRole('heading', { name: '상품별로 다른 조건' })
@@ -118,6 +120,36 @@ describe('SettingsPage', () => {
       </AppProviders>,
     )
   }
+
+  it('보관 비용: 상자 cm를 다 넣으면 CBM이 보이고, 0은 막고, 다시 열어도 남는다', async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    const first = renderSettings()
+    const width = await screen.findByLabelText('덴탈껌 S 10입 상자 가로')
+    await user.type(width, '20')
+    await user.type(screen.getByLabelText('덴탈껌 S 10입 상자 세로'), '20')
+    await user.type(screen.getByLabelText('덴탈껌 S 10입 상자 높이'), '30')
+    await user.tab()
+    expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
+
+    const rate = screen.getByLabelText('창고 보관 요율')
+    await user.type(rate, '0')
+    await user.tab()
+    expect(
+      await screen.findByText('0보다 큰 숫자로 넣어 주세요'),
+    ).toBeInTheDocument()
+    await user.clear(rate)
+    await user.type(rate, '45000')
+    await user.tab()
+    expect(
+      await screen.findByText('✓ 보관 요율 저장했어요'),
+    ).toBeInTheDocument()
+
+    first.unmount()
+    renderSettings()
+    expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
+    expect(screen.getByLabelText('창고 보관 요율')).toHaveValue('45,000')
+  })
 
   it('사용 스위치를 끄면 서버에 저장하고, 새로 불러와도 꺼져 있다', async () => {
     const user = userEvent.setup()

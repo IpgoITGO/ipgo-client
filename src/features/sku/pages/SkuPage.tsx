@@ -9,6 +9,12 @@ import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import { monthDay } from '../../dashboard/model/dashboardApi'
+import {
+  cbmOf,
+  formatCbm,
+  loadStorageSettings,
+  monthlyStorageCost,
+} from '../../settings/model/storageCost'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import {
   getSkuDetail,
@@ -538,6 +544,14 @@ export function SkuPage() {
   }
 
   const data = query.data
+  // 보관 비용(#185): 입고 조건에서 넣은 상자 크기·요율로 권장 수량을 한 달 둘 때
+  const storage = loadStorageSettings()
+  const storageBox = storage.boxes[skuId]
+  const storageCost = monthlyStorageCost(
+    storageBox,
+    data.recommendation.quantity,
+    storage.ratePerCbm,
+  )
   // 예상 소진일이 오늘보다 앞이면 "품절 주의"(대시보드 표와 같은 기준). 품절은 확인 못 했으니 단정하지 않는다
   const stockoutPassed =
     data.shortageOn !== null && data.shortageOn < localIsoToday()
@@ -681,6 +695,24 @@ export function SkuPage() {
                     </Link>
                   ) : (
                     `${data.recommendation.cost.toLocaleString()}원`
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>한 달 보관비</dt>
+                <dd>
+                  {storageCost == null ? (
+                    <Link className={styles.fixLink} to="/settings">
+                      상자 크기를 넣으면 보여요 →
+                    </Link>
+                  ) : (
+                    <>
+                      {`${storageCost.toLocaleString()}원`}
+                      <small className={styles.costWork}>
+                        {storageBox &&
+                          `${formatCbm(cbmOf(storageBox))} CBM × ${data.recommendation.quantity.toLocaleString()}개 × ${storage.ratePerCbm?.toLocaleString()}원`}
+                      </small>
+                    </>
                   )}
                 </dd>
               </div>

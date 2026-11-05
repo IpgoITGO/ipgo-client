@@ -10,6 +10,7 @@ import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
+import { StorageCostSection } from '../components/StorageCostSection'
 import {
   getDefaultSettings,
   getProductSettings,
@@ -491,6 +492,18 @@ export function SettingsPage() {
 
       {/* 발주 팝업에도 form이 있어서, 입고 조건 form 밖에 둔다. form 안에 form이 있으면 저장이 페이지 새로고침이 된다. */}
       <PurchaseOrdersSection />
+
+      {products.length > 0 && (
+        <StorageCostSection
+          products={products
+            .filter((product) => product.isActive)
+            .map(({ productId, name, barcode }) => ({
+              productId,
+              name,
+              barcode,
+            }))}
+        />
+      )}
 
       <footer className={styles.actions}>
         <Button

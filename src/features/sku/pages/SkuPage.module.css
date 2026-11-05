@@ -122,6 +122,7 @@
 }
 
 .recommendation dl {
+  flex-wrap: wrap;
   display: flex;
   gap: var(--space-8);
   margin: 0;
@@ -943,4 +944,14 @@
     grid-template-columns: 1fr 1fr;
     font-size: 12.5px;
   }
+}
+
+/* 보관 비용 풀이(#185): 숫자 아래 작은 한 줄 */
+.costWork {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption, 12px);
+  font-weight: 500;
+  color: var(--color-text-3);
+  font-variant-numeric: tabular-nums;
 }
