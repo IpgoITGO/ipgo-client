@@ -40,6 +40,7 @@ export type InsightResponse = {
   // LLM = AI 문장, TEMPLATE = 기본 문장(AI 실패·안 부름), NONE = 기본 문장도 못 만듦(비교표만)
   mode: 'LLM' | 'TEMPLATE' | 'NONE'
   explanationDisabled?: boolean
+  generating?: boolean
   sentences: string[]
   state: 'NORMAL' | 'CHECK_NEEDED' | 'ON_HOLD' | 'NOT_NEEDED' | 'NOT_CALCULABLE'
   stateReason: string | null
@@ -174,5 +175,19 @@ export function failText(reason: string) {
 }
 
 export async function getInsight(resultId: number | string) {
-  return toInsight(await apiRequest<InsightRaw>(`/results/${resultId}/insight`))
+  const raw = await apiRequest<InsightRaw | { status: 'GENERATING' }>(
+    `/results/${resultId}/insight`,
+  )
+  if ('status' in raw && raw.status === 'GENERATING') {
+    return {
+      mode: 'NONE',
+      generating: true,
+      sentences: [],
+      state: 'NORMAL',
+      stateReason: null,
+      failReason: null,
+      stale: false,
+    } satisfies InsightResponse
+  }
+  return toInsight(raw as InsightRaw)
 }

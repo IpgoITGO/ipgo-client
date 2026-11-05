@@ -57,6 +57,10 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 로그인 유지와는 관계없습니다. 회원가입은 단계별 화면이라 `/signup`에서 새로고침하면 `/login`으로
 돌아갑니다(`src/main.tsx`).
 
+입고 조건의 "보관 비용"(창고 보관 요율, 상품별 상자 크기 cm)은 서버 API가 생기기 전까지 브라우저
+`localStorage`(`ipgo:storage-cost`)에만 저장합니다. 다른 기기·브라우저와 공유되지 않으며, 한 달
+보관비는 `상자 CBM × 권장 입고량 × 요율`로 화면에서 계산합니다(`src/features/settings/model/storageCost.ts`).
+
 요금제(`/plans`)와 결제(`/checkout?plan=seller|business`)는 요구사항 밖 추가 기능이며 서버 API가
 아직 없습니다. 구독 상태는 브라우저 `localStorage`(`ipgo:subscription`)에만 두고 처음 열면 14일
 체험이 시작됩니다. 결제창·승인 확인은 `src/features/billing/model/payment.ts`가 모의로 성공을
@@ -148,6 +152,11 @@ mock을 먼저 만들어 둡니다. 서버가 열리면 `API_PROXY_TARGET`만 �
 | C2 계산 상태   | `GET /calculation-runs/{runId}`                         | `src/shared/api/calculationRunApi.ts` |
 | K2·K3 시나리오 | `GET·POST /results/{resultId}/scenarios`                | `src/features/sku/model/resultApi.ts` |
 | K4 AI 인사이트 | `GET /results/{resultId}/insight` (응답은 ipgo-ai 0002) | `src/features/sku/model/resultApi.ts` |
+
+K4가 `202 {"status":"GENERATING"}`을 반환하면 설명 생성 중 표시를 유지하고 2초마다
+재조회합니다. AI/FIXED/TABLE_ONLY로 완료되면 재조회를 멈춥니다. 생성 중에는 비활성/빈 설명으로
+표시하지 않으며 시나리오 표는 계속 볼 수 있습니다. 조회 오류에는 기존 다시 불러오기 안내를 사용합니다.
+설명 GET 재조회는 유료 생성 요청을 시작하지 않습니다.
 
 모의 API 모드에서는 각 API 요청 전에 서비스 워커에 현재 탭을 다시 등록하고 준비 응답을
 기다립니다. 포커스된 탭에서 워커가 중단돼도 다음 요청으로 복구하며, 동시에 시작된 요청은
