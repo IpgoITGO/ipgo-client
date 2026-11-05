@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
@@ -12,6 +13,7 @@ function renderSku(path: string) {
         <Routes>
           <Route element={<SkuPage />} path="/sku/:skuId" />
           <Route element={<h1>입고 조건 화면</h1>} path="/settings" />
+          <Route element={<h1>대시보드 화면</h1>} path="/dashboard" />
         </Routes>
       </MemoryRouter>
     </AppProviders>,
@@ -86,14 +88,25 @@ describe('SkuPage', () => {
     expect(
       await screen.findByRole('heading', { name: '신상품 트릿 30g' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('판매한 날이 7일보다 적어요.')).toBeInTheDocument()
+    expect(
+      screen.getByText('판매한 날이 5일이에요 · 7일이 되면 계산돼요'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('value', '5')
+    expect(
+      screen.getByText(/최근 28일 기준 · 2일 더 팔리면 다음 계산에 들어가요/),
+    ).toBeInTheDocument()
   })
 
   it('짧은 기록과 낮은 정확도를 참고용으로 안내한다', async () => {
     renderSku('/sku/reference-product')
 
-    expect(await screen.findByText('참고용')).toBeInTheDocument()
-    expect(screen.getByText(/권장량은 참고용/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/바닥났을 수 있어요 · 참고용 계산이에요/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/넉넉히 잡은 값이라/)).toBeInTheDocument()
+    // 오른쪽 위 칩은 빠지고 안내 하나만 남는다
+    expect(screen.queryByText('참고용')).toBeNull()
+    expect(screen.queryByText(/재고가 바닥났을 수 있어요/)).toBeNull()
     expect(screen.getByText('추정')).toBeInTheDocument()
     expect(screen.getByText('정확도 낮음')).toBeInTheDocument()
     expect(screen.getByText('예측 범위 40~70개 · 참고용')).toBeInTheDocument()
@@ -136,10 +149,25 @@ describe('SkuPage', () => {
     renderSku('/sku/no-trend')
 
     expect(
-      await screen.findByText('재고·출고 기록을 모으는 중이에요'),
+      await screen.findByText('판매 기록이 쌓이면 여기에 그래프가 보여요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '수불부 올리기' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('img', { name: '최근 재고와 출고 추이 그래프' }),
     ).toBeNull()
+  })
+  it('없는 상품(404)은 찾을 수 없다고 알리고 대시보드로 보낸다', async () => {
+    renderSku('/sku/missing-product')
+
+    expect(
+      await screen.findByText('이 상품을 찾을 수 없어요'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다시 시도' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '대시보드로' }))
+    expect(
+      await screen.findByRole('heading', { name: '대시보드 화면' }),
+    ).toBeInTheDocument()
   })
 })

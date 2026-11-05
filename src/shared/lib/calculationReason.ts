@@ -23,13 +23,20 @@ const FIXED: [RegExp, string][] = [
     '출고나 재고에 음수·빈 값이 있어요. 수불부를 확인해 주세요.',
   ],
   [
+    /입고 조건이나 원가가 비어 있어요/,
+    '입고 조건이나 원가가 비어 있어요. 입고 조건에서 확인해 주세요.',
+  ],
+  [
     /유효 관측일 판정이 없는 기록/,
     '계산 준비가 덜 된 기록이 있어요. 다시 계산해 주세요.',
   ],
 ]
 
 export function calculationReason(reason: string) {
-  const days = /유효 관측일\).*?(\d+)일로\s*(\d+)일/.exec(reason)
+  // 옛 문장은 "(유효 관측일)", 새 문장(ipgo-ai#70)은 "최근 N일 중 판매한 날이 M일로 K일"
+  const days =
+    /유효 관측일\).*?(\d+)일로\s*(\d+)일/.exec(reason) ??
+    /최근 \d+일 중 판매한 날이 (\d+)일로 (\d+)일/.exec(reason)
   if (days)
     return `판매 기록이 ${days[1]}일 쌓였어요. 계산하려면 최소 ${days[2]}일이 필요해요.`
   return FIXED.find(([pattern]) => pattern.test(reason))?.[1] ?? reason
@@ -41,10 +48,15 @@ const WINDOW = {
   P_90: '작년 같은 90일',
 }
 
+// 새 엔진 문장은 구간 이름을 말로 바로 적는다
+const NEW_WINDOW =
+  /(작년 같은 기간|최근 90일|작년 같은 날까지 90일)\((\S+) ~ (\S+)\) 판매한 날이 (\d+)일로 (\d+)일/
+
 // "자세한 계산 사유" 펼침용. 엔진이 두 계산 방식(A·B)의 사유를 "; "로 이어 보내면 한 줄씩 풀어 쓴다.
 // 풀어 쓸 게 없으면 null(펼침을 보여 주지 않는다).
 export function calculationReasonDetail(reason: string): string[] | null {
-  const lines = reason.split(/;\s*/).map((part) => {
+  // 옛 문장은 "; ", 새 문장은 ". "로 이어 붙인다
+  const lines = reason.split(/;\s*|\.\s+(?=작년|최근)/).map((part) => {
     const body = part.replace(/^[AB]:\s*/, '')
     const window =
       /(P_H|C_90|P_90) 구간\((\S+) ~ (\S+)\) 판매한 날이 (\d+)일로 (\d+)일/.exec(
@@ -54,11 +66,22 @@ export function calculationReasonDetail(reason: string): string[] | null {
       const [, name, start, end, have, need] = window
       return `${WINDOW[name as keyof typeof WINDOW]}(${start} ~ ${end}) 판매한 날 ${have}일 · ${need}일 필요`
     }
+    const next = NEW_WINDOW.exec(body)
+    if (next) {
+      const [, name, start, end, have, need] = next
+      return `${name}(${start} ~ ${end}) 판매한 날 ${have}일 · ${need}일 필요`
+    }
     const recent =
-      /최근 (\d+)일 중 판매한 날\(유효 관측일\)이 (\d+)일로 (\d+)일/.exec(body)
+      /최근 (\d+)일 중 판매한 날(?:\(유효 관측일\))?이 (\d+)일로 (\d+)일/.exec(
+        body,
+      )
     if (recent)
       return `최근 ${recent[1]}일 판매한 날 ${recent[2]}일 · ${recent[3]}일 필요`
-    if (/작년 같은 90일 평균 출고가 0/.test(body))
+    if (
+      /작년 같은 90일 평균 출고가 0|작년 같은 날까지 90일 동안 판매 기록이 없어/.test(
+        body,
+      )
+    )
       return '작년 같은 90일에 팔린 게 없어 작년과 비교할 수 없어요'
     return null
   })
