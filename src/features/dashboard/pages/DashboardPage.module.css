@@ -395,3 +395,17 @@
     align-items: center;
   }
 }
+
+/* 보관 비용 합계 한 줄(#185) */
+.storageLine {
+  margin-top: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--color-text-2);
+}
+.storageLine b {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.storageLine a {
+  color: var(--color-link);
+}

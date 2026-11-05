@@ -323,3 +323,21 @@
   background: var(--color-primary-soft);
   cursor: not-allowed;
 }
+
+/* 보관 비용(#185): 부피 칸. 다 넣은 상자는 초록 숫자, 미입력은 흐리게 */
+.cbm {
+  color: var(--color-done);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cbmEmpty {
+  color: var(--color-text-3);
+}
+.defaultGrid input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.defaultGrid + .useNote {
+  margin-top: var(--space-4);
+}

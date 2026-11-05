@@ -11,8 +11,43 @@ import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import {
+  loadStorageSettings,
+  storageCostTotal,
+} from '../../settings/model/storageCost'
 import { getDashboard } from '../model/dashboardApi'
 import styles from './DashboardPage.module.css'
+
+// 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
+// 크기를 안 넣은 상품은 0원으로 더하지 않고 개수만 따로 적는다.
+function StorageTotal({
+  items,
+}: {
+  items: Array<{ id: string; quantity: number | null }>
+}) {
+  const settings = loadStorageSettings()
+  const { total, missing, counted } = storageCostTotal(items, settings)
+  if (settings.ratePerCbm == null || counted === 0) {
+    return (
+      <p className={styles.storageLine}>
+        <Link to="/settings">
+          상자 크기와 보관 요율을 넣으면 한 달 보관비를 보여 드려요 →
+        </Link>
+      </p>
+    )
+  }
+  return (
+    <p className={styles.storageLine}>
+      다 넣으면 한 달 보관비 <b>{total.toLocaleString()}원</b>
+      {missing > 0 && (
+        <span>
+          {' '}
+          · 크기 미입력 {missing}개 빠짐 <Link to="/settings">넣기 →</Link>
+        </span>
+      )}
+    </p>
+  )
+}
 
 // C2 계산 상태 띠. 입고 조건 저장·수불부 업로드 뒤 `/dashboard?run=번호`로 오면
 // 공통 추적기가 한 번만 조회한다. 기존 대시보드 상태 띠는 유지하며 다른 화면과 결과를 공유한다.
@@ -456,6 +491,7 @@ export function DashboardPage() {
                 <div>
                   <h2>입고가 필요한 상품</h2>
                   <p>오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.</p>
+                  <StorageTotal items={items} />
                 </div>
                 <div
                   aria-label="입고 필요 목록 정렬"
