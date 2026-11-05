@@ -9,8 +9,8 @@ import styles from './UploadProcessing.module.css'
 // 처리가 이 시간을 넘기면 "창을 닫아도 처리는 계속돼요" 안내를 붙인다.
 export const LONG_WAIT_SECONDS = 120
 
-// 끝난 순간 연출 길이. 화면 쪽 타이머와 CSS 애니메이션 길이(1.4s)에 여유를 더해 맞춘다.
-export const FINISH_MS = 1500
+// 끝난 순간 연출 길이. CSS 애니메이션(1.4s)이 끝난 뒤 다 그려진 초록 고리를 0.35초 더 보여 준다.
+export const FINISH_MS = 1750
 
 function formatElapsed(seconds: number) {
   return `${Math.floor(seconds / 60)}분 ${seconds % 60}초째`
