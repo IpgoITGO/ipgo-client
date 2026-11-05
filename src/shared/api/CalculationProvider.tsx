@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { type PropsWithChildren, useCallback, useEffect, useState } from 'react'
 
 import { CalculationContext, type CalculationState } from './calculationContext'
-import { getCalculationRun } from './calculationRunApi'
+import { cancelCalculationRun, getCalculationRun } from './calculationRunApi'
 import { readTrackedRun, writeTrackedRun } from './calculationStorage'
 
 // 정제/계산을 재실행하지 않고 같은 C2만 조회한다. 확인 시간 초과는 계산 실패가 아니다.
@@ -40,12 +40,13 @@ export function CalculationProvider({
     refetchInterval: (q) =>
       q.state.error ||
       timedOut ||
-      ['DONE', 'FAILED'].includes(q.state.data?.status ?? '')
+      ['DONE', 'FAILED', 'CANCELED'].includes(q.state.data?.status ?? '')
         ? false
         : pollInterval,
   })
   const pending =
-    runId !== null && !['DONE', 'FAILED'].includes(query.data?.status ?? '')
+    runId !== null &&
+    !['DONE', 'FAILED', 'CANCELED'].includes(query.data?.status ?? '')
 
   useEffect(() => {
     if (!pending || query.isError) return
@@ -99,6 +100,9 @@ export function CalculationProvider({
     if (query.data?.status === 'FAILED') {
       phase = 'failed'
       message = query.data.errorMessage ?? '계산을 마치지 못했어요.'
+    } else if (query.data?.status === 'CANCELED') {
+      phase = 'failed'
+      message = '계산을 멈췄어요. 이전 결과는 그대로예요.'
     } else if (query.data?.status === 'DONE') {
       phase =
         refresh.id !== runId ? 'updating' : refresh.error ? 'unknown' : 'done'
@@ -137,6 +141,16 @@ export function CalculationProvider({
         retry,
         dismiss: () => {
           if (!busy) setRunId(null)
+        },
+        stop: async () => {
+          if (runId === null) return
+          try {
+            await cancelCalculationRun(runId)
+          } catch {
+            // 취소 요청이 실패해도 화면은 기다리기를 그만둔다(서버 계산은 서버가 정리)
+          }
+          setTimedOut(false)
+          setRunId(null)
         },
       }}
     >

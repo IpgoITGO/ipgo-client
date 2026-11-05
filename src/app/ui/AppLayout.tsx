@@ -94,7 +94,7 @@ export function AppLayout() {
         </div>
       </header>
       <main className={styles.main}>
-        {pathname.replace(/\/$/, '') !== '/dashboard' && <CalculationStatus />}
+        <CalculationStatus />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
         <div className={styles.page} key={pathname}>
           <Outlet />
