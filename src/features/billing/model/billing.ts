@@ -287,7 +287,7 @@ export function monthDayKo(iso: string) {
   return `${m}월 ${d}일`
 }
 
-// 가짜 서버로 볼 때만: 주소에 ?demo=trial-ended 처럼 붙이면 그 구독 상태로 바꿔 둔다(예외 화면 확인용, #214).
+// 가짜 서버로 볼 때만(main.tsx가 부름): 주소에 ?demo=trial-ended 처럼 붙이면 그 구독 상태로 바꿔 둔다(예외 화면 확인용, #214).
 export const DEMO_STATES = [
   'trial',
   'trial-ended',
@@ -326,5 +326,12 @@ export function demoSubscription(
       on: ago(name === 'pay-failed' ? 1 : 10),
       reason: 'LIMIT_EXCEEDED',
     },
+  }
+}
+
+export function applyDemoFromUrl(search: string) {
+  const demo = new URLSearchParams(search).get('demo')
+  if (demo && (DEMO_STATES as readonly string[]).includes(demo)) {
+    saveSubscription(demoSubscription(demo as (typeof DEMO_STATES)[number]))
   }
 }

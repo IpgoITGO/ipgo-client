@@ -11,7 +11,6 @@ import {
   trialDaysLeft,
 } from '../../features/billing/model/billing'
 import { BillingStrip } from '../../features/billing/components/BillingStrip'
-import { useDemoSubscription } from '../../features/billing/model/useDemoSubscription'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
 import { CalculationStatus } from '../../shared/ui/CalculationStatus/CalculationStatus'
@@ -47,7 +46,6 @@ export function AppLayout() {
   // 지금 요금제 알약(#186). 체험이면 남은 날을 같이 보여 준다. 누르면 요금제 화면.
   // 결제하면 저장 알림을 받아 바로 다시 그린다.
   useSyncExternalStore(onSubscriptionChange, subscriptionSnapshot)
-  useDemoSubscription()
   const subscription = loadSubscription()
   const trialEnded = calcLock(subscription)?.reason === 'TRIAL_ENDED'
   const planLabel =
