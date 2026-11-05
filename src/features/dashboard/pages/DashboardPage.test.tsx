@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -276,6 +276,25 @@ describe('DashboardPage', () => {
       screen.getByText('입고가 필요한 상품 6개 · 지금은 괜찮은 상품 22개'),
     ).toBeInTheDocument()
   })
+
+  it('계산 중에는 지난 결과 위에 한 줄을 붙이고, 끝나면 바꿨다고 알린 뒤 사라진다', async () => {
+    renderWithRun(41)
+
+    expect(
+      await screen.findByText(/새 수불부를 계산하고 있어요 · \d+분째/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/아래는 \d+\/\d+ 결과예요/)).toBeInTheDocument()
+    expect(
+      await screen.findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByText('새 결과로 바꿨어요'),
+        ).not.toBeInTheDocument(),
+      { timeout: 6000 },
+    )
+  }, 15000)
 
   it('계산이 실패하면 이유를 알린다', async () => {
     renderWithRun(999)

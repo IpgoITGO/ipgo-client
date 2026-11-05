@@ -3,7 +3,14 @@ import { type PropsWithChildren, useCallback, useEffect, useState } from 'react'
 
 import { CalculationContext, type CalculationState } from './calculationContext'
 import { cancelCalculationRun, getCalculationRun } from './calculationRunApi'
-import { readTrackedRun, writeTrackedRun } from './calculationStorage'
+import {
+  readTrackedRun,
+  readTrackedUpload,
+  type TrackedUpload,
+  writeTrackedRun,
+  writeTrackedUpload,
+} from './calculationStorage'
+import { getUploadResult } from '../../features/upload/model/uploadApi'
 
 // 정제/계산을 재실행하지 않고 같은 C2만 조회한다. 확인 시간 초과는 계산 실패가 아니다.
 export function CalculationProvider({
@@ -23,6 +30,25 @@ export function CalculationProvider({
   useEffect(() => {
     if (storageScope) writeTrackedRun(storageScope, runId)
   }, [storageScope, runId])
+  const [upload, setUpload] = useState<TrackedUpload | null>(() =>
+    readTrackedUpload(storageScope),
+  )
+  useEffect(() => {
+    if (storageScope) writeTrackedUpload(storageScope, upload)
+  }, [storageScope, upload])
+  const uploadQuery = useQuery({
+    queryKey: ['upload-result', upload?.uploadId],
+    queryFn: () => getUploadResult(upload!.uploadId),
+    enabled: upload !== null,
+    staleTime: 0,
+    retry: false,
+    refetchInterval: (q) =>
+      q.state.data && q.state.data.status !== 'PROCESSING'
+        ? false
+        : pollInterval,
+  })
+  const uploadStatus = uploadQuery.data?.status
+  const uploadRunId = uploadQuery.data?.runId
   const [timedOut, setTimedOut] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [refresh, setRefresh] = useState<{ id: number | null; error: boolean }>(
@@ -94,9 +120,24 @@ export function CalculationProvider({
     setTimedOut(false)
   }, [])
 
+  // 정제가 끝나 계산이 시작됐으면 계산 추적으로 넘기고, 확인 추적은 거둔다.
+  if (upload !== null && uploadStatus === 'DONE') {
+    trackRun(uploadRunId)
+    setUpload(null)
+  }
+
   let phase: CalculationState['phase'] = 'idle'
   let message: string | undefined
-  if (runId !== null) {
+  if (upload !== null) {
+    if (uploadStatus === 'FAILED') {
+      phase = 'failed'
+      message =
+        uploadQuery.data?.error?.message ?? '수불부를 처리하지 못했어요.'
+    } else if (uploadQuery.isError) {
+      phase = 'failed'
+      message = '수불부 처리 상태를 확인하지 못했어요.'
+    } else phase = 'checking'
+  } else if (runId !== null) {
     if (query.data?.status === 'FAILED') {
       phase = 'failed'
       message = query.data.errorMessage ?? '계산을 마치지 못했어요.'
@@ -127,7 +168,7 @@ export function CalculationProvider({
       void query.refetch()
     }
   }
-  const busy = ['pending', 'updating', 'unknown'].includes(phase)
+  const busy = ['checking', 'pending', 'updating', 'unknown'].includes(phase)
 
   return (
     <CalculationContext.Provider
@@ -137,12 +178,25 @@ export function CalculationProvider({
         busy,
         run: query.data,
         message,
+        checkingSince: phase === 'checking' ? upload?.startedAt : undefined,
+        trackUpload: (id) => {
+          if (!id) return
+          setUpload((current) =>
+            current?.uploadId === id
+              ? current
+              : { uploadId: id, startedAt: Date.now() },
+          )
+        },
         trackRun,
         retry,
         dismiss: () => {
-          if (!busy) setRunId(null)
+          if (!busy) {
+            setRunId(null)
+            setUpload(null)
+          }
         },
         stop: () => {
+          if (upload !== null) return setUpload(null)
           if (runId === null) return
           // 로컬 중지는 서버 응답을 기다리지 않는다. 취소 대상보다 새 추적은 보존한다.
           setTimedOut(false)

@@ -65,16 +65,18 @@ export function UploadProcessing({
           <strong>생각보다 오래 걸려요</strong>
           {/* 1초마다 바뀌는 시간은 화면 읽기에서 뺀다. 안내는 한 번만 읽힌다. */}
           <time aria-hidden="true">{formatElapsed(seconds)}</time>
-          <p>창을 닫아도 처리는 계속돼요. 끝나면 대시보드에서 볼 수 있어요.</p>
-          <Button
-            onClick={() => {
-              leavingOnPurpose.current = true
-              onGoDashboard()
-            }}
-            variant="secondary"
-          >
-            대시보드로
-          </Button>
+          <div className={styles.bandRow}>
+            <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
+            <Button
+              onClick={() => {
+                leavingOnPurpose.current = true
+                onGoDashboard()
+              }}
+              variant="secondary"
+            >
+              대시보드로
+            </Button>
+          </div>
         </div>
       )}
       {blocker.state === 'blocked' && (
@@ -82,8 +84,8 @@ export function UploadProcessing({
           <div className={styles.leave}>
             <h2 id="leave-title">수불부를 확인하는 중이에요</h2>
             <p>
-              지금 나가도 처리는 계속돼요. 끝나면 대시보드에서 결과를 볼 수
-              있어요.
+              지금 나가도 괜찮아요. 오른쪽 아래 작은 창과 대시보드에서 계속 보여
+              드려요.
             </p>
             <div className={styles.leaveActions}>
               <Button onClick={() => blocker.proceed()} variant="secondary">
