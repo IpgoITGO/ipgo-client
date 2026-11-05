@@ -108,7 +108,8 @@ export function AccountPage() {
               <span style={{ width: `${(daysUsed / TRIAL_DAYS) * 100}%` }} />
             </div>
           </div>
-        ) : (
+        ) : failed ? null : (
+          // 결제가 안 됐으면 지난 날짜가 "다음 결제"로 보이지 않게 상태 줄만 둔다
           <p className={styles.row}>
             <span>다음 결제</span>
             <b>
