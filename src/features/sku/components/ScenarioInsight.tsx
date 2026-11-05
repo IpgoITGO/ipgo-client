@@ -302,6 +302,7 @@ export function ScenarioInsight({
                 {stale ? (
                   <>
                     <span>
+                      내 입고량 <b>{plan.quantity.toLocaleString()}개</b> ·{' '}
                       {shortBasis(plan.basis)} 계산 기준이에요.{' '}
                       <b>
                         새 계산의 권장은 {recommendedNow.toLocaleString()}개

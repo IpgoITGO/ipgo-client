@@ -705,7 +705,8 @@ export const handlers = [
         ? product('신상품 트릿 30g', '8800272421999')
         : product('케어트릿 120g', '8800272420016'),
       needStatus: isUnavailable ? 'NOT_CALCULABLE' : 'NEED_NOW',
-      asOfDate: '2026-10-14',
+      // 대시보드와 같은 계산 결과라 기준일도 같게(내 입고량 기준 비교, #224)
+      asOfDate: isoFromToday(-1),
       expectedShortageOn:
         isUnavailable || isEmpty
           ? null
