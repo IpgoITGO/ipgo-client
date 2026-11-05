@@ -45,6 +45,81 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
   })
 
+  it('202 생성 중이면 기다리는 화면을 유지하고 완료 문장을 다시 조회한다', async () => {
+    let calls = 0
+    server.use(
+      http.get('/api/results/:resultId/insight', () => {
+        calls += 1
+        if (calls === 1) {
+          return HttpResponse.json({ status: 'GENERATING' }, { status: 202 })
+        }
+        return HttpResponse.json({
+          mode: 'AI',
+          isFallback: false,
+          text: '새로 생성한 설명이에요.',
+        })
+      }),
+    )
+    renderInsight()
+    expect(
+      await screen.findByText('계산 결과를 읽고 정리하는 중이에요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('AI 설명을 사용하지 않고 있어요.'),
+    ).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('새로 생성한 설명이에요.', {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('계산 결과를 읽고 정리하는 중이에요'),
+    ).not.toBeInTheDocument()
+    expect(calls).toBe(2)
+    // 완료 뒤의 주기에는 재조회하지 않는다.
+    await new Promise((resolve) => setTimeout(resolve, 2100))
+    expect(calls).toBe(2)
+  })
+
+  it('생성 중 재조회가 실패하면 오류를 보여 주고 수동으로 다시 불러온다', async () => {
+    let calls = 0
+    server.use(
+      http.get('/api/results/:resultId/insight', () => {
+        calls += 1
+        if (calls === 1) {
+          return HttpResponse.json({ status: 'GENERATING' }, { status: 202 })
+        }
+        if (calls === 2 || calls === 3) {
+          return HttpResponse.json(
+            { code: 'ERROR', message: '조회 실패' },
+            { status: 503 },
+          )
+        }
+        return HttpResponse.json({
+          mode: 'FIXED',
+          text: '다시 읽은 기본 설명이에요.',
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderInsight()
+    expect(
+      await screen.findByText(
+        '설명 문장을 불러오지 못했어요',
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('계산 결과를 읽고 정리하는 중이에요'),
+    ).not.toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 2100))
+    expect(calls).toBe(3)
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }))
+    expect(
+      await screen.findByText('다시 읽은 기본 설명이에요.'),
+    ).toBeInTheDocument()
+    expect(calls).toBe(4)
+  }, 10000)
+
   it('카드를 누르면 그 카드가 골라진다', async () => {
     const user = userEvent.setup()
     renderInsight()
