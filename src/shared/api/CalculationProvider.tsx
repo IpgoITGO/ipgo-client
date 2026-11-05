@@ -142,15 +142,14 @@ export function CalculationProvider({
         dismiss: () => {
           if (!busy) setRunId(null)
         },
-        stop: async () => {
+        stop: () => {
           if (runId === null) return
-          try {
-            await cancelCalculationRun(runId)
-          } catch {
-            // 취소 요청이 실패해도 화면은 기다리기를 그만둔다(서버 계산은 서버가 정리)
-          }
+          // 로컬 중지는 서버 응답을 기다리지 않는다. 취소 대상보다 새 추적은 보존한다.
           setTimedOut(false)
-          setRunId(null)
+          setRunId((current) => (current === runId ? null : current))
+          // 취소 API가 없거나 실패해도 서버 계산 중지 성공으로 단정하지 않는다.
+          // 이 응답은 현재/새 계산 추적 상태를 변경하지 않는다.
+          void cancelCalculationRun(runId).catch(() => {})
         },
       }}
     >
