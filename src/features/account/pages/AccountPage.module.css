@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
 }
 
 .page > :not(section),
@@ -13,6 +13,17 @@
 
 .page > section:first-of-type {
   grid-row: span 2;
+  /* 왼쪽 요금제 상자를 오른쪽 두 상자 높이에 맞추고, 버튼은 맨 아래로(11/5 사장님) */
+  display: flex;
+  flex-direction: column;
+}
+
+.page > section:first-of-type > :last-child {
+  margin-top: auto;
+}
+
+.page > :not(section) {
+  align-self: start;
 }
 
 @media (max-width: 800px) {
