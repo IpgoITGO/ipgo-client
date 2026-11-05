@@ -55,6 +55,11 @@
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-input);
 }
+/* 보관 요율: 금액이라 오른쪽 정렬, 자릿수 맞춤 */
+.defaultGrid input.rateInput {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .defaultGrid small,
 .tableWrap td small {
   min-height: 18px;
@@ -340,4 +345,75 @@
 }
 .defaultGrid + .useNote {
   margin-top: var(--space-4);
+}
+
+/* 보관 비용: 선택 항목이라 접기. 제목 줄 전체를 누르면 열린다 */
+.fold > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  list-style: none;
+  cursor: pointer;
+}
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.fold > summary:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.foldTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.foldTitle h2 {
+  margin: 0;
+}
+.optional {
+  padding: 2px 8px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-chip);
+}
+.foldSummary {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  text-align: right;
+}
+.foldIcon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--color-text-3);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: transform 0.2s;
+}
+.fold[open] .foldIcon {
+  transform: rotate(180deg);
+}
+.fold[open] > summary {
+  margin-bottom: var(--space-3);
+}
+.fold .foldLead {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-3);
+}
+@media (max-width: 640px) {
+  .fold > summary {
+    flex-wrap: wrap;
+  }
+  .foldSummary {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
+  }
 }

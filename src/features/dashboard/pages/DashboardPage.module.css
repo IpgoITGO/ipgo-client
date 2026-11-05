@@ -690,5 +690,13 @@ tr[data-soon] .track i {
   font-variant-numeric: tabular-nums;
 }
 .storageLine a {
-  color: var(--color-link);
+  color: var(--color-text-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.storageLine a:hover {
+  color: var(--color-text);
 }
