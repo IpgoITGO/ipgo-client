@@ -175,3 +175,24 @@
   outline-offset: 2px;
   border-radius: var(--radius-chip);
 }
+
+/* 지금 요금제 알약(#186) */
+.planPill {
+  padding: 3px 10px;
+  color: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+}
+
+.planPill:hover {
+  color: var(--color-text);
+}
+
+.planPill:focus-visible {
+  outline: 3px solid var(--color-info);
+  outline-offset: 2px;
+}

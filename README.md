@@ -57,6 +57,11 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 로그인 유지와는 관계없습니다. 회원가입은 단계별 화면이라 `/signup`에서 새로고침하면 `/login`으로
 돌아갑니다(`src/main.tsx`).
 
+요금제(`/plans`)와 결제(`/checkout?plan=seller|business`)는 요구사항 밖 추가 기능이며 서버 API가
+아직 없습니다. 구독 상태는 브라우저 `localStorage`(`ipgo:subscription`)에만 두고 처음 열면 14일
+체험이 시작됩니다. 결제창·승인 확인은 `src/features/billing/model/payment.ts`가 모의로 성공을
+돌려주며, 포트원 키와 서버 승인 API가 생기면 이 함수만 바꿉니다. 실제로 돈이 나가지 않습니다.
+
 ## 명령
 
 | 명령                      | 설명                                                |

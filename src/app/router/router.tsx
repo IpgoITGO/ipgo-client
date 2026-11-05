@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 
 import { authRoutes } from '../../auth/routes'
+import { billingRoutes } from '../../features/billing/routes'
 import { dashboardRoutes } from '../../features/dashboard/routes'
 import { settingsRoutes } from '../../features/settings/routes'
 import { skuRoutes } from '../../features/sku/routes'
@@ -31,6 +32,7 @@ export const routes: RouteObject[] = [
           ...uploadRoutes,
           ...settingsRoutes,
           ...skuRoutes,
+          ...billingRoutes,
         ],
       },
     ],
