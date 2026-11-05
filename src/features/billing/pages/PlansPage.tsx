@@ -17,6 +17,7 @@ export function PlansPage() {
   const navigate = useNavigate()
   const [subscription] = useState(() => loadSubscription())
   const daysLeft = trialDaysLeft(subscription)
+  const failed = !!subscription.renewalFailed && subscription.plan !== 'trial'
 
   return (
     <div className={styles.page}>
@@ -50,7 +51,18 @@ export function PlansPage() {
                     추천<span className={styles.srOnly}> 요금제</span>
                   </span>
                 )}
-                {current && <span className={styles.nowBadge}>지금</span>}
+                {current && (
+                  <span
+                    className={styles.nowBadge}
+                    data-warn={failed || undefined}
+                  >
+                    {failed
+                      ? '결제 필요'
+                      : plan.id === 'trial' && daysLeft <= 0
+                        ? '끝남'
+                        : '지금'}
+                  </span>
+                )}
               </h2>
               <p className={styles.price}>
                 {plan.price.toLocaleString('ko-KR')}
@@ -89,6 +101,12 @@ export function PlansPage() {
                       ? `체험 중 · ${daysLeft}일 남음`
                       : '체험 끝남'
                     : '체험은 한 번만'}
+                </Button>
+              ) : current && failed ? (
+                <Button
+                  onClick={() => navigate(`/checkout?plan=${plan.id}&retry=1`)}
+                >
+                  다시 결제하기
                 </Button>
               ) : current ? (
                 <Button disabled variant="secondary">

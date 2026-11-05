@@ -12,6 +12,8 @@ import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
+import { LockedButton } from '../../billing/components/LockedButton'
+import { useCalcLock } from '../../billing/model/useCalcLock'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import {
   formatFileSize,
@@ -50,6 +52,7 @@ export function UploadPage() {
   const { busy: calculationBusy, dismiss } = useCalculation()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const lock = useCalcLock()
   const [files, setFiles] = useState<UploadFileState[]>([])
   // 형식이 틀린 파일은 목록에 넣지 않고 이유 팝업으로만 알린다.
   const [rejected, setRejected] = useState<UploadFileState[]>([])
@@ -328,14 +331,18 @@ export function UploadPage() {
         <Button onClick={() => navigate('/dashboard')} variant="secondary">
           취소
         </Button>
-        <Button
-          disabled={readyFiles.length === 0 || calculationBusy}
-          loading={uploadAction.isPending}
-          loadingLabel="올리는 중"
-          onClick={() => void uploadAction.run()}
-        >
-          {readyFiles.length}개 올리기
-        </Button>
+        {lock ? (
+          <LockedButton>{`${readyFiles.length}개 올리기`}</LockedButton>
+        ) : (
+          <Button
+            disabled={readyFiles.length === 0 || calculationBusy}
+            loading={uploadAction.isPending}
+            loadingLabel="올리는 중"
+            onClick={() => void uploadAction.run()}
+          >
+            {readyFiles.length}개 올리기
+          </Button>
+        )}
       </footer>
 
       {modalFile && (

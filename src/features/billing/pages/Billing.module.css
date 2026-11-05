@@ -95,6 +95,11 @@
   border-radius: 999px;
 }
 
+.nowBadge[data-warn] {
+  color: var(--color-accent-text);
+  background: var(--color-accent-soft);
+}
+
 .price {
   margin: 0;
   font-size: 30px;

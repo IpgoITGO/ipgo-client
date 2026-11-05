@@ -1,6 +1,11 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
-import { monthDayKo, type Subscription } from '../model/billing'
+import { Button } from '../../../shared/ui/Button/Button'
+import {
+  monthDayKo,
+  renewalDeadline,
+  type Subscription,
+} from '../model/billing'
 import { reasonText } from '../model/payment'
 import styles from './RenewalFailedBanner.module.css'
 
@@ -10,24 +15,29 @@ export function RenewalFailedBanner({
 }: {
   subscription: Subscription
 }) {
+  const navigate = useNavigate()
   const failed = subscription.renewalFailed
   if (!failed || subscription.plan === 'trial') return null
   return (
     <div className={styles.banner} role="alert">
-      <p>
-        <b>{monthDayKo(failed.on)} 결제가 안 됐어요.</b>{' '}
-        {reasonText(failed.reason)}.
-      </p>
-      <p className={styles.sub}>
-        7일 안에 다시 결제하지 않으면 새 계산이 멈추고, 자료는 그대로 볼 수
-        있어요.
-      </p>
-      <Link
-        className={styles.action}
-        to={`/checkout?plan=${subscription.plan}&retry=1`}
+      <span aria-hidden="true" className={styles.mark}>
+        !
+      </span>
+      <div className={styles.text}>
+        <p>
+          <b>{monthDayKo(failed.on)} 결제가 안 됐어요.</b>{' '}
+          {reasonText(failed.reason)}.
+        </p>
+        <p className={styles.sub}>
+          {monthDayKo(renewalDeadline(failed.on))}까지 다시 결제하지 않으면 새
+          계산이 멈춰요. 자료는 그대로 볼 수 있어요.
+        </p>
+      </div>
+      <Button
+        onClick={() => navigate(`/checkout?plan=${subscription.plan}&retry=1`)}
       >
         결제 수단 바꾸고 다시 결제
-      </Link>
+      </Button>
     </div>
   )
 }

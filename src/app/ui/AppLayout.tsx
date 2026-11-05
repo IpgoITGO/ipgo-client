@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
 import {
+  calcLock,
   loadSubscription,
   onSubscriptionChange,
   planOf,
@@ -45,9 +46,12 @@ export function AppLayout() {
   // 결제하면 저장 알림을 받아 바로 다시 그린다.
   useSyncExternalStore(onSubscriptionChange, subscriptionSnapshot)
   const subscription = loadSubscription()
+  const trialEnded = calcLock(subscription)?.reason === 'TRIAL_ENDED'
   const planLabel =
     subscription.plan === 'trial'
-      ? `체험 ${trialDaysLeft(subscription)}일 남음`
+      ? trialEnded
+        ? '체험 끝남'
+        : `체험 ${trialDaysLeft(subscription)}일 남음`
       : planOf(subscription.plan).name
 
   function leaveAnyway() {
@@ -81,6 +85,7 @@ export function AppLayout() {
           <NavLink
             aria-label={`지금 요금제: ${planLabel}`}
             className={styles.planPill}
+            data-ended={trialEnded || undefined}
             to="/plans"
           >
             {planLabel}

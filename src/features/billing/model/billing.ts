@@ -259,6 +259,28 @@ export function markRenewalFailed(
   return next
 }
 
+// 매달 결제 실패 마감: 실패일 + 7일(이 날까지는 계산 가능)
+export function renewalDeadline(on: string) {
+  return addDays(on, 7)
+}
+
+// 새 계산을 막아야 하나(#214). 체험이 끝났거나, 매달 결제 실패의 마감이 지났으면 이유를 돌려준다.
+export function calcLock(
+  subscription: Subscription,
+  today = new Date(),
+): { reason: 'TRIAL_ENDED' | 'PAYMENT_FAILED' } | null {
+  if (subscription.plan === 'trial') {
+    return trialDaysLeft(subscription, today) <= 0
+      ? { reason: 'TRIAL_ENDED' }
+      : null
+  }
+  const failed = subscription.renewalFailed
+  if (failed && isoDate(today) > renewalDeadline(failed.on)) {
+    return { reason: 'PAYMENT_FAILED' }
+  }
+  return null
+}
+
 // "11월 5일"
 export function monthDayKo(iso: string) {
   const [, m, d] = iso.split('-').map(Number)
