@@ -65,9 +65,9 @@ export function TextField({
         </p>
       )}
       {hint && (
-        <p className={styles.hint} id={hintId}>
+        <div className={styles.hint} id={hintId}>
           {hint}
-        </p>
+        </div>
       )}
     </div>
   )

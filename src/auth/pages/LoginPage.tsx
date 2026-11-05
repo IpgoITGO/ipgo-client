@@ -8,6 +8,7 @@ import { ApiError, CONNECTION_FAILED } from '../../shared/api/client'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
 import { AuthShell } from '../components/AuthShell'
+import { PasswordField } from '../components/PasswordField'
 import { TextField } from '../components/TextField'
 import { useAuth } from '../model/useAuth'
 import styles from './LoginPage.module.css'
@@ -98,11 +99,10 @@ export function LoginPage() {
             type="email"
             {...register('email')}
           />
-          <TextField
+          <PasswordField
             autoComplete="current-password"
             error={errors.password?.message ?? submitError ?? undefined}
             label="비밀번호"
-            type="password"
             {...register('password')}
           />
         </div>

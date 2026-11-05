@@ -9,16 +9,14 @@ import { Button } from '../../shared/ui/Button/Button'
 import { signUp } from '../api/authApi'
 import { AuthShell } from '../components/AuthShell'
 import { FieldButton } from '../components/FieldButton'
+import { PasswordField } from '../components/PasswordField'
+import { PasswordStrength } from '../components/PasswordStrength'
 import { TextField } from '../components/TextField'
 import {
   EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   messageOf,
 } from '../model/authMessages'
-import {
-  PASSWORD_RULE,
-  PASSWORD_RULE_HINT,
-  PASSWORD_RULE_MESSAGE,
-} from '../model/passwordRule'
+import { PASSWORD_RULE, PASSWORD_RULE_MESSAGE } from '../model/passwordRule'
 import { SIGNUP_OPEN_KEY } from '../model/signupSession'
 import { useEmailVerification } from '../model/useEmailVerification'
 import styles from './SignUpPage.module.css'
@@ -115,6 +113,7 @@ export function SignUpPage() {
     },
   })
   const email = useWatch({ control, name: 'email' })
+  const password = useWatch({ control, name: 'password' })
   const bizNo = register('businessRegNo')
   const verification = useEmailVerification(email)
 
@@ -318,22 +317,21 @@ export function SignUpPage() {
 
         {page === 3 && (
           <div className={styles.stack}>
-            <TextField
+            <PasswordField
               autoComplete="new-password"
               autoFocus
-              error={errors.password?.message}
-              hint={errors.password ? undefined : PASSWORD_RULE_HINT}
+              // 오류 문장 대신 아래 조건 목록이 빨강 ✕로 알린다(칸 밀림 없음)
+              aria-invalid={errors.password ? true : undefined}
+              hint={<PasswordStrength value={password ?? ''} />}
               label="비밀번호"
               required
-              type="password"
               {...register('password')}
             />
-            <TextField
+            <PasswordField
               autoComplete="new-password"
               error={errors.passwordConfirm?.message}
               label="비밀번호 확인"
               required
-              type="password"
               {...register('passwordConfirm')}
             />
           </div>
