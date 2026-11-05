@@ -40,6 +40,8 @@ npm run dev
 회원가입을 시험할 때 이메일 인증 코드는 항상 `482915`입니다. 가입한 계정은 MSW 메모리에만 있어
 브라우저를 새로고침하면 시험 계정만 남습니다.
 
+요금제 예외 화면은 MSW로 볼 때 주소 끝에 `?demo=trial-ended`·`pay-failed`·`pay-locked`·`seller`·`trial`을 붙이면 그 구독 상태로 바뀝니다(`src/features/billing/model/billing.ts`의 `demoSubscription`). 상품 상세는 `/sku/reference-product`·`no-trend`·`new-product`·`missing-product`로 상태를 고릅니다.
+
 인증은 서버 계약(ipgo-server #28)을 따릅니다. `shared/api/client.ts`가 아래를 자동으로 처리합니다.
 
 - 로그인은 form 방식으로 보내고, 성공(200)하면 받은 액세스 JWT(15분)를 메모리에만 보관한 뒤
