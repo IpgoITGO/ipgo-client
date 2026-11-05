@@ -700,3 +700,48 @@ tr[data-soon] .track i {
 .storageLine a:hover {
   color: var(--color-text);
 }
+
+/* 보관비를 아직 안 넣었을 때: 누를 곳으로 보이는 작은 칸 */
+.storageCta {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 36px;
+  margin-top: var(--space-3);
+  padding: 6px 14px 6px 10px;
+  color: var(--color-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  transition: border-color 0.15s;
+}
+.storageCta svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-accent-text);
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.storageCta small {
+  color: var(--color-text-3);
+  font-size: inherit;
+  font-weight: 500;
+}
+.storageCta small::before {
+  content: '· ';
+}
+.storageCta::after {
+  content: '→';
+  color: var(--color-accent-text);
+}
+.storageCta:hover {
+  border-color: var(--color-accent);
+}
+.storageCta:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}

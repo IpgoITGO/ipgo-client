@@ -417,3 +417,22 @@
     text-align: left;
   }
 }
+
+/* 다른 화면에서 바로 왔을 때: 위 메뉴에 안 가리게, 테두리를 한 번 노랗게 */
+.fold {
+  scroll-margin-top: 96px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fold[data-arrived] {
+    animation: arrived 1.6s ease-out;
+  }
+}
+@keyframes arrived {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--color-accent);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}

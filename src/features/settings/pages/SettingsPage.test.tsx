@@ -121,6 +121,23 @@ describe('SettingsPage', () => {
     )
   }
 
+  it('보관 비용: #storage-cost로 오면 접힌 칸이 펼쳐진다', async () => {
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/settings#storage-cost']}>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    await screen.findByLabelText('창고 보관 요율')
+    await waitFor(() =>
+      expect(document.getElementById('storage-cost')).toHaveProperty(
+        'open',
+        true,
+      ),
+    )
+  })
+
   it('보관 비용: 상자 cm를 다 넣으면 CBM이 보이고, 0은 막고, 다시 열어도 남는다', async () => {
     localStorage.clear()
     const user = userEvent.setup()

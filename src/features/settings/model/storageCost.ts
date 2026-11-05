@@ -86,3 +86,7 @@ export function withCommas(text: string) {
   const digits = text.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
   return digits === '' ? '' : Number(digits).toLocaleString('ko-KR')
 }
+
+// 다른 화면에서 보관 비용 칸으로 바로 오는 주소: /settings#storage-cost
+export const STORAGE_ANCHOR = 'storage-cost'
+export const STORAGE_LINK = `/settings#${STORAGE_ANCHOR}`
