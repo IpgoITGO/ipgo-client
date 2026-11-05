@@ -1,6 +1,7 @@
 # API 명세서4장 변경 대조
 
-상태: 서버 담당 인수 검토 완료, 공동 계약·문서 반영 대기. Server25 / Client78 / IPGO-60.
+상태: **서버 계약 확정·API 명세 dev 반영 완료**. Server25 / Client78 / IPGO-60.
+Client78 전체 화면/시나리오 분기 검증은 이 계약 문서의 완료와 구분한다.
 
 문서만 수정하며 Client 요청 코드·화면·계산 정책은 바꾸지 않는다.
 기준 Server b66bc8a·AI 27a0063의 구현과 기존 담당자 합의를 대조한 반영안이다.
@@ -36,9 +37,17 @@ DB 원래 reason_code와 원문 오류는 공개하지 않는다. reasonCode/val
 
 기존 b66bc8a 배포에는 새 failReason이 없다. 새 서버 응답은 기존 Client의 failText가
 아는 세 코드에 개별 안내, 나머지 코드에 공통 안내를 표시하도록 연결된다. API 명세 DOCX에도
-추가 필드·null·알 수 없는 사유 처리 기준을 함께 반영한다. 실제 배포 후 화면 확인과 AI44의
+추가 필드·null·알 수 없는 사유 처리 기준을 반영했고 PR229로 dev에 병합했다. 실제 배포 후 화면 확인과 AI44의
 전체 연동 시험은 이번 문서/로컬 검사 성공과 구분하며 공동 작업 완료를 대신하지 않는다.
 
 Server의 상세 대조 문서: `docs/decisions/0009-current-insight-scenario-contract.md`.
-관련 Server/Client 문서 PR을 Server25와 Client78에 연결한 뒤 공동 검토한다.
-Client dev 병합은 개발 배포를 일으킬 수 있으므로 이 PR은 별도 승인 전 병합하지 않는다.
+Server PR124·Client PR229를 Server25/AI24/44·Client78에 연결하고 사용자 인수·실패 코드 선택과 검증을 기록했다. Server25는 완료 근거를 남겨 종료했다.
+이번 완료 기록은 사용자가 승인한 개발 반영의 결과다. Production·실제 유료 호출을 승인한 것으로 해석하지 않는다.
+
+## 최종 반영과 검증 범위
+
+- 실제 검증한 Server320014f/TD20·Clientffcf8e8는 개발 배포와 소스 대조를 마쳤다. 이후 이 문서 전용 commit을 새 앱 런타임 실측으로 세지 않는다.
+- K4 최신 결과5건·과거AI설명5건·비활성698은 실제 API에서 failReason=null과 기존 mode/text를 확인했고, SKU32/result1958의 현재 TABLE_ONLY 화면과 같은 결과를 대조했다. 비null 허용 사유/미지 사유 축약은 로컬 서버 API 경계 및 Client 변환 검사 근거다. 새 실제 유료 호출은 없다.
+- 사용자가 확정한 현행 SQS C2는 응답 전까지 QUEUED, 종결 시 DONE/FAILED다. RUNNING은 기존 응답의 호환 수용 값이며 새 진행 이벤트를 발행하지 않는다. DOCX의 허용 상태 목록을 모든 경로에서의 필수 전이로 해석하지 않는다.
+- 실제 run88의 908.9초 만료·실패 화면, AI 복구 후 이전 run28/조건/결과 보존을 Server95와 PR126에 기록했다. 과거 DLQ36은 유지했다. 기존 RUNNING 화면 검사는 합성 출처다.
+- API 명세 DOCX는 기존 반영 원본 그대로이며 이 후속은 README/Markdown의 과거 대기 표시만 정리한다. AI44 전체 시험·Client78 전체 분기를 완료 처리하지 않는다.
