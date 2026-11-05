@@ -9,7 +9,15 @@ export type OrderLine = {
 
 const cell = (value: string | number) => {
   const text = String(value)
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+  // 외부에서 온 상품명·바코드를 스프레드시트 수식으로 실행하지 않는다.
+  // 숫자 합계는 숫자로 유지하고, 공백 뒤 수식 시작 문자와 제어 문자도 처리한다.
+  const safeText =
+    typeof value === 'string' && /^(?:\s*[=+@-]|[\t\r\n])/.test(text)
+      ? `'${text}`
+      : text
+  return /[",\r\n]/.test(safeText)
+    ? `"${safeText.replaceAll('"', '""')}"`
+    : safeText
 }
 
 export function toOrderCsv(lines: OrderLine[]) {

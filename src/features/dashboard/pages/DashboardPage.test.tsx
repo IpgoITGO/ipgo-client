@@ -49,6 +49,147 @@ const renderWithRun = (runId: number) =>
     </AppProviders>,
   )
 
+const safeDashboard = {
+  ...noResult(null),
+  asOfDate: '2026-11-05',
+  daysSinceAsOf: 0,
+  resultStatus: 'UP_TO_DATE',
+  summary: { ...noResult(null).summary, notNeededCount: 101 },
+}
+
+const safeProduct = (id: number) => ({
+  productId: id,
+  skuName: `안전상품-${id}`,
+  skuBarcode: `880${String(id).padStart(10, '0')}`,
+  unitCost: 100,
+  isActive: true,
+})
+
+const renderSafe = () =>
+  render(
+    <AppProviders>
+      <MemoryRouter initialEntries={['/dashboard?tab=safe']}>
+        <DashboardPage />
+      </MemoryRouter>
+    </AppProviders>,
+  )
+
+describe('아직 괜찮은 상품 목록', () => {
+  it('101번째 상품도 다음 페이지에서 받아 검색할 수 있다', async () => {
+    const pages: number[] = []
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json(safeDashboard),
+      ),
+      http.get('/api/products', ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page'))
+        pages.push(page)
+        return HttpResponse.json({
+          items:
+            page === 0
+              ? Array.from({ length: 100 }, (_, index) =>
+                  safeProduct(index + 1),
+                )
+              : [safeProduct(101)],
+          total: 101,
+          page,
+          size: 100,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderSafe()
+    await screen.findByText('안전상품-101')
+    expect(pages).toEqual([0, 1])
+    await user.type(
+      screen.getByLabelText('목록에서 상품 찾기'),
+      safeProduct(101).skuBarcode,
+    )
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('안전상품-101')
+  })
+
+  it.each(['503', 'empty'])(
+    '다음 페이지가 %s이면 일부 목록 대신 오류를 표시하고 재시도로 복구한다',
+    async (failure) => {
+      let recovered = false
+      server.use(
+        http.get('/api/dashboard/replenishment-needs', () =>
+          HttpResponse.json(safeDashboard),
+        ),
+        http.get('/api/products', ({ request }) => {
+          const page = Number(new URL(request.url).searchParams.get('page'))
+          if (page === 1 && !recovered && failure === '503') {
+            return HttpResponse.json({ message: '조회 실패' }, { status: 503 })
+          }
+          return HttpResponse.json({
+            items:
+              page === 0
+                ? Array.from({ length: 100 }, (_, index) =>
+                    safeProduct(index + 1),
+                  )
+                : recovered
+                  ? [safeProduct(101)]
+                  : [],
+            total: 101,
+            page,
+            size: 100,
+          })
+        }),
+      )
+      const user = userEvent.setup()
+      renderSafe()
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        '아직 괜찮은 상품을 불러오지 못했어요',
+      )
+      expect(
+        screen.queryByText('아직 괜찮은 상품이 없어요.'),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText('안전상품-1')).not.toBeInTheDocument()
+      recovered = true
+      await user.click(screen.getByRole('button', { name: '다시 시도' }))
+      await screen.findByText('안전상품-101')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
+
+  it('첫 페이지 조회 실패도 빈 목록으로 표시하지 않는다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json(safeDashboard),
+      ),
+      http.get('/api/products', () =>
+        HttpResponse.json({ message: '조회 실패' }, { status: 503 }),
+      ),
+    )
+    renderSafe()
+    await screen.findByRole('alert')
+    expect(
+      screen.queryByText('아직 괜찮은 상품이 없어요.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('서버가 빈 목록을 명시하면 상품 API를 추가 조회하지 않는다', async () => {
+    let calls = 0
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...safeDashboard,
+          summary: { ...safeDashboard.summary, notNeededCount: 0 },
+          notNeededItems: [],
+        }),
+      ),
+      http.get('/api/products', () => {
+        calls++
+        return HttpResponse.error()
+      }),
+    )
+    renderSafe()
+    await screen.findByText('아직 괜찮은 상품이 없어요.')
+    expect(calls).toBe(0)
+  })
+})
+
 describe('DashboardPage', () => {
   it('run 주소로 와도 계산 상태는 공통 작은 창 하나로만 보이고 한 번만 조회한다', async () => {
     let reads = 0

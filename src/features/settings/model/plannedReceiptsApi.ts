@@ -40,9 +40,23 @@ function sendJson(method: string, body: unknown): RequestInit {
 }
 
 // P1 상품 목록. query는 상품명·바코드 일부.
-export function getProducts(query: string) {
-  const params = new URLSearchParams({ query, page: '0', size: '100' })
+export function getProducts(query: string, page = 0) {
+  const params = new URLSearchParams({ query, page: String(page), size: '100' })
   return apiRequest<ProductPage>(`/products?${params}`)
+}
+
+// 대시보드의 전체 상품 분류에는 첫 페이지만 쓰지 않는다.
+export async function getAllProducts() {
+  const first = await getProducts('')
+  const items = [...first.items]
+  for (let page = 1; items.length < first.total; page++) {
+    const next = await getProducts('', page)
+    if (next.items.length === 0) {
+      throw new Error('상품 목록을 모두 받지 못했어요. 다시 시도해 주세요.')
+    }
+    items.push(...next.items)
+  }
+  return { ...first, items }
 }
 
 // R1 취소하지 않은 발주 목록
