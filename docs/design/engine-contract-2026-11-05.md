@@ -1,6 +1,6 @@
 # API 명세서4장 변경 대조
 
-상태: 공동 검토 대기. Server25 / Client78 / IPGO-60.
+상태: 서버 담당 인수 검토 완료, 공동 계약·문서 반영 대기. Server25 / Client78 / IPGO-60.
 
 문서만 수정하며 Client 요청 코드·화면·계산 정책은 바꾸지 않는다.
 기준 Server b66bc8a·AI 27a0063의 구현과 기존 담당자 합의를 대조한 반영안이다.
@@ -24,8 +24,14 @@ K4 예시의 공개되지 않는 reasonCode/values를 제거하고 generatedAt·
 ZIP/Word XML 구조 검사는 통과했지만 Word/PDF의 시각 렌더링 검사는 수행하지 않았다.
 리뷰는 이 Markdown 대조와 DOCX를 함께 사용한다.
 
-Server25의 기존 답변은 Spring 책임으로 합의했으며, AI24에는 정무영 최종 확인이 아직 열린 기록으로 남는다.
-이 PR이 그 확인을 대신하지 않는다. 최종 이름·문장 형태·추가 실패 사유는 AI44와 함께 확인한다.
+Server25의 기존 답변은 Spring 책임으로 합의했다. 2026-11-05 사용자 지시로 정무영의 서버 계약 검토 역할을
+EHWIYA가 인수했고, Codex가 현재 서버 DTO·Client 변환·AI44 시험표를 대조해 서버 검토를 기록했다.
+이 기록을 기존 담당자나 AI/Client 담당자의 새 승인으로 해석하지 않는다.
+
+공개 K4는 text 단일 문자열/null이며 Client가 줄 단위 sentences로 변환한다. 공개 응답에는
+failReason/reasonCode가 없고 내부 reason_code와 isFallback을 구분한다. AI44가 기대하는 실패 사유별
+화면 문구는 현재 공개 응답만으로 보장할 수 없다. 이 공개 오류 정책과 AI44의 문장/상태 시험표 정합성은
+공동 확인 잔여다. 이번 문서 검토에서 새 API 필드를 추가하거나 기존 미정 항목을 모두 완료 처리하지 않았다.
 
 Server의 상세 대조 문서: `docs/decisions/0009-current-insight-scenario-contract.md`.
 관련 Server/Client 문서 PR을 Server25와 Client78에 연결한 뒤 공동 검토한다.
