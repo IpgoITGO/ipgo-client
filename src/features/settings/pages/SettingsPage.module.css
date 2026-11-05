@@ -436,3 +436,8 @@
     box-shadow: 0 0 0 3px transparent;
   }
 }
+
+/* 펼치면 아래 설명과 같은 말이 두 번 나오지 않게 요약 줄은 숨긴다 */
+.fold[open] .foldSummary {
+  display: none;
+}
