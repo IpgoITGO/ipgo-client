@@ -2,7 +2,11 @@
 export type OrderLine = {
   name: string
   barcode: string
+  /** 권장 입고량 */
   quantity: number
+  /** 상세에서 내가 정한 입고량. 없으면 권장대로 */
+  planned?: number | null
+  /** 주문 수량 기준 사입비 */
   cost: number
   stockoutDate: string
 }
@@ -22,18 +26,40 @@ const cell = (value: string | number) => {
 
 export function toOrderCsv(lines: OrderLine[]) {
   const rows = [
-    ['상품명', '바코드', '권장 입고량(개)', '사입비(원)', '예상 소진일'],
+    [
+      '상품명',
+      '바코드',
+      '권장 입고량(개)',
+      '내 입고량(개)',
+      '주문 수량(개)',
+      '사입비(원)',
+      '예상 소진일',
+    ],
     ...lines.map((line) => [
       line.name,
       line.barcode,
       line.quantity,
+      line.planned ?? '',
+      orderQty(line),
       line.cost,
       line.stockoutDate,
     ]),
-    ['합계', '', sum(lines, 'quantity'), sum(lines, 'cost'), ''],
+    [
+      '합계',
+      '',
+      sum(lines, 'quantity'),
+      lines.some((line) => line.planned != null)
+        ? lines.reduce((total, line) => total + (line.planned ?? 0), 0)
+        : '',
+      lines.reduce((total, line) => total + orderQty(line), 0),
+      sum(lines, 'cost'),
+      '',
+    ],
   ]
   return '﻿' + rows.map((row) => row.map(cell).join(',')).join('\r\n')
 }
+
+const orderQty = (line: OrderLine) => line.planned ?? line.quantity
 
 function sum(lines: OrderLine[], key: 'quantity' | 'cost') {
   return lines.reduce((total, line) => total + line[key], 0)

@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { DashboardPage } from './DashboardPage'
@@ -638,5 +638,83 @@ describe('주문까지 칸', () => {
     expect(screen.getByLabelText('주문까지 19일, 11월 20일까지')).toBeVisible()
     expect(container.querySelectorAll('i[data-on]')).toHaveLength(3)
     expect(screen.getByText('11/20까지')).toBeInTheDocument()
+  })
+})
+
+describe('내 입고량 칸', () => {
+  const needItem = (id: number, name: string, qty: number, amount: number) => ({
+    productId: id,
+    resultId: id,
+    skuBarcode: `880000000000${id}`,
+    skuName: name,
+    recommendedQty: qty,
+    recommendedAmount: amount,
+    expectedShortageOn: '2026-11-20',
+    leadTimeDays: 3,
+    preArrivalRisk: 0.1,
+  })
+  const plan = (quantity: number, basis: string) => ({
+    quantity,
+    source: 'SCENARIO_80',
+    decidedAt: '2026-11-05',
+    basis,
+  })
+
+  afterEach(() => localStorage.clear())
+
+  it('정한 상품은 수량과 날짜, 지난 계산 기준은 노란 꼬리표, 안 정한 상품은 —로 보여 준다', async () => {
+    localStorage.setItem(
+      'ipgo:planned-quantity',
+      JSON.stringify({
+        '1': plan(60, '2026. 11. 5'),
+        '2': plan(30, '2026. 11. 1'),
+      }),
+    )
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...noResult(12),
+          asOfDate: '2026-11-05',
+          daysSinceAsOf: 0,
+          resultStatus: 'UP_TO_DATE',
+          runId: 3,
+          summary: { ...noResult(12).summary, needCount: 3 },
+          items: [
+            needItem(1, '케어트릿 120g', 72, 72000),
+            needItem(2, '연어 져키 80g', 40, 40000),
+            needItem(3, '덴탈껌 S', 10, 1000),
+          ],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    const row = (id: string) =>
+      screen.getByRole('link', { name: id }).closest('tr') as HTMLElement
+    await screen.findByRole('link', { name: '케어트릿 120g' })
+    expect(
+      screen.getByRole('columnheader', { name: '내 입고량' }),
+    ).toBeVisible()
+    // 현재 계산 기준: 60개 + "11/5 정함", 권장 72개에 취소선
+    expect(row('케어트릿 120g')).toHaveTextContent('60개11/5 정함')
+    expect(screen.getByText('72개')).toHaveAttribute('data-struck')
+    // 지난 계산 기준: 노란 꼬리표, 권장 40개는 그대로
+    expect(row('연어 져키 80g')).toHaveTextContent('⟲ 11/1 계산 기준')
+    expect(screen.getByText('40개')).not.toHaveAttribute('data-struck')
+    expect(
+      within(row('덴탈껌 S')).getByRole('cell', { name: '—' }),
+    ).toBeInTheDocument()
+
+    // 고른 합계·사입비는 내 입고량 우선: 60개 × 1,000원 + 40개의 30개 × 1,000원
+    await user.click(
+      screen.getByRole('checkbox', { name: '케어트릿 120g 발주 목록에 넣기' }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: '연어 져키 80g 발주 목록에 넣기' }),
+    )
+    const bar = screen.getByRole('region', { name: '발주 목록' })
+    expect(bar).toHaveTextContent('2개 골랐어요 · 90개')
+    expect(bar).toHaveTextContent('사입비 90,000원')
   })
 })

@@ -6,6 +6,16 @@ import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import {
+  isOwnPlan,
+  isStale,
+  type PlannedSource,
+  savePlanned,
+  shortBasis,
+  shortDate,
+  todayIso,
+  usePlanned,
+} from '../model/plannedQuantity'
+import {
   addCustomScenario,
   failText,
   getInsight,
@@ -60,11 +70,28 @@ function scenarioNote(scenario: Scenario, recommendedQuantity: number) {
   return '재고가 많이 남아요'
 }
 
+const PLAN_NOTE: Record<PlannedSource, string> = {
+  SCENARIO_80: '권장량의 80% 카드에서 정함',
+  SCENARIO_100: '권장량 그대로 정함',
+  SCENARIO_120: '권장량의 120% 카드에서 정함',
+  MANUAL: '직접 넣은 수량으로 정함',
+}
+const SCENARIO_SOURCE: Record<string, PlannedSource> = {
+  P80: 'SCENARIO_80',
+  P100: 'SCENARIO_100',
+  P120: 'SCENARIO_120',
+}
+
 export function ScenarioInsight({
+  baseDate,
   inboundUnit,
+  productId,
   resultId,
 }: {
+  /** 대시보드 "기준일"과 같은 글자. 내 입고량이 어느 계산에서 나왔는지 가른다 */
+  baseDate: string
   inboundUnit: number
+  productId: string
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
 }) {
@@ -77,6 +104,7 @@ export function ScenarioInsight({
   const [expanded, setExpanded] = useState(false)
   // 눌러서 고른 카드(처음엔 권장량)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const plan = usePlanned()[productId]
 
   const scenariosQuery = useQuery({
     queryKey: ['result', resultId, 'scenarios'],
@@ -159,6 +187,18 @@ export function ScenarioInsight({
   }
 
   const data = scenariosQuery.data && toScenarios(scenariosQuery.data)
+  const stale = plan ? isStale(plan, baseDate) : false
+  const recommendedNow = data?.recommendedQuantity ?? 0
+  const decide = (qty: number, source: PlannedSource) =>
+    savePlanned(productId, {
+      quantity: qty,
+      source,
+      decidedAt: todayIso(),
+      basis: baseDate,
+    })
+  const typed = Number(quantity)
+  const typedValid =
+    quantity.trim() !== '' && Number.isInteger(typed) && typed > 0
   // 입고 전에 이미 못 파는 양(K2 맨 위, server #85)
   const preArrivalUnmet = data?.preArrivalUnmet ?? 0
   const scenarios = data
@@ -257,6 +297,44 @@ export function ScenarioInsight({
                 뒤에 모자라는 양이에요.
               </p>
             )}
+            {isOwnPlan(plan) && (
+              <p className={styles.plan} data-stale={stale || undefined}>
+                {stale ? (
+                  <>
+                    <span>
+                      내 입고량 <b>{plan.quantity.toLocaleString()}개</b> ·{' '}
+                      {shortBasis(plan.basis)} 계산 기준이에요.{' '}
+                      <b>
+                        새 계산의 권장은 {recommendedNow.toLocaleString()}개
+                      </b>
+                    </span>
+                    <Button
+                      onClick={() => decide(plan.quantity, plan.source)}
+                      variant="secondary"
+                    >
+                      {plan.quantity.toLocaleString()}개 그대로
+                    </Button>
+                    <Button
+                      onClick={() => decide(recommendedNow, 'SCENARIO_100')}
+                      variant="secondary"
+                    >
+                      {recommendedNow.toLocaleString()}개로 바꾸기
+                    </Button>
+                  </>
+                ) : (
+                  <span>
+                    내 입고량 <b>{plan.quantity.toLocaleString()}개</b> ·{' '}
+                    {shortDate(plan.decidedAt)} · {PLAN_NOTE[plan.source]}
+                  </span>
+                )}
+                <Button
+                  onClick={() => savePlanned(productId, null)}
+                  variant="text"
+                >
+                  되돌리기
+                </Button>
+              </p>
+            )}
             <div
               aria-label="입고량 비교"
               className={styles.cards}
@@ -266,6 +344,9 @@ export function ScenarioInsight({
                 const recommended =
                   !isCustom(scenario) &&
                   scenario.quantity === data?.recommendedQuantity
+                const source = SCENARIO_SOURCE[scenario.id] ?? 'MANUAL'
+                const decided =
+                  !!plan && !stale && plan.quantity === scenario.quantity
                 const note = scenarioNote(
                   scenario,
                   data?.recommendedQuantity ?? 0,
@@ -275,6 +356,7 @@ export function ScenarioInsight({
                     aria-checked={selected?.id === scenario.id}
                     className={styles.scenario}
                     data-custom={isCustom(scenario)}
+                    data-decided={decided || undefined}
                     data-recommended={recommended}
                     data-selected={selected?.id === scenario.id}
                     key={scenario.id}
@@ -288,6 +370,9 @@ export function ScenarioInsight({
                     role="radio"
                     tabIndex={0}
                   >
+                    {decided && source !== 'SCENARIO_100' && (
+                      <span className={styles.decidedTag}>내가 정함</span>
+                    )}
                     <div className={styles.scenarioTop}>
                       <span>{scenario.label}</span>
                       {recommended && (
@@ -355,6 +440,22 @@ export function ScenarioInsight({
                       />
                     </div>
                     <p className={styles.note}>{note}</p>
+                    <Button
+                      className={styles.decideButton}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        decide(scenario.quantity, source)
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {decided
+                        ? source === 'SCENARIO_100'
+                          ? '✓ 권장대로 정함'
+                          : '✓ 정함'
+                        : '이 수량으로 정하기'}
+                    </Button>
                   </div>
                 )
               })}
@@ -402,6 +503,15 @@ export function ScenarioInsight({
                     variant="secondary"
                   >
                     비교에 추가
+                  </Button>
+                  <Button
+                    className={styles.addButton}
+                    disabled={!typedValid}
+                    onClick={() => decide(typed, 'MANUAL')}
+                    type="button"
+                    variant="secondary"
+                  >
+                    이 수량으로 정하기
                   </Button>
                   {scenarios.length > 0 && (
                     <Button
