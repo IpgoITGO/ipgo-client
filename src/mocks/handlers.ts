@@ -600,6 +600,30 @@ export const handlers = [
       resultComputedAt: '2026-10-18T09:00:00+09:00',
       lastFailedRunAt: null,
       latestUploadId: 12,
+      // 아직 괜찮은 상품(server #108): 주문까지 칸을 볼 수 있게 날짜·리드타임을 준다
+      notNeededItems: [
+        {
+          productId: 21,
+          skuName: '오리 큐브 100g',
+          skuBarcode: '8800272421300',
+          expectedShortageOn: isoFromToday(10),
+          leadTimeDays: 6,
+        },
+        {
+          productId: 22,
+          skuName: '저키 스틱 100g',
+          skuBarcode: '8800272421273',
+          expectedShortageOn: isoFromToday(24),
+          leadTimeDays: 5,
+        },
+        {
+          productId: 23,
+          skuName: '동결 큐브 30g',
+          skuBarcode: '8800272421611',
+          expectedShortageOn: isoFromToday(42),
+          leadTimeDays: 7,
+        },
+      ],
       summary: {
         needCount: items.length,
         notNeededCount: 22,
