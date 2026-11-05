@@ -66,8 +66,60 @@ describe('ScenarioInsight', () => {
 
     expect(
       await screen.findByRole('img', {
-        name: /품절 위험 8%에서 3%로, 60개보다 72개를 넣으면 다음 입고 때 12개 더 남아요/,
+        name: /도착 후 품절 위험 9%에서 3%로, 60개보다 72개를 넣으면 다음 입고 때 12개 더 남아요/,
       }),
+    ).toBeInTheDocument()
+    // 도착 전 위험(8%)은 낮아서 따로 경고하지 않는다
+    expect(screen.queryByText(/입고 전에 바닥날 위험/)).not.toBeInTheDocument()
+  })
+
+  // 11/5: 도착 전 100% → 도착 후 29%를 화살표로 이어 "넣으면 줄어든다"처럼 읽히던 문제
+  it('도착 전 위험이 높으면 그림과 따로 한 줄로 알린다', async () => {
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json({
+          resultId: 101,
+          isEstimate: true,
+          preArrivalRisk: 1,
+          riskSampleSize: 44,
+          riskStatus: 'OK',
+          preArrivalUnmetQty: 0,
+          scenarios: [
+            {
+              scenarioId: 1,
+              type: 'P80',
+              qty: 60,
+              isDuplicate: false,
+              expectedDepletionOn: null,
+              expectedEndingStock: 14,
+              unmetDemandQty: 0,
+              postArrivalUnmetQty: 0,
+              postArrivalRisk: 0.41,
+            },
+            {
+              scenarioId: 2,
+              type: 'P100',
+              qty: 72,
+              isDuplicate: false,
+              expectedDepletionOn: null,
+              expectedEndingStock: 26,
+              unmetDemandQty: 0,
+              postArrivalUnmetQty: 0,
+              postArrivalRisk: 0.29,
+            },
+          ],
+        }),
+      ),
+    )
+    renderInsight()
+
+    expect(
+      await screen.findByText(
+        '입고 전에 바닥날 위험 100% · 넣는 양과 상관없어요',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /도착 후 품절 위험 41%에서 29%로/ }),
     ).toBeInTheDocument()
   })
 

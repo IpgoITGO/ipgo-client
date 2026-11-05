@@ -204,6 +204,7 @@ export function ScenarioInsight({
             ? {
                 quantity: p80.quantity,
                 end: p80.remainingAtNextInbound,
+                risk: p80.postArrivalRisk,
               }
             : null,
         }
