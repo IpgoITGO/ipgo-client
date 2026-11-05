@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
+import {
+  loadSubscription,
+  onSubscriptionChange,
+  planOf,
+  subscriptionSnapshot,
+  trialDaysLeft,
+} from '../../features/billing/model/billing'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
 import { CalculationStatus } from '../../shared/ui/CalculationStatus/CalculationStatus'
@@ -32,6 +39,15 @@ export function AppLayout() {
       }
     },
   )
+
+  // 지금 요금제 알약(#186). 체험이면 남은 날을 같이 보여 준다. 누르면 요금제 화면.
+  // 결제하면 저장 알림을 받아 바로 다시 그린다.
+  useSyncExternalStore(onSubscriptionChange, subscriptionSnapshot)
+  const subscription = loadSubscription()
+  const planLabel =
+    subscription.plan === 'trial'
+      ? `체험 ${trialDaysLeft(subscription)}일 남음`
+      : planOf(subscription.plan).name
 
   function leaveAnyway() {
     setLogoutFailed(false)
@@ -67,6 +83,13 @@ export function AppLayout() {
           >
             {user?.name} <span aria-hidden="true">·</span> {user?.companyName}
           </span>
+          <NavLink
+            aria-label={`지금 요금제: ${planLabel}`}
+            className={styles.planPill}
+            to="/plans"
+          >
+            {planLabel}
+          </NavLink>
           <Button
             loading={signingOut && !logoutFailed}
             loadingLabel="로그아웃 중"
