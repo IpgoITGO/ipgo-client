@@ -9,17 +9,23 @@ type ModalProps = PropsWithChildren<{
 
 export function Modal({ children, labelledBy, onClose }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
 
+  // 열릴 때 한 번만 창에 초점을 준다. onClose가 렌더마다 새 함수여도 다시 실행되지 않아야
+  // 안의 입력칸(상품 검색 등)에서 글자를 칠 때마다 초점을 뺏기지 않는다.
   useEffect(() => {
     dialogRef.current?.focus()
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') closeRef.current()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [])
 
   return (
     <div className={styles.backdrop} onMouseDown={onClose}>
