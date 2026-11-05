@@ -16,9 +16,9 @@ const tabs = [
 
 // 오른쪽 미리보기에 쓰는 예시 숫자. 실제 계정 값이 아니다.
 const sampleItems = [
-  { name: '덴탈껌 M 5입', quantity: 72 },
-  { name: '연어 져키 80g', quantity: 40 },
-  { name: '오리 큐브 100g', quantity: 24 },
+  { name: '상품 A', quantity: 72 },
+  { name: '상품 B', quantity: 40 },
+  { name: '상품 C', quantity: 24 },
 ]
 
 // S01 로그인 · S02 회원가입이 함께 쓰는 틀: 왼쪽 입력 + 오른쪽 서비스 화면 미리보기
