@@ -12,7 +12,7 @@ import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
-import { CalcMark } from '../components/CalcMark'
+import { CalcMark } from '../../../shared/ui/CalcMark/CalcMark'
 import {
   loadStorageSettings,
   storageCostTotal,

@@ -1,7 +1,9 @@
 import { useCalculation } from '../../api/calculationContext'
 import { Button } from '../Button/Button'
+import { CalcMark } from '../CalcMark/CalcMark'
 import styles from './CalculationStatus.module.css'
 
+// 대시보드 밖 화면의 계산 상태: 오른쪽 아래 작은 창(본문을 밀지 않는다). 대시보드는 위 띠로 따로 보여 준다.
 export function CalculationStatus() {
   const { phase, run, message, retry, dismiss } = useCalculation()
   if (phase === 'idle') return null
@@ -15,37 +17,41 @@ export function CalculationStatus() {
     failed: '계산을 마치지 못했어요',
     unknown: '계산 결과를 다시 확인해 주세요',
   }[phase]
+  const detail =
+    message ??
+    (phase === 'done' && run?.summary
+      ? `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
+      : phase === 'pending' || phase === 'updating'
+        ? '끝나면 화면이 저절로 바뀌어요.'
+        : phase === 'failed'
+          ? '이전 결과는 그대로예요.'
+          : undefined)
   return (
     <section
       aria-label="입고량 계산 상태"
       aria-live="polite"
-      className={styles.notice}
+      className={styles.window}
     >
-      <strong>{title}</strong>
-      {message && <p>{message}</p>}
-      {phase === 'done' && run?.summary && (
-        <p>입고가 필요한 상품은 {run.summary.needCount}개예요.</p>
-      )}
-      {phase === 'pending' && (
-        <p>
-          이전 결과를 보면서 기다릴 수 있어요. 계산이 끝나면 새로 보여드려요.
-        </p>
-      )}
-      {phase === 'failed' && (
-        <p>
-          이전 정상 결과는 그대로예요. 입고 조건을 확인한 뒤 다시 계산해 주세요.
-        </p>
-      )}
-      {phase === 'unknown' && (
-        <>
-          <p>새 계산을 시작하지 않고 같은 계산의 상태를 확인해요.</p>
-          <Button onClick={retry} variant="secondary">
+      <CalcMark
+        state={
+          phase === 'done'
+            ? 'done'
+            : phase === 'failed' || phase === 'unknown'
+              ? 'failed'
+              : 'running'
+        }
+      />
+      <div className={styles.text}>
+        <strong>{title}</strong>
+        {detail && <p>{detail}</p>}
+        {phase === 'unknown' && (
+          <Button onClick={retry} variant="text">
             상태 다시 확인
           </Button>
-        </>
-      )}
+        )}
+      </div>
       {(phase === 'done' || phase === 'failed') && (
-        <Button onClick={dismiss} variant="text">
+        <Button aria-label="계산 상태 닫기" onClick={dismiss} variant="text">
           확인
         </Button>
       )}
