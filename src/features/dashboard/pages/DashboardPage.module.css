@@ -30,37 +30,6 @@
   color: var(--color-danger);
   background: var(--color-danger-bg);
 }
-/* 계산 상태 띠: 계산 중 정보색(빙글빙글) · 끝 초록 · 실패 빨강 */
-.banner[data-state='run-running'] .bannerMark {
-  background: var(--color-info-bg);
-  border: 3px solid var(--color-info);
-  border-right-color: transparent;
-  animation: spin 0.9s linear infinite;
-}
-
-.banner[data-state='run-done'] .bannerMark {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-}
-
-.banner[data-state='run-failed'] .bannerMark,
-.banner[data-state='run-unknown'] .bannerMark {
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .banner[data-state='run-running'] .bannerMark {
-    animation: none;
-  }
-}
-
 .banner > div {
   display: grid;
   flex: 1;

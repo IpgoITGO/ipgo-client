@@ -11,6 +11,7 @@ import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import { CalcMark } from '../components/CalcMark'
 import { getDashboard } from '../model/dashboardApi'
 import styles from './DashboardPage.module.css'
 
@@ -44,9 +45,11 @@ function CalculationStatus({
       data-state={`run-${state}`}
       role="status"
     >
-      <span aria-hidden="true" className={styles.bannerMark}>
-        {state === 'done' ? '✓' : state === 'running' ? '' : '!'}
-      </span>
+      <CalcMark
+        state={
+          state === 'running' ? 'running' : state === 'done' ? 'done' : 'failed'
+        }
+      />
       <div>
         <strong>
           {state === 'running'
