@@ -85,6 +85,31 @@
   text-underline-offset: 4px;
 }
 
+/* 보조·남색 버튼도 눌리는 느낌(11/5 사장님 "버튼 눌리는 효과") — 1px 내려가고 바탕이 조금 짙어진다 */
+.secondary,
+.strong {
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.secondary:hover:not(:disabled) {
+  background: #ece5da;
+}
+
+.secondary:active:not(:disabled),
+.strong:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary,
+  .strong {
+    transition: none;
+  }
+}
+
 /* 휴대폰에서 두 번 누름 확대 지연 없이 바로 반응 */
 .button {
   touch-action: manipulation;

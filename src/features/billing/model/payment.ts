@@ -1,3 +1,4 @@
+import { env } from '../../../shared/config/env'
 import type { PayMethod, PlanId } from './billing'
 
 export type PayResult =
@@ -27,5 +28,10 @@ export async function requestPayment(
   void plan
   void method
   await new Promise((resolve) => setTimeout(resolve, 700))
+  // 실패 화면을 볼 수 있게(가짜 서버일 때만): 결제 주소에 &fail=LIMIT_EXCEEDED 처럼 사유를 붙인다.
+  const fail = env.enableMsw
+    ? new URLSearchParams(window.location.search).get('fail')
+    : null
+  if (fail) return { status: 'failed', reason: fail }
   return { status: 'paid' }
 }
