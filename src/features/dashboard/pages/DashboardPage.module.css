@@ -419,8 +419,12 @@
     transform: none;
   }
 }
-.tableWrap tr[data-picked] td {
+/* 줄 전체에 한 장으로 칠한다(칸마다 칠하면 줄무늬가 된다) */
+.tableWrap tr[data-picked] {
   background: linear-gradient(90deg, var(--color-accent-soft), #fffdf3 70%);
+}
+.tableWrap tr[data-picked] td {
+  background: transparent;
 }
 .tableWrap tr[data-picked] td.pick {
   box-shadow: inset 3px 0 0 var(--color-accent);
