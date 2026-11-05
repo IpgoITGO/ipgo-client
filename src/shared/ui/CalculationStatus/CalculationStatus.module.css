@@ -45,6 +45,17 @@
   .window {
     animation: rise 0.3s var(--ease-spring) both;
   }
+  /* 마친 알림이 저절로 내려갈 때 */
+  .window[data-leaving] {
+    animation: sink 0.3s ease-in both;
+  }
+}
+
+@keyframes sink {
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }
 
 @keyframes rise {

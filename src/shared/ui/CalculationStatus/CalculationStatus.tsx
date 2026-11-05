@@ -1,12 +1,30 @@
+import { useEffect, useEffectEvent, useState } from 'react'
+
 import { useCalculation } from '../../api/calculationContext'
 import { Button } from '../Button/Button'
 import { CalcMark } from '../CalcMark/CalcMark'
 import styles from './CalculationStatus.module.css'
 
+export const DONE_MS = 5000
+
 // 계산 상태: 모든 화면에서 오른쪽 아래 작은 창(본문을 밀지 않는다).
 // 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
 export function CalculationStatus() {
   const { phase, run, message, retry, dismiss, stop } = useCalculation()
+  // 마친 알림은 5초 뒤 저절로 내려간다. 마우스를 올리거나 포커스가 있으면 멈춘다.
+  const [hold, setHold] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const close = useEffectEvent(dismiss)
+  useEffect(() => {
+    if (phase !== 'done' || hold) return
+    const leave = window.setTimeout(() => setLeaving(true), DONE_MS)
+    const gone = window.setTimeout(close, DONE_MS + 300)
+    return () => {
+      window.clearTimeout(leave)
+      window.clearTimeout(gone)
+      setLeaving(false)
+    }
+  }, [phase, hold])
   if (phase === 'idle') return null
   const title = {
     pending:
@@ -35,6 +53,11 @@ export function CalculationStatus() {
       aria-label="입고량 계산 상태"
       aria-live="polite"
       className={styles.window}
+      data-leaving={leaving || undefined}
+      onBlur={() => setHold(false)}
+      onFocus={() => setHold(true)}
+      onMouseEnter={() => setHold(true)}
+      onMouseLeave={() => setHold(false)}
     >
       <CalcMark
         state={

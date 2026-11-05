@@ -3,13 +3,16 @@ import {
   QueryClientProvider,
   useQuery,
 } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../mocks/server'
-import { CalculationStatus } from '../ui/CalculationStatus/CalculationStatus'
+import {
+  CalculationStatus,
+  DONE_MS,
+} from '../ui/CalculationStatus/CalculationStatus'
 import { useCalculation } from './calculationContext'
 import { CalculationProvider } from './CalculationProvider'
 
@@ -200,5 +203,27 @@ describe('계산 완료·실패 추적', () => {
       ).not.toBeInTheDocument(),
     )
     expect(screen.getByText('다시 계산')).toBeEnabled()
+  })
+  it('마친 알림은 5초 뒤 내려가고, 마우스를 올려 두면 멈춘다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      server.use(
+        http.get('/api/calculation-runs/71', () =>
+          HttpResponse.json({ runId: 71, status: 'DONE' }),
+        ),
+      )
+      setup()
+      fireEvent.click(screen.getByText('계산 번호 받기'))
+      await screen.findByText('계산을 마쳤어요')
+      const box = screen.getByLabelText('입고량 계산 상태')
+      fireEvent.mouseEnter(box)
+      act(() => vi.advanceTimersByTime(DONE_MS + 500))
+      expect(screen.getByText('계산을 마쳤어요')).toBeInTheDocument()
+      fireEvent.mouseLeave(box)
+      act(() => vi.advanceTimersByTime(DONE_MS + 500))
+      expect(screen.queryByText('계산을 마쳤어요')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
