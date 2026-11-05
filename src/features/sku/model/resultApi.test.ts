@@ -102,6 +102,23 @@ describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
     ).toEqual(['첫 문장이에요.', '둘째 문장이에요.'])
   })
 
+  it.each(['LLM_NOT_CONFIGURED', 'INVALID_INPUT', 'INPUT_UNAVAILABLE'])(
+    '공개 실패 코드 %s를 비활성과 구분하고 공통 안내로 표시한다',
+    (failReason) => {
+      const insight = toInsight({
+        ...raw,
+        mode: 'TABLE_ONLY',
+        text: null,
+        sentences: null,
+        isFallback: true,
+        failReason,
+      })
+      expect(insight.explanationDisabled).toBe(false)
+      expect(insight.failReason).toBe(failReason)
+      expect(failText(failReason)).toBe('AI 문장을 쓰지 못했어요')
+    },
+  )
+
   it('모르는 실패 사유도 문구로 보여 준다(undefined가 찍히지 않게)', () => {
     expect(failText('LLM_TIMEOUT')).toBe('AI 응답이 늦었어요')
     expect(failText('VALUE_MISMATCH')).toBe('AI 문장을 쓰지 못했어요')
