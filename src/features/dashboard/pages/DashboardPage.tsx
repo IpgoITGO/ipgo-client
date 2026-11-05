@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCalculation } from '../../../shared/api/calculationContext'
 
 import { calculationReason } from '../../../shared/lib/calculationReason'
+import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
@@ -601,12 +602,7 @@ export function DashboardPage() {
                 <article className={styles.reason} key={item.name}>
                   <strong>{item.name}</strong>
                   <span>{calculationReason(item.reason)}</span>
-                  {calculationReason(item.reason) !== item.reason && (
-                    <details>
-                      <summary>자세한 계산 사유</summary>
-                      {item.reason}
-                    </details>
-                  )}
+                  <ReasonDetail reason={item.reason} />
                 </article>
               ))}
             </div>
@@ -633,12 +629,7 @@ export function DashboardPage() {
                     <small>오류 자료 날짜 {String(item.date)}</small>
                   )}
                   <span>{calculationReason(item.reason)}</span>
-                  {calculationReason(item.reason) !== item.reason && (
-                    <details>
-                      <summary>자세한 계산 사유</summary>
-                      {item.reason}
-                    </details>
-                  )}
+                  <ReasonDetail reason={item.reason} />
                 </article>
               ))}
             </div>
