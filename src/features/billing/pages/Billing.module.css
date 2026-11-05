@@ -112,7 +112,7 @@
 
 /* 카드 아래 한 줄 설명. 없는 카드도 같은 높이를 차지해 아래 줄이 세 카드에서 맞는다. */
 .planNote {
-  min-height: 1.5em;
+  min-height: 3em;
   margin: calc(var(--space-2) * -1) 0 0;
   color: var(--color-text-3);
   font-size: var(--text-caption);
@@ -144,6 +144,22 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* 체험·유료가 갈리는 줄: 연노랑 띠, 유료는 초록 글씨 */
+.compare > div[data-highlight] {
+  margin: 0 calc(var(--space-6) * -1);
+  padding-inline: var(--space-6);
+  background: var(--color-accent-soft);
+}
+
+.compare dd[data-after='go'] {
+  color: var(--color-done);
+}
+
+.compare dd[data-after='stop'] {
+  color: var(--color-text-3);
+  font-weight: 500;
 }
 
 .compare dd[data-none] {
@@ -502,4 +518,15 @@ fieldset.block legend.label {
   .plan[data-plan='trial'] {
     order: 1;
   }
+}
+
+/* 체험에서 올라왔을 때 무엇이 계속되는지 한 줄 */
+.keepNote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-done);
+  font-size: var(--text-caption);
+  text-align: center;
+  background: var(--color-done-bg);
+  border-radius: 10px;
 }

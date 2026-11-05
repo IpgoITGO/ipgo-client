@@ -29,7 +29,7 @@ describe('결제', () => {
     vi.mocked(requestPayment).mockReset()
   })
 
-  it('요금제 화면: 셀러 이름 옆 추천, 체험 남은 날, 세 카드가 같은 다섯 줄', () => {
+  it('요금제 화면: 셀러 이름 옆 추천, 체험 남은 날, 세 카드가 같은 네 줄, 체험·유료 차이는 14일 뒤 줄', () => {
     renderAt('/plans')
     expect(
       screen.getByRole('heading', { name: /^셀러\s*추천\s*요금제$/ }),
@@ -45,7 +45,9 @@ describe('결제', () => {
     )
     expect(rows).toHaveLength(3)
     expect(new Set(rows.map((r) => r.join('|'))).size).toBe(1)
-    expect(rows[0]).toHaveLength(5)
+    expect(rows[0]).toEqual(['관리 상품', '계산', 'AI 인사이트', '14일 뒤'])
+    expect(cards[0]).toHaveTextContent('보기만 (계산 멈춤)')
+    expect(cards[1]).toHaveTextContent('계속 계산')
   })
 
   it('결제 버튼 위에 오늘 낼 돈과 다음부터를 나눠 보여 준다', () => {

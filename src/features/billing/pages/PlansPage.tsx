@@ -56,14 +56,26 @@ export function PlansPage() {
                 {plan.price.toLocaleString('ko-KR')}
                 <small>{plan.price > 0 ? '원/월' : '원'}</small>
               </p>
-              <p className={styles.planNote}>{plan.note ?? ' '}</p>
+              <p className={styles.planNote}>{plan.note}</p>
               <dl className={styles.compare}>
                 {COMPARE.map((row) => {
                   const value = row.value(plan)
                   return (
-                    <div key={row.label}>
+                    <div
+                      data-highlight={row.highlight || undefined}
+                      key={row.label}
+                    >
                       <dt>{row.label}</dt>
-                      <dd data-none={value == null || undefined}>
+                      <dd
+                        data-after={
+                          row.highlight
+                            ? plan.id === 'trial'
+                              ? 'stop'
+                              : 'go'
+                            : undefined
+                        }
+                        data-none={value == null || undefined}
+                      >
                         {value ?? '—'}
                       </dd>
                     </div>
