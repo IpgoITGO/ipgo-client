@@ -11,6 +11,8 @@ export type CalculationState = {
   trackRun: (runId: number | null | undefined) => void
   retry: () => void
   dismiss: () => void
+  /** 로컬 추적을 즉시 끊고 서버 취소를 별도 요청한다. 서버 중지 성공을 보장하지 않는다. */
+  stop: () => void
 }
 
 export const CalculationContext = createContext<CalculationState | null>(null)

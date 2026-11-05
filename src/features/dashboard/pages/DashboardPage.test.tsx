@@ -7,6 +7,7 @@ import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { DashboardPage } from './DashboardPage'
 import { AppLayout } from '../../../app/ui/AppLayout'
+import { CalculationStatus } from '../../../shared/ui/CalculationStatus/CalculationStatus'
 
 // 서버가 아직 한 번도 계산하지 않았을 때의 D1 응답
 const noResult = (latestUploadId: number | null) => ({
@@ -43,6 +44,7 @@ const renderWithRun = (runId: number) =>
     <AppProviders>
       <MemoryRouter initialEntries={[`/dashboard?run=${runId}`]}>
         <DashboardPage />
+        <CalculationStatus />
       </MemoryRouter>
     </AppProviders>,
   )
@@ -189,7 +191,7 @@ describe('아직 괜찮은 상품 목록', () => {
 })
 
 describe('DashboardPage', () => {
-  it('기존 run 주소와 공통 추적기를 함께 써도 조회와 상태 띠가 중복되지 않는다', async () => {
+  it('run 주소로 와도 계산 상태는 공통 작은 창 하나로만 보이고 한 번만 조회한다', async () => {
     let reads = 0
     server.use(
       http.get('/api/calculation-runs/7125', () => {
@@ -213,13 +215,13 @@ describe('DashboardPage', () => {
         </MemoryRouter>
       </AppProviders>,
     )
-    expect(await screen.findByText('계산이 끝났어요')).toBeInTheDocument()
-    expect(screen.getAllByText('계산이 끝났어요')).toHaveLength(1)
+    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
+    expect(screen.getAllByText('계산을 마쳤어요')).toHaveLength(1)
     expect(
-      screen.queryByRole('region', { name: '입고량 계산 상태' }),
-    ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '닫기' }))
-    expect(screen.queryByText('계산이 끝났어요')).not.toBeInTheDocument()
+      screen.getAllByRole('region', { name: '입고량 계산 상태' }),
+    ).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: '계산 상태 닫기' }))
+    expect(screen.queryByText('계산을 마쳤어요')).not.toBeInTheDocument()
     expect(reads).toBe(1)
   })
 
@@ -242,6 +244,7 @@ describe('DashboardPage', () => {
       <AppProviders>
         <MemoryRouter initialEntries={['/dashboard?run=7126']}>
           <DashboardPage />
+          <CalculationStatus />
         </MemoryRouter>
       </AppProviders>,
     )
@@ -253,34 +256,82 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument()
     available = true
     await user.click(screen.getByRole('button', { name: '상태 다시 확인' }))
-    expect(await screen.findByText('계산이 끝났어요')).toBeInTheDocument()
+    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
     expect(reads).toBe(2)
   })
   it('저장·업로드 뒤 계산 번호로 오면 계산 중이었다가 끝나면 결과 수를 알린다', async () => {
     renderWithRun(41)
 
-    expect(await screen.findByText('새로 계산하고 있어요')).toBeInTheDocument()
+    expect(
+      await screen.findByText('입고량을 계산하고 있어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '계산 멈추기' }),
+    ).toBeInTheDocument()
     // mock은 두 번째 물음부터 끝(2초 간격)
     expect(
-      await screen.findByText('계산이 끝났어요', {}, { timeout: 4000 }),
+      await screen.findByText('계산을 마쳤어요', {}, { timeout: 4000 }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('입고가 필요한 상품 6개 · 지금은 괜찮은 상품 22개'),
     ).toBeInTheDocument()
   })
 
-  it('계산이 실패하면 이유와 이전 결과라는 안내, 다시 계산 버튼을 준다', async () => {
+  it('계산이 실패하면 이유를 알린다', async () => {
     renderWithRun(999)
 
-    expect(await screen.findByText('계산하지 못했어요')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '계산 시간이 너무 오래 걸렸어요 · 아래는 이전 결과예요.',
+      await screen.findByText('계산을 마치지 못했어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('계산 시간이 너무 오래 걸렸어요'),
+    ).toBeInTheDocument()
+  })
+
+  // 11/5: 서버에서 계산이 멈추면(ipgo-server#102) 셀러가 멈출 수 있어야 한다
+  it('계산 멈추기를 누르면 서버에 취소를 요청하고 더 기다리지 않는다', async () => {
+    let canceled = 0
+    server.use(
+      http.get('/api/calculation-runs/7130', () =>
+        HttpResponse.json({ runId: 7130, status: 'RUNNING' }),
       ),
-    ).toBeInTheDocument()
+      http.post('/api/calculation-runs/7130/cancel', () => {
+        canceled++
+        return HttpResponse.json({ runId: 7130, status: 'CANCELED' })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithRun(7130)
+
+    await user.click(await screen.findByRole('button', { name: '계산 멈추기' }))
+    expect(canceled).toBe(1)
     expect(
-      screen.getByRole('button', { name: '입고 조건에서 다시 계산' }),
+      screen.queryByRole('region', { name: '입고량 계산 상태' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('서버에 취소가 아직 없어도(404) 화면은 기다리기를 그만둔다', async () => {
+    server.use(
+      http.get('/api/calculation-runs/7131', () =>
+        HttpResponse.json({ runId: 7131, status: 'QUEUED' }),
+      ),
+      http.post('/api/calculation-runs/7131/cancel', () =>
+        HttpResponse.json(
+          { code: 'NOT_FOUND', message: '없음' },
+          { status: 404 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithRun(7131)
+
+    expect(
+      await screen.findByText('계산을 기다리고 있어요'),
     ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '계산 멈추기' }))
+    expect(
+      screen.queryByRole('region', { name: '입고량 계산 상태' }),
+    ).not.toBeInTheDocument()
   })
 
   it('상태별 요약과 입고 필요 상품을 정렬한다', async () => {

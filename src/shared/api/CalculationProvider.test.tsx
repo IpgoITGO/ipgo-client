@@ -3,22 +3,24 @@ import {
   QueryClientProvider,
   useQuery,
 } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../mocks/server'
 import { CalculationStatus } from '../ui/CalculationStatus/CalculationStatus'
 import { useCalculation } from './calculationContext'
 import { CalculationProvider } from './CalculationProvider'
+import * as runApi from './calculationRunApi'
+import { readTrackedRun } from './calculationStorage'
 
 function Harness({
   getResult = async () => '새 계산 결과',
 }: {
   getResult?: () => Promise<string>
 }) {
-  const { trackRun, busy } = useCalculation()
+  const { trackRun, busy, runId } = useCalculation()
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: getResult,
@@ -27,31 +29,110 @@ function Harness({
   return (
     <>
       <button onClick={() => trackRun(71)}>계산 번호 받기</button>
+      <button onClick={() => trackRun(72)}>새 계산 번호 받기</button>
       <button onClick={() => trackRun(null)}>계산 없음</button>
       <button disabled={busy}>다시 계산</button>
       <span>{dashboard.data}</span>
+      <span data-testid="tracked-run">{runId ?? '없음'}</span>
       <CalculationStatus />
     </>
   )
 }
 
-function setup(timeout = 2000, getResult?: () => Promise<string>) {
+function setup(
+  timeout = 2000,
+  getResult?: () => Promise<string>,
+  storageScope?: string,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
   client.setQueryData(['dashboard'], '이전 정상 결과')
   client.setQueryData(['sku', '3'], { old: true })
-  render(
+  const view = render(
     <QueryClientProvider client={client}>
-      <CalculationProvider pollInterval={20} timeout={timeout}>
+      <CalculationProvider
+        pollInterval={20}
+        timeout={timeout}
+        storageScope={storageScope}
+      >
         <Harness getResult={getResult} />
       </CalculationProvider>
     </QueryClientProvider>,
   )
-  return { client, user: userEvent.setup() }
+  return { client, user: userEvent.setup(), unmount: view.unmount }
 }
 
 describe('계산 완료·실패 추적', () => {
+  it('취소 응답이 늦어도 로컬 추적과 저장 번호를 즉시 지우고 실패 뒤 새로고침해도 복원하지 않는다', async () => {
+    let reject!: (error: Error) => void
+    const cancel = vi.spyOn(runApi, 'cancelCalculationRun').mockImplementation(
+      () =>
+        new Promise<boolean>((_resolve, rejectRequest) => {
+          reject = rejectRequest
+        }),
+    )
+    server.use(
+      http.get('/api/calculation-runs/71', () =>
+        HttpResponse.json({ runId: 71, status: 'RUNNING' }),
+      ),
+    )
+    try {
+      const { user, unmount } = setup(2000, undefined, 'stop-test')
+      await user.click(screen.getByText('계산 번호 받기'))
+      expect(readTrackedRun('stop-test')).toBe(71)
+      await user.click(
+        await screen.findByRole('button', { name: '계산 멈추기' }),
+      )
+      expect(cancel).toHaveBeenCalledExactlyOnceWith(71)
+      expect(screen.getByText('다시 계산')).toBeEnabled()
+      expect(screen.getByTestId('tracked-run')).toHaveTextContent('없음')
+      expect(readTrackedRun('stop-test')).toBeNull()
+      unmount()
+      setup(2000, undefined, 'stop-test')
+      expect(screen.getByTestId('tracked-run')).toHaveTextContent('없음')
+      await act(async () => {
+        reject(new Error('합성 취소 실패'))
+      })
+      expect(screen.getByText('다시 계산')).toBeEnabled()
+      expect(readTrackedRun('stop-test')).toBeNull()
+    } finally {
+      cancel.mockRestore()
+    }
+  })
+
+  it('이전 취소 응답이 도착해도 새 계산과 새 저장 번호를 보존한다', async () => {
+    let resolve!: (accepted: boolean) => void
+    const cancel = vi.spyOn(runApi, 'cancelCalculationRun').mockImplementation(
+      () =>
+        new Promise<boolean>((resolveRequest) => {
+          resolve = resolveRequest
+        }),
+    )
+    server.use(
+      http.get('/api/calculation-runs/:id', ({ params }) =>
+        HttpResponse.json({ runId: Number(params.id), status: 'RUNNING' }),
+      ),
+    )
+    try {
+      const { user } = setup(2000, undefined, 'race-test')
+      await user.click(screen.getByText('계산 번호 받기'))
+      await user.click(
+        await screen.findByRole('button', { name: '계산 멈추기' }),
+      )
+      await user.click(screen.getByText('새 계산 번호 받기'))
+      expect(screen.getByTestId('tracked-run')).toHaveTextContent('72')
+      await act(async () => {
+        resolve(true)
+      })
+      expect(screen.getByTestId('tracked-run')).toHaveTextContent('72')
+      expect(screen.getByText('다시 계산')).toBeDisabled()
+      expect(readTrackedRun('race-test')).toBe(72)
+    } finally {
+      cancel.mockRestore()
+    }
+  })
+
   it('계산은 DONE이어도 결과 갱신 실패는 알리고 조회만 재시도한다', async () => {
     let available = false
     server.use(

@@ -5,7 +5,7 @@ import { ApiError, apiRequest } from './client'
 // DONE이면 summary.needCount, FAILED면 errorMessage. 실패해도 서버의 이전 정상 결과는 남는다.
 export type CalculationRun = {
   runId: number
-  status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED'
+  status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'CANCELED'
   asOfDate?: string
   engineVersion?: string
   summary?: {
@@ -24,7 +24,7 @@ export async function getCalculationRun(runId: number) {
   const run = await apiRequest<CalculationRun>(`/calculation-runs/${runId}`)
   if (
     run.runId !== runId ||
-    !['QUEUED', 'RUNNING', 'DONE', 'FAILED'].includes(run.status)
+    !['QUEUED', 'RUNNING', 'DONE', 'FAILED', 'CANCELED'].includes(run.status)
   ) {
     throw new ApiError(
       502,
@@ -33,4 +33,16 @@ export async function getCalculationRun(runId: number) {
     )
   }
   return run
+}
+
+// 계산 멈추기(ipgo-server#106). 서버에 아직 취소가 없으면(404·405) false: 화면에서만 기다리기를 그만둔다.
+export async function cancelCalculationRun(runId: number) {
+  try {
+    await apiRequest(`/calculation-runs/${runId}/cancel`, { method: 'POST' })
+    return true
+  } catch (error) {
+    if (error instanceof ApiError && [404, 405].includes(error.status))
+      return false
+    throw error
+  }
 }

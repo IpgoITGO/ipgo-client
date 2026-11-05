@@ -3,9 +3,10 @@ import { Button } from '../Button/Button'
 import { CalcMark } from '../CalcMark/CalcMark'
 import styles from './CalculationStatus.module.css'
 
-// 대시보드 밖 화면의 계산 상태: 오른쪽 아래 작은 창(본문을 밀지 않는다). 대시보드는 위 띠로 따로 보여 준다.
+// 계산 상태: 모든 화면에서 오른쪽 아래 작은 창(본문을 밀지 않는다).
+// 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
 export function CalculationStatus() {
-  const { phase, run, message, retry, dismiss } = useCalculation()
+  const { phase, run, message, retry, dismiss, stop } = useCalculation()
   if (phase === 'idle') return null
   const title = {
     pending:
@@ -14,13 +15,16 @@ export function CalculationStatus() {
         : '입고량을 계산하고 있어요',
     updating: '새 계산 결과를 불러오고 있어요',
     done: '계산을 마쳤어요',
-    failed: '계산을 마치지 못했어요',
+    failed:
+      run?.status === 'CANCELED' ? '계산을 멈췄어요' : '계산을 마치지 못했어요',
     unknown: '계산 결과를 다시 확인해 주세요',
   }[phase]
   const detail =
     message ??
     (phase === 'done' && run?.summary
-      ? `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
+      ? run.summary.notNeededCount != null
+        ? `입고가 필요한 상품 ${run.summary.needCount}개 · 지금은 괜찮은 상품 ${run.summary.notNeededCount}개`
+        : `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
       : phase === 'pending' || phase === 'updating'
         ? '끝나면 화면이 저절로 바뀌어요.'
         : phase === 'failed'
@@ -44,10 +48,17 @@ export function CalculationStatus() {
       <div className={styles.text}>
         <strong>{title}</strong>
         {detail && <p>{detail}</p>}
-        {phase === 'unknown' && (
-          <Button onClick={retry} variant="text">
-            상태 다시 확인
-          </Button>
+        {(phase === 'pending' || phase === 'unknown') && (
+          <div className={styles.actions}>
+            {phase === 'unknown' && (
+              <Button onClick={retry} variant="text">
+                상태 다시 확인
+              </Button>
+            )}
+            <Button onClick={() => void stop()} variant="text">
+              {phase === 'unknown' ? '그만 기다리기' : '계산 멈추기'}
+            </Button>
+          </div>
         )}
       </div>
       {(phase === 'done' || phase === 'failed') && (
