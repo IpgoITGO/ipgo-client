@@ -85,10 +85,14 @@ export function ScenarioInsight({
   const insightQuery = useQuery({
     queryKey: ['result', resultId, 'insight'],
     queryFn: () => getInsight(resultId),
+    refetchInterval: (query) =>
+      query.state.data?.generating && !query.state.error ? 2000 : false,
   })
 
   const insight = insightQuery.data
-  const insightTone = insightQuery.isPending
+  const insightPending =
+    insightQuery.isPending || (insight?.generating && !insightQuery.isError)
+  const insightTone = insightPending
     ? 'ai'
     : insightQuery.isError
       ? 'none'
@@ -494,7 +498,7 @@ export function ScenarioInsight({
           {insight?.stateReason && (
             <p className={styles.stateReason}>{insight.stateReason}</p>
           )}
-          {insightQuery.isPending ? (
+          {insightPending ? (
             <div className={styles.writing} role="status">
               <img alt="" height="36" src="/logo.png" width="36" />
               <b>계산 결과를 읽고 정리하는 중이에요</b>
