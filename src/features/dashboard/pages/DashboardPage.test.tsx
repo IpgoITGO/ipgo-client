@@ -591,3 +591,33 @@ describe('DashboardPage', () => {
     )
   })
 })
+
+describe('주문까지 칸', () => {
+  it('3주 남으면 세 칸을 채우고 마감일을 보여 준다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...safeDashboard,
+          today: '2026-11-01',
+          notNeededItems: [
+            {
+              productId: 1,
+              skuName: '여유상품',
+              skuBarcode: '8800000000001',
+              expectedShortageOn: '2026-11-25',
+              leadTimeDays: 5,
+            },
+          ],
+        }),
+      ),
+    )
+    const { container } = renderSafe()
+    await screen.findByText('여유상품')
+    expect(
+      screen.getByRole('columnheader', { name: /주문까지/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('주문까지 19일, 11월 20일까지')).toBeVisible()
+    expect(container.querySelectorAll('i[data-on]')).toHaveLength(3)
+    expect(screen.getByText('11/20까지')).toBeInTheDocument()
+  })
+})

@@ -349,6 +349,15 @@ export function DashboardPage() {
     .sort((a, b) =>
       dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate)),
     )
+  // 주문 마감일(소진일 − 리드타임 = 오늘 + n일)
+  const orderDeadline = (days: number) => {
+    const d = new Date((today + days) * 864e5)
+    const m = d.getUTCMonth() + 1
+    return {
+      short: `${m}/${d.getUTCDate()}`,
+      long: `${m}월 ${d.getUTCDate()}일`,
+    }
+  }
   // 다음 입고가 도착한 뒤 며칠 더 버티는지(소진일 − 오늘 − 리드타임). 모르면 null
   const slack = (item: { stockoutDate: string; leadTime: number | null }) =>
     item.stockoutDate === '—' || item.leadTime == null
@@ -670,6 +679,12 @@ export function DashboardPage() {
                             picked.has(item.id),
                           )}
                           onChange={(event) => pickAll(event.target.checked)}
+                          ref={(node) => {
+                            if (node)
+                              node.indeterminate =
+                                !node.checked &&
+                                shownNeed.some((item) => picked.has(item.id))
+                          }}
                           type="checkbox"
                         />
                       </th>
@@ -772,13 +787,17 @@ export function DashboardPage() {
                     <tr>
                       <th>상품</th>
                       <th>예상 소진일</th>
-                      <th>다음 입고 뒤 여유</th>
+                      <th>
+                        주문까지{' '}
+                        <small className={styles.headHint}>한 칸 = 1주</small>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {shownSafe.map((item) => {
                       const room = slack(item)
                       const soon = room !== null && room <= SOON_DAYS
+                      const deadline = orderDeadline(room ?? 0)
                       return (
                         <tr
                           className={styles.rowLink}
@@ -804,22 +823,35 @@ export function DashboardPage() {
                               item.stockoutDate
                             )}
                           </td>
-                          <td data-label="다음 입고 뒤 여유">
+                          <td data-label="주문까지">
                             {room === null ? (
                               <span className={styles.muted}>—</span>
                             ) : (
-                              <span className={styles.room}>
+                              <span
+                                aria-label={`주문까지 ${room}일, ${deadline.long}까지`}
+                                className={styles.room}
+                                role="group"
+                              >
                                 <span
                                   aria-hidden="true"
-                                  className={styles.track}
+                                  className={styles.weeks}
                                 >
-                                  <i
-                                    style={{
-                                      width: `${Math.min(100, Math.max(4, (room / 40) * 100))}%`,
-                                    }}
-                                  />
+                                  {[0, 1, 2, 3].map((cell) => (
+                                    <i
+                                      data-on={
+                                        cell < Math.ceil(room / 7) || undefined
+                                      }
+                                      key={cell}
+                                    />
+                                  ))}
                                 </span>
-                                {room}일
+                                <span
+                                  aria-hidden="true"
+                                  className={styles.roomText}
+                                >
+                                  <b>{room}일</b>
+                                  <small>{deadline.short}까지</small>
+                                </span>
                               </span>
                             )}
                           </td>
