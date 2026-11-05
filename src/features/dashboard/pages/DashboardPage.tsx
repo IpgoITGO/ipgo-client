@@ -34,6 +34,7 @@ import {
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
+import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
 import styles from './DashboardPage.module.css'
 
