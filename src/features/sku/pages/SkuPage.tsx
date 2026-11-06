@@ -1327,7 +1327,7 @@ export function SkuPage() {
   // 예상 소진일이 오늘보다 앞이면 "품절 주의"(대시보드 표와 같은 기준). 품절은 확인 못 했으니 단정하지 않는다
   const stockoutPassed =
     data.shortageOn !== null && data.shortageOn < localIsoToday()
-  // 재고 세 칸(#234): 마지막 기록 → 오늘 추정 재고 → 권장 입고량
+  // 권장량 아래 한 줄(#234·#253): 마지막 기록 − 예상 출고 = 오늘 추정 재고
   const todayIso = localIsoToday()
   const lastRec = data.history.at(-1)
   const startInv = data.calculation.startingInventory
@@ -1509,6 +1509,29 @@ export function SkuPage() {
                   <small className={styles.recoUnit}>개</small>
                 </span>
               </strong>
+              {/* 권장량이 어디서 시작했는지 한 줄(11/6: 재고 칸 네 개 대신) */}
+              {lastRec && (
+                <p className={styles.recoFlow}>
+                  <span>
+                    {slashDate(lastRec.day, lastRec.date)} 기록{' '}
+                    <b>{lastRec.inventory.toLocaleString()}개</b>
+                  </span>
+                  {showGap && (
+                    <>
+                      <span aria-hidden="true">−</span>
+                      <span>
+                        {gapDays}일 예상 출고{' '}
+                        <b>{Math.max(0, gapOut).toLocaleString()}개</b>
+                      </span>
+                      <span aria-hidden="true">=</span>
+                      <span>
+                        오늘 <b>{startInv.toLocaleString()}개</b>{' '}
+                        <em className={styles.recoEst}>추정</em>
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
             <dl>
               <div>
@@ -1544,70 +1567,24 @@ export function SkuPage() {
               <div>
                 <dt>현재 예상 소진일</dt>
                 <dd>
-                  {alreadyOut
-                    ? ALREADY_OUT
-                    : (data.recommendation.expectedStockoutDate ?? (
-                        <EmptyValue kind="short" />
-                      ))}
+                  {alreadyOut ? (
+                    <>
+                      <span className={styles.outValue}>이미 바닥</span>
+                      <small className={styles.costWork}>
+                        {lastRec
+                          ? `${slashDate(lastRec.day, lastRec.date)} 기록 기준`
+                          : '기록 기준'}
+                      </small>
+                    </>
+                  ) : (
+                    (data.recommendation.expectedStockoutDate ?? (
+                      <EmptyValue kind="short" />
+                    ))
+                  )}
                 </dd>
               </div>
             </dl>
           </section>
-
-          {lastRec && (
-            <div
-              aria-label="재고 흐름"
-              className={styles.stockCells}
-              role="group"
-            >
-              <div className={styles.stockCell}>
-                <span className={styles.stockTag}>수불부</span>
-                <span className={styles.stockLabel}>
-                  {slashDate(lastRec.day, lastRec.date)} 마지막 기록
-                </span>
-                <strong className={styles.stockValue}>
-                  {lastRec.inventory.toLocaleString()}개
-                </strong>
-                <small>올린 수불부 그대로</small>
-              </div>
-              {showGap && (
-                <>
-                  <span aria-hidden="true" className={styles.stockArrow}>
-                    {gapDays}일 예상 출고 −
-                    {Math.max(0, gapOut).toLocaleString()}
-                  </span>
-                  <div className={styles.stockCell}>
-                    <span
-                      className={`${styles.stockTag} ${styles.stockTagEst}`}
-                    >
-                      추정
-                    </span>
-                    <span className={styles.stockLabel}>
-                      오늘({slashDate(todayIso, todayIso)}) 남았을 재고
-                    </span>
-                    <strong className={styles.stockValue}>
-                      {startInv.toLocaleString()}개
-                    </strong>
-                    <small>계산은 이 숫자에서 시작</small>
-                  </div>
-                  <span aria-hidden="true" className={styles.stockArrow}>
-                    계산
-                  </span>
-                </>
-              )}
-              <div className={`${styles.stockCell} ${styles.stockCellReco}`}>
-                <span className={styles.stockLabel}>권장 입고량</span>
-                <strong className={styles.stockValue}>
-                  {data.recommendation.quantity.toLocaleString()}개
-                </strong>
-                {Boolean(data.calculation.existingOrders) && (
-                  <small>
-                    기존 발주 {count(data.calculation.existingOrders)} 뺌
-                  </small>
-                )}
-              </div>
-            </div>
-          )}
 
           <div className={styles.mainGrid}>
             <section className={styles.card}>
