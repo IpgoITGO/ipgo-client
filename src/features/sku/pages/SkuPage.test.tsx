@@ -67,7 +67,7 @@ describe('SkuPage', () => {
 
     expect(await screen.findByText(/기록 기준 재고 4개/)).toBeInTheDocument()
     expect(screen.queryByText(/지금 재고/)).not.toBeInTheDocument()
-    expect(screen.getByText(/서버는 시작 재고 9개 기준/)).toBeInTheDocument()
+    expect(screen.getByText(/오늘 남았을 재고 9개로 보면/)).toBeInTheDocument()
   })
 
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {

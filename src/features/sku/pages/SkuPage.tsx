@@ -356,7 +356,7 @@ function TrendChart({
       {startStock != null && startStock !== stock && (
         <span className={styles.trendAside}>
           {' '}
-          (서버는 시작 재고 {startStock.toLocaleString()}개 기준이라{' '}
+          (오늘 남았을 재고 {startStock.toLocaleString()}개로 보면{' '}
           {alreadyOut
             ? ALREADY_OUT
             : shortageOn
