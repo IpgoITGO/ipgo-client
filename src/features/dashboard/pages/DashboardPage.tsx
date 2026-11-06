@@ -262,6 +262,10 @@ export function DashboardPage() {
   const query = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
+    // 첫 업로드는 입고 조건을 확정하기 전이라 서버가 계산을 시작하지 않는다 → 지켜볼 계산이 없어
+    // 확인이 끝나도 "확인 중"에 멈춰 보였다(11/6). 확인 중인 동안은 스스로 다시 불러온다.
+    refetchInterval: (q) =>
+      q.state.data?.uploadStatus === 'PROCESSING' ? 3000 : false,
   })
   // 서버가 아직 괜찮은 상품 목록을 주기 전(#103)에는 상품 목록에서 나머지를 채운다
   const products = useQuery({
