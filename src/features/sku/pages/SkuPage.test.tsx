@@ -205,7 +205,7 @@ describe('재고 세 칸 · 이미 바닥났을 수 있어요 (#234)', () => {
     renderSku('/sku/already-out')
 
     expect(await flowLine()).toHaveTextContent(
-      /10\/14 기록 4개.*6일 예상 출고 4개.*오늘 0개 추정.*기존 발주 12개 뺌/,
+      /^10\/14 기록 4개.*6일 예상 출고 4개.*오늘 0개 추정$/,
     )
   })
 
