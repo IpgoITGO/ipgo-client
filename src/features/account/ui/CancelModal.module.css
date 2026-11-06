@@ -199,7 +199,8 @@
 
 .xl table {
   width: 100%;
-  font-size: 8.5px;
+  table-layout: fixed;
+  font-size: 8px;
   border-collapse: collapse;
 }
 
@@ -217,6 +218,7 @@
 
 .xl th {
   padding: 1.5px 4px;
+  white-space: nowrap;
   color: #2b4a35;
   font-weight: 700;
   text-align: left;
@@ -225,6 +227,10 @@
 }
 
 .xl td {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 1.5px 4px;
   border: 1px solid #e3ebe0;
 }
@@ -405,4 +411,12 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* 주문 칸은 숫자만 들어가게 좁게 */
+.xl th:last-child,
+.xl td:last-child {
+  width: 22px;
+  max-width: none;
+  text-align: right;
 }
