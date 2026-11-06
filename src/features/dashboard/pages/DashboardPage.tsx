@@ -326,13 +326,6 @@ export function DashboardPage() {
       item.leadTime != null &&
       dayNumber(item.stockoutDate) < today + item.leadTime,
   ).length
-  // 시작 재고가 추정 0이면 서버가 소진일을 오늘+1로 눌러 둔다. 기준일이 오늘보다 앞이고 소진일이 내일이면 "이미 바닥"으로 본다.
-  const baseDay = dayNumber(data.baseDate)
-  const alreadyOut = (date: string) => baseDay < today && daysPast(date) === -1
-  const baseMd = /d{4}D+(d{1,2})D+(d{1,2})/
-    .exec(data.baseDate)
-    ?.slice(1)
-    .join('/')
   const passedCount = data.neededItems.filter(
     (item) => daysPast(item.stockoutDate) > 0,
   ).length
@@ -786,16 +779,6 @@ export function DashboardPage() {
                         <td data-label="예상 소진일">
                           {item.stockoutDate === '—' ? (
                             <EmptyValue kind="short" />
-                          ) : alreadyOut(item.stockoutDate) ? (
-                            <>
-                              <small className={styles.late}>
-                                이미 바닥났을 수 있어요
-                              </small>
-                              <small className={styles.muted}>
-                                {' '}
-                                기록 {baseMd} 기준
-                              </small>
-                            </>
                           ) : (
                             item.stockoutDate
                           )}
