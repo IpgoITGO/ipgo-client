@@ -192,37 +192,38 @@ describe('재고 세 칸 · 이미 바닥났을 수 있어요 (#234)', () => {
     vi.setSystemTime(new Date(`${iso}T12:00:00`))
   }
 
-  it('기록과 오늘 사이에 간격이 있으면 세 칸과 화살표를 보여 준다', async () => {
+  // 권장 입고량 아래 한 줄(#253): "M/D 기록 N개 − K일 예상 출고 N개 = 오늘 N개 추정"
+  const flowLine = () =>
+    screen.findByText(
+      (_, el) =>
+        el?.tagName === 'P' &&
+        /^\d+\/\d+ 기록 \d+개/.test(el.textContent ?? ''),
+    )
+
+  it('기록과 오늘 사이에 간격이 있으면 예상 출고를 빼고 오늘 추정 재고까지 한 줄로 보여 준다', async () => {
     today('2026-10-20')
     renderSku('/sku/already-out')
 
-    expect(await screen.findByText('10/14 마지막 기록')).toBeInTheDocument()
-    expect(screen.getByText('올린 수불부 그대로')).toBeInTheDocument()
-    expect(screen.getByText('오늘(10/20) 남았을 재고')).toBeInTheDocument()
-    expect(screen.getByText('계산은 이 숫자에서 시작')).toBeInTheDocument()
-    expect(screen.getByText('6일 예상 출고 −4')).toBeInTheDocument()
-    expect(screen.getByText('기존 발주 12개 뺌')).toBeInTheDocument()
+    expect(await flowLine()).toHaveTextContent(
+      /10\/14 기록 4개.*6일 예상 출고 4개.*오늘 0개 추정.*기존 발주 12개 뺌/,
+    )
   })
 
-  it('기록이 오늘 것이면 가운데 칸과 화살표를 숨긴다', async () => {
+  it('기록이 오늘 것이면 예상 출고·오늘 추정 없이 기록만 보여 준다', async () => {
     today('2026-10-14')
     renderSku('/sku/already-out')
 
-    expect(await screen.findByText('10/14 마지막 기록')).toBeInTheDocument()
-    expect(screen.queryByText(/^오늘\(.*남았을 재고$/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/예상 출고 −/)).not.toBeInTheDocument()
-    expect(
-      screen.getAllByText('권장 입고량', { selector: 'span' }),
-    ).toHaveLength(2)
+    const line = await flowLine()
+    expect(line).toHaveTextContent(/^10\/14 기록 4개/)
+    expect(line).not.toHaveTextContent(/예상 출고/)
   })
 
-  it('추정 시작 재고 0 + 소진일 내일이면 날짜 대신 말로 보여 준다', async () => {
+  it('추정 시작 재고 0 + 소진일 내일이면 날짜 대신 "이미 바닥"과 기록 기준을 보여 준다', async () => {
     today('2026-10-20')
     renderSku('/sku/already-out')
 
-    await screen.findByText('10/14 마지막 기록')
-    expect(
-      screen.getAllByText(/기록 기준 이미 바닥났을 수 있어요/).length,
-    ).toBeGreaterThan(0)
+    await flowLine()
+    expect(screen.getByText('이미 바닥')).toBeInTheDocument()
+    expect(screen.getByText('10/14 기록 기준')).toBeInTheDocument()
   })
 })
