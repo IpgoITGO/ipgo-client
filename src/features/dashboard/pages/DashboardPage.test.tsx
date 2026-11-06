@@ -479,8 +479,12 @@ describe('DashboardPage', () => {
       'true',
     )
     expect(screen.getByRole('tabpanel')).toHaveTextContent(
-      '판매한 날이 7일보다 적어요.',
+      '판매 기록이 5일 쌓였어요',
     )
+    // 자세한 계산 사유: 기간마다 판매한 날 칸(7칸 중 5칸)
+    expect(
+      screen.getByRole('img', { name: '판매한 날 5일, 7일 필요' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: /지금 넣어야 해요/ }))
     await user.type(screen.getByLabelText('목록에서 상품 찾기'), '연어')
