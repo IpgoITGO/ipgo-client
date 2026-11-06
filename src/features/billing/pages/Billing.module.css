@@ -625,7 +625,8 @@ fieldset.block legend.label {
   border: 2px solid var(--color-text);
 }
 
-.plan[data-ended] {
+/* 끝난 체험 카드: 내용만 흐리게, 도장은 또렷하게 */
+.plan[data-ended] > :not(.endStamp) {
   opacity: 0.6;
   filter: grayscale(0.6);
 }

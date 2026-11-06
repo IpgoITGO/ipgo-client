@@ -30,7 +30,7 @@ describe('요금제·구독', () => {
       amount: 49000,
       method: 'card',
     })
-    expect(nextBillingOn(sub)).toBe('2026-12-05')
+    expect(nextBillingOn(sub, nov5)).toBe('2026-12-05')
     expect(loadSubscription().plan).toBe('seller')
   })
 
@@ -59,5 +59,15 @@ describe('계산 막기(calcLock)', () => {
     expect(calcLock(failed, new Date(2026, 10, 12))).toEqual({
       reason: 'PAYMENT_FAILED',
     })
+  })
+  it('다음 결제일은 오늘이 지났으면 한 달씩 넘긴다', () => {
+    const sub = {
+      plan: 'seller' as const,
+      startedOn: '2026-09-05',
+      method: 'card' as const,
+      history: [],
+    }
+    expect(nextBillingOn(sub, new Date(2026, 10, 6))).toBe('2026-12-05')
+    expect(nextBillingOn(sub, new Date(2026, 9, 1))).toBe('2026-10-05')
   })
 })

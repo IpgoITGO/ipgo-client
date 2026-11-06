@@ -63,7 +63,7 @@ describe('요금제 상태 줄', () => {
 
   it('셀러: 쓰는 중 · 다음 결제일, 셀러 카드에 꼬리표, 도장 없음', () => {
     const bar = show(demoSubscription('seller', TODAY))
-    expect(bar).toHaveTextContent('셀러 쓰는 중 · 다음 결제 11/5')
+    expect(bar).toHaveTextContent('셀러 쓰는 중 · 다음 결제 12/5')
     expect(bar).not.toHaveTextContent('D-')
     expect(screen.getByText('지금 쓰는 중')).toBeInTheDocument()
     expect(screen.queryByText('체험 끝')).not.toBeInTheDocument()

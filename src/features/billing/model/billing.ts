@@ -197,8 +197,13 @@ export function trialDaysLeft(subscription: Subscription, today = new Date()) {
 }
 
 // 유료는 시작일에서 한 달 뒤가 다음 결제일
-export function nextBillingOn(subscription: Subscription) {
-  return subscription.plan === 'trial' ? null : addMonth(subscription.startedOn)
+// 다음 결제일: 시작일에서 한 달씩 넘겨 오늘 뒤의 첫 날(지난 날짜를 보여 주지 않게)
+export function nextBillingOn(subscription: Subscription, today = new Date()) {
+  if (subscription.plan === 'trial') return null
+  const now = isoDate(today)
+  let next = addMonth(subscription.startedOn)
+  while (next <= now) next = addMonth(next)
+  return next
 }
 
 // 해지: 다음 결제일까지 쓰고 끝난다. 다시 누르면 해지를 취소한다.
