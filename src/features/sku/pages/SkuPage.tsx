@@ -1763,7 +1763,7 @@ function AccuracyCard({
               fill="#5c6370"
               fontSize="10"
               textAnchor="middle"
-              x={centerX}
+              x="39"
               y="52"
             >
               {stats.low}~{stats.high}개
