@@ -37,6 +37,7 @@ import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
+import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
@@ -484,9 +485,7 @@ export function DashboardPage() {
               ? undefined
               : {
                   baseDate: data.baseDate,
-                  top: [...data.neededItems].sort((a, b) =>
-                    a.stockoutDate.localeCompare(b.stockoutDate),
-                  )[0],
+                  top: mostUrgent(data.neededItems),
                   needed: data.summary.needed,
                   soon: data.neededItems.filter(
                     (item) => dayNumber(item.stockoutDate) < today + 7,
