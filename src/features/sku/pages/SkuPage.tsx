@@ -17,6 +17,11 @@ import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
+import {
+  accuracyStats,
+  MIN_ACCURACY_ITEMS,
+  type AccuracyItem,
+} from '../model/accuracyStats'
 import { monthDay } from '../../dashboard/model/dashboardApi'
 import {
   cbmOf,
@@ -33,14 +38,6 @@ import {
 } from '../model/skuApi'
 import { niceStep, tickText } from '../model/trendScale'
 import styles from './SkuPage.module.css'
-
-type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
-
-const accuracyLabels = {
-  high: '높음',
-  medium: '보통',
-  low: '낮음',
-} as const
 
 const sourceLabels: Record<SettingSource, string> = {
   PRODUCT: '상품별',
@@ -1122,86 +1119,80 @@ function TrendChart({
   )
 }
 
-// 예측 정확도 그래프: 가로는 기간, 세로는 출고량(개). 실제 선과 예측 선이 얼마나 붙어 있는지로 정확도를 봅니다.
-function AccuracyChart({ history }: { history: AccuracyHistory }) {
+// 날짜별 예측(노랑)·실제(남색, 품절 난 때는 빨강) 막대. 숫자는 마우스를 올리면 그날 것만 뜬다.
+function AccuracyChart({ items }: { items: AccuracyItem[] }) {
   const box = {
     width: 600,
-    height: 236,
-    left: 56,
-    right: 568,
-    top: 36,
-    bottom: 186,
+    height: 150,
+    left: 44,
+    right: 596,
+    top: 8,
+    bottom: 118,
   }
   const max = Math.max(
-    ...history.map((item) => Math.max(item.outbound, item.predictedOutbound)),
+    ...items.map((item) => Math.max(item.outbound, item.predictedOutbound)),
     1,
   )
-  const top = Math.ceil(max / 5) * 5
-  const gap =
-    history.length > 1 ? (box.right - box.left) / (history.length - 1) : 0
-  const x = (index: number) => box.left + index * gap
+  const top = Math.ceil(max / 10) * 10
   const y = (value: number) =>
     box.bottom - (value / top) * (box.bottom - box.top)
-  const line = (pick: (item: AccuracyHistory[number]) => number) =>
-    history.map((item, index) => `${x(index)},${y(pick(item))}`).join(' ')
-  const labelIndexes = [
-    0,
-    Math.floor((history.length - 1) / 2),
-    history.length - 1,
-  ]
+  const slot = (box.right - box.left) / items.length
+  const barWidth = Math.min(15, slot * 0.32)
 
   return (
     <svg
-      aria-label="과거 실제 출고량과 예측 출고량 비교 그래프"
+      aria-label="날짜별 예측과 실제 출고 막대 그래프"
       className={styles.chart}
       role="img"
       viewBox={`0 0 ${box.width} ${box.height}`}
     >
-      <title>과거 실제 출고량과 예측 출고량 비교</title>
       {[0, top / 2, top].map((tick) => (
         <g key={tick}>
           <line
-            className={styles.gridLine}
-            x1={box.left}
+            className={tick === 0 ? undefined : styles.gridLine}
+            x1={box.left - 6}
             x2={box.right}
             y1={y(tick)}
             y2={y(tick)}
           />
-          <text className={styles.tick} x={box.left - 8} y={y(tick) + 4}>
-            {tick}
+          <text className={styles.tick} x={box.left - 10} y={y(tick) + 4}>
+            {tick}개
           </text>
         </g>
       ))}
-      <text className={styles.axisTitle} x={0} y={box.top - 18}>
-        출고량(개)
-      </text>
-      <polyline
-        className={styles.actualLine}
-        fill="none"
-        points={line((item) => item.outbound)}
-      />
-      <polyline
-        className={styles.predictionLine}
-        fill="none"
-        points={line((item) => item.predictedOutbound)}
-      />
-      {[...new Set(labelIndexes)].map((index) => (
-        <text
-          className={styles.xTick}
-          key={history[index].date}
-          x={x(index)}
-          y={box.bottom + 20}
-        >
-          {history[index].date}
-        </text>
-      ))}
-      <text
-        className={styles.xTitle}
-        x={(box.left + box.right) / 2}
-        y={box.bottom + 42}
-      >
-        기간
-      </text>
+      {items.map((item, index) => {
+        const x = box.left + slot * index + slot / 2 - barWidth - 1
+        return (
+          <g key={`${item.date}-${index}`}>
+            <title>
+              {`${item.date} 예측 ${item.predictedOutbound}개 · 실제 ${item.outbound}개${item.covered ? '' : ' · 품절'}`}
+            </title>
+            <rect
+              className={styles.predictedBar}
+              height={box.bottom - y(item.predictedOutbound)}
+              rx={3}
+              width={barWidth}
+              x={x}
+              y={y(item.predictedOutbound)}
+            />
+            <rect
+              className={item.covered ? styles.actualBar : styles.missBar}
+              height={box.bottom - y(item.outbound)}
+              rx={3}
+              width={barWidth}
+              x={x + barWidth + 2}
+              y={y(item.outbound)}
+            />
+            <text
+              className={item.covered ? styles.xTick : styles.xTickMiss}
+              x={x + barWidth + 1}
+              y={box.bottom + 18}
+            >
+              {item.date}
+            </text>
+          </g>
+        )
+      })}
     </svg>
   )
 }
@@ -1654,94 +1645,179 @@ export function SkuPage() {
   )
 }
 
-// 기획서 말 그대로: 커버 성공률(권장량대로 넣었으면 품절을 피했는지)과 예측 오차
+// 지난 예측 맞춰 보기(부록): 품절 피함(원) · 보통 빗나감(범위 막대) · 품절로 못 판 개수(날짜별 칸) + 날짜별 막대
+const DONUT_R = 21
+const DONUT_C = 2 * Math.PI * DONUT_R
+
 function AccuracyCard({
   accuracy,
 }: {
   accuracy: NonNullable<SkuDetail['accuracy']>
 }) {
-  const { coverSuccess, coverTrials, errorRate } = accuracy
-  const evaluated =
-    (coverTrials ?? 0) > 0 && coverSuccess != null && errorRate != null
-  const coverRate =
-    coverSuccess != null && coverTrials
-      ? Math.round((coverSuccess / coverTrials) * 100)
-      : null
-  // 점은 최대 10개. 시도가 10번보다 많으면 비율대로 칠한다.
-  const dots = Math.min(coverTrials ?? 0, 10)
-  const filled =
-    coverTrials && coverSuccess != null
-      ? Math.round((coverSuccess / coverTrials) * dots)
-      : 0
+  const stats = accuracyStats(accuracy.history)
+
+  if (stats.total < MIN_ACCURACY_ITEMS) {
+    return (
+      <section className={styles.card}>
+        <div className={styles.accuracyHeader}>
+          <h2>지난 예측 맞춰 보기</h2>
+        </div>
+        <p className={styles.accuracyEmpty}>지난 예측이 쌓이면 보여요</p>
+      </section>
+    )
+  }
+
+  const seg = DONUT_C / stats.total
+  // 범위 막대: 예측 ± N을 0~high 눈금 위에 놓는다(그림 폭 70)
+  const scale = 70 / Math.max(stats.high * 1.1, 1)
+  const bandX = 4 + stats.low * scale
+  const bandW = Math.max((stats.high - stats.low) * scale, 2)
+  const centerX = 4 + stats.avgPredicted * scale
+  const worst = stats.worst
 
   return (
     <section className={styles.card}>
       <div className={styles.accuracyHeader}>
-        <h2>예측 정확도</h2>
-        <span
-          className={styles.accuracyGrade}
-          data-grade={accuracy.grade ?? 'none'}
-        >
-          {evaluated && accuracy.grade
-            ? `정확도 ${accuracyLabels[accuracy.grade]}`
-            : '실제 정확도 미평가'}
-        </span>
+        <h2>지난 예측 맞춰 보기</h2>
+        <p>지난 {stats.total}번 · 이 상품</p>
       </div>
-      <div className={styles.accuracyBoxes}>
-        <div data-tone="cover">
-          <span>커버 성공률</span>
-          <strong>
-            {coverRate == null ? <EmptyValue kind="short" /> : `${coverRate}%`}
-          </strong>
-          {dots > 0 && (
-            <span
-              aria-label={`${coverTrials}번 중 ${coverSuccess}번 성공`}
-              className={styles.dots}
-              role="img"
+      <div className={styles.kpis}>
+        <div className={styles.kpi}>
+          <svg
+            aria-label={`${stats.total}번 중 ${stats.coveredCount}번 품절 피함`}
+            height="56"
+            role="img"
+            viewBox="0 0 56 56"
+            width="56"
+          >
+            {stats.items.map((item, index) => (
+              <circle
+                cx="28"
+                cy="28"
+                fill="none"
+                key={index}
+                r={DONUT_R}
+                stroke={item.covered ? '#1f2537' : '#c8261c'}
+                strokeDasharray={`${Math.max(seg - 2.2, 0.1)} ${DONUT_C}`}
+                strokeDashoffset={-seg * index}
+                strokeWidth="8"
+                transform="rotate(-90 28 28)"
+              />
+            ))}
+            <text
+              fill="#141922"
+              fontSize="12.5"
+              fontWeight="800"
+              textAnchor="middle"
+              x="28"
+              y="32"
             >
-              {Array.from({ length: dots }, (_, index) => (
-                <i data-on={index < filled} key={index} />
-              ))}
-            </span>
-          )}
-          <p>
-            {coverRate == null
-              ? '비교할 지난 예측이 아직 없어요.'
-              : `${coverTrials}번 중 ${coverSuccess}번, 권장량대로 넣었으면 품절을 피했어요.`}
-          </p>
-        </div>
-        <div data-tone="error">
-          <span>예측 오차</span>
-          <strong>
-            {errorRate == null ? <EmptyValue kind="short" /> : `${errorRate}%`}
+              {stats.coveredCount}/{stats.total}
+            </text>
+          </svg>
+          <span className={styles.kpiLabel}>품절 피함</span>
+          <strong className={styles.kpiValue}>
+            {stats.total}번 중 {stats.coveredCount}번
           </strong>
-          {errorRate != null && (
-            <span aria-hidden="true" className={styles.bar}>
-              <i style={{ width: `${Math.min(errorRate, 100)}%` }} />
-            </span>
-          )}
-          <p>
-            {errorRate == null
-              ? '비교할 지난 예측이 쌓이면 보여요.'
-              : '예측이 실제 출고와 평균 이만큼 빗나갔어요. 낮을수록 좋아요.'}
-          </p>
+          <span className={styles.kpiNote}>
+            권장대로 넣었으면 품절이 없었어요
+          </span>
+        </div>
+        <div className={styles.kpi}>
+          <svg
+            aria-label={`예측 ${stats.avgPredicted}개, 보통 ±${stats.miss}개`}
+            height="56"
+            role="img"
+            viewBox="0 0 78 56"
+            width="78"
+          >
+            <text
+              fill="#141922"
+              fontSize="10"
+              fontWeight="800"
+              textAnchor="middle"
+              x="39"
+              y="11"
+            >
+              예측 {stats.avgPredicted}개
+            </text>
+            <rect fill="#efe8dc" height="12" rx="6" width="70" x="4" y="22" />
+            <rect
+              fill="#ffc53d"
+              height="12"
+              opacity=".55"
+              width={bandW}
+              x={bandX}
+              y="22"
+            />
+            <line
+              stroke="#1f2537"
+              strokeWidth="2"
+              x1={centerX}
+              x2={centerX}
+              y1="15"
+              y2="41"
+            />
+            <text
+              fill="#5c6370"
+              fontSize="10"
+              textAnchor="middle"
+              x={bandX}
+              y="52"
+            >
+              {stats.low}
+            </text>
+            <text
+              fill="#5c6370"
+              fontSize="10"
+              textAnchor="middle"
+              x={bandX + bandW}
+              y="52"
+            >
+              {stats.high}
+            </text>
+          </svg>
+          <span className={styles.kpiLabel}>보통 빗나감</span>
+          <strong className={styles.kpiValue}>±{stats.miss}개</strong>
+          <span className={styles.kpiNote}>
+            한 번에 출고 {stats.avgPredicted}개쯤에서 이만큼 오르내려요
+          </span>
+        </div>
+        <div className={styles.kpi}>
+          <span className={styles.kpiLabel}>품절로 못 판 개수</span>
+          <strong className={styles.kpiValue}>
+            {stats.lostTimes}번 동안 {stats.lostTotal}개
+          </strong>
+          <span
+            aria-label={`날짜별 못 판 개수 ${stats.lost.join(', ')}`}
+            className={styles.lostRow}
+            role="img"
+          >
+            {stats.lost.map((value, index) => (
+              <i data-lost={value > 0} key={index}>
+                {value}
+              </i>
+            ))}
+          </span>
+          <span className={styles.kpiNote}>
+            재고가 0이라 못 판 개수(예측보다 넘친 만큼)
+          </span>
         </div>
       </div>
-      {accuracy.range && (
-        <p className={styles.range}>
-          예측 범위 {accuracy.range.low.toLocaleString()}~
-          {accuracy.range.high.toLocaleString()}개 · 참고용
-        </p>
-      )}
-      {accuracy.history.length > 0 && (
-        <>
-          <div className={styles.legend} role="group" aria-label="그래프 범례">
-            <span data-series="actual">실제 출고량</span>
-            <span data-series="prediction">예측 출고량</span>
-          </div>
-          <AccuracyChart history={accuracy.history} />
-        </>
-      )}
+      <div className={styles.chartHead}>
+        <b>날짜별 예측과 실제 출고</b>
+        <div className={styles.legend} role="group" aria-label="그래프 범례">
+          <span data-series="predictedBar">예측</span>
+          <span data-series="actualBar">실제</span>
+          <span data-series="missBar">실제 · 품절 난 때</span>
+        </div>
+      </div>
+      <AccuracyChart items={stats.items} />
+      <p className={styles.accuracyNote}>
+        {worst
+          ? `${worst.item.date}만 실제가 예측보다 크게 많았어요(+${worst.over}개)${worst.item.covered ? '' : ' — 이때 품절'}`
+          : '실제가 예측보다 크게 많았던 때는 없어요'}
+      </p>
     </section>
   )
 }

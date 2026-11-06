@@ -53,13 +53,24 @@ describe('SkuPage', () => {
     expect(screen.getByText('58개')).toBeInTheDocument()
     expect(screen.getByText(/입고 단위 \d+개로 올림/)).toBeInTheDocument()
     expect(screen.getByText('상품별')).toBeInTheDocument()
-    // 정확도는 기획서 말: 커버 성공률과 예측 오차
-    expect(screen.getByText('정확도 높음')).toBeInTheDocument()
-    expect(screen.getByText('90%')).toBeInTheDocument()
+    // 지난 예측 맞춰 보기: 품절 피함 · 보통 빗나감 · 못 판 개수 · 날짜별 막대
+    expect(screen.getByText('지난 예측 맞춰 보기')).toBeInTheDocument()
+    expect(screen.getByText('지난 10번 · 이 상품')).toBeInTheDocument()
+    expect(screen.queryByText('정확도 높음')).toBeNull()
+    expect(screen.getByText('10번 중 9번')).toBeInTheDocument()
     expect(
-      screen.getByRole('img', { name: '10번 중 9번 성공' }),
+      screen.getByRole('img', { name: '10번 중 9번 품절 피함' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('12%')).toBeInTheDocument()
+    expect(screen.getByText('±5개')).toBeInTheDocument()
+    expect(screen.getByText('1번 동안 26개')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '9/1만 실제가 예측보다 크게 많았어요(+26개) — 이때 품절',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('9/1 예측 50개 · 실제 76개 · 품절'),
+    ).toBeInTheDocument()
   })
 
   it('마지막 기록 재고와 서버 계산 시작 재고가 다르면 기록 기준임을 밝히고 서버 값을 알린다', async () => {
@@ -108,8 +119,9 @@ describe('SkuPage', () => {
     expect(screen.queryByText('참고용')).toBeNull()
     expect(screen.queryByText(/재고가 바닥났을 수 있어요/)).toBeNull()
     expect(screen.getByText('추정')).toBeInTheDocument()
-    expect(screen.getByText('정확도 낮음')).toBeInTheDocument()
-    expect(screen.getByText('예측 범위 40~70개 · 참고용')).toBeInTheDocument()
+    // 기록이 3번 미만이면 부록은 한 줄만
+    expect(screen.getByText('지난 예측이 쌓이면 보여요')).toBeInTheDocument()
+    expect(screen.queryByText('정확도 낮음')).toBeNull()
   })
 
   it('계산 전이면 안내와 입고 조건으로 가는 버튼을 보여준다', async () => {
@@ -135,8 +147,8 @@ describe('SkuPage', () => {
     expect(screen.queryByText('0원')).toBeNull()
     // 사장님이 넣을 값: 리드타임·입고 단위 → 미입력
     expect(screen.getAllByText('미입력').length).toBeGreaterThanOrEqual(2)
-    // 자료가 모자란 값: 소진일·시작 재고·정확도 → 자료 부족
-    expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(3)
+    // 자료가 모자란 값: 소진일·시작 재고 → 자료 부족
+    expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(2)
     expect(
       screen.getByRole('link', { name: '단가를 넣으면 보여요 →' }),
     ).toHaveAttribute('href', '/settings')

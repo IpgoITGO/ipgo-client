@@ -200,20 +200,20 @@
   background: var(--color-danger);
 }
 
-/* 예측 정확도 그래프 범례: 실제 출고는 가는 남색 실선, 예측 출고는 굵은 황토 점선(먼저 눈에 들어오게). */
-.legend span[data-series='actual']::before,
-.legend span[data-series='prediction']::before {
-  width: 18px;
-  height: 0;
-  margin-bottom: 2px;
-  background: none;
-  border-radius: 0;
-  border-top: 3px solid var(--color-primary);
-  vertical-align: middle;
+/* 예측 정확도 부록 범례: 예측은 노랑, 실제는 남색, 품절 난 때는 빨강 막대 */
+.legend span[data-series='predictedBar']::before {
+  background: #ffd970;
+  border-radius: 2px;
 }
 
-.legend span[data-series='prediction']::before {
-  border-top: 3px dashed var(--color-accent-text);
+.legend span[data-series='actualBar']::before {
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
+.legend span[data-series='missBar']::before {
+  background: var(--color-danger);
+  border-radius: 2px;
 }
 
 .chart {
@@ -278,11 +278,6 @@
   font-size: 12px;
   font-weight: 800;
   text-anchor: middle;
-}
-
-.predictionLine {
-  stroke: var(--color-accent-text);
-  stroke-dasharray: 7 7;
 }
 
 .zeroPoint {
@@ -455,107 +450,6 @@
   font-size: var(--text-caption);
 }
 
-/* 정확도: 등급 꼬리표 + 커버 성공률(점 10개) · 예측 오차(막대) */
-.accuracyGrade {
-  padding: 6px 14px;
-  color: var(--color-success);
-  font-weight: 700;
-  background: var(--color-success-bg);
-  border-radius: var(--radius-chip);
-}
-
-.accuracyGrade[data-grade='medium'] {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-
-.accuracyGrade[data-grade='none'] {
-  color: var(--color-text-3);
-  background: var(--color-primary-soft);
-}
-
-.accuracyGrade[data-grade='low'] {
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
-}
-
-.accuracyBoxes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-
-.accuracyBoxes > div {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-  padding: var(--space-5);
-  background: var(--color-bg);
-  border-radius: var(--radius-input);
-}
-
-/* 눌러 볼 칸이 아니라서 테두리 없이 연한 면으로 두고, 색은 이름 앞 작은 점과 숫자 막대에만 쓴다 */
-.accuracyBoxes > div > span:first-child::before {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  content: '';
-  background: var(--color-success);
-  border-radius: 50%;
-}
-
-.accuracyBoxes > div[data-tone='error'] > span:first-child::before {
-  background: var(--color-primary);
-}
-
-.accuracyBoxes span,
-.accuracyBoxes p {
-  color: var(--color-text-3);
-}
-
-.accuracyBoxes strong {
-  font-size: 34px;
-  line-height: 1.1;
-}
-
-.dots {
-  display: flex;
-  gap: 4px;
-}
-
-.dots i {
-  width: 12px;
-  height: 12px;
-  background: var(--color-border);
-  border-radius: 50%;
-}
-
-.dots i[data-on='true'] {
-  background: var(--color-success);
-}
-
-.bar {
-  display: block;
-  height: 8px;
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-chip);
-}
-
-.bar i {
-  display: block;
-  height: 8px;
-  background: var(--color-primary);
-  border-radius: var(--radius-chip);
-}
-
-.range {
-  margin-top: var(--space-3) !important;
-  color: var(--color-warning);
-  font-weight: 700;
-}
-
 @media (max-width: 900px) {
   .mainGrid {
     grid-template-columns: 1fr;
@@ -572,7 +466,7 @@
   }
 
   .evidence,
-  .accuracyBoxes {
+  .kpis {
     grid-template-columns: 1fr;
     width: 100%;
   }
@@ -638,17 +532,6 @@
   }
 }
 
-/* 예측 정확도: 비교 기준인 실제 출고 선은 가늘고 흐리게, 예측 선이 먼저 보이게 한다. */
-.chart .actualLine {
-  stroke-opacity: 0.75;
-  stroke-width: 1.75;
-}
-
-.legend span[data-series='actual']::before {
-  border-top-width: 2px;
-  opacity: 0.75;
-}
-
 /* 빈 값 고치는 곳으로 가는 길: 입고 조건 · 단가 */
 /* 고치러 가는 링크: 파란 링크 대신 우리 톤(짙은 회색 + 노란 밑줄) */
 .fixLink {
@@ -688,67 +571,6 @@
   font-weight: 700;
   background: var(--color-danger-bg);
   border-radius: var(--radius-input);
-}
-
-/* 정확도 점과 막대는 화면에 보일 때 한 번 채워진다 */
-@media (prefers-reduced-motion: no-preference) {
-  .dots i[data-on='true'] {
-    animation: dot-in 0.25s cubic-bezier(0.3, 1.5, 0.5, 1) both;
-  }
-
-  .dots i:nth-child(2) {
-    animation-delay: 45ms;
-  }
-
-  .dots i:nth-child(3) {
-    animation-delay: 90ms;
-  }
-
-  .dots i:nth-child(4) {
-    animation-delay: 135ms;
-  }
-
-  .dots i:nth-child(5) {
-    animation-delay: 180ms;
-  }
-
-  .dots i:nth-child(6) {
-    animation-delay: 225ms;
-  }
-
-  .dots i:nth-child(7) {
-    animation-delay: 270ms;
-  }
-
-  .dots i:nth-child(8) {
-    animation-delay: 315ms;
-  }
-
-  .dots i:nth-child(9) {
-    animation-delay: 360ms;
-  }
-
-  .dots i:nth-child(10) {
-    animation-delay: 405ms;
-  }
-
-  .bar i {
-    transform-origin: left;
-    animation: bar-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.25s both;
-  }
-}
-
-@keyframes dot-in {
-  from {
-    opacity: 0.35;
-    transform: scale(0.4);
-  }
-}
-
-@keyframes bar-grow {
-  from {
-    transform: scaleX(0);
-  }
 }
 
 /* 화면에 들어올 때 칸이 위에서 차례로 올라온다(한 번만) */
@@ -1251,4 +1073,144 @@
 
 .salesProgress small {
   color: var(--color-text-3);
+}
+
+/* 지난 예측 맞춰 보기(부록): 작게. 세 칸은 한 줄, 휴대폰에선 쌓인다 */
+.accuracyHeader {
+  align-items: baseline;
+  justify-content: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.accuracyHeader h2 {
+  font-size: var(--text-body);
+}
+
+.accuracyHeader p,
+.accuracyEmpty,
+.kpiNote,
+.accuracyNote {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.kpi {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-3);
+  align-content: start;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-input);
+}
+
+.kpi > svg {
+  grid-row: 1 / span 2;
+}
+
+.kpi > .kpiNote {
+  grid-column: 1 / -1;
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+  border-top: 1px dashed var(--color-input-border);
+}
+
+.kpiLabel {
+  align-self: end;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.kpiValue {
+  align-self: start;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+/* 세 번째 칸은 그림이 날짜별 칸 줄이라 아래로 넓게 */
+.kpi > .lostRow {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 3px;
+  margin-top: var(--space-2);
+}
+
+.lostRow i {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 0;
+  color: var(--color-text-3);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+}
+
+.lostRow i[data-lost='true'] {
+  color: #fff;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.kpi > .kpiLabel:first-child,
+.kpi > .kpiLabel:first-child + .kpiValue {
+  grid-column: 1 / -1;
+}
+
+.chartHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-caption);
+}
+
+.chartHead .legend {
+  margin-bottom: 0;
+}
+
+.chartHead + .chart {
+  min-height: 0;
+}
+
+.predictedBar {
+  fill: #ffd970;
+}
+
+.actualBar {
+  fill: var(--color-primary);
+}
+
+.missBar {
+  fill: var(--color-danger);
+}
+
+.xTickMiss {
+  fill: var(--color-danger);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.accuracyNote {
+  margin-top: var(--space-2) !important;
+}
+
+@media (max-width: 650px) {
+  .xTick,
+  .xTickMiss {
+    font-size: 18px;
+  }
 }

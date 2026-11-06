@@ -761,7 +761,28 @@ export const handlers = [
             coverSuccessCount: isEmpty ? null : isReference ? 5 : 9,
             coverTrialCount: isEmpty ? null : 10,
             forecastErrorRate: isEmpty ? null : isReference ? 0.38 : 0.12,
-            history: [],
+            // 지난 예측 10번(2주 간격): 9/1만 품절. 참고용 상품은 기록이 2번뿐이라 부록이 접힌다
+            history: isEmpty
+              ? []
+              : [
+                  ['2026-07-07', 52, 49, true],
+                  ['2026-07-21', 48, 52, true],
+                  ['2026-08-04', 50, 53, true],
+                  ['2026-08-18', 46, 51, true],
+                  ['2026-09-01', 50, 76, false],
+                  ['2026-09-15', 55, 54, true],
+                  ['2026-09-29', 47, 50, true],
+                  ['2026-10-13', 49, 52, true],
+                  ['2026-10-20', 51, 50, true],
+                  ['2026-10-27', 50, 48, true],
+                ]
+                  .slice(0, isReference ? 2 : 10)
+                  .map(([originDate, forecastQty, actualQty, covered]) => ({
+                    originDate: originDate as string,
+                    forecastQty: forecastQty as number,
+                    actualQty: actualQty as number,
+                    covered: covered as boolean,
+                  })),
             range: isReference ? { low: 40, high: 70 } : null,
             firstInboundOn: '2026-03-02',
           },

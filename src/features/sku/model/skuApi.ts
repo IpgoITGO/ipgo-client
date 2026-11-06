@@ -121,6 +121,7 @@ export type SkuDetail = {
       date: string
       outbound: number
       predictedOutbound: number
+      covered: boolean
     }>
   } | null
 }
@@ -197,9 +198,11 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
           : Math.round(accuracy.forecastErrorRate * 100),
       range: accuracy.range,
       history: (accuracy.history ?? []).map((item) => ({
-        date: monthDay(item.originDate) ?? item.originDate,
+        // 막대 아래 날짜는 좁아서 9/1처럼
+        date: item.originDate.replace(/^\d+-0?(\d+)-0?(\d+).*$/, '$1/$2'),
         outbound: item.actualQty,
         predictedOutbound: item.forecastQty,
+        covered: item.covered,
       })),
     },
   }
