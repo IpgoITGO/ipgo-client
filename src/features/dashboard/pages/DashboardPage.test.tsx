@@ -605,6 +605,32 @@ describe('DashboardPage', () => {
     ).toBeNull()
   })
 
+  // 11/6 dev: 첫 업로드는 입고 조건 확정 전이라 계산이 안 붙어, 확인이 끝나도 "확인 중"에 멈춰 보였다
+  it('확인 중이던 업로드가 끝나면 스스로 다시 불러와 입고 조건 확인으로 바뀐다', async () => {
+    let status = 'PROCESSING'
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json(noResult(15)),
+      ),
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({ uploadId: 15, status, runId: null }),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByRole('button', { name: '확인 중인 업로드 보기' }),
+    ).toBeInTheDocument()
+    status = 'DONE'
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: '입고 조건 확인하기' },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument()
+  }, 10000)
+
   it('수불부를 아직 안 올렸으면 계산 전 안내의 버튼이 수불부 업로드다', async () => {
     server.use(
       http.get('/api/dashboard/replenishment-needs', () =>
