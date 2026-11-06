@@ -535,6 +535,11 @@ tr[data-soon] .weeks i[data-on] {
   margin-left: auto;
   color: #fff;
 }
+.orderBar > :nth-child(3):hover:not(:disabled) {
+  color: #fff;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+}
 
 @media (max-width: 800px) {
   .summary {

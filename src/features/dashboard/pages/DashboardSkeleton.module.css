@@ -1,0 +1,141 @@
+.root {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* ── 위: 안내 한 상자(지난 결과 세 줄 포함) ───────────────────── */
+.wait {
+  padding: var(--space-5) var(--space-6);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+.talk {
+  display: grid;
+  gap: var(--space-4);
+}
+.say {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.say strong {
+  font-size: 17px;
+  font-weight: 800;
+}
+.say span {
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.memo {
+  padding-top: var(--space-4);
+  border-top: 1px dashed #e7d9bd;
+}
+.memo ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+  list-style: none;
+}
+.memo li {
+  position: relative;
+  padding-left: 14px;
+}
+.memo li::before {
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: var(--color-accent);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.memo mark {
+  padding: 0 2px;
+  color: inherit;
+  font-weight: 800;
+  background: linear-gradient(transparent 55%, #ffe37a 55%);
+}
+
+/* ── 아래: 실제 화면과 같은 배치의 자리 ───────────────────── */
+.rest {
+  display: grid;
+  gap: var(--space-5);
+}
+/* 따뜻한 베이지가 천천히 지나간다. 움직임 줄이기면 고정. */
+.sk {
+  display: block;
+  background: linear-gradient(90deg, #f1ebe1 0%, #f8f3ea 40%, #f1ebe1 80%);
+  background-size: 300% 100%;
+  border-radius: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sk {
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+.card,
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+}
+.a {
+  width: 55%;
+  height: 14px;
+}
+.b {
+  width: 35%;
+  height: 40px;
+}
+.c {
+  width: 70%;
+  height: 12px;
+}
+.h {
+  width: 30%;
+  height: 20px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 22px 2.2fr 1.3fr 0.6fr 0.6fr 0.8fr 0.9fr;
+  gap: 14px;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+.row .sk {
+  height: 14px;
+}
+.row .ck {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+@media (max-width: 800px) {
+  .boxes {
+    grid-template-columns: 1fr 1fr;
+  }
+}

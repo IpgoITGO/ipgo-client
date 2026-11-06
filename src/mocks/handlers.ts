@@ -859,10 +859,11 @@ export const handlers = [
   // C2 계산 상태(명세 3.4 · ERD calculation_runs). 999 = 실패
   http.get('/api/calculation-runs/:runId', ({ params }) => {
     const runId = Number(params.runId)
-    // 같은 번호를 처음 물으면 계산 중, 두 번째부터 결과(브라우저에서 계산 중 띠가 잠깐 보이게)
+    // 같은 번호를 처음 물으면 계산 중, 그다음부터 결과. 브라우저에선 계산 중 화면(스켈레톤)을 볼 수 있게 6번(약 12초)까지 계산 중
     const asked = (runPolls.get(runId) ?? 0) + 1
     runPolls.set(runId, asked)
-    if (asked === 1 && runId !== 999) {
+    const runningPolls = import.meta.env.MODE === 'test' ? 1 : 6
+    if (asked <= runningPolls && runId !== 999) {
       return HttpResponse.json({ runId, status: 'RUNNING' })
     }
     if (runId === 999) {

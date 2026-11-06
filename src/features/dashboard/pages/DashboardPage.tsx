@@ -36,6 +36,7 @@ import { getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
+import { DashboardSkeleton } from './DashboardSkeleton'
 import styles from './DashboardPage.module.css'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
@@ -231,6 +232,10 @@ export function DashboardPage() {
   const lock = useCalcLock()
   const [params, setParams] = useSearchParams()
   const calculation = useCalculation()
+  // 계산 중엔 지난 숫자 대신 스켈레톤. 오래 걸리면 "지난 결과 보기"로 열 수 있고, 끝나면 다시 닫힌다
+  const busy = ['checking', 'pending', 'updating'].includes(calculation.phase)
+  const [showPast, setShowPast] = useState(false)
+  if (!busy && showPast) setShowPast(false)
   const routeRun = Number(params.get('run'))
   const routeRunId =
     Number.isSafeInteger(routeRun) && routeRun > 0 ? routeRun : null
@@ -457,6 +462,34 @@ export function DashboardPage() {
       ),
     )
   }
+
+  // 같은 자리에 BusyStrip을 두어 끝났을 때 "바꿨어요" 한 줄이 이어진다
+  if (busy && !showPast)
+    return (
+      <div className={styles.page}>
+        <BusyStrip
+          baseDate={noResult ? undefined : data.baseDate}
+          onShowPast={() => setShowPast(true)}
+        />
+        <DashboardSkeleton
+          note={
+            noResult
+              ? undefined
+              : {
+                  baseDate: data.baseDate,
+                  top: [...data.neededItems].sort((a, b) =>
+                    a.stockoutDate.localeCompare(b.stockoutDate),
+                  )[0],
+                  needed: data.summary.needed,
+                  soon: data.neededItems.filter(
+                    (item) => dayNumber(item.stockoutDate) < today + 7,
+                  ).length,
+                  planned: Object.values(planned).filter(isOwnPlan).length,
+                }
+          }
+        />
+      </div>
+    )
 
   return (
     <div className={styles.page}>
