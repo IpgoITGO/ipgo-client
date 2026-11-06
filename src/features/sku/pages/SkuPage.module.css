@@ -212,7 +212,7 @@
 }
 
 .legend span[data-series='missBar']::before {
-  background: var(--color-danger);
+  background: #d96c50;
   border-radius: 2px;
 }
 
@@ -1156,10 +1156,11 @@
   border-radius: 5px;
 }
 
+/* 품절 표시는 경고 빨강 대신 상자색과 어울리는 흙빨강(11/6 "실제 출고 빨간색이 너무 쨍해") */
 .lostRow i[data-lost='true'] {
-  color: #fff;
-  background: var(--color-danger);
-  border-color: var(--color-danger);
+  color: #b5462c;
+  background: #fbe6de;
+  border-color: #efb7a6;
 }
 
 .kpi > .kpiLabel:first-child,
@@ -1194,11 +1195,11 @@
 }
 
 .missBar {
-  fill: var(--color-danger);
+  fill: #d96c50;
 }
 
 .xTickMiss {
-  fill: var(--color-danger);
+  fill: #b5462c;
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;

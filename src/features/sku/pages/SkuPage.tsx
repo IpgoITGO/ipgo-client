@@ -1697,7 +1697,7 @@ function AccuracyCard({
                 fill="none"
                 key={index}
                 r={DONUT_R}
-                stroke={item.covered ? '#1f2537' : '#c8261c'}
+                stroke={item.covered ? '#1f2537' : '#d96c50'}
                 strokeDasharray={`${Math.max(seg - 2.2, 0.1)} ${DONUT_C}`}
                 strokeDashoffset={-seg * index}
                 strokeWidth="8"
