@@ -1,0 +1,88 @@
+.root {
+  display: grid;
+  gap: var(--space-5);
+}
+/* 따뜻한 베이지가 천천히 지나간다. 움직임 줄이기면 고정. */
+.sk {
+  display: block;
+  background: linear-gradient(90deg, #f1ebe1 0%, #f8f3ea 40%, #f1ebe1 80%);
+  background-size: 300% 100%;
+  border-radius: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sk {
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+.title {
+  width: 46%;
+  height: 34px;
+}
+.chips {
+  display: flex;
+  gap: var(--space-2);
+}
+.chips .sk {
+  width: 130px;
+  height: 30px;
+  border-radius: 999px;
+}
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+.box,
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+}
+.a {
+  width: 55%;
+  height: 14px;
+}
+.b {
+  width: 35%;
+  height: 40px;
+}
+.c {
+  width: 70%;
+  height: 12px;
+}
+.h {
+  width: 30%;
+  height: 20px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 22px 2.2fr 1.3fr 0.6fr 0.6fr 0.8fr 0.9fr;
+  gap: 14px;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+.row .sk {
+  height: 14px;
+}
+.row .ck {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+@media (max-width: 800px) {
+  .boxes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
