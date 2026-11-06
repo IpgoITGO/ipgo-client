@@ -5,6 +5,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-5);
+  overflow-y: auto;
   background: rgb(25 31 40 / 52%);
 }
 

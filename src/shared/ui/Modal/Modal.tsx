@@ -1,4 +1,5 @@
 import { type PropsWithChildren, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 import styles from './Modal.module.css'
 
@@ -17,7 +18,10 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
   // 열릴 때 한 번만 창에 초점을 준다. onClose가 렌더마다 새 함수여도 다시 실행되지 않아야
   // 안의 입력칸(상품 검색 등)에서 글자를 칠 때마다 초점을 뺏기지 않는다.
   useEffect(() => {
-    dialogRef.current?.focus()
+    // 안에서 이미 초점을 잡은 버튼(autoFocus)이 있으면 그대로 둔다
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus()
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') closeRef.current()
@@ -27,7 +31,8 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  return (
+  // 화면 전환 효과(transform)가 있는 본문 안에 두면 fixed가 본문 기준이 되어 배경이 덜 덮인다 → body로 띄운다
+  return createPortal(
     <div className={styles.backdrop} onMouseDown={onClose}>
       <div
         ref={dialogRef}
@@ -40,6 +45,7 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -4,7 +4,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../../auth/model/useAuth'
 import { env } from '../../../shared/config/env'
-import { Button } from '../../../shared/ui/Button/Button'
 import {
   calcLock,
   changeMethod,
@@ -21,6 +20,8 @@ import {
   TRIAL_DAYS,
   trialDaysLeft,
 } from '../../billing/model/billing'
+import { CancelModal } from '../ui/CancelModal'
+import { Toast } from '../../../shared/ui/Toast/Toast'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
 import styles from './AccountPage.module.css'
 
@@ -42,6 +43,8 @@ export function AccountPage() {
   })
   const [editMethod, setEditMethod] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  // 해지·해지 취소가 됐는지 바로 알 수 있게 아래에 잠깐 띄운다
+  const [notice, setNotice] = useState<string | null>(null)
   const products = useQuery({
     queryKey: ['products', 'count'],
     queryFn: getProductSettings,
@@ -241,33 +244,15 @@ export function AccountPage() {
             {monthDayKo(subscription.cancelOn)}까지 쓰고 끝나요.{' '}
             <button
               className={styles.textButton}
-              onClick={() => setSubscription(setCancel(subscription, false))}
+              onClick={() => {
+                setSubscription(setCancel(subscription, false))
+                setNotice('해지를 취소했어요. 지금처럼 계속 써요')
+              }}
               type="button"
             >
               해지 취소
             </button>
           </p>
-        ) : confirmCancel ? (
-          <div className={styles.confirm} role="group" aria-label="구독 해지">
-            <p>
-              {monthDayKo(nextOn!)}까지는 지금처럼 쓰고, 그 뒤로는 자료를 보기만
-              할 수 있어요.
-            </p>
-            <div className={styles.confirmActions}>
-              <Button onClick={() => setConfirmCancel(false)} variant="text">
-                그대로 쓸게요
-              </Button>
-              <Button
-                onClick={() => {
-                  setSubscription(setCancel(subscription, true))
-                  setConfirmCancel(false)
-                }}
-                variant="secondary"
-              >
-                해지하기
-              </Button>
-            </div>
-          </div>
         ) : (
           <button
             className={styles.textButton}
@@ -277,6 +262,27 @@ export function AccountPage() {
             구독 해지
           </button>
         ))}
+      {/* 해지는 팝업 두 단계(#237): 놓치는 것 → 진짜 확인 */}
+      {confirmCancel && nextOn && (
+        <CancelModal
+          nextOn={nextOn}
+          onCancel={() => {
+            setSubscription(setCancel(subscription, true))
+            setConfirmCancel(false)
+            setNotice(
+              `해지됐어요. ${monthDayKo(nextOn)}까지는 지금처럼 쓸 수 있어요`,
+            )
+          }}
+          onClose={() => setConfirmCancel(false)}
+        />
+      )}
+      {notice && (
+        <Toast
+          duration={4000}
+          message={notice}
+          onClose={() => setNotice(null)}
+        />
+      )}
     </div>
   )
 }
