@@ -4,43 +4,127 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/ui/Button/Button'
 import {
   COMPARE,
+  isoDate,
   loadSubscription,
+  monthDayKo,
+  nextBillingOn,
   PLANS,
+  TRIAL_DAYS,
   trialDaysLeft,
 } from '../model/billing'
 import styles from './Billing.module.css'
 
+const RING = 2 * Math.PI * 22
+const md = (iso: string) =>
+  monthDayKo(iso).replace('월 ', '/').replace('일', '')
+
 // 요금제(#186): 카드 3장. 세 카드가 같은 항목을 같은 줄에 두어(COMPARE) 무엇이 다른지 한눈에,
 // 추천은 이름 옆 작은 표시 + 노란 테두리(11/5 사장님 — 손그림 메모는 뺌).
+// 위 상태 줄(#236): 원 D-day로 지금 상태와 체험이 끝나는 날을 먼저 보여 준다.
 export function PlansPage() {
   const navigate = useNavigate()
   const [subscription] = useState(() => loadSubscription())
   const daysLeft = trialDaysLeft(subscription)
   const failed = !!subscription.renewalFailed && subscription.plan !== 'trial'
+  const trial = subscription.plan === 'trial'
+  const ended = trial && daysLeft <= 0
+  const soon = trial && daysLeft > 0 && daysLeft <= 3
+  const [y, m, d] = subscription.startedOn.split('-').map(Number)
+  const endsOn = md(isoDate(new Date(y, m - 1, d + TRIAL_DAYS)))
+  const billingOn = nextBillingOn(subscription)
+  const planName = PLANS.find((p) => p.id === subscription.plan)?.name
 
   return (
     <div className={styles.page}>
       <header className={styles.intro}>
         <h1>요금제</h1>
-        <p>
-          {subscription.plan === 'trial'
-            ? daysLeft > 0
-              ? `체험이 ${daysLeft}일 남았어요. 체험 동안은 셀러와 똑같이 쓸 수 있어요.`
-              : '체험이 끝났어요. 자료는 그대로 볼 수 있고, 새로 계산하려면 요금제를 골라 주세요.'
-            : '요금제는 언제든 바꿀 수 있어요.'}
-        </p>
+        <p>요금제는 언제든 바꿀 수 있어요.</p>
       </header>
 
-      <ul aria-label="요금제" className={styles.plans}>
+      <section
+        aria-label="지금 상태"
+        className={styles.status}
+        data-state={ended ? 'ended' : soon ? 'soon' : undefined}
+      >
+        {trial && (
+          <svg aria-hidden="true" className={styles.ring} viewBox="0 0 54 54">
+            <circle className={styles.ringTrack} cx="27" cy="27" r="22" />
+            {!ended && (
+              <circle
+                className={styles.ringBar}
+                cx="27"
+                cy="27"
+                r="22"
+                strokeDasharray={RING}
+                strokeDashoffset={RING * (1 - daysLeft / TRIAL_DAYS)}
+                transform="rotate(-90 27 27)"
+              />
+            )}
+            <text x="27" y="31">
+              {ended ? '끝' : `D-${daysLeft}`}
+            </text>
+          </svg>
+        )}
+        <p>
+          {ended ? (
+            <>
+              <b>체험이 끝났어요</b>
+              <span>자료는 그대로 볼 수 있어요</span>
+            </>
+          ) : soon ? (
+            <>
+              <b>체험이 {daysLeft}일 남았어요</b>
+              <span>{endsOn}에 새 계산이 멈춰요</span>
+            </>
+          ) : trial ? (
+            <>
+              <b>14일 체험 쓰는 중</b>
+              <span>{endsOn}까지 셀러와 똑같이 써요</span>
+            </>
+          ) : (
+            <b>
+              {planName} 쓰는 중{billingOn && ` · 다음 결제 ${md(billingOn)}`}
+            </b>
+          )}
+        </p>
+        {soon && (
+          <Button onClick={() => navigate('/checkout?plan=seller')}>
+            셀러로 이어 쓰기
+          </Button>
+        )}
+        {ended && (
+          <Button
+            onClick={() =>
+              document
+                .getElementById('plan-cards')
+                ?.scrollIntoView({ behavior: 'smooth' })
+            }
+            variant="secondary"
+          >
+            요금제 고르기
+          </Button>
+        )}
+      </section>
+
+      <ul aria-label="요금제" className={styles.plans} id="plan-cards">
         {PLANS.map((plan) => {
           const current = plan.id === subscription.plan
           return (
             <li
               className={styles.plan}
+              data-current={(current && !ended) || undefined}
+              data-ended={(current && ended) || undefined}
               data-plan={plan.id}
               data-recommended={plan.recommended || undefined}
+              data-sunset={(plan.id === 'seller' && ended) || undefined}
               key={plan.id}
             >
+              {current && !ended && (
+                <span className={styles.ribbon}>지금 쓰는 중</span>
+              )}
+              {current && ended && (
+                <span className={styles.endStamp}>체험 끝</span>
+              )}
               <h2>
                 {plan.name}
                 {plan.recommended && (
@@ -48,16 +132,9 @@ export function PlansPage() {
                     추천<span className={styles.srOnly}> 요금제</span>
                   </span>
                 )}
-                {current && (
-                  <span
-                    className={styles.nowBadge}
-                    data-warn={failed || undefined}
-                  >
-                    {failed
-                      ? '결제 안 됨'
-                      : plan.id === 'trial' && daysLeft <= 0
-                        ? '끝남'
-                        : '지금'}
+                {current && failed && (
+                  <span className={styles.nowBadge} data-warn>
+                    결제 안 됨
                   </span>
                 )}
               </h2>
@@ -65,6 +142,23 @@ export function PlansPage() {
                 {plan.price.toLocaleString('ko-KR')}
                 <small>{plan.price > 0 ? '원/월' : '원'}</small>
               </p>
+              {current && trial && !ended && (
+                <div className={styles.days}>
+                  <span
+                    aria-hidden="true"
+                    className={styles.dayCells}
+                    data-soon={soon || undefined}
+                  >
+                    {Array.from({ length: TRIAL_DAYS }, (_, i) => (
+                      <i
+                        data-used={i < TRIAL_DAYS - daysLeft || undefined}
+                        key={i}
+                      />
+                    ))}
+                  </span>
+                  <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
+                </div>
+              )}
               <p className={styles.planNote}>{plan.note}</p>
               <dl className={styles.compare}>
                 {COMPARE.map((row) => {
