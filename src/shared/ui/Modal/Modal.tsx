@@ -17,7 +17,10 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
   // 열릴 때 한 번만 창에 초점을 준다. onClose가 렌더마다 새 함수여도 다시 실행되지 않아야
   // 안의 입력칸(상품 검색 등)에서 글자를 칠 때마다 초점을 뺏기지 않는다.
   useEffect(() => {
-    dialogRef.current?.focus()
+    // 안에서 이미 초점을 잡은 버튼(autoFocus)이 있으면 그대로 둔다
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus()
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') closeRef.current()

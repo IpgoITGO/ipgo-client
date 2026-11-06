@@ -58,8 +58,23 @@ describe('내 계정', () => {
     expect(screen.getByText(/신용·체크카드/)).toBeInTheDocument()
     expect(screen.getByText(/•••• 4242/)).toBeInTheDocument()
 
+    // 팝업 1단계: 놓치는 것, 초점은 "그대로 쓸게요"
     await user.click(screen.getByRole('button', { name: '구독 해지' }))
+    expect(await screen.findByText(/이걸 놓쳐요/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '그대로 쓸게요' })).toHaveFocus()
+    // "그대로 쓸게요"는 해지하지 않고 닫는다
+    await user.click(screen.getByRole('button', { name: '그대로 쓸게요' }))
+    expect(screen.queryByText(/이걸 놓쳐요/)).not.toBeInTheDocument()
+    // 다시 열어 2단계에서 이유를 고르고 해지
+    await user.click(screen.getByRole('button', { name: '구독 해지' }))
+    await user.click(
+      await screen.findByRole('button', { name: '그래도 해지할래요' }),
+    )
+    await user.click(screen.getByText('생각보다 잘 안 써요'))
     await user.click(screen.getByRole('button', { name: '해지하기' }))
+    expect(
+      JSON.parse(localStorage.getItem('ipgo:cancel-reasons') ?? '[]'),
+    ).toContain('생각보다 잘 안 써요')
     expect(screen.getByText('12월 5일에 끝나요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '해지 취소' }))
     expect(screen.getByText('12월 5일 · 49,000원')).toBeInTheDocument()
