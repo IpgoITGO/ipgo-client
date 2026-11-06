@@ -455,7 +455,7 @@ describe('내 입고량 정하기', () => {
   const PLAN_KEY = 'ipgo:planned-quantity'
   afterEach(() => localStorage.clear())
 
-  it('카드에서 정하면 저장하고 "내가 정함"·배너를 보이고 되돌리면 지운다', async () => {
+  it('카드에서 정하면 저장하고 머리띠·배너를 보이고 되돌리면 지운다', async () => {
     const user = userEvent.setup()
     renderInsight()
     await screen.findByText('권장량의 80%')
@@ -469,20 +469,23 @@ describe('내 입고량 정하기', () => {
       source: 'SCENARIO_80',
       basis: '2026. 11. 4',
     })
-    expect(screen.getByText('내가 정함')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '✓ 정함' })).toBeInTheDocument()
+    expect(screen.getByText('✓ 이 수량으로 넣어요')).toBeInTheDocument()
+    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
     expect(
       screen.getByText(/권장량의 80% 카드에서 정함/, { selector: 'span' }),
-    ).toHaveTextContent('내 입고량 60개')
+    ).toHaveTextContent('이 수량으로 넣어요 60개')
 
-    await user.click(screen.getByRole('button', { name: '되돌리기' }))
+    // 배너 링크와 카드 버튼 둘 다 되돌리기. 카드 쪽(뒤)을 누른다.
+    const undo = screen.getAllByRole('button', { name: '되돌리기' })
+    expect(undo).toHaveLength(2)
+    await user.click(undo[1])
     expect(
       JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
     ).toBeUndefined()
-    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
+    expect(screen.queryByText('✓ 이 수량으로 넣어요')).not.toBeInTheDocument()
   })
 
-  it('권장(100%) 카드는 배너 없이 "✓ 권장대로 정함"만 보인다', async () => {
+  it('권장(100%) 카드는 배너 없이 "✓ 권장대로 넣어요" 머리띠만 보인다', async () => {
     const user = userEvent.setup()
     renderInsight()
     await screen.findByText('권장량 100%')
@@ -490,10 +493,8 @@ describe('내 입고량 정하기', () => {
     await user.click(
       screen.getAllByRole('button', { name: '이 수량으로 정하기' })[1],
     )
-    expect(
-      screen.getByRole('button', { name: '✓ 권장대로 정함' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
+    expect(screen.getByText('✓ 권장대로 넣어요')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '되돌리기' })).toBeInTheDocument()
     expect(screen.queryByText(/내 입고량/)).not.toBeInTheDocument()
   })
 

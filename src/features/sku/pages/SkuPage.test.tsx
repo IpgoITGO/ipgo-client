@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { SkuPage } from './SkuPage'
@@ -169,5 +169,47 @@ describe('SkuPage', () => {
     expect(
       await screen.findByRole('heading', { name: '대시보드 화면' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('재고 세 칸 · 이미 바닥났을 수 있어요 (#234)', () => {
+  afterEach(() => vi.useRealTimers())
+  const today = (iso: string) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(`${iso}T12:00:00`))
+  }
+
+  it('기록과 오늘 사이에 간격이 있으면 세 칸과 화살표를 보여 준다', async () => {
+    today('2026-10-20')
+    renderSku('/sku/already-out')
+
+    expect(await screen.findByText('10/14 마지막 기록')).toBeInTheDocument()
+    expect(screen.getByText('올린 수불부 그대로')).toBeInTheDocument()
+    expect(screen.getByText('오늘(10/20) 남았을 재고')).toBeInTheDocument()
+    expect(screen.getByText('계산은 이 숫자에서 시작')).toBeInTheDocument()
+    expect(screen.getByText('6일 예상 출고 −4')).toBeInTheDocument()
+    expect(screen.getByText('기존 발주 12개 뺌')).toBeInTheDocument()
+  })
+
+  it('기록이 오늘 것이면 가운데 칸과 화살표를 숨긴다', async () => {
+    today('2026-10-14')
+    renderSku('/sku/already-out')
+
+    expect(await screen.findByText('10/14 마지막 기록')).toBeInTheDocument()
+    expect(screen.queryByText(/^오늘\(.*남았을 재고$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/예상 출고 −/)).not.toBeInTheDocument()
+    expect(
+      screen.getAllByText('권장 입고량', { selector: 'span' }),
+    ).toHaveLength(2)
+  })
+
+  it('추정 시작 재고 0 + 소진일 내일이면 날짜 대신 말로 보여 준다', async () => {
+    today('2026-10-20')
+    renderSku('/sku/already-out')
+
+    await screen.findByText('10/14 마지막 기록')
+    expect(
+      screen.getAllByText(/기록 기준 이미 바닥났을 수 있어요/).length,
+    ).toBeGreaterThan(0)
   })
 })
