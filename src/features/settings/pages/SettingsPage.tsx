@@ -372,7 +372,9 @@ export function SettingsPage() {
           <div className={styles.sectionHeader}>
             <div>
               <h2>상품별로 다른 조건</h2>
-              <p>굵은 칸은 기본값과 다르게 바꾼 칸이에요.</p>
+              <p>
+                진한 칸은 기본값과 다르게 바꾼 칸이에요. 바꾸면 바로 저장돼요.
+              </p>
             </div>
             <input
               aria-label="상품명 또는 바코드 검색"
@@ -383,10 +385,6 @@ export function SettingsPage() {
             />
           </div>
           <div className={styles.useNote}>
-            <p>
-              단종된 상품은 꺼 두세요. 꺼 두면 계산·대시보드·SKU 상세에서 빠지고
-              조건 칸이 잠겨요. 누르는 즉시 저장돼요.
-            </p>
             <span aria-live="polite" className={styles.savedNotice}>
               {savedNotice}
             </span>
