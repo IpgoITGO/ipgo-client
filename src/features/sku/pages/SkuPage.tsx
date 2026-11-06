@@ -1758,23 +1758,15 @@ function AccuracyCard({
               y1="15"
               y2="41"
             />
+            {/* 범위가 좁으면 양끝 숫자가 붙어 보여서 한 줄로 */}
             <text
               fill="#5c6370"
               fontSize="10"
               textAnchor="middle"
-              x={bandX}
+              x={centerX}
               y="52"
             >
-              {stats.low}
-            </text>
-            <text
-              fill="#5c6370"
-              fontSize="10"
-              textAnchor="middle"
-              x={bandX + bandW}
-              y="52"
-            >
-              {stats.high}
+              {stats.low}~{stats.high}개
             </text>
           </svg>
           <span className={styles.kpiLabel}>보통 빗나감</span>
