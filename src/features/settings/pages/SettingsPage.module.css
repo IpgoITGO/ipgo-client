@@ -496,3 +496,89 @@
 .fold[open] .foldSummary {
   display: none;
 }
+
+/* 보관 비용 상자 표(#255): 칸 폭 고정 + 줄 끝 × */
+.boxTable {
+  table-layout: fixed;
+  min-width: 760px;
+}
+.sideCol {
+  width: 150px;
+}
+.volCol {
+  width: 120px;
+}
+.clearCol {
+  width: 52px;
+}
+.clearCell {
+  text-align: center;
+}
+/* 선만 있는 × — 바탕 없이 옅게, 마우스를 올리면 진해지고 노란 밑줄 */
+.rowClear {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #9a9286;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.rowClear svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-width: 2.2;
+}
+.rowClear:hover,
+.rowClear:focus-visible {
+  color: var(--color-text);
+}
+.rowClear:hover::after,
+.rowClear:focus-visible::after {
+  position: absolute;
+  right: 7px;
+  bottom: 3px;
+  left: 7px;
+  height: 2px;
+  content: '';
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+.rowClear:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.undoLink {
+  margin-left: 4px;
+  padding: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 800;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* 요율 빈칸 안내는 옅게(굵은 숫자처럼 보이지 않게) */
+.defaultGrid input::placeholder {
+  color: #b5ad9f;
+  font-weight: 400;
+}
