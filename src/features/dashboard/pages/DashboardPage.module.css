@@ -485,7 +485,7 @@ tr[data-soon] .weeks i[data-on] {
   padding: 0;
   list-style: none;
 }
-.reasons li {
+.reasons > li {
   display: grid;
   grid-template-columns: minmax(140px, 1fr) 2fr auto;
   /* 사유를 펼쳐도 상품 이름이 따라 내려가지 않게 위에 맞춤(11/6) */
@@ -494,7 +494,7 @@ tr[data-soon] .weeks i[data-on] {
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
 }
-.reasons li:last-child {
+.reasons > li:last-child {
   border-bottom: 0;
 }
 .reasons a {
@@ -555,7 +555,7 @@ tr[data-soon] .weeks i[data-on] {
   .notch {
     display: none;
   }
-  .reasons li {
+  .reasons > li {
     grid-template-columns: 1fr;
   }
 }
