@@ -16,11 +16,11 @@ const REASONS = [
 ]
 export const REASONS_KEY = 'ipgo:cancel-reasons'
 
-// 데이터가 없을 때 보여 줄 예시 값(시안과 같다)
+// 계산 결과가 없을 때(불러오는 중·실패·빈 목록) 보여 줄 예시. 실제 상품처럼 보이지 않게 이름은 상품 A·B·C, 그림마다 "예시" 표시
 const SAMPLE_ROWS = [
-  { name: '케어트릿', qty: 60 },
-  { name: '덴탈껌 S', qty: 60 },
-  { name: '연어 져키', qty: 40 },
+  { name: '상품 A', qty: 60 },
+  { name: '상품 B', qty: 60 },
+  { name: '상품 C', qty: 40 },
 ]
 
 // "2026. 11. 2" → "11/2" (없으면 undefined)
@@ -51,16 +51,18 @@ function Split({
   after,
   afterAt,
   pill,
+  example,
 }: {
   now: ReactNode
   after: ReactNode
   afterAt: string
   pill: string
+  example: boolean
 }) {
   return (
     <div aria-hidden="true" className={styles.split}>
       <div>
-        <span className={styles.cap}>지금</span>
+        <span className={styles.cap}>{example ? '지금 · 예시' : '지금'}</span>
         <div className={styles.inner}>{now}</div>
       </div>
       <div className={styles.after}>
@@ -121,10 +123,12 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
   const [, m, d] = nextOn.split('-').map(Number)
   const day = `${m}/${d}`
   const top = data?.neededItems[0]
-  const name = top?.name ?? '케어트릿 120g'
+  const example = !top
+  const name = top?.name ?? '상품 A'
   const qty = top?.quantity ?? 72
-  const risk = top?.risk ?? 9
-  const gone = shortDate(top?.stockoutDate) ?? '11/2'
+  // 실제 상품의 위험이 아직 없으면(null) 숫자를 지어내지 않고 "—"
+  const risk = top ? top.risk : 9
+  const gone = shortDate(top?.stockoutDate) ?? (example ? '11/2' : '—')
   const rows = data?.neededItems.length
     ? data.neededItems
         .slice(0, 3)
@@ -281,11 +285,17 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
           <h2 className={styles.title} id={titleId}>
             해지하면 {monthDayKo(nextOn)}부터 이걸 놓쳐요
           </h2>
+          {example && (
+            <p className={styles.exampleNote}>
+              아직 계산 결과가 없어 아래 그림은 예시예요
+            </p>
+          )}
 
           <div className={styles.loss}>
             <b>권장 입고량 해지</b>
             <Split
               afterAt={day}
+              example={example}
               now={
                 <div className={styles.r}>
                   <span className={styles.nm}>
@@ -312,12 +322,15 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
             <b>품절 위험 해지</b>
             <Split
               afterAt={day}
+              example={example}
               now={
                 <div>
                   <span className={styles.k}>품절 위험</span>
-                  <span className={styles.big}>{risk}%</span>
+                  <span className={styles.big}>
+                    {risk == null ? '—' : `${risk}%`}
+                  </span>
                   <span className={styles.track}>
-                    <i style={{ width: `${Math.min(risk, 100)}%` }} />
+                    <i style={{ width: `${Math.min(risk ?? 0, 100)}%` }} />
                   </span>
                 </div>
               }
@@ -330,6 +343,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
             <b>발주 목록 엑셀 해지</b>
             <Split
               afterAt={day}
+              example={example}
               now={<Sheet filled rows={rows} />}
               after={<Sheet filled={false} rows={rows} />}
               pill="받기 안 됨"
