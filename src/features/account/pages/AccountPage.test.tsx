@@ -76,7 +76,14 @@ describe('내 계정', () => {
       JSON.parse(localStorage.getItem('ipgo:cancel-reasons') ?? '[]'),
     ).toContain('생각보다 잘 안 써요')
     expect(screen.getByText('12월 5일에 끝나요')).toBeInTheDocument()
+    // 해지가 됐다고 바로 알린다
+    expect(
+      screen.getByText('해지됐어요. 12월 5일까지는 지금처럼 쓸 수 있어요'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '해지 취소' }))
+    expect(
+      screen.getByText('해지를 취소했어요. 지금처럼 계속 써요'),
+    ).toBeInTheDocument()
     expect(screen.getByText('12월 5일 · 49,000원')).toBeInTheDocument()
   })
 })
