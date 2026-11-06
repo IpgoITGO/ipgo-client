@@ -1675,12 +1675,14 @@ function AccuracyCard({
   const centerX = 4 + stats.avgPredicted * scale
   const worst = stats.worst
 
+  // 부록이라 접어 둔다(11/6 "평이 안 좋네, 접기로"). 누르면 펼쳐진다
   return (
-    <section className={styles.card}>
-      <div className={styles.accuracyHeader}>
+    <details className={`${styles.card} ${styles.accFold}`}>
+      <summary className={styles.accuracyHeader}>
         <h2>지난 예측 맞춰 보기</h2>
         <p>지난 {stats.total}번 · 이 상품</p>
-      </div>
+        <span aria-hidden="true" className={styles.accChevron} />
+      </summary>
       <div className={styles.kpis}>
         <div className={styles.kpi}>
           <svg
@@ -1810,7 +1812,7 @@ function AccuracyCard({
           ? `${worst.item.date}만 실제가 예측보다 크게 많았어요(+${worst.over}개)${worst.item.covered ? '' : ' — 이때 품절'}`
           : '실제가 예측보다 크게 많았던 때는 없어요'}
       </p>
-    </section>
+    </details>
   )
 }
 

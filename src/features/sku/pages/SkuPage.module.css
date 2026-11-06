@@ -30,6 +30,36 @@
   color: var(--color-text-3);
 }
 
+/* 지난 예측 맞춰 보기: 접힌 부록. 머리 줄 전체가 누르는 곳 */
+.accFold > summary {
+  justify-content: flex-start;
+  cursor: pointer;
+  list-style: none;
+}
+.accFold > summary::-webkit-details-marker {
+  display: none;
+}
+.accFold > summary:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.accChevron {
+  width: 9px;
+  height: 9px;
+  margin-left: auto;
+  border-right: 2px solid var(--color-text-3);
+  border-bottom: 2px solid var(--color-text-3);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.accFold[open] .accChevron {
+  transform: rotate(-135deg);
+}
+.accFold:not([open]) {
+  gap: 0;
+}
+
 .eyebrow {
   color: var(--color-primary);
   font-size: var(--text-caption);
