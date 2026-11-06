@@ -125,7 +125,6 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
   const qty = top?.quantity ?? 72
   const risk = top?.risk ?? 9
   const gone = shortDate(top?.stockoutDate) ?? '11/2'
-  const needed = data?.summary.needed ?? 6
   const rows = data?.neededItems.length
     ? data.neededItems
         .slice(0, 3)
@@ -247,17 +246,6 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
                   strokeWidth="1"
                   opacity=".6"
                 />
-                <text
-                  x="230"
-                  y="74"
-                  textAnchor="middle"
-                  transform="rotate(18.4 230 70)"
-                  fontFamily="Nanum Pen Script"
-                  fontSize="13"
-                  fill="#6b3d00"
-                >
-                  {day}부터 계산 멈춤
-                </text>
               </g>
               <g transform="translate(236 114) skewY(-17)">
                 <rect
@@ -286,35 +274,12 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
                 fontSize="22"
                 fill="#8a5200"
               >
-                여기서 멈추면…
+                {day}부터 계산 멈춤
               </text>
-              <g transform="translate(300 30)">
-                <rect
-                  width="146"
-                  height="30"
-                  rx="15"
-                  fill="#fff"
-                  stroke="#efd99c"
-                />
-                <text
-                  x="73"
-                  y="19.5"
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill="#5c6370"
-                >
-                  지금 넣어야 할 상품{' '}
-                  <tspan fill="#1f2537" fontSize="13" fontWeight="800">
-                    {needed}개
-                  </tspan>
-                </text>
-              </g>
             </svg>
           </div>
           <h2 className={styles.title} id={titleId}>
-            해지하면 {monthDayKo(nextOn)}부터
-            <br />
-            이걸 놓쳐요
+            해지하면 {monthDayKo(nextOn)}부터 이걸 놓쳐요
           </h2>
 
           <div className={styles.loss}>
