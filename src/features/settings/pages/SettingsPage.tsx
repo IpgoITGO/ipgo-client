@@ -226,15 +226,16 @@ export function SettingsPage() {
         const old = before.get(item.productId)
         const changedFields = PRODUCT_FIELDS.filter(
           ({ field }) =>
-            old &&
-            old[field] !== item[field] &&
-            item.overridden.includes(field),
+            item.overridden.includes(field) &&
+            (old?.overridden.includes(field)
+              ? old[field] !== item[field]
+              : item[field] !== values.defaults[field]),
         )
         const costChanged = !old || old.cost !== item.cost
         if (changedFields.length === 0 && !costChanged) continue
         // S3는 보낸 칸으로 교체한다. 기존 override와 사용자가 직접 바꾼 칸만 보존한다.
         const explicit = new Set([
-          ...item.overridden,
+          ...(old?.overridden ?? []),
           ...changedFields.map(({ field }) => field),
         ])
         const saved = await saveProductSettings(item.productId, {
