@@ -37,6 +37,7 @@ import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
+import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
@@ -331,13 +332,6 @@ export function DashboardPage() {
       item.leadTime != null &&
       dayNumber(item.stockoutDate) < today + item.leadTime,
   ).length
-  // 시작 재고가 추정 0이면 서버가 소진일을 오늘+1로 눌러 둔다. 기준일이 오늘보다 앞이고 소진일이 내일이면 "이미 바닥"으로 본다.
-  const baseDay = dayNumber(data.baseDate)
-  const alreadyOut = (date: string) => baseDay < today && daysPast(date) === -1
-  const baseMd = /d{4}D+(d{1,2})D+(d{1,2})/
-    .exec(data.baseDate)
-    ?.slice(1)
-    .join('/')
   const passedCount = data.neededItems.filter(
     (item) => daysPast(item.stockoutDate) > 0,
   ).length
@@ -484,9 +478,7 @@ export function DashboardPage() {
               ? undefined
               : {
                   baseDate: data.baseDate,
-                  top: [...data.neededItems].sort((a, b) =>
-                    a.stockoutDate.localeCompare(b.stockoutDate),
-                  )[0],
+                  top: mostUrgent(data.neededItems),
                   needed: data.summary.needed,
                   soon: data.neededItems.filter(
                     (item) => dayNumber(item.stockoutDate) < today + 7,
@@ -819,16 +811,6 @@ export function DashboardPage() {
                         <td data-label="예상 소진일">
                           {item.stockoutDate === '—' ? (
                             <EmptyValue kind="short" />
-                          ) : alreadyOut(item.stockoutDate) ? (
-                            <>
-                              <small className={styles.late}>
-                                이미 바닥났을 수 있어요
-                              </small>
-                              <small className={styles.muted}>
-                                {' '}
-                                기록 {baseMd} 기준
-                              </small>
-                            </>
                           ) : (
                             item.stockoutDate
                           )}
