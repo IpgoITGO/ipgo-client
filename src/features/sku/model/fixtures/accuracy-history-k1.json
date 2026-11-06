@@ -1,0 +1,138 @@
+{
+  "product": {
+    "productId": 27,
+    "skuBarcode": "SKU-A",
+    "skuName": "Test",
+    "fulfillment": "기본 창고"
+  },
+  "needStatus": "NEED_NOW",
+  "asOfDate": "2026-11-03",
+  "expectedShortageOn": "2026-11-07",
+  "settings": {
+    "leadTimeDays": 3,
+    "leadTimeSource": "DEFAULT",
+    "reviewCycleDays": 7,
+    "reviewCycleSource": "DEFAULT",
+    "orderUnitQty": 1,
+    "unitCost": 100
+  },
+  "result": {
+    "resultId": 17,
+    "status": "OK",
+    "reason": null,
+    "method": "B",
+    "methodReason": "요청 정책의 기본 방식",
+    "multiplier": 1.0,
+    "horizonDays": 10,
+    "forecastOutboundQty": 13,
+    "startStockQty": 5,
+    "startStockEstimated": false,
+    "plannedReceiptsInHorizon": 0,
+    "preArrivalUnmetQty": 0,
+    "requiredQtyBeforeRounding": 8,
+    "recommendedQty": 8,
+    "recommendedAmount": 80
+  },
+  "accuracy": {
+    "grade": "HIGH",
+    "isReference": false,
+    "validObservationDays": 672,
+    "coverSuccessCount": 12,
+    "coverTrialCount": 12,
+    "forecastErrorRate": 0.0,
+    "history": [
+      {
+        "originDate": "2026-05-01",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-05-08",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-05-15",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-05-22",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-05-29",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-06-05",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-06-12",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-06-19",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-06-26",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-07-03",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-07-10",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      },
+      {
+        "originDate": "2026-07-17",
+        "forecastQty": 13,
+        "actualQty": 13,
+        "covered": true
+      }
+    ],
+    "range": null,
+    "firstInboundOn": "2026-09-01",
+    "evaluation": {
+      "status": "AVAILABLE",
+      "reason": null,
+      "source": "HISTORICAL_REPLAY",
+      "period": "TUNE",
+      "periodStart": "2026-05-01",
+      "periodEnd": "2026-07-31",
+      "observedThrough": "2026-11-03",
+      "horizonDays": 10
+    }
+  },
+  "trend": [
+    {
+      "date": "2026-09-01",
+      "closingQty": 8,
+      "outboundQty": 2,
+      "isValidObservation": true
+    }
+  ]
+}

@@ -1139,7 +1139,8 @@ function AccuracyChart({ history }: { history: AccuracyHistory }) {
   const top = Math.ceil(max / 5) * 5
   const gap =
     history.length > 1 ? (box.right - box.left) / (history.length - 1) : 0
-  const x = (index: number) => box.left + index * gap
+  const x = (index: number) =>
+    history.length === 1 ? (box.left + box.right) / 2 : box.left + index * gap
   const y = (value: number) =>
     box.bottom - (value / top) * (box.bottom - box.top)
   const line = (pick: (item: AccuracyHistory[number]) => number) =>
@@ -1185,6 +1186,32 @@ function AccuracyChart({ history }: { history: AccuracyHistory }) {
         fill="none"
         points={line((item) => item.predictedOutbound)}
       />
+      {history.map((item, index) => (
+        <g key={item.date}>
+          <circle
+            className={styles.actualLine}
+            cx={x(index)}
+            cy={y(item.outbound)}
+            fill="none"
+            r={4}
+          >
+            <title>
+              {item.date} · 실제 출고량 {item.outbound}개
+            </title>
+          </circle>
+          <circle
+            className={styles.predictionLine}
+            cx={x(index)}
+            cy={y(item.predictedOutbound)}
+            fill="none"
+            r={3}
+          >
+            <title>
+              {item.date} · 예측 출고량 {item.predictedOutbound}개
+            </title>
+          </circle>
+        </g>
+      ))}
       {[...new Set(labelIndexes)].map((index) => (
         <text
           className={styles.xTick}
@@ -1655,14 +1682,13 @@ export function SkuPage() {
 }
 
 // 기획서 말 그대로: 커버 성공률(권장량대로 넣었으면 품절을 피했는지)과 예측 오차
-function AccuracyCard({
+export function AccuracyCard({
   accuracy,
 }: {
   accuracy: NonNullable<SkuDetail['accuracy']>
 }) {
   const { coverSuccess, coverTrials, errorRate } = accuracy
-  const evaluated =
-    (coverTrials ?? 0) > 0 && coverSuccess != null && errorRate != null
+  const evaluated = (coverTrials ?? 0) > 0 && coverSuccess != null
   const coverRate =
     coverSuccess != null && coverTrials
       ? Math.round((coverSuccess / coverTrials) * 100)
@@ -1722,7 +1748,10 @@ function AccuracyCard({
           )}
           <p>
             {errorRate == null
-              ? '비교할 지난 예측이 쌓이면 보여요.'
+              ? accuracy.history.length > 0 &&
+                accuracy.history.every((item) => item.outbound === 0)
+                ? '비교 기간의 실제 출고가 0이라 예측 오차 비율을 계산할 수 없어요.'
+                : '비교할 지난 예측이 쌓이면 보여요.'
               : '예측이 실제 출고와 평균 이만큼 빗나갔어요. 낮을수록 좋아요.'}
           </p>
         </div>
@@ -1732,6 +1761,28 @@ function AccuracyCard({
           예측 범위 {accuracy.range.low.toLocaleString()}~
           {accuracy.range.high.toLocaleString()}개 · 참고용
         </p>
+      )}
+      {accuracy.evaluation?.status === 'AVAILABLE' && (
+        <p>
+          과거 자료 재생 · 정책 조정 구간(TUNE){' '}
+          {accuracy.evaluation.periodStart}~{accuracy.evaluation.periodEnd}
+          {' · '}각 점은 기준일 다음 날부터 {accuracy.evaluation.horizonDays}일
+          출고 합계예요. 현재 계산 조건으로 다시 계산한 결과이며, 당시 발행한
+          예측의 실측 성과는 아니에요. 평가 구간이 겹칠 수 있어 각각을 독립
+          표본으로 보지 않아요. 수량은 올림해 표시하고 예측 오차는 올림 전
+          값으로 계산해요.
+        </p>
+      )}
+      {!accuracy.evaluation && accuracy.history.length === 0 && (
+        <p>이 계산에는 저장된 과거 재생 이력이 없어요.</p>
+      )}
+      {accuracy.evaluation?.status === 'EMPTY' && (
+        <p>
+          정책 조정 구간에 비교할 유효한 자료가 없어 이력을 표시하지 않아요.
+        </p>
+      )}
+      {accuracy.evaluation?.status === 'UNAVAILABLE' && (
+        <p>이 계산은 과거 자료 재생 평가를 수행하지 않았어요.</p>
       )}
       {accuracy.history.length > 0 && (
         <>
