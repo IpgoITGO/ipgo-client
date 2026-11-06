@@ -109,6 +109,18 @@ export function UploadResultPage() {
 
   const data = result.data
 
+  if (data.status === 'FAILED' && data.error?.code === 'LEGACY_UPLOAD_CLOSED') {
+    return (
+      <AsyncState
+        description="원본과 이력은 보존했으며 이 기록은 다시 처리하지 않습니다. 현재 결과는 대시보드에서 확인해 주세요."
+        onRetry={() => navigate('/dashboard')}
+        retryLabel="대시보드로"
+        status="empty"
+        title="과거 업로드 기록을 마감했어요"
+      />
+    )
+  }
+
   if (data.status === 'FAILED') {
     // 파일 형식 문제(INVALID_SOURCE·이유 없음)만 고쳐서 올리라고 하고, 서버 쪽 문제면 파일은 그대로 다시 올리게 한다.
     const fileProblem = !data.error || data.error.code === 'INVALID_SOURCE'
