@@ -91,6 +91,9 @@ const slashDate = (day: string, fallback: string) => {
   return match ? `${Number(match[1])}/${Number(match[2])}` : fallback
 }
 
+const ALREADY_OUT = '기록 기준 이미 바닥났을 수 있어요'
+const isoDayMs = (iso: string) => Date.parse(iso.slice(0, 10))
+
 const perDayText = (value: number) =>
   value >= 10 ? String(Math.round(value)) : String(Math.round(value * 10) / 10)
 
@@ -234,7 +237,9 @@ function TrendChart({
   orderQty,
   shortageOn,
   startStock,
+  alreadyOut,
 }: {
+  alreadyOut?: boolean
   coverDays: number
   forecastQty: number | null
   history: SkuDetail['history']
@@ -351,10 +356,12 @@ function TrendChart({
       {startStock != null && startStock !== stock && (
         <span className={styles.trendAside}>
           {' '}
-          (서버는 시작 재고 {startStock.toLocaleString()}개 기준이라{' '}
-          {shortageOn
-            ? `${slashDate(shortageOn, shortageOn)} 소진으로 봐요`
-            : '따로 계산해요'}
+          (오늘 남았을 재고 {startStock.toLocaleString()}개로 보면{' '}
+          {alreadyOut
+            ? ALREADY_OUT
+            : shortageOn
+              ? `${slashDate(shortageOn, shortageOn)} 소진으로 봐요`
+              : '따로 계산해요'}
           )
         </span>
       )}
@@ -1285,6 +1292,22 @@ export function SkuPage() {
   // 예상 소진일이 오늘보다 앞이면 "품절 주의"(대시보드 표와 같은 기준). 품절은 확인 못 했으니 단정하지 않는다
   const stockoutPassed =
     data.shortageOn !== null && data.shortageOn < localIsoToday()
+  // 재고 세 칸(#234): 마지막 기록 → 오늘 추정 재고 → 권장 입고량
+  const todayIso = localIsoToday()
+  const lastRec = data.history.at(-1)
+  const startInv = data.calculation.startingInventory
+  const startEstimated = data.calculation.startingInventoryEstimated
+  const gapDays = lastRec
+    ? Math.round((isoDayMs(todayIso) - isoDayMs(lastRec.day)) / 864e5)
+    : 0
+  const showGap = startEstimated && startInv != null && !!lastRec && gapDays > 0
+  const gapOut = lastRec && startInv != null ? lastRec.inventory - startInv : 0
+  // 엔진은 추정 시작 재고가 0이면 소진일을 오늘+1로 눌러 둔다 → 날짜 대신 말로
+  const alreadyOut =
+    startEstimated &&
+    startInv === 0 &&
+    data.shortageOn != null &&
+    isoDayMs(data.shortageOn) === isoDayMs(todayIso) + 864e5
   // 판매일 부족이면 "N일이에요 · M일이 되면" 말과 진행 막대로 보여 준다
   const salesMatch = /최근 (\d+)일 중 판매한 날이 (\d+)일로 (\d+)일/.exec(
     data.unavailableReason ?? '',
@@ -1486,13 +1509,70 @@ export function SkuPage() {
               <div>
                 <dt>현재 예상 소진일</dt>
                 <dd>
-                  {data.recommendation.expectedStockoutDate ?? (
-                    <EmptyValue kind="short" />
-                  )}
+                  {alreadyOut
+                    ? ALREADY_OUT
+                    : (data.recommendation.expectedStockoutDate ?? (
+                        <EmptyValue kind="short" />
+                      ))}
                 </dd>
               </div>
             </dl>
           </section>
+
+          {lastRec && (
+            <div
+              aria-label="재고 흐름"
+              className={styles.stockCells}
+              role="group"
+            >
+              <div className={styles.stockCell}>
+                <span className={styles.stockTag}>수불부</span>
+                <span className={styles.stockLabel}>
+                  {slashDate(lastRec.day, lastRec.date)} 마지막 기록
+                </span>
+                <strong className={styles.stockValue}>
+                  {lastRec.inventory.toLocaleString()}개
+                </strong>
+                <small>올린 수불부 그대로</small>
+              </div>
+              {showGap && (
+                <>
+                  <span aria-hidden="true" className={styles.stockArrow}>
+                    {gapDays}일 예상 출고 −
+                    {Math.max(0, gapOut).toLocaleString()}
+                  </span>
+                  <div className={styles.stockCell}>
+                    <span
+                      className={`${styles.stockTag} ${styles.stockTagEst}`}
+                    >
+                      추정
+                    </span>
+                    <span className={styles.stockLabel}>
+                      오늘({slashDate(todayIso, todayIso)}) 남았을 재고
+                    </span>
+                    <strong className={styles.stockValue}>
+                      {startInv.toLocaleString()}개
+                    </strong>
+                    <small>계산은 이 숫자에서 시작</small>
+                  </div>
+                  <span aria-hidden="true" className={styles.stockArrow}>
+                    계산
+                  </span>
+                </>
+              )}
+              <div className={`${styles.stockCell} ${styles.stockCellReco}`}>
+                <span className={styles.stockLabel}>권장 입고량</span>
+                <strong className={styles.stockValue}>
+                  {data.recommendation.quantity.toLocaleString()}개
+                </strong>
+                {Boolean(data.calculation.existingOrders) && (
+                  <small>
+                    기존 발주 {count(data.calculation.existingOrders)} 뺌
+                  </small>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className={styles.mainGrid}>
             <section className={styles.card}>
@@ -1508,6 +1588,7 @@ export function SkuPage() {
                   orderQty={data.recommendation.quantity}
                   shortageOn={data.shortageOn}
                   startStock={data.calculation.startingInventory}
+                  alreadyOut={alreadyOut}
                 />
               ) : (
                 <AsyncState
@@ -1550,9 +1631,13 @@ export function SkuPage() {
                     −
                   </span>
                   <span>
-                    시작 재고
-                    {data.calculation.startingInventoryEstimated && (
-                      <small> 추정</small>
+                    오늘 남았을 재고
+                    {showGap && lastRec && startInv != null && (
+                      <small>
+                        {slashDate(lastRec.day, lastRec.date)} 기록{' '}
+                        {lastRec.inventory.toLocaleString()}개 − 예상 출고{' '}
+                        {Math.max(0, gapOut).toLocaleString()}개
+                      </small>
                     )}
                   </span>
                   <strong>

@@ -323,8 +323,8 @@ export function ScenarioInsight({
                   </>
                 ) : (
                   <span>
-                    내 입고량 <b>{plan.quantity.toLocaleString()}개</b> ·{' '}
-                    {shortDate(plan.decidedAt)} · {PLAN_NOTE[plan.source]}
+                    이 수량으로 넣어요 <b>{plan.quantity.toLocaleString()}개</b>{' '}
+                    · {shortDate(plan.decidedAt)} · {PLAN_NOTE[plan.source]}
                   </span>
                 )}
                 <Button
@@ -370,8 +370,12 @@ export function ScenarioInsight({
                     role="radio"
                     tabIndex={0}
                   >
-                    {decided && source !== 'SCENARIO_100' && (
-                      <span className={styles.decidedTag}>내가 정함</span>
+                    {decided && (
+                      <span className={styles.decidedBand}>
+                        {source === 'SCENARIO_100'
+                          ? '✓ 권장대로 넣어요'
+                          : '✓ 이 수량으로 넣어요'}
+                      </span>
                     )}
                     <div className={styles.scenarioTop}>
                       <span>{scenario.label}</span>
@@ -444,17 +448,14 @@ export function ScenarioInsight({
                       className={styles.decideButton}
                       onClick={(event) => {
                         event.stopPropagation()
-                        decide(scenario.quantity, source)
+                        if (decided) savePlanned(productId, null)
+                        else decide(scenario.quantity, source)
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
                       type="button"
                       variant="secondary"
                     >
-                      {decided
-                        ? source === 'SCENARIO_100'
-                          ? '✓ 권장대로 정함'
-                          : '✓ 정함'
-                        : '이 수량으로 정하기'}
+                      {decided ? '되돌리기' : '이 수량으로 정하기'}
                     </Button>
                   </div>
                 )

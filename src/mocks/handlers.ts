@@ -701,6 +701,8 @@ export const handlers = [
     const isUnavailable = id === 'new-product'
     const isReference = id === 'reference-product'
     const isFallback = id === 'fallback-product'
+    // 추정 시작 재고 0 → 엔진이 소진일을 오늘+1로 눌러 둔 경우(#234)
+    const isAlreadyOut = id === 'already-out'
     const days = [
       ['2026-09-01', 45, 4],
       ['2026-09-08', 31, 7],
@@ -720,9 +722,11 @@ export const handlers = [
       expectedShortageOn:
         isUnavailable || isEmpty
           ? null
-          : needed
-            ? isoFromToday(needed.shortage)
-            : '2026-10-22',
+          : isAlreadyOut
+            ? isoFromToday(1)
+            : needed
+              ? isoFromToday(needed.shortage)
+              : '2026-10-22',
       settings,
       result: {
         // mock은 상품 아이디를 결과 번호로 그대로 써서, 아래 K2·K4 mock이 같은 아이디로 상태를 고른다.
@@ -740,8 +744,14 @@ export const handlers = [
         multiplier: 1.1,
         horizonDays: 12,
         forecastOutboundQty: isFallback ? 66 : 58,
-        startStockQty: isEmpty ? null : id === 'stale-stock' ? 9 : 4,
-        startStockEstimated: isReference,
+        startStockQty: isEmpty
+          ? null
+          : isAlreadyOut
+            ? 0
+            : id === 'stale-stock'
+              ? 9
+              : 4,
+        startStockEstimated: isReference || isAlreadyOut,
         plannedReceiptsInHorizon: 12,
         // fallback-product = 입고 전에 이미 놓친 주문이 있는 경우(휘님 시험 자료 B조건처럼 5개)
         preArrivalUnmetQty: isFallback ? 5 : 0,
