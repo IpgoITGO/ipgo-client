@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -10,7 +11,10 @@ import { UploadResultPage } from './UploadResultPage'
 function renderPage() {
   // 처리 중 나가기 확인(useBlocker)이 있어서 데이터 라우터로 그린다.
   const router = createMemoryRouter(
-    [{ path: '/upload/:uploadId/result', element: <UploadResultPage /> }],
+    [
+      { path: '/upload/:uploadId/result', element: <UploadResultPage /> },
+      { path: '/dashboard', element: <h1>테스트 대시보드</h1> },
+    ],
     { initialEntries: ['/upload/15/result'] },
   )
   return render(
@@ -99,6 +103,78 @@ describe('UploadResultPage', () => {
     expect(
       await screen.findByText('수불부를 처리하지 못했어요'),
     ).toBeInTheDocument()
+  })
+
+  it('마감한 과거 기록은 재업로드 없이 보존 안내를 보여주고 대시보드로 이동한다', async () => {
+    server.use(
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({
+          uploadId: 15,
+          status: 'FAILED',
+          error: {
+            code: 'LEGACY_UPLOAD_CLOSED',
+            message: '과거 미처리 기록을 재처리 없이 마감했습니다.',
+          },
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(
+      await screen.findByRole('heading', {
+        name: '과거 업로드 기록을 마감했어요',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/원본과 이력은 보존했으며/)).toHaveTextContent(
+      '이 기록은 다시 처리하지 않습니다.',
+    )
+    expect(
+      screen.queryByRole('button', { name: /다시 올리기/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('수불부 확인을 마쳤어요')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '대시보드로' }))
+
+    expect(
+      await screen.findByRole('heading', { name: '테스트 대시보드' }),
+    ).toBeInTheDocument()
+  })
+
+  it('처리 중 보던 과거 기록이 마감되면 성공 연출 없이 마감 안내로 바뀐다', async () => {
+    server.use(
+      http.get(
+        '/api/uploads/:uploadId',
+        () => HttpResponse.json({ uploadId: 15, status: 'PROCESSING' }),
+        { once: true },
+      ),
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({
+          uploadId: 15,
+          status: 'FAILED',
+          error: {
+            code: 'LEGACY_UPLOAD_CLOSED',
+            message: '과거 미처리 기록을 재처리 없이 마감했습니다.',
+          },
+        }),
+      ),
+    )
+    renderPage()
+
+    expect(
+      await screen.findByText('수불부를 확인하고 있어요'),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        '과거 업로드 기록을 마감했어요',
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('수불부 확인을 마쳤어요')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /다시 올리기/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('서버 쪽 실패면 파일을 고치라고 하지 않고 같은 파일을 다시 올리게 한다', async () => {
