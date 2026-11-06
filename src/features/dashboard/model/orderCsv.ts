@@ -11,7 +11,15 @@ export type OrderLine = {
   stockoutDate: string
 }
 
-const cell = (value: string | number) => {
+// 우리가 직접 만든 칸(수식 막기를 거치지 않음)
+type Raw = { raw: string }
+
+// 숫자만 있는 바코드는 엑셀이 숫자로 읽어 8.8E+12처럼 바꾸고 끝자리를 잃는다 → ="…"로 글자로 읽게(#247)
+const barcodeCell = (barcode: string): string | Raw =>
+  /^[0-9]+$/.test(barcode) ? { raw: `"=""${barcode}"""` } : barcode
+
+const cell = (value: string | number | Raw) => {
+  if (typeof value === 'object') return value.raw
   const text = String(value)
   // 외부에서 온 상품명·바코드를 스프레드시트 수식으로 실행하지 않는다.
   // 숫자 합계는 숫자로 유지하고, 공백 뒤 수식 시작 문자와 제어 문자도 처리한다.
@@ -37,7 +45,7 @@ export function toOrderCsv(lines: OrderLine[]) {
     ],
     ...lines.map((line) => [
       line.name,
-      line.barcode,
+      barcodeCell(line.barcode),
       line.quantity,
       line.planned ?? '',
       orderQty(line),
