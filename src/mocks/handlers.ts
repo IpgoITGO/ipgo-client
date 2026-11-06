@@ -446,6 +446,16 @@ export const handlers = [
       orderUnitQty: body.orderUnitQty as number,
       reviewCycleSource: 'DEFAULT',
     }
+    mockProducts.forEach((product) => {
+      for (const field of [
+        'leadTimeDays',
+        'reviewCycleDays',
+        'orderUnitQty',
+      ] as const) {
+        if (!product.overridden.includes(field))
+          product.settings[field] = defaults[field]
+      }
+    })
     return HttpResponse.json({
       saved: true,
       runId: body.recalculate ? 31 : null,
@@ -464,28 +474,28 @@ export const handlers = [
           { status: 404 },
         )
       }
-      const body = (await request.json()) as Record<string, number | undefined>
-      for (const field of ['leadTimeDays', 'reviewCycleDays', 'orderUnitQty']) {
+      const body = (await request.json()) as Record<
+        string,
+        number | null | undefined
+      >
+      const fields = [
+        'leadTimeDays',
+        'reviewCycleDays',
+        'orderUnitQty',
+      ] as const
+      for (const field of fields) {
         const value = body[field]
-        if (
-          typeof value !== 'number' ||
-          !Number.isInteger(value) ||
-          value < 1
-        ) {
+        if (value != null && (!Number.isInteger(value) || value < 1)) {
           return invalidField(field)
         }
       }
       product.settings = {
-        leadTimeDays: body.leadTimeDays as number,
-        reviewCycleDays: body.reviewCycleDays as number,
-        orderUnitQty: body.orderUnitQty as number,
+        leadTimeDays: body.leadTimeDays ?? defaults.leadTimeDays,
+        reviewCycleDays: body.reviewCycleDays ?? defaults.reviewCycleDays,
+        orderUnitQty: body.orderUnitQty ?? defaults.orderUnitQty,
       }
-      product.overridden = Object.keys(product.settings).filter(
-        (key) =>
-          product.settings[key as keyof typeof product.settings] !==
-          defaults[key as keyof typeof product.settings],
-      )
-      if (body.unitCost !== undefined) product.unitCost = body.unitCost
+      product.overridden = fields.filter((field) => body[field] != null)
+      if (body.unitCost != null) product.unitCost = body.unitCost
       return HttpResponse.json({ saved: true, runId: null })
     },
   ),

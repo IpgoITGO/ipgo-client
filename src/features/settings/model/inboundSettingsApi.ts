@@ -5,7 +5,7 @@ import { apiRequest } from '../../../shared/api/client'
 export type DefaultSettings = {
   confirmed: boolean
   leadTimeDays: number
-  reviewCycleDays: number
+  reviewCycleDays: number | null
   orderUnitQty: number
   reviewCycleSource: 'ESTIMATED' | 'DEFAULT'
 }
@@ -18,7 +18,7 @@ export type ProductSettings = {
   isActive: boolean
   settings: {
     leadTimeDays: number
-    reviewCycleDays: number
+    reviewCycleDays: number | null
     orderUnitQty: number
   }
   // 기본값 대신 상품별 값을 쓰는 칸 이름
@@ -64,7 +64,7 @@ export function saveDefaultSettings(
 // S3 상품별 입고 조건. 세 칸은 보낸 값으로 모두 바뀌고, unitCost는 보낸 경우에만 바뀐다.
 export function saveProductSettings(
   productId: number,
-  request: Conditions & { unitCost?: number },
+  request: Partial<Conditions> & { unitCost?: number },
 ) {
   return apiRequest<{ saved: boolean; runId: number | null }>(
     `/products/${productId}/replenishment-settings`,
