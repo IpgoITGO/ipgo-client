@@ -70,4 +70,24 @@ describe('계산 막기(calcLock)', () => {
     expect(nextBillingOn(sub, new Date(2026, 10, 6))).toBe('2026-12-05')
     expect(nextBillingOn(sub, new Date(2026, 9, 1))).toBe('2026-10-05')
   })
+
+  it('월말에 시작하면 없는 날은 그 달 말일, 다음 달엔 원래 일자로 돌아온다', () => {
+    const at = (startedOn: string) =>
+      ({ ...loadSubscription(), plan: 'seller', startedOn }) as const
+    // 7/31 시작 · 오늘 10/2 → 9/30을 지나 10/31(11/1로 밀리지 않음)
+    expect(nextBillingOn(at('2026-07-31'), new Date(2026, 9, 2))).toBe(
+      '2026-10-31',
+    )
+    // 윤년 2월: 1/31 시작 → 2/29 → 3/31
+    expect(nextBillingOn(at('2028-01-31'), new Date(2028, 1, 1))).toBe(
+      '2028-02-29',
+    )
+    expect(nextBillingOn(at('2028-01-31'), new Date(2028, 1, 29))).toBe(
+      '2028-03-31',
+    )
+    // 평년 2월: 2/28
+    expect(nextBillingOn(at('2027-01-31'), new Date(2027, 1, 1))).toBe(
+      '2027-02-28',
+    )
+  })
 })

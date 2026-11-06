@@ -136,9 +136,12 @@ function addDays(iso: string, days: number) {
   return isoDate(new Date(y, m - 1, d + days))
 }
 
-function addMonth(iso: string) {
+// 시작일의 일자를 기준으로 k달 뒤. 그 달에 없는 날(29~31일)은 그 달 말일로 하고,
+// 다음 달엔 원래 일자로 돌아온다(1/31 → 2월 말 → 3/31, 서버 결제 원장과 같은 규칙).
+function monthsAfter(iso: string, k: number) {
   const [y, m, d] = iso.split('-').map(Number)
-  return isoDate(new Date(y, m, d))
+  const lastDay = new Date(y, m + k, 0).getDate()
+  return isoDate(new Date(y, m - 1 + k, Math.min(d, lastDay)))
 }
 
 // 처음 열면 오늘부터 14일 체험을 시작한다.
@@ -201,9 +204,9 @@ export function trialDaysLeft(subscription: Subscription, today = new Date()) {
 export function nextBillingOn(subscription: Subscription, today = new Date()) {
   if (subscription.plan === 'trial') return null
   const now = isoDate(today)
-  let next = addMonth(subscription.startedOn)
-  while (next <= now) next = addMonth(next)
-  return next
+  let k = 1
+  while (monthsAfter(subscription.startedOn, k) <= now) k++
+  return monthsAfter(subscription.startedOn, k)
 }
 
 // 해지: 다음 결제일까지 쓰고 끝난다. 다시 누르면 해지를 취소한다.
