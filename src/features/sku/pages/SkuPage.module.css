@@ -67,7 +67,8 @@
 /* 투톤 그라데이션 대신 다른 카드와 같은 흰 카드. 테두리는 대시보드 급한 카드와 같은 노랑(검정은 톤에 안 맞음, 11/2) */
 .recommendation {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 2fr;
+  /* 왼쪽 흐름 한 줄이 꺾이지 않게 왼쪽을 조금 넓게 */
+  grid-template-columns: minmax(300px, 1.35fr) 2fr;
   align-items: stretch;
   overflow: hidden;
   color: var(--color-primary);
