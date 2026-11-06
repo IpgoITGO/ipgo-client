@@ -1,4 +1,5 @@
 import { type PropsWithChildren, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 import styles from './Modal.module.css'
 
@@ -30,7 +31,8 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  return (
+  // 화면 전환 효과(transform)가 있는 본문 안에 두면 fixed가 본문 기준이 되어 배경이 덜 덮인다 → body로 띄운다
+  return createPortal(
     <div className={styles.backdrop} onMouseDown={onClose}>
       <div
         ref={dialogRef}
@@ -43,6 +45,7 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
