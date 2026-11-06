@@ -4,6 +4,17 @@ import { dotDate, monthDay } from '../../dashboard/model/dashboardApi'
 // ipgo-server ProductDetail(K1). 계산 결과가 아직 없으면 needStatus · result · accuracy는 null이다.
 export type SettingSource = 'PRODUCT' | 'DEFAULT' | 'SUGGESTED' | 'ESTIMATED'
 
+export type AccuracyEvaluation = {
+  status: 'AVAILABLE' | 'EMPTY' | 'UNAVAILABLE'
+  reason: string | null
+  source: 'HISTORICAL_REPLAY'
+  period: 'TUNE'
+  periodStart: string | null
+  periodEnd: string | null
+  observedThrough: string | null
+  horizonDays: number | null
+}
+
 export type ProductDetail = {
   product: {
     productId: number
@@ -50,6 +61,7 @@ export type ProductDetail = {
     coverTrialCount: number | null
     // 0~1 비율
     forecastErrorRate: number | null
+    evaluation?: AccuracyEvaluation | null
     history: Array<{
       originDate: string
       forecastQty: number
@@ -117,6 +129,7 @@ export type SkuDetail = {
     coverTrials: number | null
     errorRate: number | null
     range: { low: number; high: number } | null
+    evaluation?: AccuracyEvaluation | null
     history: Array<{
       date: string
       outbound: number
@@ -196,8 +209,9 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
           ? null
           : Math.round(accuracy.forecastErrorRate * 100),
       range: accuracy.range,
+      evaluation: accuracy.evaluation ?? null,
       history: (accuracy.history ?? []).map((item) => ({
-        date: monthDay(item.originDate) ?? item.originDate,
+        date: item.originDate,
         outbound: item.actualQty,
         predictedOutbound: item.forecastQty,
       })),

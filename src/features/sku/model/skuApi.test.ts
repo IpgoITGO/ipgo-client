@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { type ProductDetail, toSkuDetail } from './skuApi'
+import accuracyHistoryK1 from './fixtures/accuracy-history-k1.json'
 
 // 서버(K1)가 정확도 등급을 비워 보내는 경우: 유효 관측일이 모자랄 때
 const raw = (accuracy: ProductDetail['accuracy']): ProductDetail => ({
@@ -92,4 +93,22 @@ it('저장된 계산이 OK여도 현재 판정이 재업로드 필요이면 권�
     reuploadRequired: true,
   })
   expect(toSkuDetail(input).unavailableReason).toContain('최신 수불부')
+})
+
+// 실제 AI 평가 응답을 격리 Spring/H2에 저장한 K1 출력. 합성 자료이며 고객 실측이 아니다.
+it('서버 K1의 이력과 평가 구간을 정수 표시값 그대로 변환한다', () => {
+  const detail = toSkuDetail(accuracyHistoryK1 as ProductDetail)
+  expect(detail.accuracy?.history).toHaveLength(12)
+  expect(detail.accuracy?.history[0]).toEqual({
+    date: '2026-05-01',
+    outbound: 13,
+    predictedOutbound: 13,
+  })
+  expect(detail.accuracy?.evaluation).toMatchObject({
+    status: 'AVAILABLE',
+    source: 'HISTORICAL_REPLAY',
+    horizonDays: 10,
+  })
+  expect(detail.accuracy?.coverTrials).toBe(12)
+  expect(detail.accuracy?.errorRate).toBe(0)
 })
