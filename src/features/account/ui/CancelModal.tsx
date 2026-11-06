@@ -221,26 +221,45 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
                 strokeWidth="1.6"
                 opacity=".55"
               />
+              {/* 포장 테이프: 윗면 이음매를 따라 붙고 앞면 모서리에서 꺾여 내려와 끝이 찢겨 있다 */}
               <g className={styles.tape}>
-                <g transform="rotate(18 230 70)">
-                  <rect x="168" y="61" width="124" height="18" fill="#ffc53d" />
-                  <path
-                    d="M168 61 l-6 4 l6 4 l-6 5 l6 4 M292 61 l6 4 l-6 4 l6 5 l-6 4"
-                    fill="#ffc53d"
-                  />
-                  <text
-                    x="230"
-                    y="74.5"
-                    textAnchor="middle"
-                    fontFamily="Nanum Pen Script"
-                    fontSize="15"
-                    fill="#7a4600"
-                  >
-                    {day}부터 계산 멈춤
-                  </text>
-                </g>
+                <path
+                  d="M182 62 L206 54 L278 78 L254 86 Z"
+                  fill="#ffc53d"
+                  opacity=".9"
+                />
+                <path
+                  d="M254 86 L278 78 L278 92 L274 92.6 L271 95.4 L267 95.3 L263 98 L259 97.9 L254 101 Z"
+                  fill="#f0ad1f"
+                  opacity=".92"
+                />
+                <path
+                  d="M190 61.3 L262 85.3"
+                  stroke="#fff6cf"
+                  strokeLinecap="round"
+                  strokeWidth="2.4"
+                  opacity=".7"
+                />
+                <path
+                  d="M182 62 L206 54 M216 64 l3 4 M240 72 l2 3"
+                  stroke="#c98a12"
+                  strokeLinecap="round"
+                  strokeWidth="1"
+                  opacity=".6"
+                />
+                <text
+                  x="230"
+                  y="74"
+                  textAnchor="middle"
+                  transform="rotate(18.4 230 70)"
+                  fontFamily="Nanum Pen Script"
+                  fontSize="13"
+                  fill="#6b3d00"
+                >
+                  {day}부터 계산 멈춤
+                </text>
               </g>
-              <g transform="translate(256 106) skewY(-17)">
+              <g transform="translate(236 114) skewY(-17)">
                 <rect
                   width="32"
                   height="17"
@@ -269,25 +288,25 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
               >
                 여기서 멈추면…
               </text>
-              <g transform="translate(330 30)">
+              <g transform="translate(300 30)">
                 <rect
-                  width="104"
-                  height="44"
-                  rx="12"
+                  width="146"
+                  height="30"
+                  rx="15"
                   fill="#fff"
                   stroke="#efd99c"
                 />
-                <text x="12" y="18" fontSize="10" fill="#5c6370">
-                  지금 넣어야 할 상품
-                </text>
                 <text
-                  x="12"
-                  y="36"
-                  fontSize="16"
-                  fontWeight="800"
-                  fill="#1f2537"
+                  x="73"
+                  y="19.5"
+                  textAnchor="middle"
+                  fontSize="11"
+                  fill="#5c6370"
                 >
-                  {needed}개
+                  지금 넣어야 할 상품{' '}
+                  <tspan fill="#1f2537" fontSize="13" fontWeight="800">
+                    {needed}개
+                  </tspan>
                 </text>
               </g>
             </svg>
@@ -299,11 +318,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
           </h2>
 
           <div className={styles.loss}>
-            <b>
-              {name}이 바닥나도
-              <br />
-              미리 알 수 없어요
-            </b>
+            <b>권장 입고량 해지</b>
             <Split
               afterAt={day}
               now={
@@ -329,10 +344,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
           </div>
 
           <div className={styles.loss}>
-            <b>
-              품절 위험이 몇 %인지
-              <br />볼 수 없어요
-            </b>
+            <b>품절 위험 해지</b>
             <Split
               afterAt={day}
               now={
@@ -350,11 +362,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
           </div>
 
           <div className={styles.loss}>
-            <b>
-              주문서를 한 번에 못 만들고
-              <br />
-              손으로 다시 적어야 해요
-            </b>
+            <b>발주 목록 엑셀 해지</b>
             <Split
               afterAt={day}
               now={<Sheet filled rows={rows} />}
