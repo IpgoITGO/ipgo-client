@@ -27,6 +27,19 @@ export function StorageCostSection({ products }: { products: Product[] }) {
   const [drafts, setDrafts] = useState<Record<string, Partial<Box>>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
+  // 줄 지우기: 지운 값을 4초 동안 들고 있다가 "되돌리기"로 되살린다. rev가 바뀌면 그 줄 칸을 새로 그린다(빈칸으로)
+  const [undo, setUndo] = useState<{
+    key: string
+    name: string
+    box?: Box
+    draft?: Partial<Box>
+  } | null>(null)
+  const [rev, setRev] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!undo) return
+    const id = window.setTimeout(() => setUndo(null), 4000)
+    return () => window.clearTimeout(id)
+  }, [undo])
   const foldRef = useRef<HTMLDetailsElement>(null)
   const location = useLocation()
 
@@ -97,6 +110,39 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     commit({ ...settings, boxes }, product.name)
   }
 
+  const bump = (key: string) =>
+    setRev((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }))
+
+  // 한 줄의 세 칸을 한 번에 비운다(#255)
+  function clearRow(product: Product) {
+    const key = String(product.productId)
+    const boxes = { ...settings.boxes }
+    const box = boxes[key]
+    delete boxes[key]
+    const draft = drafts[key]
+    setDrafts((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+    setError(key, null)
+    setSettings({ ...settings, boxes })
+    saveStorageSettings({ ...settings, boxes })
+    setNotice('')
+    setUndo({ key, name: product.name, box, draft })
+    bump(key)
+  }
+
+  function undoClear() {
+    if (!undo) return
+    const boxes = { ...settings.boxes }
+    if (undo.box) boxes[undo.key] = undo.box
+    if (undo.draft) setDrafts((prev) => ({ ...prev, [undo.key]: undo.draft! }))
+    commit({ ...settings, boxes }, undo.name)
+    bump(undo.key)
+    setUndo(null)
+  }
+
   const boxCount = products.filter(
     (product) => settings.boxes[String(product.productId)],
   ).length
@@ -142,7 +188,7 @@ export function StorageCostSection({ products }: { products: Product[] }) {
               onChange={(event) => {
                 event.target.value = withCommas(event.target.value)
               }}
-              placeholder="미입력"
+              placeholder="예: 30,000"
               type="text"
             />
             <b>원 / CBM·월</b>
@@ -156,12 +202,34 @@ export function StorageCostSection({ products }: { products: Product[] }) {
       <div className={styles.useNote}>
         <p>상자 1개 크기를 cm로 넣으면 CBM으로 바꿔 드려요.</p>
         <span aria-live="polite" className={styles.savedNotice}>
-          {notice}
+          {undo ? (
+            <>
+              {undo.name} 상자 크기를 지웠어요{' '}
+              <button
+                className={styles.undoLink}
+                onClick={undoClear}
+                type="button"
+              >
+                되돌리기
+              </button>
+            </>
+          ) : (
+            notice
+          )}
         </span>
       </div>
 
       <div className={styles.tableWrap}>
-        <table>
+        {/* 칸 폭을 고정해 부피가 채워져도 가로·세로·높이 칸이 밀리지 않게(#255) */}
+        <table className={styles.boxTable}>
+          <colgroup>
+            <col />
+            <col className={styles.sideCol} />
+            <col className={styles.sideCol} />
+            <col className={styles.sideCol} />
+            <col className={styles.volCol} />
+            <col className={styles.clearCol} />
+          </colgroup>
           <thead>
             <tr>
               <th>상품</th>
@@ -171,14 +239,19 @@ export function StorageCostSection({ products }: { products: Product[] }) {
                 </th>
               ))}
               <th className={styles.numHead}>부피</th>
+              <th>
+                <span className={styles.srOnly}>지우기</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {products.map((product) => {
               const key = String(product.productId)
               const box = settings.boxes[key]
+              const hasAny =
+                Boolean(box) || Object.keys(drafts[key] ?? {}).length > 0
               return (
-                <tr key={key}>
+                <tr key={`${key}-${rev[key] ?? 0}`}>
                   <td className={styles.nameCell}>
                     <strong>{product.name}</strong>
                     <span>{product.barcode}</span>
@@ -209,6 +282,21 @@ export function StorageCostSection({ products }: { products: Product[] }) {
                       </span>
                     ) : (
                       <span className={styles.cbmEmpty}>미입력</span>
+                    )}
+                  </td>
+                  <td className={styles.clearCell}>
+                    {hasAny && (
+                      <button
+                        aria-label={`${product.name} 상자 크기 지우기`}
+                        className={styles.rowClear}
+                        onClick={() => clearRow(product)}
+                        title="이 줄 지우기"
+                        type="button"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M7 7l10 10M17 7L7 17" />
+                        </svg>
+                      </button>
                     )}
                   </td>
                 </tr>

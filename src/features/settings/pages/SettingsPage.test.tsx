@@ -170,6 +170,33 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('창고 보관 요율')).toHaveValue('45,000')
   })
 
+  it('보관 비용: 줄 끝 ×로 그 줄 세 칸을 한 번에 지우고, 되돌리기로 되살린다', async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    renderSettings()
+    await user.type(
+      await screen.findByLabelText('덴탈껌 S 10입 상자 가로'),
+      '20',
+    )
+    await user.type(screen.getByLabelText('덴탈껌 S 10입 상자 세로'), '20')
+    await user.type(screen.getByLabelText('덴탈껌 S 10입 상자 높이'), '30')
+    await user.tab()
+    expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: '덴탈껌 S 10입 상자 크기 지우기' }),
+    )
+    expect(screen.queryByText('0.012 CBM')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('덴탈껌 S 10입 상자 가로')).toHaveValue('')
+    expect(
+      screen.getByText(/덴탈껌 S 10입 상자 크기를 지웠어요/),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '되돌리기' }))
+    expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
+    expect(screen.getByLabelText('덴탈껌 S 10입 상자 가로')).toHaveValue('20')
+  })
+
   it('사용 스위치를 끄면 서버에 저장하고, 새로 불러와도 꺼져 있다', async () => {
     const user = userEvent.setup()
     const first = renderSettings()
