@@ -30,7 +30,9 @@ const positiveInteger = z
 const settingsSchema = z.object({
   defaults: z.object({
     leadTime: positiveInteger,
-    orderCycle: positiveInteger,
+    orderCycle: positiveInteger.nullable().refine((value) => value !== null, {
+      message: '입고 주기를 입력해 주세요.',
+    }),
     inboundUnit: positiveInteger,
   }),
   products: z.array(
@@ -39,7 +41,7 @@ const settingsSchema = z.object({
       barcode: z.string(),
       name: z.string(),
       leadTime: positiveInteger,
-      orderCycle: positiveInteger,
+      orderCycle: positiveInteger.nullable(),
       inboundUnit: positiveInteger,
       // 서버에 단가가 없으면 null(빈칸 + "미입력"). 0원으로 채우면 넣은 값처럼 보인다.
       // 있던 값을 지우면 NaN이라 "숫자를 입력해 주세요"가 뜬다(전과 같음).
@@ -55,7 +57,8 @@ const settingsSchema = z.object({
   ),
 })
 
-type SettingsValues = z.infer<typeof settingsSchema>
+type SettingsValues = z.input<typeof settingsSchema>
+type ConfirmedSettings = z.output<typeof settingsSchema>
 
 // 서버 칸 이름 → 화면 칸 이름
 const FIELD_OF: Record<string, string> = {
@@ -138,20 +141,33 @@ export function SettingsPage() {
     control,
     getValues,
     setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<SettingsValues>({
+    formState: { errors, isSubmitting, dirtyFields },
+  } = useForm<SettingsValues, unknown, ConfirmedSettings>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      defaults: { leadTime: 5, orderCycle: 29, inboundUnit: 1 },
+      defaults: { leadTime: 5, orderCycle: null, inboundUnit: 1 },
       products: [],
     },
   })
 
   useEffect(() => {
-    if (query.data) reset(query.data.values)
+    if (query.data) reset(query.data.values, { keepDirtyValues: true })
   }, [query.data, reset])
 
   const products = useWatch({ control, name: 'products' })
+  const defaults = useWatch({ control, name: 'defaults' })
+  useEffect(() => {
+    getValues('products').forEach((product, index) => {
+      PRODUCT_FIELDS.forEach(({ field }) => {
+        if (!product.overridden.includes(field)) {
+          const value = defaults?.[field]
+          if (value !== undefined && product[field] !== value) {
+            setValue(`products.${index}.${field}`, value)
+          }
+        }
+      })
+    })
+  }, [defaults, products, dirtyFields.products, getValues, setValue])
   const filteredProducts = useMemo(
     () =>
       products
@@ -195,8 +211,8 @@ export function SettingsPage() {
     }
   }
 
-  async function save(values: SettingsValues) {
-    if (calculationBusy) return
+  async function save(values: ConfirmedSettings) {
+    if (calculationBusy || values.defaults.orderCycle == null) return
     setFormError(null)
     // 상품이 없으면 계산할 게 없다. 계산 시작·완료 안내를 띄우지 않는다.
     if (values.products.length === 0) return
@@ -208,17 +224,27 @@ export function SettingsPage() {
       // 바꾼 상품만 먼저 저장하고, 마지막에 기본값을 저장하면서 계산을 시작한다.
       for (const item of values.products) {
         const old = before.get(item.productId)
-        const conditionsChanged =
-          !old ||
-          old.leadTime !== item.leadTime ||
-          old.orderCycle !== item.orderCycle ||
-          old.inboundUnit !== item.inboundUnit
+        const changedFields = PRODUCT_FIELDS.filter(
+          ({ field }) =>
+            old &&
+            old[field] !== item[field] &&
+            item.overridden.includes(field),
+        )
         const costChanged = !old || old.cost !== item.cost
-        if (!conditionsChanged && !costChanged) continue
+        if (changedFields.length === 0 && !costChanged) continue
+        // S3는 보낸 칸으로 교체한다. 기존 override와 사용자가 직접 바꾼 칸만 보존한다.
+        const explicit = new Set([
+          ...item.overridden,
+          ...changedFields.map(({ field }) => field),
+        ])
         const saved = await saveProductSettings(item.productId, {
-          leadTimeDays: item.leadTime,
-          reviewCycleDays: item.orderCycle,
-          orderUnitQty: item.inboundUnit,
+          ...(explicit.has('leadTime') ? { leadTimeDays: item.leadTime } : {}),
+          ...(explicit.has('orderCycle') && item.orderCycle != null
+            ? { reviewCycleDays: item.orderCycle }
+            : {}),
+          ...(explicit.has('inboundUnit')
+            ? { orderUnitQty: item.inboundUnit }
+            : {}),
           ...(costChanged && item.cost !== null ? { unitCost: item.cost } : {}),
         })
         trackRun(saved.runId)
@@ -310,6 +336,7 @@ export function SettingsPage() {
               <div>
                 <input
                   type="number"
+                  aria-label="기본 입고 주기"
                   {...register('defaults.orderCycle', { valueAsNumber: true })}
                 />
                 <b>일</b>
@@ -317,7 +344,7 @@ export function SettingsPage() {
               <small>
                 {errors.defaults?.orderCycle?.message ??
                   (query.data?.values.defaults.orderCycle == null
-                    ? '수불부를 올리면 입고 간격으로 추정해 채워요'
+                    ? '입고 기록이 부족해요. 주기를 직접 입력하거나 수불부를 더 올려 주세요'
                     : query.data.sourceIsEstimated
                       ? '수불부 입고 간격으로 추정했어요'
                       : '직접 정해 저장한 값이에요')}
@@ -411,6 +438,15 @@ export function SettingsPage() {
                             type="number"
                             {...register(`products.${index}.${field}`, {
                               valueAsNumber: true,
+                              onChange: () => {
+                                const path =
+                                  `products.${index}.overridden` as const
+                                const explicit = getValues(path)
+                                if (!explicit.includes(field))
+                                  setValue(path, [...explicit, field], {
+                                    shouldDirty: true,
+                                  })
+                              },
                             })}
                           />
                           <b>{unit}</b>

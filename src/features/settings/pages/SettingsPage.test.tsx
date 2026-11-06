@@ -245,6 +245,7 @@ describe('SettingsPage', () => {
     const field = await screen.findByLabelText('덴탈껌 S 10입 inboundUnit')
     await user.clear(field)
     await user.type(field, '6')
+    expect(field).toHaveValue(6)
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
 
     await waitFor(() => expect(calls).toHaveLength(2))
@@ -314,7 +315,9 @@ describe('SettingsPage 표 모양', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('수불부를 올리면 입고 간격으로 추정해 채워요'),
+      screen.getByText(
+        '입고 기록이 부족해요. 주기를 직접 입력하거나 수불부를 더 올려 주세요',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText('검색 결과가 없어요.')).toBeNull()
     // 상품이 없으면 계산할 게 없다: 계산 버튼은 막고 수불부 올리기로 안내한다
