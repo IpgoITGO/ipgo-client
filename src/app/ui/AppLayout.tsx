@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
@@ -28,6 +28,10 @@ export function AppLayout() {
   const { signOut, signOutLocally, user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // 화면을 옮기면 앞 화면 스크롤이 남지 않게 맨 위로(#주소로 온 건 그 자리로 간다)
+  useEffect(() => {
+    if (!window.location.hash) window.scrollTo(0, 0)
+  }, [pathname])
   // 서버 로그아웃이 실패하면 화면을 떠나기 전에 팝업으로 알린다(시안 "가", #32).
   // 새로고침 복구가 있어서, 실패를 넘기면 다시 열었을 때 로그인된 채로 열릴 수 있다.
   const [logoutFailed, setLogoutFailed] = useState(false)

@@ -277,13 +277,31 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('계산 중에는 지난 결과 위에 한 줄을 붙이고, 끝나면 바꿨다고 알린 뒤 사라진다', async () => {
+  it('계산 중에는 스켈레톤, 지난 결과 보기로 열 수 있고, 끝나면 바꿨다고 알린 뒤 사라진다', async () => {
+    // 지난 결과 보기를 누를 때까지는 계산 중으로 둔다(누르기 전에 끝나면 시험이 흔들린다)
+    let finish = false
+    server.use(
+      http.get('/api/calculation-runs/41', () =>
+        HttpResponse.json({
+          runId: 41,
+          status: finish ? 'DONE' : 'RUNNING',
+          startedAt: '2026-10-19T09:00:01+09:00',
+        }),
+      ),
+    )
     renderWithRun(41)
 
     expect(
       await screen.findByText(/새 수불부를 계산하고 있어요 · \d+분째/),
     ).toBeInTheDocument()
+    expect(screen.getByTestId('dashboard-skeleton')).toBeInTheDocument()
+    expect(screen.getByText('끝나면 여기에 바로 떠요')).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: /지난 결과\(\d+\/\d+\) 보기/ }),
+    )
+    expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
     expect(screen.getByText(/아래는 \d+\/\d+ 결과예요/)).toBeInTheDocument()
+    finish = true
     expect(
       await screen.findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
     ).toBeInTheDocument()

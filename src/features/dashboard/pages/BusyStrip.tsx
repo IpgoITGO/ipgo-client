@@ -6,8 +6,15 @@ import styles from './BusyStrip.module.css'
 
 const FINISH_STRIP_MS = 4000
 
-// 확인·계산 중에는 지난 결과를 그대로 두고 위에 한 줄만 붙인다. 끝나면 4초간 "바꿨어요".
-export function BusyStrip({ baseDate }: { baseDate?: string }) {
+// 확인·계산 중에는 아래를 스켈레톤으로 두고 위에 한 줄. "지난 결과 보기"를 누르면 지난 결과를 보여 준다.
+// 끝나면 4초간 "바꿨어요".
+export function BusyStrip({
+  baseDate,
+  onShowPast,
+}: {
+  baseDate?: string
+  onShowPast?: () => void
+}) {
   const { phase, checkingSince, run } = useCalculation()
   const busy = ['checking', 'pending', 'updating'].includes(phase)
   const [wasBusy, setWasBusy] = useState(false)
@@ -47,7 +54,18 @@ export function BusyStrip({ baseDate }: { baseDate?: string }) {
         새 수불부를 {phase === 'checking' ? '확인' : '계산'}하고 있어요 ·{' '}
         {minutes}분째
       </strong>
-      {baseDate && <span>아래는 {shortDate(baseDate)} 결과예요</span>}
+      {onShowPast ? (
+        <>
+          <span>끝나면 여기에 바로 떠요</span>
+          {baseDate && (
+            <button className={styles.past} onClick={onShowPast} type="button">
+              지난 결과({shortDate(baseDate)}) 보기
+            </button>
+          )}
+        </>
+      ) : (
+        baseDate && <span>아래는 {shortDate(baseDate)} 결과예요</span>
+      )}
     </p>
   )
 }

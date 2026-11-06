@@ -45,11 +45,13 @@ describe('SettingsPage', () => {
     expect(
       await screen.findByText('입고량을 계산하고 있어요'),
     ).toBeInTheDocument()
+    // 계산 중엔 대시보드가 스켈레톤, 끝나면 숫자가 채워진다
+    expect(await screen.findByTestId('dashboard-skeleton')).toBeInTheDocument()
+    status = 'DONE'
+    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
     expect(
       await screen.findByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).toBeInTheDocument()
-    status = 'DONE'
-    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
     expect(reads).toBeGreaterThanOrEqual(2)
   })
   it('확인하고 계산하기가 저장되면 대시보드로 가서 토스트를 보여준다', async () => {
