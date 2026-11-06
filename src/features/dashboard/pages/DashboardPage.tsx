@@ -471,7 +471,23 @@ export function DashboardPage() {
           baseDate={noResult ? undefined : data.baseDate}
           onShowPast={() => setShowPast(true)}
         />
-        <DashboardSkeleton />
+        <DashboardSkeleton
+          note={
+            noResult
+              ? undefined
+              : {
+                  baseDate: data.baseDate,
+                  top: [...data.neededItems].sort((a, b) =>
+                    a.stockoutDate.localeCompare(b.stockoutDate),
+                  )[0],
+                  needed: data.summary.needed,
+                  soon: data.neededItems.filter(
+                    (item) => dayNumber(item.stockoutDate) < today + 7,
+                  ).length,
+                  planned: Object.values(planned).filter(isOwnPlan).length,
+                }
+          }
+        />
       </div>
     )
 
