@@ -122,6 +122,8 @@ type View = {
   xs: (index: number) => number
   tip: (index: number) => Tip
   head: ReactNode
+  /** 제목 아래 숫자 칩(지금은 재고·출고 탭의 앞으로 N일 출고) */
+  chips?: ReactNode
   sub: string
   legend: LegendItem[]
   note: Note | null
@@ -349,24 +351,22 @@ function TrendChart({
       style={{ stroke: toneColor[tone] }}
     />
   )
-  // 위 문장과 서버 계산이 다르면 같은 문장 끝에 괄호로 붙인다(따로 빨간 경고를 두지 않는다).
-  const head = (main: ReactNode) => (
-    <>
-      {main}
-      {startStock != null && startStock !== stock && (
-        <span className={styles.trendAside}>
-          {' '}
-          (오늘 남았을 재고 {startStock.toLocaleString()}개로 보면{' '}
-          {alreadyOut
-            ? ALREADY_OUT
-            : shortageOn
-              ? `${slashDate(shortageOn, shortageOn)} 소진으로 봐요`
-              : '따로 계산해요'}
-          )
-        </span>
-      )}
-    </>
-  )
+  // 제목은 결론 한 줄만. 서버 계산(오늘 남았을 재고)이 기록과 다르면 제목 아래 숫자 칩으로 붙인다(11/6 "한 줄로")
+  const head = (main: ReactNode) => main
+  const asideChip =
+    startStock != null && startStock !== stock ? (
+      <span className={styles.trendChip}>
+        오늘 남았을 재고 <b>{startStock.toLocaleString()}개</b>
+        {alreadyOut ? (
+          <> · {ALREADY_OUT}</>
+        ) : shortageOn ? (
+          <>
+            {' '}
+            → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
+          </>
+        ) : null}
+      </span>
+    ) : null
 
   function flowView(): View {
     const max = Math.max(
@@ -567,18 +567,17 @@ function TrendChart({
     const mainHead =
       stock === 0 ? (
         <>
-          <em>{baseDate} 기록 기준 재고가 없어요</em> · 하루 약 {perDayWord}
-          개씩 나가요
+          <em>{baseDate} 기록 기준 재고가 바닥났어요</em>
         </>
       ) : runsOut ? (
         <>
-          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
-          {perDayWord}개씩 나가면 <em>{outText} 바닥나요</em>
+          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 ·{' '}
+          <em>{outText} 바닥나요</em>
         </>
       ) : future > 0 ? (
         <>
-          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 하루 약{' '}
-          {perDayWord}개씩 나가도 <em>앞으로 {future}일은 버텨요</em>
+          {baseDate} 기록 기준 재고 {stock.toLocaleString()}개 · 앞으로 {future}
+          일은 버텨요
         </>
       ) : (
         <>
@@ -624,10 +623,13 @@ function TrendChart({
               ],
             },
       head: head(mainHead),
-      sub:
-        future > 0
-          ? `노란 칸은 앞으로 ${future}일 예상이에요(합계 약 ${count(forecastQty)}).`
-          : '지난 재고와 출고 기록이에요.',
+      chips:
+        future > 0 ? (
+          <span className={`${styles.trendChip} ${styles.trendChipFuture}`}>
+            앞으로 {future}일 <b>약 {count(forecastQty)}</b> 나가요
+          </span>
+        ) : null,
+      sub: future > 0 ? '' : '지난 재고와 출고 기록이에요.',
       legend: [
         { kind: 'line', color: INK, text: '재고' },
         ...(runsOut
@@ -1032,7 +1034,13 @@ function TrendChart({
         role="tabpanel"
       >
         <p className={styles.trendHead}>{view.head}</p>
-        <p className={styles.trendSub}>{view.sub}</p>
+        {(asideChip || view.chips) && (
+          <div className={styles.trendChips}>
+            {asideChip}
+            {view.chips}
+          </div>
+        )}
+        {view.sub && <p className={styles.trendSub}>{view.sub}</p>}
         <div className={styles.stage}>
           <svg
             aria-label={`${tabLabels[active]} 그래프`}

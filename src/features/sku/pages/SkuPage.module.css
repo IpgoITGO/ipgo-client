@@ -930,10 +930,28 @@
     100% 45% no-repeat;
 }
 
-.trendAside {
-  color: var(--color-text-3);
+.trendChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+.trendChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 11px;
+  color: var(--color-text-2);
+  font-size: 12.5px;
+  background: var(--color-surface-soft, #f3eee5);
+  border-radius: 999px;
+}
+.trendChip b {
+  color: var(--color-text);
   font-size: 13px;
-  font-weight: 500;
+}
+.trendChipFuture {
+  background: var(--color-accent-soft);
 }
 
 .trendSub {
