@@ -1530,11 +1530,6 @@ export function SkuPage() {
                       </span>
                     </>
                   )}
-                  {Boolean(data.calculation.existingOrders) && (
-                    <span>
-                      · 기존 발주 {count(data.calculation.existingOrders)} 뺌
-                    </span>
-                  )}
                 </p>
               )}
             </div>
