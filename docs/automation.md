@@ -24,7 +24,8 @@ Jira와 GitHub Issue를 모두 남깁니다. 스프린트 배정, PR 승인과 �
 | Issue 담당자 변경 | Jira 담당자 변경 |
 | Issue 신규 댓글 | Jira에 댓글 복제 |
 | PR 생성·재개·검토 전환·새 commit | PR에서 찾은 Jira 키를 진행 상태로 전환 |
-| `dev` push | 개발 Preview build·배포·고정 alias 연결·smoke test |
+| `dev` PR·push | 코드 검사·테스트·build만 실행 (배포 없음) |
+| 개발 workflow 수동 실행 | 승인한 `expected_sha`가 dev 실행 SHA와 같을 때만 Preview 배포·alias·smoke test |
 | `main` push | Production 후보 build·배포·smoke test·운영 승격·작업 완료 처리 |
 
 PR 자동 승인 또는 자동 병합과 Jira 스프린트 자동 배정은 실행 조건에 포함하지 않습니다.
@@ -262,3 +263,16 @@ VITE_ENABLE_MSW=true npm run build
 
 rollback은 새 운영 push의 자동 alias 연결에 영향을 줄 수 있으므로 복구 후 정상 deployment를
 명시적으로 promote하고 다음 배포가 실제 운영 주소에 연결되는지 확인합니다.
+
+## 개발 배포 승인
+
+`Vercel 개발 배포` workflow는 PR/dev push에서 `verify`만 실행합니다. 배포는 dev에서
+`workflow_dispatch`로 승인된 전체 SHA를 `expected_sha`에 넣어 실행합니다. 실행 SHA와 다르거나
+dev가 아니면 Vercel API 호출 전에 중단합니다. 새 commit으로 승인 SHA를 임의 교체하지 않습니다.
+
+`vercel.json`의 `git.deploymentEnabled=false`로 Git 연동 자동 배포도 차단합니다.
+[공식 Git 설정](https://vercel.com/docs/project-configuration/git-configuration)을 따르며
+기존 Production Actions는 유지합니다. 검증만 요청받은 작업에서는 수동 배포를 실행하지 않습니다.
+
+복구는 이전 배포 URL과 두 개발 alias를 사전에 기록하고, 승인 후 검증 실패 시 해당 이전
+Preview에 alias를 다시 연결합니다. 코드 dev 반영과 실제 배포 성공은 별도로 보고합니다.

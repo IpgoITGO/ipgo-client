@@ -3,16 +3,41 @@ name: Vercel 개발 배포
 on:
   push:
     branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 승인받은 dev 전체 commit SHA
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: vercel-development
+  group: vercel-development-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run ci:check
+      - run: npm run build
+
   deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -36,8 +61,10 @@ jobs:
       - name: 의존성 설치
         run: npm ci
 
-      - name: 코드 검증
-        run: npm run ci:check
+      - name: 승인 SHA 확인
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: node scripts/automation/validate-dev-deployment.mjs
 
       - name: Vercel CLI 설치
         run: npm install --global "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
