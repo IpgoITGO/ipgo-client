@@ -9,11 +9,11 @@ import {
   isOwnPlan,
   isStale,
   type PlannedSource,
-  savePlanned,
+  usePlannedMutation,
+  usePlannedQuery,
+  currentCalculation,
   shortBasis,
   shortDate,
-  todayIso,
-  usePlanned,
 } from '../model/plannedQuantity'
 import {
   addCustomScenario,
@@ -83,7 +83,6 @@ const SCENARIO_SOURCE: Record<string, PlannedSource> = {
 }
 
 export function ScenarioInsight({
-  baseDate,
   inboundUnit,
   productId,
   resultId,
@@ -104,7 +103,15 @@ export function ScenarioInsight({
   const [expanded, setExpanded] = useState(false)
   // 눌러서 고른 카드(처음엔 권장량)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const plan = usePlanned()[productId]
+  const plannedQuery = usePlannedQuery()
+  const plan = plannedQuery.data?.[productId]
+  const plannedMutation = usePlannedMutation(productId, resultId)
+  const basisQuery = useQuery({
+    queryKey: ['planned-basis', productId, resultId],
+    queryFn: () => currentCalculation(productId, resultId),
+    enabled: plannedQuery.isSuccess && !!plan,
+  })
+  const planBusy = plannedMutation.isPending || !plannedQuery.isSuccess
 
   const scenariosQuery = useQuery({
     queryKey: ['result', resultId, 'scenarios'],
@@ -187,15 +194,13 @@ export function ScenarioInsight({
   }
 
   const data = scenariosQuery.data && toScenarios(scenariosQuery.data)
-  const stale = plan ? isStale(plan, baseDate) : false
+  const stale = plan
+    ? basisQuery.isError ||
+      (basisQuery.isSuccess && isStale(plan, basisQuery.data))
+    : false
   const recommendedNow = data?.recommendedQuantity ?? 0
   const decide = (qty: number, source: PlannedSource) =>
-    savePlanned(productId, {
-      quantity: qty,
-      source,
-      decidedAt: todayIso(),
-      basis: baseDate,
-    })
+    plannedMutation.mutate({ quantity: qty, source })
   const typed = Number(quantity)
   const typedValid =
     quantity.trim() !== '' && Number.isInteger(typed) && typed > 0
@@ -275,6 +280,27 @@ export function ScenarioInsight({
           )}
         </div>
 
+        {(plannedQuery.isError ||
+          plannedMutation.isError ||
+          basisQuery.isError) && (
+          <p role="alert">
+            {plannedQuery.error?.message ??
+              plannedMutation.error?.message ??
+              basisQuery.error?.message}
+            <Button
+              onClick={() => {
+                void plannedQuery.refetch()
+                void basisQuery.refetch()
+              }}
+              variant="text"
+            >
+              다시 불러오기
+            </Button>
+          </p>
+        )}
+        {plannedMutation.isPending && (
+          <p role="status">내 입고량을 저장하고 있어요.</p>
+        )}
         {scenariosQuery.isPending ? (
           <AsyncState
             description="권장량별 재고 흐름을 계산하고 있어요."
@@ -309,12 +335,14 @@ export function ScenarioInsight({
                       </b>
                     </span>
                     <Button
+                      disabled={planBusy}
                       onClick={() => decide(plan.quantity, plan.source)}
                       variant="secondary"
                     >
                       {plan.quantity.toLocaleString()}개 그대로
                     </Button>
                     <Button
+                      disabled={planBusy}
                       onClick={() => decide(recommendedNow, 'SCENARIO_100')}
                       variant="secondary"
                     >
@@ -328,7 +356,8 @@ export function ScenarioInsight({
                   </span>
                 )}
                 <Button
-                  onClick={() => savePlanned(productId, null)}
+                  disabled={planBusy}
+                  onClick={() => plannedMutation.mutate(null)}
                   variant="text"
                 >
                   되돌리기
@@ -446,9 +475,10 @@ export function ScenarioInsight({
                     <p className={styles.note}>{note}</p>
                     <Button
                       className={styles.decideButton}
+                      disabled={planBusy}
                       onClick={(event) => {
                         event.stopPropagation()
-                        if (decided) savePlanned(productId, null)
+                        if (decided) plannedMutation.mutate(null)
                         else decide(scenario.quantity, source)
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
@@ -507,7 +537,7 @@ export function ScenarioInsight({
                   </Button>
                   <Button
                     className={styles.addButton}
-                    disabled={!typedValid}
+                    disabled={planBusy || !typedValid}
                     onClick={() => decide(typed, 'MANUAL')}
                     type="button"
                     variant="secondary"

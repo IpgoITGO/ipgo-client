@@ -1,3 +1,4 @@
+import { plannedQuantityHandlers } from '../features/sku/mocks/plannedQuantityHandlers'
 import { http, HttpResponse } from 'msw'
 
 import { authHandlers } from '../auth/mocks/handlers'
@@ -279,6 +280,7 @@ function isoFromToday(n: number) {
 const runPolls = new Map<number, number>()
 
 export const handlers = [
+  ...plannedQuantityHandlers,
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
   }),
@@ -596,9 +598,9 @@ export const handlers = [
       (item) =>
         mockProducts.find((product) => product.productId === item.productId)
           ?.isActive ?? true,
-    ).map(({ shortage, ...item }, index) => ({
+    ).map(({ shortage, ...item }) => ({
       ...item,
-      resultId: 9001 + index,
+      resultId: item.productId,
       expectedShortageOn: isoFromToday(shortage),
     }))
     return HttpResponse.json({

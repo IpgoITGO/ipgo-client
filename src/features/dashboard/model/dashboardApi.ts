@@ -68,6 +68,7 @@ export function toDashboardData(
   uploadStatus?: DashboardData['uploadStatus'],
 ): DashboardData {
   return {
+    runId: raw.runId,
     baseDate: dotDate(raw.asOfDate),
     today: dotDate(raw.today),
     // 계산을 한 번도 못 했으면 기준일 대신 "계산 전" 안내를 띄운다(SKU 상세와 같은 모양).
