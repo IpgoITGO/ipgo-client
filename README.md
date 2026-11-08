@@ -292,3 +292,9 @@ AI의 CALCULATE `accuracyEvaluation`은 선택적 확장 필드입니다. 원본
 출처/기간/H/평가 상태를 담은 선택적 `accuracy.evaluation`을 제공합니다. 오차는 원본으로 계산합니다.
 기록 없는 구버전은 빈 이력, 표본 없음은 EMPTY, 평가 미실행은 UNAVAILABLE로 구분합니다.
 새 BACKTEST 작업·DB migration·LLM 호출·과거 결과 덮어쓰기는 없습니다.
+
+## 개발 배포 전 검증
+
+PR/dev push는 코드 검사·테스트·build만 수행합니다. 실제 개발 배포는 정확한 전체 commit SHA를
+승인받은 뒤 `Vercel 개발 배포`를 dev에서 수동 실행하고 `expected_sha`로 전달합니다.
+Git 연동 자동 배포도 꺼져 있으며 자세한 승인·복구 절차는 [자동화 운영](docs/automation.md)을 따릅니다.
