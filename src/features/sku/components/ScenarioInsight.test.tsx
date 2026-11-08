@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { login } from '../../../auth/api/authApi'
+import { loadPlanned, savePlanned } from '../model/plannedQuantity'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
-import { afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
@@ -451,90 +453,87 @@ describe('ScenarioInsight', () => {
   })
 })
 
-describe('내 입고량 정하기', () => {
-  const PLAN_KEY = 'ipgo:planned-quantity'
-  afterEach(() => localStorage.clear())
-
-  it('카드에서 정하면 저장하고 머리띠·배너를 보이고 되돌리면 지운다', async () => {
+describe('내 입고량 서버 저장', () => {
+  beforeEach(async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          runId: 31,
+          asOfDate: '2026-11-04',
+          items: [{ productId: 7, resultId: 101 }],
+        }),
+      ),
+      http.get('/api/products/7/detail', () =>
+        HttpResponse.json({
+          asOfDate: '2026-11-04',
+          result: { resultId: 101, status: 'OK' },
+        }),
+      ),
+    )
+  })
+  it('카드 선택을 서버에 저장하고 다시 마운트해도 읽으며 되돌리기는 DELETE한다', async () => {
     const user = userEvent.setup()
-    renderInsight()
+    const view = renderInsight()
     await screen.findByText('권장량의 80%')
-
-    await user.click(
-      screen.getAllByRole('button', { name: '이 수량으로 정하기' })[0],
-    )
-    const saved = JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7']
-    expect(saved).toMatchObject({
-      quantity: 60,
-      source: 'SCENARIO_80',
-      basis: '2026. 11. 4',
-    })
-    expect(screen.getByText('✓ 이 수량으로 넣어요')).toBeInTheDocument()
-    expect(screen.queryByText('내가 정함')).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/권장량의 80% 카드에서 정함/, { selector: 'span' }),
-    ).toHaveTextContent('이 수량으로 넣어요 60개')
-
-    // 배너 링크와 카드 버튼 둘 다 되돌리기. 카드 쪽(뒤)을 누른다.
-    const undo = screen.getAllByRole('button', { name: '되돌리기' })
-    expect(undo).toHaveLength(2)
-    await user.click(undo[1])
-    expect(
-      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
-    ).toBeUndefined()
-    expect(screen.queryByText('✓ 이 수량으로 넣어요')).not.toBeInTheDocument()
-  })
-
-  it('권장(100%) 카드는 배너 없이 "✓ 권장대로 넣어요" 머리띠만 보인다', async () => {
-    const user = userEvent.setup()
-    renderInsight()
-    await screen.findByText('권장량 100%')
-
-    await user.click(
-      screen.getAllByRole('button', { name: '이 수량으로 정하기' })[1],
-    )
-    expect(screen.getByText('✓ 권장대로 넣어요')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '되돌리기' })).toBeInTheDocument()
-    expect(screen.queryByText(/내 입고량/)).not.toBeInTheDocument()
-  })
-
-  it('직접 넣은 수량 버튼은 올바른 수량을 넣은 뒤에만 눌린다', async () => {
-    const user = userEvent.setup()
-    renderInsight()
-    await screen.findByText('권장량 100%')
-    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
-
-    const buttons = () =>
-      screen.getAllByRole('button', { name: '이 수량으로 정하기' })
-    expect(buttons().at(-1)).toBeDisabled()
-    await user.type(screen.getByLabelText('직접 입력'), '55')
-    await user.click(buttons().at(-1) as HTMLElement)
-    expect(
-      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
-    ).toMatchObject({ quantity: 55, source: 'MANUAL' })
-  })
-
-  it('지난 계산 기준이면 노란 배너에서 그대로 두거나 새 권장으로 바꾼다', async () => {
-    localStorage.setItem(
-      PLAN_KEY,
-      JSON.stringify({
-        '7': {
-          quantity: 50,
-          source: 'MANUAL',
-          decidedAt: '2026-11-01',
-          basis: '2026. 11. 1',
-        },
+    const button = screen.getAllByRole('button', {
+      name: '이 수량으로 정하기',
+    })[0]
+    await waitFor(() => expect(button).toBeEnabled())
+    await user.click(button)
+    await waitFor(async () =>
+      expect((await loadPlanned())['7']).toMatchObject({
+        quantity: 60,
+        calculationRunId: 31,
+        source: 'SCENARIO_80',
       }),
     )
-    const user = userEvent.setup()
+    expect(await screen.findByText('✓ 이 수량으로 넣어요')).toBeInTheDocument()
+    view.unmount()
     renderInsight()
-    expect(await screen.findByText(/11\/1 계산 기준이에요/)).toBeInTheDocument()
-    expect(screen.getByText('새 계산의 권장은 72개')).toBeInTheDocument()
-
+    expect(await screen.findByText('✓ 이 수량으로 넣어요')).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: '되돌리기' })[0])
+    await waitFor(async () =>
+      expect((await loadPlanned())['7']).toBeUndefined(),
+    )
+  })
+  it('실패 응답과 중복 클릭을 성공으로 표시하지 않는다', async () => {
+    let writes = 0
+    server.use(
+      http.put('/api/products/7/planned-quantity', async () => {
+        writes++
+        await delay(80)
+        return HttpResponse.json(
+          { message: '저장하지 못했어요.' },
+          { status: 500 },
+        )
+      }),
+    )
+    renderInsight()
+    const user = userEvent.setup()
+    await screen.findByText('권장량의 80%')
+    const button = screen.getAllByRole('button', {
+      name: '이 수량으로 정하기',
+    })[0]
+    await waitFor(() => expect(button).toBeEnabled())
+    await user.dblClick(button)
+    expect(await screen.findByText('저장하지 못했어요.')).toBeInTheDocument()
+    expect(writes).toBe(1)
+    expect(await loadPlanned()).toEqual({})
+  })
+  it('같은 날짜라도 지난 run의 저장 수량을 유지하고 명시적으로 재확인한다', async () => {
+    await savePlanned('7', {
+      quantity: 50,
+      source: 'MANUAL',
+      decidedAt: '',
+      calculationRunId: 30,
+    })
+    renderInsight()
+    const user = userEvent.setup()
+    expect(await screen.findByText(/이전 계산 기준이에요/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '50개 그대로' }))
-    expect(
-      JSON.parse(localStorage.getItem(PLAN_KEY) ?? '{}')['7'],
-    ).toMatchObject({ quantity: 50, basis: '2026. 11. 4' })
-    expect(screen.queryByText(/계산 기준이에요/)).not.toBeInTheDocument()
+    await waitFor(async () =>
+      expect((await loadPlanned())['7'].calculationRunId).toBe(31),
+    )
   })
 })

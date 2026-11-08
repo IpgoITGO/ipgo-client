@@ -1,13 +1,21 @@
+import { useAuth } from '../../../auth/model/useAuth'
+import type { PropsWithChildren } from 'react'
+import { login } from '../../../auth/api/authApi'
+import { savePlanned } from '../../sku/model/plannedQuantity'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { DashboardPage } from './DashboardPage'
 import { AppLayout } from '../../../app/ui/AppLayout'
 import { CalculationStatus } from '../../../shared/ui/CalculationStatus/CalculationStatus'
+
+beforeEach(async () => {
+  await login({ email: 'seller@a.com', password: 'pass1234' })
+})
 
 // 서버가 아직 한 번도 계산하지 않았을 때의 D1 응답
 const noResult = (latestUploadId: number | null) => ({
@@ -30,22 +38,30 @@ const noResult = (latestUploadId: number | null) => ({
   excluded: [],
 })
 
+function AuthReady({ children }: PropsWithChildren) {
+  return useAuth().status === 'loading' ? null : children
+}
+
 const renderPage = () =>
   render(
     <AppProviders>
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>
+      <AuthReady>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </AuthReady>
     </AppProviders>,
   )
 
 const renderWithRun = (runId: number) =>
   render(
     <AppProviders>
-      <MemoryRouter initialEntries={[`/dashboard?run=${runId}`]}>
-        <DashboardPage />
-        <CalculationStatus />
-      </MemoryRouter>
+      <AuthReady>
+        <MemoryRouter initialEntries={[`/dashboard?run=${runId}`]}>
+          <DashboardPage />
+          <CalculationStatus />
+        </MemoryRouter>
+      </AuthReady>
     </AppProviders>,
   )
 
@@ -68,9 +84,11 @@ const safeProduct = (id: number) => ({
 const renderSafe = () =>
   render(
     <AppProviders>
-      <MemoryRouter initialEntries={['/dashboard?tab=safe']}>
-        <DashboardPage />
-      </MemoryRouter>
+      <AuthReady>
+        <MemoryRouter initialEntries={['/dashboard?tab=safe']}>
+          <DashboardPage />
+        </MemoryRouter>
+      </AuthReady>
     </AppProviders>,
   )
 
@@ -206,13 +224,15 @@ describe('DashboardPage', () => {
     const user = userEvent.setup()
     render(
       <AppProviders>
-        <MemoryRouter initialEntries={['/dashboard?run=7125']}>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <AuthReady>
+          <MemoryRouter initialEntries={['/dashboard?run=7125']}>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </AuthReady>
       </AppProviders>,
     )
     expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
@@ -242,10 +262,12 @@ describe('DashboardPage', () => {
     const user = userEvent.setup()
     render(
       <AppProviders>
-        <MemoryRouter initialEntries={['/dashboard?run=7126']}>
-          <DashboardPage />
-          <CalculationStatus />
-        </MemoryRouter>
+        <AuthReady>
+          <MemoryRouter initialEntries={['/dashboard?run=7126']}>
+            <DashboardPage />
+            <CalculationStatus />
+          </MemoryRouter>
+        </AuthReady>
       </AppProviders>,
     )
     expect(
@@ -375,9 +397,11 @@ describe('DashboardPage', () => {
     const user = userEvent.setup()
     render(
       <AppProviders>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
+        <AuthReady>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </AuthReady>
       </AppProviders>,
     )
     expect(
@@ -397,9 +421,11 @@ describe('DashboardPage', () => {
   it('예상 소진일이 지난 상품은 이미 소진으로 표시하고 요약 카드에 몇 개인지 알린다', async () => {
     render(
       <AppProviders>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
+        <AuthReady>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </AuthReady>
       </AppProviders>,
     )
 
@@ -690,6 +716,9 @@ describe('주문까지 칸', () => {
 })
 
 describe('내 입고량 칸', () => {
+  beforeEach(async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+  })
   const needItem = (id: number, name: string, qty: number, amount: number) => ({
     productId: id,
     resultId: id,
@@ -701,23 +730,21 @@ describe('내 입고량 칸', () => {
     leadTimeDays: 3,
     preArrivalRisk: 0.1,
   })
-  const plan = (quantity: number, basis: string) => ({
-    quantity,
-    source: 'SCENARIO_80',
-    decidedAt: '2026-11-05',
-    basis,
-  })
-
   afterEach(() => localStorage.clear())
 
   it('정한 상품은 수량과 날짜, 지난 계산 기준은 노란 꼬리표, 안 정한 상품은 —로 보여 준다', async () => {
-    localStorage.setItem(
-      'ipgo:planned-quantity',
-      JSON.stringify({
-        '1': plan(60, '2026. 11. 5'),
-        '2': plan(30, '2026. 11. 1'),
-      }),
-    )
+    await savePlanned('1', {
+      quantity: 60,
+      source: 'SCENARIO_80',
+      calculationRunId: 3,
+      decidedAt: '',
+    })
+    await savePlanned('2', {
+      quantity: 30,
+      source: 'SCENARIO_80',
+      calculationRunId: 2,
+      decidedAt: '',
+    })
     server.use(
       http.get('/api/dashboard/replenishment-needs', () =>
         HttpResponse.json({
@@ -745,10 +772,11 @@ describe('내 입고량 칸', () => {
       screen.getByRole('columnheader', { name: '내 입고량' }),
     ).toBeVisible()
     // 현재 계산 기준: 60개 + "11/5 정함", 권장 72개에 취소선
-    expect(row('케어트릿 120g')).toHaveTextContent('60개11/5 정함')
+    await waitFor(() => expect(row('케어트릿 120g')).toHaveTextContent('60개'))
+    expect(row('케어트릿 120g')).toHaveTextContent('정함')
     expect(screen.getByText('72개')).toHaveAttribute('data-struck')
     // 지난 계산 기준: 노란 꼬리표, 권장 40개는 그대로
-    expect(row('연어 져키 80g')).toHaveTextContent('⟲ 11/1 계산 기준')
+    expect(row('연어 져키 80g')).toHaveTextContent('⟲ 이전 계산 기준')
     expect(screen.getByText('40개')).not.toHaveAttribute('data-struck')
     expect(
       within(row('덴탈껌 S')).getByRole('cell', { name: '—' }),

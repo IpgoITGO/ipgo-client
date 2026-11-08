@@ -368,3 +368,9 @@ export const authHandlers = [
     return HttpResponse.json(toMe(user), { status: 201 })
   }),
 ]
+
+// 업무 MSW도 현재 인증된 합성 계정별로 자료를 구분한다.
+export function mockAccountKey(request: Request): string | null {
+  const user = authenticate(request)
+  return user && !(user instanceof Response) ? user.email : null
+}

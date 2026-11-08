@@ -1,3 +1,4 @@
+import { resetPlannedQuantitiesMock } from '../features/sku/mocks/plannedQuantityHandlers'
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
@@ -18,6 +19,7 @@ afterEach(() => {
   server.resetHandlers()
   resetAuthMock()
   resetUploadMock()
+  resetPlannedQuantitiesMock()
   resetPlannedReceiptsMock()
   resetCsrfToken()
   setAccessToken(null)

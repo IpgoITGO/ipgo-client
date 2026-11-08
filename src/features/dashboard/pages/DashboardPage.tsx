@@ -29,7 +29,7 @@ import {
   isOwnPlan,
   isStale,
   shortBasis,
-  usePlanned,
+  usePlannedQuery,
 } from '../../sku/model/plannedQuantity'
 import { getAllProducts } from '../../settings/model/plannedReceiptsApi'
 import { getDashboard } from '../model/dashboardApi'
@@ -76,6 +76,7 @@ function StorageTotal({
 }
 
 export type DashboardData = {
+  runId?: number | null
   baseDate: string
   /** 서버가 판정에 쓴 오늘 날짜(API 명세 3.5 today). 없으면 브라우저의 오늘 */
   today?: string
@@ -228,7 +229,8 @@ function NoMatch({ search }: { search: string }) {
 }
 
 export function DashboardPage() {
-  const planned = usePlanned()
+  const plannedQuery = usePlannedQuery()
+  const planned = plannedQuery.data ?? {}
   const navigate = useNavigate()
   const lock = useCalcLock()
   const [params, setParams] = useSearchParams()
@@ -410,7 +412,7 @@ export function DashboardPage() {
       : item.cost
   const struck = (item: { id: string }) => {
     const plan = planOf(item)
-    return !!plan && !isStale(plan, data.baseDate)
+    return !!plan && !isStale(plan, data.runId)
   }
   const planCell = (item: { id: string }) => {
     const plan = planOf(item)
@@ -418,7 +420,7 @@ export function DashboardPage() {
     return (
       <>
         <b>{plan.quantity.toLocaleString()}개</b>
-        {isStale(plan, data.baseDate) ? (
+        {isStale(plan, data.runId) ? (
           <span className={styles.staleTag}>
             ⟲ {shortBasis(plan.basis)} 계산 기준
           </span>
@@ -453,6 +455,7 @@ export function DashboardPage() {
     })
   }
   function exportOrder() {
+    if (!plannedQuery.isSuccess) return
     downloadCsv(
       orderFileName(),
       toOrderCsv(
@@ -497,6 +500,15 @@ export function DashboardPage() {
   return (
     <div className={styles.page}>
       <BusyStrip baseDate={noResult ? undefined : data.baseDate} />
+      {plannedQuery.isError && (
+        <p role="alert">
+          내 입고량을 불러오지 못했어요. 주문 수량을 확인하기 전에는 엑셀을 받을
+          수 없어요.
+          <Button onClick={() => void plannedQuery.refetch()} variant="text">
+            다시 불러오기
+          </Button>
+        </p>
+      )}
       {(refreshRequired || data.freshness === 'stale-result') && (
         <aside className={styles.banner} data-state={data.freshness}>
           <span aria-hidden="true" className={styles.bannerMark}>
@@ -1012,7 +1024,9 @@ export function DashboardPage() {
               <Button onClick={() => setPicked(new Set())} variant="text">
                 선택 해제
               </Button>
-              <Button onClick={exportOrder}>엑셀로 받기</Button>
+              <Button disabled={!plannedQuery.isSuccess} onClick={exportOrder}>
+                엑셀로 받기
+              </Button>
             </div>
           )}
         </section>
