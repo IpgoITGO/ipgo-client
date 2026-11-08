@@ -1,3 +1,4 @@
+import { clearReceiptAttempts } from '../../features/receipts/model/attemptStorage'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type PropsWithChildren,
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // 화면의 로그인 상태만 지웁니다. 서버를 부르지 않으므로
   // 401 → 만료 신호 → 지우기가 서로를 다시 부르지 않습니다.
   const clearSession = useCallback(() => {
+    clearReceiptAttempts()
     queryClient.removeQueries({
       predicate: (query) => query.queryKey[0] !== ME_KEY[0],
     })

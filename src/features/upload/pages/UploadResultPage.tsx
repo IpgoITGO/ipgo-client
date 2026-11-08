@@ -1,3 +1,4 @@
+import { UploadReceiptSnapshot } from '../../receipts/components/UploadReceiptSnapshot'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -263,6 +264,7 @@ export function UploadResultPage() {
         </section>
       )}
 
+      <UploadReceiptSnapshot matching={data.receiptMatching} />
       {data.matchedReceipts.length > 0 && (
         <>
           <p className={styles.asideLabel}>따로 알려드려요</p>

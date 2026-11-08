@@ -1,3 +1,4 @@
+import { ReceiptCorrectionsPage } from '../../features/receipts/pages/ReceiptCorrectionsPage'
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 
 import { authRoutes } from '../../auth/routes'
@@ -30,6 +31,11 @@ export const routes: RouteObject[] = [
         element: <AppLayout />,
         children: [
           ...dashboardRoutes,
+          { path: '/receipt-corrections', element: <ReceiptCorrectionsPage /> },
+          {
+            path: '/receipt-corrections/:reviewId',
+            element: <ReceiptCorrectionsPage />,
+          },
           ...uploadRoutes,
           ...settingsRoutes,
           ...skuRoutes,
