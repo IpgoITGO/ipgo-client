@@ -1,3 +1,4 @@
+import { ReceiptCorrectionsLink } from '../../features/receipts/pages/ReceiptCorrectionsPage'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
@@ -85,6 +86,11 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
+          <ReceiptCorrectionsLink
+            className={({ isActive }) =>
+              isActive ? `${styles.link} ${styles.active}` : styles.link
+            }
+          />
         </nav>
         <div className={styles.account}>
           <NavLink

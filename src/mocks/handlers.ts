@@ -1,3 +1,4 @@
+import { receiptHandlers } from '../features/receipts/mocks/receiptHandlers'
 import { plannedQuantityHandlers } from '../features/sku/mocks/plannedQuantityHandlers'
 import { http, HttpResponse } from 'msw'
 
@@ -280,6 +281,7 @@ function isoFromToday(n: number) {
 const runPolls = new Map<number, number>()
 
 export const handlers = [
+  ...receiptHandlers,
   ...plannedQuantityHandlers,
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })

@@ -24,6 +24,11 @@ export type UploadFailureCode =
   'INVALID_SOURCE' | 'ENGINE_UNAVAILABLE' | 'INVALID_RESULT'
 
 export type UploadResult = {
+  receiptMatching?: {
+    status: string
+    issues: Array<{ productId: number; stockDate: string; reason: string }>
+  }
+
   asOfDate: string
   error?: { code: UploadFailureCode | string; message: string } | null
   matchedReceipts: Array<{
