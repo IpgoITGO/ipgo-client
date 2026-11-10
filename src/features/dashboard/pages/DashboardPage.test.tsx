@@ -486,7 +486,7 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('button', { name: '새 수불부 올리기' }),
     ).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('tab', { name: /계산 불가/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /계산 못 해요/ }))
     expect(screen.getByText('계산 못 한 상품은 없어요.')).toBeInTheDocument()
   })
 
@@ -499,8 +499,8 @@ describe('DashboardPage', () => {
     expect(need).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel')).toHaveTextContent('입고가 필요한 상품')
 
-    await user.click(screen.getByRole('tab', { name: /계산 불가/ }))
-    expect(screen.getByRole('tab', { name: /계산 불가/ })).toHaveAttribute(
+    await user.click(screen.getByRole('tab', { name: /계산 못 해요/ }))
+    expect(screen.getByRole('tab', { name: /계산 못 해요/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
@@ -511,6 +511,14 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('img', { name: '판매한 날 5일, 7일 필요' }),
     ).toBeInTheDocument()
+
+    // 검산 제외도 같은 칸에: 날짜·차이 먼저, 계산식 칸 이름(기초·기말)은 안 보인다
+    expect(screen.getByRole('tabpanel')).not.toHaveTextContent(/기초|기말/)
+
+    // 목록 위 "전체": 상태와 함께 모든 상품을 한 표로
+    await user.click(screen.getByRole('button', { name: /^전체/ }))
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('전체 상품')
+    expect(screen.getAllByText('계산 못 해요').length).toBeGreaterThan(1)
 
     await user.click(screen.getByRole('tab', { name: /지금 넣어야 해요/ }))
     await user.type(screen.getByLabelText('목록에서 상품 찾기'), '연어')

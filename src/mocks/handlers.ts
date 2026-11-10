@@ -660,8 +660,10 @@ export const handlers = [
         {
           productId: 10,
           skuName: '덴탈껌 M 5입',
-          date: null,
-          reason: '재고 숫자가 맞지 않아 계산에서 제외했어요.',
+          // 실제 서버 문장 모양(11/10 dev에서 본 것)
+          date: '2026-09-12',
+          reason:
+            '기초 34 + 입고 0 − 출고 3 + 조정 0 = 31개인데 기록된 기말은 34개예요',
         },
       ],
     })

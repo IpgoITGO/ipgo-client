@@ -79,7 +79,7 @@
 }
 .summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
   padding-top: var(--space-2);
 }
@@ -115,7 +115,8 @@
 }
 .box[aria-selected='true'] .boxLabel {
   color: var(--color-primary);
-  font-weight: 700;
+  /* 굵기를 바꾸면 글자 폭이 달라져 옆 칸이 흔들린다 → 획만 두껍게(11/10) */
+  -webkit-text-stroke: 0.4px currentColor;
 }
 .box[data-state='needed'] em {
   color: var(--color-danger);
@@ -487,7 +488,8 @@ tr[data-soon] .weeks i[data-on] {
 }
 .reasons > li {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) 2fr auto;
+  /* 버튼 칸 폭을 고정해 버튼이 없는 줄도 설명 시작선이 같게(11/10) */
+  grid-template-columns: minmax(140px, 1fr) 2fr 176px;
   /* 사유를 펼쳐도 상품 이름이 따라 내려가지 않게 위에 맞춤(11/6) */
   align-items: start;
   gap: var(--space-4);
@@ -839,4 +841,91 @@ tr[data-soon] .weeks i[data-on] {
   font-size: var(--text-caption);
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* 11/10: 카드 셋(계산 불가+검산 제외 → 계산 못 해요) + 목록 위 "전체" 줄 */
+.listTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: var(--space-4);
+  padding: 4px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-input);
+}
+.listTabs button {
+  padding: 6px 14px;
+  color: var(--color-text-3);
+  font-weight: 700;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.listTabs button b {
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.listTabs button[aria-pressed='true'] {
+  color: var(--color-text);
+  background: var(--color-card);
+  box-shadow: 0 1px 2px rgb(25 31 40 / 8%);
+}
+.allTable td:first-child a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.kind {
+  padding: 3px 10px;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+.kind[data-kind='need'] {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.kind[data-kind='safe'] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.kind[data-kind='na'] {
+  color: var(--color-text-3);
+  background: var(--color-primary-soft);
+}
+.reasonHead {
+  display: block;
+  color: var(--color-text);
+}
+.reasonTodo {
+  display: block;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-2);
+  background: var(--color-warning-bg);
+  border-radius: 8px;
+}
+/* 전체 표 칸 폭 고정(체크해도 흔들리지 않게) */
+.allTable {
+  table-layout: fixed;
+}
+.allPick {
+  width: 48px;
+}
+.allKind {
+  width: 140px;
+}
+.allDate {
+  width: 120px;
+}
+.allQty {
+  width: 120px;
+}
+.allTable input:disabled {
+  opacity: 0.35;
 }

@@ -10,7 +10,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
 
-import { calculationReason } from '../../../shared/lib/calculationReason'
+import {
+  calculationReason,
+  inventoryMismatch,
+} from '../../../shared/lib/calculationReason'
 import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
@@ -121,8 +124,11 @@ export type DashboardData = {
 }
 
 // 숫자 상자 = 아래 목록을 고르는 탭. 고른 상자는 주소(?tab=)에 남는다.
-const TABS = ['need', 'safe', 'na', 'ex'] as const
-type Tab = (typeof TABS)[number]
+// 11/10: 계산 불가·검산 제외를 "계산 못 해요" 한 장으로 합치고, 목록 위 줄에 "전체"를 둔다
+const TABS = ['need', 'safe', 'na'] as const
+type CardTab = (typeof TABS)[number]
+type Tab = CardTab | 'all'
+const LIST_TABS: Tab[] = ['all', 'need', 'safe', 'na']
 // 여유(소진일 − 오늘 − 리드타임)가 이 날수 이하면 "곧 넣어야 해요"
 const SOON_DAYS = 7
 
@@ -142,7 +148,7 @@ function SummaryCard({
   onSelect: () => void
   selected: boolean
   state: string
-  tab: Tab
+  tab: CardTab
   value: number
 }) {
   const shown = useCountUp(value)
@@ -213,15 +219,61 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 const PANEL_TITLE: Record<Tab, string> = {
   need: '입고가 필요한 상품',
   safe: '아직 괜찮은 상품',
-  na: '계산 불가',
-  ex: '검산 제외',
+  na: '계산 못 한 상품',
+  all: '전체 상품',
 }
 
 const PANEL_DESCRIPTION: Record<Tab, string> = {
   need: '오늘 기준 리드타임 안에 재고가 떨어질 상품이에요.',
   safe: '다음 입고 전에 재고가 버텨요. 소진일이 가까운 순이에요.',
-  na: '수불부는 정상이지만 아직 계산할 수 없는 상품이에요.',
-  ex: '재고 숫자가 맞지 않아 계산에서 뺐어요. 그 날짜가 든 수불부를 고쳐 다시 올려 주세요. 이전 달 자료의 오류도 포함돼요.',
+  na: '판매 기록이 부족하거나 수불부의 재고 숫자가 맞지 않아 계산하지 못했어요.',
+  all: '올린 수불부의 상품 전체예요. 급한 순으로 묶어 보여 줘요.',
+}
+
+const LIST_LABEL: Record<Tab, string> = {
+  all: '전체',
+  need: '지금 넣기',
+  safe: '괜찮아요',
+  na: '계산 못 해요',
+}
+const KIND_LABEL = { need: '지금 넣기', safe: '괜찮아요', na: '계산 못 해요' }
+
+// 2026-11-07 · 2026. 11. 7 → 11/7
+function slashDay(date: string) {
+  const m = /\d{4}\D+(\d{1,2})\D+(\d{1,2})/.exec(date)
+  return m ? `${Number(m[1])}/${Number(m[2])}` : date
+}
+
+// 계산 못 한 이유. 재고 숫자가 안 맞으면 날짜·차이를 먼저, 풀이와 고칠 일을 아래에(계산식은 안 보임)
+function ReasonLine({
+  item,
+}: {
+  item: { kind: 'na' | 'ex'; reason: string; date?: string }
+}) {
+  const mismatch = item.kind === 'ex' ? inventoryMismatch(item.reason) : null
+  if (mismatch) {
+    return (
+      <>
+        <strong className={styles.reasonHead}>
+          {item.date ? `${slashDay(item.date)} ` : ''}재고가{' '}
+          {Math.abs(mismatch.diff)}개 안 맞아요
+        </strong>
+        <span>{mismatch.explain}</span>
+        <small className={styles.reasonTodo}>{mismatch.todo}</small>
+      </>
+    )
+  }
+  return (
+    <>
+      {item.kind === 'ex' && item.date && (
+        <strong className={styles.reasonHead}>
+          {slashDay(item.date)} 재고 숫자가 안 맞아요
+        </strong>
+      )}
+      <span>{calculationReason(item.reason)}</span>
+      {item.kind === 'na' && <ReasonDetail reason={item.reason} />}
+    </>
+  )
 }
 
 function NoMatch({ search }: { search: string }) {
@@ -260,7 +312,11 @@ export function DashboardPage() {
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
   const tabParam = params.get('tab')
-  const tab: Tab = TABS.find((value) => value === tabParam) ?? 'need'
+  // 예전 주소 ?tab=ex 는 합친 "계산 못 해요"로
+  const tab: Tab =
+    tabParam === 'ex'
+      ? 'na'
+      : (LIST_TABS.find((value) => value === tabParam) ?? 'need')
   const query = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
@@ -274,7 +330,9 @@ export function DashboardPage() {
     queryKey: ['products', 'dashboard-safe'],
     queryFn: getAllProducts,
     enabled:
-      tab === 'safe' && query.data !== undefined && !query.data.safeItems,
+      (tab === 'safe' || tab === 'all') &&
+      query.data !== undefined &&
+      !query.data.safeItems,
   })
 
   function selectTab(next: Tab) {
@@ -294,7 +352,8 @@ export function DashboardPage() {
     const step = { ArrowRight: 1, ArrowLeft: TABS.length - 1 }[event.key]
     if (!step) return
     event.preventDefault()
-    const next = TABS[(TABS.indexOf(tab) + step) % TABS.length]
+    const at = tab === 'all' ? 0 : TABS.indexOf(tab)
+    const next = TABS[(at + step) % TABS.length]
     selectTab(next)
     document.getElementById(`dashboard-tab-${next}`)?.focus()
   }
@@ -390,14 +449,58 @@ export function DashboardPage() {
   }).length
   const shownNeed = items.filter(matches)
   const shownSafe = safeItems.filter(matches)
-  const reasonItems = tab === 'ex' ? data.excludedItems : data.unavailableItems
+  // 계산 못 한 상품: 판매 기록 부족(na) 먼저, 재고 숫자 안 맞음(ex) 다음
+  const reasonItems = [
+    ...data.unavailableItems.map((item) => ({ ...item, kind: 'na' as const })),
+    ...data.excludedItems.map((item) => ({ ...item, kind: 'ex' as const })),
+  ]
   const shownReasons = reasonItems.filter(matches)
   const tabCount: Record<Tab, number> = {
     need: data.summary.needed,
-    safe: data.summary.safe,
-    na: data.summary.unavailable,
-    ex: data.summary.excluded,
+    safe: data.safeItems ? safeItems.length : data.summary.safe,
+    na: data.summary.unavailable + data.summary.excluded,
+    all:
+      data.summary.needed +
+      (data.safeItems ? safeItems.length : data.summary.safe) +
+      data.summary.unavailable +
+      data.summary.excluded,
   }
+  // 전체: 지금 넣기 → 괜찮음 → 계산 못 함 순으로 한 표에
+  const allRows = [
+    ...items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      kind: 'need' as const,
+      date: item.stockoutDate,
+      quantity: item.quantity as number | null,
+    })),
+    ...safeItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      kind: 'safe' as const,
+      date: item.stockoutDate,
+      quantity: null,
+    })),
+    ...reasonItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      kind: 'na' as const,
+      date: '—',
+      quantity: null,
+    })),
+  ].filter(matches)
+  const allNeed = allRows.filter(
+    (row): row is typeof row & { id: string } =>
+      row.kind === 'need' && Boolean(row.id),
+  )
+  const naNote =
+    [
+      data.summary.unavailable > 0 &&
+        `판매 기록 부족 ${data.summary.unavailable}`,
+      data.summary.excluded > 0 && `재고 숫자 안 맞음 ${data.summary.excluded}`,
+    ]
+      .filter(Boolean)
+      .join(' · ') || '계산 못 한 상품이 없어요'
 
   // 발주 목록: 고른 상품의 수량·사입비 합계와 엑셀(CSV) 받기
   const pickedItems = items.filter((item) => picked.has(item.id))
@@ -604,17 +707,10 @@ export function DashboardPage() {
               ],
               [
                 'na',
-                '계산 불가',
-                data.summary.unavailable,
+                '계산 못 해요',
+                data.summary.unavailable + data.summary.excluded,
                 'unavailable',
-                '판매 기록이 부족해요',
-              ],
-              [
-                'ex',
-                '검산 제외',
-                data.summary.excluded,
-                'excluded',
-                '재고 숫자가 맞지 않아요',
+                naNote,
               ],
             ] as const
           ).map(([key, label, value, state, note]) => (
@@ -695,13 +791,35 @@ export function DashboardPage() {
         />
       ) : (
         <section
-          aria-labelledby={`dashboard-tab-${tab}`}
+          aria-labelledby={
+            tab === 'all' ? 'dashboard-list-all' : `dashboard-tab-${tab}`
+          }
           className={styles.panel}
           data-tab={tab}
           id="dashboard-list"
           role="tabpanel"
         >
-          <span aria-hidden="true" className={styles.notch} />
+          {tab !== 'all' && (
+            <span aria-hidden="true" className={styles.notch} />
+          )}
+          {/* 위 카드 셋 + "전체". 카드를 누르지 않아도 전체를 한 표로 본다(11/10) */}
+          <div
+            aria-label="목록 고르기"
+            className={styles.listTabs}
+            role="group"
+          >
+            {LIST_TABS.map((key) => (
+              <button
+                aria-pressed={tab === key}
+                id={`dashboard-list-${key}`}
+                key={key}
+                onClick={() => selectTab(key)}
+                type="button"
+              >
+                {LIST_LABEL[key]} <b>{tabCount[key].toLocaleString()}</b>
+              </button>
+            ))}
+          </div>
           <div className={styles.sectionHeader}>
             <div>
               <h2>
@@ -967,13 +1085,115 @@ export function DashboardPage() {
               </div>
             ))}
 
-          {(tab === 'na' || tab === 'ex') &&
+          {tab === 'all' &&
+            (allRows.length === 0 ? (
+              search ? (
+                <NoMatch search={search} />
+              ) : (
+                <p className={styles.none}>아직 상품이 없어요.</p>
+              )
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.allTable}>
+                  <colgroup>
+                    <col className={styles.allPick} />
+                    <col />
+                    <col className={styles.allKind} />
+                    <col className={styles.allDate} />
+                    <col className={styles.allQty} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th className={styles.pick}>
+                        <input
+                          aria-label="지금 넣을 상품 모두 고르기"
+                          checked={
+                            allNeed.length > 0 &&
+                            allNeed.every((row) => picked.has(row.id))
+                          }
+                          disabled={allNeed.length === 0}
+                          onChange={(event) =>
+                            setPicked((previous) => {
+                              const next = new Set(previous)
+                              allNeed.forEach((row) =>
+                                event.target.checked
+                                  ? next.add(row.id)
+                                  : next.delete(row.id),
+                              )
+                              return next
+                            })
+                          }
+                          type="checkbox"
+                        />
+                      </th>
+                      <th>상품</th>
+                      <th>상태</th>
+                      <th>예상 소진일</th>
+                      <th className={styles.num}>입고량</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allRows.map((row) => (
+                      // 줄 어디를 눌러도 상품 상세로(체크박스 칸만 고르기). 키보드·화면 읽기용으로 상품명은 링크
+                      <tr
+                        className={row.id ? styles.rowLink : undefined}
+                        data-picked={picked.has(row.id ?? '') || undefined}
+                        key={`${row.kind}-${row.id ?? row.name}`}
+                        onClick={
+                          row.id ? () => navigate(`/sku/${row.id}`) : undefined
+                        }
+                      >
+                        <td
+                          className={styles.pick}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {/* 발주서(엑셀)는 입고량이 있는 "지금 넣기" 줄만 고를 수 있다 */}
+                          <input
+                            aria-label={
+                              row.kind === 'need'
+                                ? `${row.name} 발주 목록에 넣기`
+                                : `${row.name}은 입고량이 없어 고를 수 없어요`
+                            }
+                            checked={picked.has(row.id ?? '')}
+                            disabled={row.kind !== 'need' || !row.id}
+                            onChange={() => row.id && togglePick(row.id)}
+                            type="checkbox"
+                          />
+                        </td>
+                        <td>
+                          {row.id ? (
+                            <Link to={`/sku/${row.id}`}>{row.name}</Link>
+                          ) : (
+                            <strong>{row.name}</strong>
+                          )}
+                        </td>
+                        <td>
+                          <span className={styles.kind} data-kind={row.kind}>
+                            {KIND_LABEL[row.kind]}
+                          </span>
+                        </td>
+                        <td>{row.date === '—' ? '—' : slashDay(row.date)}</td>
+                        <td className={styles.num}>
+                          {row.quantity == null
+                            ? '—'
+                            : `${(row.kind === 'need' && row.id
+                                ? orderQtyOf({
+                                    id: row.id,
+                                    quantity: row.quantity,
+                                  })
+                                : row.quantity
+                              ).toLocaleString()}개`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+          {tab === 'na' &&
             (reasonItems.length === 0 ? (
-              <p className={styles.none}>
-                {tab === 'na'
-                  ? '계산 못 한 상품은 없어요.'
-                  : '검산에서 뺀 상품은 없어요.'}
-              </p>
+              <p className={styles.none}>계산 못 한 상품은 없어요.</p>
             ) : shownReasons.length === 0 ? (
               <NoMatch search={search} />
             ) : (
@@ -988,17 +1208,9 @@ export function DashboardPage() {
                       )}
                     </div>
                     <div className={styles.reasonText}>
-                      {'date' in item &&
-                        typeof item.date === 'string' &&
-                        item.date && (
-                          <small className={styles.errorDate}>
-                            오류 자료 날짜 {item.date}
-                          </small>
-                        )}
-                      <span>{calculationReason(item.reason)}</span>
-                      <ReasonDetail reason={item.reason} />
+                      <ReasonLine item={item} />
                     </div>
-                    {tab === 'ex' && (
+                    {item.kind === 'ex' && (
                       <Button
                         onClick={() => navigate('/upload')}
                         variant="secondary"
@@ -1011,7 +1223,7 @@ export function DashboardPage() {
               </ul>
             ))}
 
-          {tab === 'need' && pickedItems.length > 0 && (
+          {(tab === 'need' || tab === 'all') && pickedItems.length > 0 && (
             <div
               aria-label="발주 목록"
               className={styles.orderBar}
