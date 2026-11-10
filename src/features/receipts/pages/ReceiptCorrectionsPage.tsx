@@ -4,13 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Link,
-  NavLink,
-  type NavLinkProps,
-  useParams,
-  useLocation,
-} from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/model/useAuth'
 import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -35,29 +29,6 @@ import {
 } from '../model/receiptApi'
 import styles from './ReceiptCorrectionsPage.module.css'
 
-export function ReceiptCorrectionsLink({
-  className,
-}: Pick<NavLinkProps, 'className'>) {
-  const { user, status } = useAuth()
-  const { pathname } = useLocation()
-  const query = useQuery({
-    queryKey: ['receipt-corrections', user?.email, 'summary', pathname],
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    queryFn: () => listReviews(),
-    enabled: status === 'authenticated',
-  })
-  return (
-    <NavLink className={className} to="/receipt-corrections">
-      입고 확인
-      {query.isError
-        ? ' (조회 필요)'
-        : query.data
-          ? ` (${query.data.items.length}${query.data.nextCursor !== null ? '건 이상' : '건'})`
-          : ''}
-    </NavLink>
-  )
-}
 function Warnings({ warnings }: { warnings: string[] }) {
   return warnings.length ? (
     <ul aria-label="확인할 사항">
