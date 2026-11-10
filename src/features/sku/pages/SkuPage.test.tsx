@@ -143,7 +143,7 @@ describe('SkuPage', () => {
     expect(screen.queryByText('서울 풀필먼트')).toBeNull()
     expect(screen.queryByText(/—일/)).toBeNull()
     expect(screen.queryByText('0원')).toBeNull()
-    // 사장님이 넣을 값: 리드타임·입고 단위 → 미입력
+    // 셀러가 넣을 값: 리드타임·입고 단위 → 미입력
     expect(screen.getAllByText('미입력').length).toBeGreaterThanOrEqual(2)
     // 자료가 모자란 값: 소진일·시작 재고·정확도 → 자료 부족
     expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(3)

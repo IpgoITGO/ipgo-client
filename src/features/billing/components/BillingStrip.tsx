@@ -8,7 +8,7 @@ import {
 } from '../model/billing'
 import styles from './BillingStrip.module.css'
 
-// 체험 끝·매달 결제 실패를 모든 화면 위 얇은 띠 한 줄로(#214, 11/5 사장님 — 카드 대신 Hiver·CommandBar 식).
+// 체험 끝·매달 결제 실패를 모든 화면 위 얇은 띠 한 줄로(#214, 11/5 — 카드 대신 Hiver·CommandBar 식).
 // 빨강은 점 하나뿐, 행동은 글자 링크 하나. 결제 화면에서는 띄우지 않는다.
 export function BillingStrip({ subscription }: { subscription: Subscription }) {
   const { pathname } = useLocation()

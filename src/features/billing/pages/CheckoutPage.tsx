@@ -117,7 +117,7 @@ export function CheckoutPage() {
             <b>{amount}원</b>
           </p>
         </section>
-        {/* 결제 뒤 할 일은 대시보드로(11/5 사장님 — 보관 비용은 요금제와 상관없어 뺌) */}
+        {/* 결제 뒤 할 일은 대시보드로(11/5 — 보관 비용은 요금제와 상관없어 뺌) */}
         <Button onClick={() => navigate('/dashboard')}>대시보드로 가기</Button>
         <Button onClick={() => navigate('/account')} variant="secondary">
           결제 내역 보기

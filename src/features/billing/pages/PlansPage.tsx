@@ -19,7 +19,7 @@ const md = (iso: string) =>
   monthDayKo(iso).replace('월 ', '/').replace('일', '')
 
 // 요금제(#186): 카드 3장. 세 카드가 같은 항목을 같은 줄에 두어(COMPARE) 무엇이 다른지 한눈에,
-// 추천은 이름 옆 작은 표시 + 노란 테두리(11/5 사장님 — 손그림 메모는 뺌).
+// 추천은 이름 옆 작은 표시 + 노란 테두리(11/5 — 손그림 메모는 뺌).
 // 위 상태 줄(#236): 원 D-day로 지금 상태와 체험이 끝나는 날을 먼저 보여 준다.
 export function PlansPage() {
   const navigate = useNavigate()

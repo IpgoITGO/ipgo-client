@@ -20,7 +20,7 @@ export type Plan = {
   recommended?: boolean
 }
 
-// 가격은 예시(11/5 사장님 승인 시안). 해외 발주 추천 앱(약 7만원~)보다 조금 아래.
+// 가격은 예시(11/5 승인 시안). 해외 발주 추천 앱(약 7만원~)보다 조금 아래.
 export const PLANS: Plan[] = [
   {
     id: 'trial',
@@ -65,11 +65,11 @@ export const PLANS: Plan[] = [
 
 export const TRIAL_DAYS = 14
 
-// 요금제 카드의 같은 줄(11/5 사장님 — 카드끼리 무엇이 다른지 같은 높이에서 보이게). 없는 건 null → "—"
+// 요금제 카드의 같은 줄(11/5 — 카드끼리 무엇이 다른지 같은 높이에서 보이게). 없는 건 null → "—"
 export const COMPARE: {
   label: string
   value: (plan: Plan) => string | null
-  // 체험과 유료가 갈리는 줄은 노랗게(11/5 사장님 — 왜 결제하는지 한 줄에)
+  // 체험과 유료가 갈리는 줄은 노랗게(11/5 — 왜 결제하는지 한 줄에)
   highlight?: boolean
 }[] = [
   {

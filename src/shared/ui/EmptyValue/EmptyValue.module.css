@@ -7,7 +7,7 @@
   border-radius: var(--radius-chip);
 }
 
-/* 사장님이 넣을 값: 눈에 띄게 노랑 */
+/* 셀러가 넣을 값: 눈에 띄게 노랑 */
 .tag[data-kind='unset'] {
   color: var(--color-warning);
   font-weight: 700;
