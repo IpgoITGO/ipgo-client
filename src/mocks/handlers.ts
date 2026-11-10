@@ -620,8 +620,9 @@ export const handlers = [
       notNeededItems: [
         {
           productId: 21,
-          skuName: '오리 큐브 100g',
-          skuBarcode: '8800272421300',
+          // 지금 넣기의 오리 큐브(8)와 같은 상품이 두 번 보이지 않게 다른 상품으로(11/10)
+          skuName: '치킨 져키 70g',
+          skuBarcode: '8800272421555',
           expectedShortageOn: isoFromToday(10),
           leadTimeDays: 6,
         },
