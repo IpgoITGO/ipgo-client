@@ -54,7 +54,9 @@ describe('내 계정', () => {
     await signInAsSeller(user)
     await user.click(await screen.findByRole('button', { name: /계정 메뉴/ }))
     await user.click(screen.getByRole('link', { name: '내 계정' }))
-    expect(await screen.findByText('12월 5일 · 49,000원')).toBeInTheDocument()
+    expect(
+      await screen.findByText('다음 결제 12월 5일 · 49,000원'),
+    ).toBeInTheDocument()
     expect(screen.getByText(/신용·체크카드/)).toBeInTheDocument()
     expect(screen.getByText(/•••• 4242/)).toBeInTheDocument()
 
@@ -84,6 +86,8 @@ describe('내 계정', () => {
     expect(
       screen.getByText('해지를 취소했어요. 지금처럼 계속 써요'),
     ).toBeInTheDocument()
-    expect(screen.getByText('12월 5일 · 49,000원')).toBeInTheDocument()
+    expect(
+      screen.getByText('다음 결제 12월 5일 · 49,000원'),
+    ).toBeInTheDocument()
   })
 })
