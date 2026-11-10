@@ -28,6 +28,20 @@ const raw = (accuracy: ProductDetail['accuracy']): ProductDetail => ({
 })
 
 describe('toSkuDetail', () => {
+  it('작년 출고의 실제 0은 보존하고 누락·null은 기록 없음으로 전달한다', () => {
+    const detail = raw(null)
+    detail.trend = [0, null, undefined, 120].map((value, i) => ({
+      date: `2026-10-0${i + 1}`,
+      closingQty: 10,
+      outboundQty: 3,
+      isValidObservation: true,
+      ...(value === undefined ? {} : { lastYearOutboundQty: value }),
+    }))
+    expect(
+      toSkuDetail(detail).history.map((day) => day.lastYearOutbound),
+    ).toEqual([0, null, null, 120])
+  })
+
   it('정확도 등급이 null이어도 깨지지 않고 등급 없음으로 바꾼다', () => {
     const detail = toSkuDetail(
       raw({

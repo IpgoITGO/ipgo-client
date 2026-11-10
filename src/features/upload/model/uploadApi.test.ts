@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { uploadFile } from './uploadApi'
+import { uploadFailureMessage, uploadFile } from './uploadApi'
 import { apiRequest } from '../../../shared/api/client'
 vi.mock('../../../shared/api/client', () => ({ apiRequest: vi.fn() }))
 describe('uploadFile 월별 서버 계약', () => {
@@ -17,5 +17,43 @@ describe('uploadFile 월별 서버 계약', () => {
       reader.readAsText(sent)
     })
     expect(text).toBe('original workbook bytes')
+  })
+})
+
+describe('업로드 실패 안내', () => {
+  it('입력 오류는 구체적 이유를 우선하고 빈 이유는 기존 안내로 대체한다', () => {
+    expect(
+      uploadFailureMessage({
+        code: 'INVALID_SOURCE',
+        message: '기존 안내',
+        reason: '  같은 창고인지 확인해 주세요.  ',
+      }),
+    ).toBe('같은 창고인지 확인해 주세요.')
+    expect(
+      uploadFailureMessage({
+        code: 'INVALID_SOURCE',
+        message: '기존 안내',
+        reason: '   ',
+      }),
+    ).toBe('기존 안내')
+    expect(uploadFailureMessage(null, '대체 안내')).toBe('대체 안내')
+  })
+
+  it('전월 연결 코드는 이유가 없어도 고칠 방법을 안내하고 서버 장애 이유는 숨긴다', () => {
+    expect(
+      uploadFailureMessage({
+        code: 'INVALID_SOURCE',
+        message: '기존 안내',
+        details: { reason: 'PREVIOUS_MONTH_MISMATCH' },
+      }),
+    ).toContain('같은 셀러·창고')
+    expect(
+      uploadFailureMessage({
+        code: 'ENGINE_UNAVAILABLE',
+        message: '잠시 뒤 다시 올려 주세요.',
+        reason: '내부 장애 문자열',
+        details: { reason: 'PREVIOUS_MONTH_MISMATCH' },
+      }),
+    ).toBe('잠시 뒤 다시 올려 주세요.')
   })
 })

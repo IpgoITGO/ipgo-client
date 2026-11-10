@@ -10,7 +10,10 @@ import {
   writeTrackedRun,
   writeTrackedUpload,
 } from './calculationStorage'
-import { getUploadResult } from '../../features/upload/model/uploadApi'
+import {
+  getUploadResult,
+  uploadFailureMessage,
+} from '../../features/upload/model/uploadApi'
 
 // 정제/계산을 재실행하지 않고 같은 C2만 조회한다. 확인 시간 초과는 계산 실패가 아니다.
 export function CalculationProvider({
@@ -131,8 +134,7 @@ export function CalculationProvider({
   if (upload !== null) {
     if (uploadStatus === 'FAILED') {
       phase = 'failed'
-      message =
-        uploadQuery.data?.error?.message ?? '수불부를 처리하지 못했어요.'
+      message = uploadFailureMessage(uploadQuery.data?.error)
     } else if (uploadQuery.isError) {
       phase = 'failed'
       message = '수불부 처리 상태를 확인하지 못했어요.'
