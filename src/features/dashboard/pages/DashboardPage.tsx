@@ -51,7 +51,7 @@ function StorageTotal({
   const { total, missing, counted } = storageCostTotal(items, settings)
   if (settings.ratePerCbm == null || counted === 0) {
     return (
-      // 아직 안 넣었으면 문장 대신 누를 곳이 보이는 작은 칸 하나(11/5 사장님 — 줄글은 지저분하고 안 눌림)
+      // 아직 안 넣었으면 문장 대신 누를 곳이 보이는 작은 칸 하나(11/5 — 줄글은 지저분하고 안 눌림)
       <Link className={styles.storageCta} to={STORAGE_LINK}>
         <svg aria-hidden="true" viewBox="0 0 24 24">
           <path d="M3 8l9-5 9 5v8l-9 5-9-5z" />

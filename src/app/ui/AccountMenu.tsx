@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import styles from './AppLayout.module.css'
 
 // 위쪽 오른쪽 이름을 누르면 여는 작은 메뉴(#187): 내 계정 · 요금제·결제 · 로그아웃.
-// 한 달에 한두 번 볼 화면이라 탭을 늘리지 않고 여기에 모았다(11/5 사장님 승인 시안).
+// 한 달에 한두 번 볼 화면이라 탭을 늘리지 않고 여기에 모았다(11/5 승인 시안).
 export function AccountMenu({
   name,
   company,

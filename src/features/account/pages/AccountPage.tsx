@@ -29,7 +29,7 @@ import styles from './AccountPage.module.css'
 const NEAR = 0.8
 
 // 내 계정(#187): 들어오는 이유 대부분이 "얼마나 썼나·언제 결제되나"라 그걸 맨 위에,
-// 결제 수단 → 결제 내역 → 계정 → 맨 아래 작은 글씨로 해지(11/5 사장님 승인 시안).
+// 결제 수단 → 결제 내역 → 계정 → 맨 아래 작은 글씨로 해지(11/5 승인 시안).
 export function AccountPage() {
   const { user } = useAuth()
   const [params] = useSearchParams()
