@@ -1565,7 +1565,7 @@ export function SkuPage() {
                     <EmptyValue kind="short" />
                   )}
                   {daysPast > 0 && (
-                    <small className={styles.outValue}>{daysPast}일 지남</small>
+                    <small className={styles.daysPast}>{daysPast}일 지남</small>
                   )}
                 </dd>
               </div>
