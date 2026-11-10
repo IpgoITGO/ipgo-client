@@ -1,4 +1,5 @@
 import { resetPlannedQuantitiesMock } from '../features/sku/mocks/plannedQuantityHandlers'
+import { resetStorageCostMock } from '../features/settings/mocks/storageCostHandlers'
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
@@ -20,6 +21,7 @@ afterEach(() => {
   resetAuthMock()
   resetUploadMock()
   resetPlannedQuantitiesMock()
+  resetStorageCostMock()
   resetPlannedReceiptsMock()
   resetCsrfToken()
   setAccessToken(null)

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { login } from '../../../auth/api/authApi'
+
 import {
   cbmOf,
   formatCbm,
@@ -7,14 +9,17 @@ import {
   loadStorageSettings,
   monthlyStorageCost,
   positiveNumber,
-  saveStorageSettings,
+  saveBox,
+  saveRate,
   storageCostTotal,
 } from './storageCost'
 
 const blanket = { width: 20, depth: 20, height: 30 }
 
 describe('보관 비용', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+  })
 
   it('20×20×30cm 상자는 0.012 CBM', () => {
     expect(formatCbm(cbmOf(blanket))).toBe('0.012')
@@ -49,11 +54,22 @@ describe('보관 비용', () => {
     expect(positiveNumber('abc')).toBeNull()
   })
 
-  it('저장한 값을 다시 읽는다', () => {
-    saveStorageSettings({ ratePerCbm: 45000, boxes: { '1': blanket } })
-    expect(loadStorageSettings()).toEqual({
+  it('서버에 저장한 요율·상자를 다시 읽고, 지우면 사라진다', async () => {
+    expect(await loadStorageSettings()).toEqual({ ratePerCbm: null, boxes: {} })
+    await saveRate(45000)
+    await saveBox('1', blanket)
+    expect(await loadStorageSettings()).toEqual({
       ratePerCbm: 45000,
       boxes: { '1': blanket },
+    })
+    await saveRate(null)
+    await saveBox('1', null)
+    expect(await loadStorageSettings()).toEqual({ ratePerCbm: null, boxes: {} })
+  })
+
+  it('0 이하 상자는 서버가 400으로 거절한다', async () => {
+    await expect(saveBox('1', { ...blanket, depth: 0 })).rejects.toMatchObject({
+      status: 400,
     })
   })
 })

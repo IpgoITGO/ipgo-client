@@ -68,8 +68,8 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 로그인 유지와는 관계없습니다. 회원가입은 단계별 화면이라 `/signup`에서 새로고침하면 `/login`으로
 돌아갑니다(`src/main.tsx`).
 
-입고 조건의 "보관 비용"(창고 보관 요율, 상품별 상자 크기 cm)은 서버 API가 생기기 전까지 브라우저
-`localStorage`(`ipgo:storage-cost`)에만 저장합니다. 다른 기기·브라우저와 공유되지 않으며, 한 달
+입고 조건의 "보관 비용"(창고 보관 요율, 상품별 상자 크기 cm)은 서버에 저장합니다(`GET·PUT
+/api/settings/storage-cost`, `PUT·DELETE /api/products/{productId}/box`). 칸을 벗어나면 바로 저장하며, 한 달
 보관비는 `상자 CBM × 권장 입고량 × 요율`로 화면에서 계산합니다(`src/features/settings/model/storageCost.ts`).
 
 요금제(`/plans`)와 결제(`/checkout?plan=seller|business`)는 요구사항 밖 추가 기능이며 서버 API가

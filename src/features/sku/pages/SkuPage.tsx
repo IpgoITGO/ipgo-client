@@ -21,7 +21,7 @@ import { monthDay } from '../../dashboard/model/dashboardApi'
 import {
   cbmOf,
   formatCbm,
-  loadStorageSettings,
+  useStorageSettings,
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
@@ -1270,6 +1270,7 @@ function CountUp({ value }: { value: number }) {
 export function SkuPage() {
   const { skuId = '' } = useParams()
   const navigate = useNavigate()
+  const storage = useStorageSettings()
   const query = useQuery({
     queryKey: ['sku', skuId],
     queryFn: () => getSkuDetail(skuId),
@@ -1312,7 +1313,6 @@ export function SkuPage() {
 
   const data = query.data
   // 보관 비용(#185): 입고 조건에서 넣은 상자 크기·요율로 권장 수량을 한 달 둘 때
-  const storage = loadStorageSettings()
   const storageBox = storage.boxes[skuId]
   const storageCost = monthlyStorageCost(
     storageBox,
