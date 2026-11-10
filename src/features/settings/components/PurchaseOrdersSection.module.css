@@ -117,18 +117,6 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
 }
-.modal aside {
-  padding: var(--space-4);
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-radius: var(--radius-input);
-}
-.actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
 @media (max-width: 640px) {
   .header,
   .fields {
@@ -161,4 +149,222 @@
   font-weight: 700;
   background: var(--color-danger-bg);
   border-radius: var(--radius-input);
+}
+
+/* 11/10 팝업 A: 제목 줄 오른쪽 ×, 바닥 버튼 줄(왼쪽 발주 취소 · 오른쪽 저장), 닫기 버튼 없음 */
+.modalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px 0 0;
+  color: var(--color-text-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+.close:hover {
+  color: var(--color-text);
+  background: var(--color-primary-soft);
+}
+.close svg,
+.rowClear svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.cancelOrder {
+  margin-right: auto;
+  padding: var(--space-2) 0;
+  color: var(--color-danger);
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.cancelOrder[data-confirm] {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-input);
+}
+.cancelOrder:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 상품 칸 하나 + 아래 후보 목록(떠 있어서 아래 칸을 밀지 않는다) */
+.combo {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+}
+.combo > label {
+  font-weight: 700;
+}
+.options {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% - 2px);
+  right: 0;
+  left: 0;
+  max-height: 280px;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  box-shadow: 0 8px 20px rgb(25 31 40 / 10%);
+}
+.option,
+.optionEmpty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+}
+.option {
+  cursor: pointer;
+}
+.option[aria-selected='true'] {
+  background: var(--color-primary-soft);
+}
+.optionEmpty {
+  color: var(--color-text-3);
+}
+.optionName {
+  display: grid;
+  min-width: 0;
+}
+.optionName small {
+  color: var(--color-text-3) !important;
+  font-size: var(--text-caption);
+}
+.optionMeta {
+  margin-left: auto;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+/* 수량: 단위를 칸 안에, 위아래 화살표 없음(입고 조건 칸과 같게) */
+.qty {
+  max-width: 240px;
+}
+.unitField {
+  position: relative;
+  display: block;
+}
+.unitField input {
+  padding-right: 40px !important;
+  text-align: right;
+  appearance: textfield;
+}
+.unitField input::-webkit-inner-spin-button,
+.unitField input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+.unitField b {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  color: var(--color-text-3);
+  font-weight: 500;
+  transform: translateY(-50%);
+}
+.dateLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+.dateLabel > span {
+  font-weight: 700;
+}
+.dateLabel small {
+  color: var(--color-text-3) !important;
+  font-size: var(--text-caption);
+}
+
+/* 목록: 칸 폭 고정, 수정 옆 선만 있는 ×, 도착 완료 줄은 옅게 */
+.tableWrap table {
+  table-layout: fixed;
+}
+.qtyCol {
+  width: 88px;
+}
+.dateCol {
+  width: 200px;
+}
+.statusCol {
+  width: 190px;
+}
+.actCol {
+  width: 132px;
+}
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+.rowClear {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+}
+.rowClear:hover,
+.rowClear:focus-visible {
+  color: var(--color-danger);
+}
+.rowClear:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+tr[data-arrived] td {
+  color: var(--color-text-3);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .qty {
+    max-width: none;
+  }
+}
+.nowrap {
+  white-space: nowrap;
 }

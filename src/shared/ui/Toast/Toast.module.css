@@ -108,3 +108,18 @@
     transform: translateX(16px);
   }
 }
+
+/* 알림 안 버튼(되돌리기): 노란 밑줄 글자. 칸 크기를 바꾸지 않게 테두리 없이 */
+.action {
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 1rem;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
