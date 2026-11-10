@@ -21,7 +21,7 @@ import { useCalcLock } from '../../billing/model/useCalcLock'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
 import {
-  loadStorageSettings,
+  useStorageSettings,
   storageCostTotal,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
@@ -47,7 +47,7 @@ function StorageTotal({
 }: {
   items: Array<{ id: string; quantity: number | null }>
 }) {
-  const settings = loadStorageSettings()
+  const settings = useStorageSettings()
   const { total, missing, counted } = storageCostTotal(items, settings)
   if (settings.ratePerCbm == null || counted === 0) {
     return (

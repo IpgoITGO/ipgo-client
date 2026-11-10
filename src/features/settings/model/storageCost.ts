@@ -1,6 +1,8 @@
 // 보관 비용(Should). 상자 크기(cm)와 창고 보관 요율(원/CBM·월)로 한 달 보관비를 보여 준다.
-// ponytail: 서버 API가 아직 없어 이 브라우저에만 저장한다(기기·계정 사이 공유 안 됨).
-// 서버에 입고 조건 칸이 생기면 load/save만 API 호출로 바꾸면 된다(#185).
+// 서버 저장(server #111·#132): 요율은 GET/PUT /settings/storage-cost, 상자는 PUT/DELETE /products/{id}/box.
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '../../../auth/model/useAuth'
+import { apiRequest } from '../../../shared/api/client'
 
 export type Box = { width: number; depth: number; height: number }
 
@@ -11,27 +13,52 @@ export type StorageSettings = {
   boxes: Record<string, Box>
 }
 
-const KEY = 'ipgo:storage-cost'
 const EMPTY: StorageSettings = { ratePerCbm: null, boxes: {} }
+export const storageKey = (owner: string | undefined) =>
+  ['storage-cost', owner] as const
 
-export function loadStorageSettings(): StorageSettings {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return EMPTY
-    const parsed = JSON.parse(raw) as Partial<StorageSettings>
-    return { ratePerCbm: parsed.ratePerCbm ?? null, boxes: parsed.boxes ?? {} }
-  } catch {
-    return EMPTY
+export async function loadStorageSettings(
+  signal?: AbortSignal,
+): Promise<StorageSettings> {
+  const response = await apiRequest<{
+    ratePerCbm: number | null
+    boxes: Array<Box & { productId: number }>
+  }>('/settings/storage-cost', { signal })
+  return {
+    ratePerCbm: response.ratePerCbm ?? null,
+    boxes: Object.fromEntries(
+      (response.boxes ?? []).map(({ productId, width, depth, height }) => [
+        String(productId),
+        { width, depth, height },
+      ]),
+    ),
   }
 }
 
-export function saveStorageSettings(settings: StorageSettings) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(settings))
-    return true
-  } catch {
-    return false
-  }
+export async function saveRate(ratePerCbm: number | null) {
+  await apiRequest('/settings/storage-cost', {
+    method: 'PUT',
+    body: JSON.stringify({ ratePerCbm }),
+  })
+}
+
+export async function saveBox(productId: string, box: Box | null) {
+  const path = `/products/${encodeURIComponent(productId)}/box`
+  if (!box) await apiRequest<void>(path, { method: 'DELETE' })
+  else await apiRequest(path, { method: 'PUT', body: JSON.stringify(box) })
+}
+
+export function useStorageQuery() {
+  const { user, status } = useAuth()
+  return useQuery({
+    queryKey: storageKey(user?.email),
+    queryFn: ({ signal }) => loadStorageSettings(signal),
+    enabled: status === 'authenticated',
+  })
+}
+// 못 불러오면 빈 값으로(보관비는 선택 항목이라 화면을 막지 않는다)
+export function useStorageSettings() {
+  return useStorageQuery().data ?? EMPTY
 }
 
 // 1,000,000 cm³ = 1 CBM(m³)

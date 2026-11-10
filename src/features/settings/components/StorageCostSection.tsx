@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
@@ -5,10 +6,12 @@ import {
   type Box,
   cbmOf,
   formatCbm,
-  loadStorageSettings,
   positiveNumber,
-  saveStorageSettings,
+  saveBox,
+  saveRate,
   STORAGE_ANCHOR,
+  type StorageSettings,
+  useStorageQuery,
   withCommas,
 } from '../model/storageCost'
 import styles from '../pages/SettingsPage.module.css'
@@ -22,8 +25,27 @@ const SIDES = [
 ] as const
 
 // 보관 비용(#185). 계산을 다시 돌릴 일이 아니라서 "확인하고 계산하기"와 따로, 칸을 벗어나면 바로 저장한다.
+// 칸은 처음 값(defaultValue)으로 그리므로 서버 값을 받은 뒤에 연다. 못 받으면 빈 칸으로(선택 항목이라 막지 않음).
 export function StorageCostSection({ products }: { products: Product[] }) {
-  const [settings, setSettings] = useState(loadStorageSettings)
+  const query = useStorageQuery()
+  if (!query.data && !query.isError) return null
+  return (
+    <StorageCostForm
+      initial={query.data ?? { ratePerCbm: null, boxes: {} }}
+      products={products}
+    />
+  )
+}
+
+function StorageCostForm({
+  initial,
+  products,
+}: {
+  initial: StorageSettings
+  products: Product[]
+}) {
+  const client = useQueryClient()
+  const [settings, setSettings] = useState(initial)
   const [drafts, setDrafts] = useState<Record<string, Partial<Box>>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
@@ -69,24 +91,37 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     })
   }
 
-  function commit(next: typeof settings, label: string) {
+  // 화면은 바로 바꾸고, 서버 저장 결과를 한 줄로 알린다. 끝나면 대시보드·상품 상세가 새 값을 다시 읽게 한다.
+  function commit(
+    next: StorageSettings,
+    label: string,
+    save: Promise<unknown>,
+  ) {
     setSettings(next)
-    setNotice(
-      saveStorageSettings(next)
-        ? `✓ ${label} 저장했어요`
-        : '이 브라우저에 저장하지 못했어요',
+    setNotice('')
+    save.then(
+      () => setNotice(`✓ ${label} 저장했어요`),
+      () => setNotice(`${label} 저장하지 못했어요. 잠시 뒤 다시 넣어 주세요`),
     )
+    void save
+      .catch(() => {})
+      .finally(() => client.invalidateQueries({ queryKey: ['storage-cost'] }))
   }
 
-  function saveRate(text: string) {
+  function onRate(text: string) {
     if (text.trim() === '') {
       setError('rate', null)
-      return commit({ ...settings, ratePerCbm: null }, '보관 요율')
+      return commit(
+        { ...settings, ratePerCbm: null },
+        '보관 요율',
+        saveRate(null),
+      )
     }
     const value = positiveNumber(text)
     if (value == null) return setError('rate', '0보다 큰 숫자로 넣어 주세요')
     setError('rate', null)
-    commit({ ...settings, ratePerCbm: Math.round(value) }, '보관 요율')
+    const rate = Math.round(value)
+    commit({ ...settings, ratePerCbm: rate }, '보관 요율', saveRate(rate))
   }
 
   function saveSide(product: Product, side: keyof Box, text: string) {
@@ -107,7 +142,11 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     const boxes = { ...settings.boxes }
     if (complete) boxes[key] = draft as Box
     else delete boxes[key]
-    commit({ ...settings, boxes }, product.name)
+    commit(
+      { ...settings, boxes },
+      product.name,
+      saveBox(key, complete ? (draft as Box) : null),
+    )
   }
 
   const bump = (key: string) =>
@@ -127,8 +166,15 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     })
     setError(key, null)
     setSettings({ ...settings, boxes })
-    saveStorageSettings({ ...settings, boxes })
     setNotice('')
+    if (box)
+      void saveBox(key, null).then(
+        () => client.invalidateQueries({ queryKey: ['storage-cost'] }),
+        () =>
+          setNotice(
+            `${product.name} 지우지 못했어요. 잠시 뒤 다시 눌러 주세요`,
+          ),
+      )
     setUndo({ key, name: product.name, box, draft })
     bump(key)
   }
@@ -138,7 +184,9 @@ export function StorageCostSection({ products }: { products: Product[] }) {
     const boxes = { ...settings.boxes }
     if (undo.box) boxes[undo.key] = undo.box
     if (undo.draft) setDrafts((prev) => ({ ...prev, [undo.key]: undo.draft! }))
-    commit({ ...settings, boxes }, undo.name)
+    // 세 칸이 다 찬 상자만 서버에 있었으니 그것만 되살린다(덜 채운 칸은 화면에만)
+    if (undo.box)
+      commit({ ...settings, boxes }, undo.name, saveBox(undo.key, undo.box))
     bump(undo.key)
     setUndo(null)
   }
@@ -184,7 +232,7 @@ export function StorageCostSection({ products }: { products: Product[] }) {
               defaultValue={settings.ratePerCbm?.toLocaleString('ko-KR') ?? ''}
               id="storage-rate"
               inputMode="numeric"
-              onBlur={(event) => saveRate(event.target.value)}
+              onBlur={(event) => onRate(event.target.value)}
               onChange={(event) => {
                 event.target.value = withCommas(event.target.value)
               }}

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
+import { login } from '../../../auth/api/authApi'
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { RouteToast } from '../../../app/ui/RouteToast'
@@ -124,6 +125,7 @@ describe('SettingsPage', () => {
   }
 
   it('보관 비용: #storage-cost로 오면 접힌 칸이 펼쳐진다', async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
     render(
       <AppProviders>
         <MemoryRouter initialEntries={['/settings#storage-cost']}>
@@ -141,7 +143,7 @@ describe('SettingsPage', () => {
   })
 
   it('보관 비용: 상자 cm를 다 넣으면 CBM이 보이고, 0은 막고, 다시 열어도 남는다', async () => {
-    localStorage.clear()
+    await login({ email: 'seller@a.com', password: 'pass1234' })
     const user = userEvent.setup()
     const first = renderSettings()
     const width = await screen.findByLabelText('덴탈껌 S 10입 상자 가로')
@@ -171,7 +173,7 @@ describe('SettingsPage', () => {
   })
 
   it('보관 비용: 줄 끝 ×로 그 줄 세 칸을 한 번에 지우고, 되돌리기로 되살린다', async () => {
-    localStorage.clear()
+    await login({ email: 'seller@a.com', password: 'pass1234' })
     const user = userEvent.setup()
     renderSettings()
     await user.type(
