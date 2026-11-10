@@ -75,6 +75,7 @@ export type ProductDetail = {
     date: string
     closingQty: number
     outboundQty: number
+    lastYearOutboundQty?: number | null
     isValidObservation: boolean
   }> | null
 }
@@ -107,6 +108,7 @@ export type SkuDetail = {
     day: string
     inventory: number
     outbound: number
+    lastYearOutbound: number | null
   }>
   // 기획서: 평가로 정한 기본 방식을 쓰고, 그 방식을 못 쓰는 상품만 다른 방식으로 대체한다.
   method: { applied: 'A' | 'B'; fallback: boolean; reason: string } | null
@@ -180,6 +182,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
       day: day.date,
       inventory: day.closingQty,
       outbound: day.outboundQty,
+      lastYearOutbound: day.lastYearOutboundQty ?? null,
     })),
     method: result?.method
       ? {
