@@ -707,7 +707,7 @@ export const handlers = [
     const isUnavailable = id === 'new-product'
     const isReference = id === 'reference-product'
     const isFallback = id === 'fallback-product'
-    // 추정 시작 재고 0 → 엔진이 소진일을 오늘+1로 눌러 둔 경우(#234)
+    // 추정 시작 재고 0 → 엔진이 이미 지난 소진일을 실제 날짜로 준 경우(ai #76)
     const isAlreadyOut = id === 'already-out'
     const days = [
       ['2026-09-01', 45, 4],
@@ -729,7 +729,7 @@ export const handlers = [
         isUnavailable || isEmpty
           ? null
           : isAlreadyOut
-            ? isoFromToday(1)
+            ? isoFromToday(-3)
             : needed
               ? isoFromToday(needed.shortage)
               : '2026-10-22',

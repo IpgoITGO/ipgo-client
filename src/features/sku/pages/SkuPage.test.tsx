@@ -218,12 +218,11 @@ describe('재고 세 칸 · 이미 바닥났을 수 있어요 (#234)', () => {
     expect(line).not.toHaveTextContent(/예상 출고/)
   })
 
-  it('추정 시작 재고 0 + 소진일 내일이면 날짜 대신 "이미 바닥"과 기록 기준을 보여 준다', async () => {
-    today('2026-10-20')
+  it('소진일이 지났으면 엔진 날짜 그대로 두고 옆에 "N일 지남"을 붙인다(ai #76)', async () => {
     renderSku('/sku/already-out')
 
     await flowLine()
-    expect(screen.getByText('이미 바닥')).toBeInTheDocument()
-    expect(screen.getByText('10/14 기록 기준')).toBeInTheDocument()
+    expect(screen.getByText('3일 지남')).toBeInTheDocument()
+    expect(screen.queryByText('이미 바닥')).not.toBeInTheDocument()
   })
 })

@@ -1277,6 +1277,15 @@
 }
 
 /* 보관 비용 풀이(#185): 숫자 아래 작은 한 줄 */
+/* 지난 소진일 아래 "N일 지남"(ai #76): 날짜와 붙어 읽히지 않게 아랫줄로 */
+.daysPast {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption, 12px);
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
 .costWork {
   display: block;
   margin-top: 2px;
