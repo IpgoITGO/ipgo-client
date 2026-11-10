@@ -4,13 +4,29 @@ import { describe, expect, it } from 'vitest'
 import { type SkuDetail } from '../model/skuApi'
 import { AccuracyCard } from './SkuPage'
 
+const point = (
+  date: string,
+  outbound: number,
+  predictedOutbound: number,
+  covered = true,
+) => ({
+  date,
+  outbound,
+  predictedOutbound,
+  covered,
+})
+
 const accuracy: NonNullable<SkuDetail['accuracy']> = {
   grade: 'high',
-  coverSuccess: 1,
-  coverTrials: 1,
-  errorRate: 0,
+  coverSuccess: 2,
+  coverTrials: 3,
+  errorRate: 12,
   range: null,
-  history: [{ date: '2026-05-01', outbound: 13, predictedOutbound: 13 }],
+  history: [
+    point('2026-09-01', 12, 13),
+    point('2026-09-08', 19, 15, false),
+    point('2026-09-15', 14, 14),
+  ],
   evaluation: {
     status: 'AVAILABLE',
     reason: null,
@@ -23,22 +39,42 @@ const accuracy: NonNullable<SkuDetail['accuracy']> = {
   },
 }
 
-describe('AccuracyCard 과거 재생 이력', () => {
-  it('평가 출처와 H일 합계를 밝히고 연도 있는 이력을 그린다', () => {
+describe('AccuracyCard 지난 예측 맞춰 보기', () => {
+  it('숫자 두 개를 각자의 그래프로 풀고, 기간은 실제 기준일로 짧게 밝힌다', () => {
     render(<AccuracyCard accuracy={accuracy} />)
     expect(
-      screen.getByText(/과거 자료 재생 · 정책 조정 구간/),
-    ).toHaveTextContent('10일 출고 합계')
-    expect(
-      screen.getByText(/과거 자료 재생 · 정책 조정 구간/),
-    ).toHaveTextContent('당시 발행한 예측의 실측 성과는 아니에요')
-    expect(screen.getByText('2026-05-01')).toBeInTheDocument()
-    expect(
-      screen.getByRole('group', { name: '그래프 범례' }),
+      screen.getByText(/9\/1~9\/15 · 3번 · 매번 그날부터 10일 동안/),
     ).toBeInTheDocument()
+    expect(screen.getByText('67%')).toBeInTheDocument()
+    expect(
+      screen.getByText('3번 중 2번 버텼어요 · 9/8 품절'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('±12%')).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: '지난 예측과 실제 출고, 버텼는지' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: '지난 예측이 빗나간 정도' }),
+    ).toBeInTheDocument()
+    // 엔진 용어 문단과 작은 척도는 없다
+    expect(screen.queryByText(/정책 조정 구간|과거 자료 재생/)).toBeNull()
+    expect(screen.queryByText('2026-09-01')).toBeNull()
   })
-  it('표본이 없으면 안내만 보여주고 그래프를 만들지 않는다', () => {
-    render(
+
+  it('품절 주는 실제 막대와 날짜를 흙빨강으로, 15% 넘게 빗나간 주에는 비율을 적는다', () => {
+    render(<AccuracyCard accuracy={accuracy} />)
+    const cover = screen.getByRole('img', {
+      name: '지난 예측과 실제 출고, 버텼는지',
+    })
+    expect(cover.querySelectorAll('rect[data-out]')).toHaveLength(1)
+    expect(cover).toHaveTextContent('품절')
+    const miss = screen.getByRole('img', { name: '지난 예측이 빗나간 정도' })
+    expect(miss).toHaveTextContent('+27%')
+    expect(miss).not.toHaveTextContent('-8%')
+  })
+
+  it('맞춰 본 자료가 없으면 이유만 한 줄로 두고 그래프를 만들지 않는다', () => {
+    const view = render(
       <AccuracyCard
         accuracy={{
           ...accuracy,
@@ -47,13 +83,11 @@ describe('AccuracyCard 과거 재생 이력', () => {
         }}
       />,
     )
-    expect(screen.getByText(/비교할 유효한 자료가 없어/)).toBeInTheDocument()
     expect(
-      screen.queryByRole('group', { name: '그래프 범례' }),
-    ).not.toBeInTheDocument()
-  })
-  it('평가 미실행과 구버전 기록 없음을 구분한다', () => {
-    const view = render(
+      screen.getByText(/맞춰 볼 수 있는 지난 자료가 없어/),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('img')).toBeNull()
+    view.rerender(
       <AccuracyCard
         accuracy={{
           ...accuracy,
@@ -62,47 +96,31 @@ describe('AccuracyCard 과거 재생 이력', () => {
         }}
       />,
     )
-    expect(
-      screen.getByText(/재생 평가를 수행하지 않았어요/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/맞춰 보기를 하지 않았어요/)).toBeInTheDocument()
     view.rerender(
       <AccuracyCard
         accuracy={{ ...accuracy, history: [], evaluation: null }}
       />,
     )
-    expect(
-      screen.getByText(/저장된 과거 재생 이력이 없어요/),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('group', { name: '그래프 범례' }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText(/맞춰 보기 자료가 아직 없어요/)).toBeInTheDocument()
   })
-  it('이력이 한 건이어도 실제·예측 점을 차트 중앙에 표시한다', () => {
-    render(<AccuracyCard accuracy={accuracy} />)
-    const graph = screen.getByRole('img', {
-      name: '과거 실제 출고량과 예측 출고량 비교 그래프',
-    })
-    const [actual, predicted] = graph.querySelectorAll('circle')
-    expect(graph.querySelectorAll('circle')).toHaveLength(2)
-    expect(actual?.tagName).toBe('circle')
-    expect(predicted?.tagName).toBe('circle')
-    expect(actual).toHaveAttribute('cx', '312')
-    expect(predicted).toHaveAttribute('cx', '312')
-  })
-  it('실제 출고 합계가 0이어도 커버 평가는 유지하고 WAPE 미산출 이유를 보여준다', () => {
+
+  it('실제 출고 합계가 0이어도 버틴 비율은 두고 빗나간 정도를 못 내는 이유를 보여 준다', () => {
     render(
       <AccuracyCard
         accuracy={{
           ...accuracy,
+          coverSuccess: 1,
+          coverTrials: 1,
           errorRate: null,
-          history: [{ date: '2026-05-01', outbound: 0, predictedOutbound: 0 }],
+          history: [point('2026-09-01', 0, 0)],
         }}
       />,
     )
     expect(screen.getByText('정확도 높음')).toBeInTheDocument()
-    expect(
-      screen.getByText(/실제 출고가 0이라 예측 오차 비율을 계산할 수 없어요/),
-    ).toBeInTheDocument()
     expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(
+      screen.getByText(/실제 출고가 0이라 빗나간 정도를 계산할 수 없어요/),
+    ).toBeInTheDocument()
   })
 })

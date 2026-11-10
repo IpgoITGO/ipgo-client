@@ -103,6 +103,7 @@ it('서버 K1의 이력과 평가 구간을 정수 표시값 그대로 변환한
     date: '2026-05-01',
     outbound: 13,
     predictedOutbound: 13,
+    covered: true,
   })
   expect(detail.accuracy?.evaluation).toMatchObject({
     status: 'AVAILABLE',
