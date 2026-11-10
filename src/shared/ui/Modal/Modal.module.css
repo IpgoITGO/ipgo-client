@@ -15,9 +15,15 @@
   max-height: calc(100vh - 40px);
   padding: 36px;
   overflow: auto;
+  /* 안이 길어도 굴리기는 되되 스크롤 막대는 숨긴다(11/10 "드래그바 거슬려") */
+  scrollbar-width: none;
   background: var(--color-card);
   border-radius: var(--radius-card);
   box-shadow: 0 24px 80px rgb(25 31 40 / 24%);
+}
+
+.dialog::-webkit-scrollbar {
+  display: none;
 }
 
 .dialog:focus-visible {

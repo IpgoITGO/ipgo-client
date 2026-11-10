@@ -65,7 +65,7 @@
   border-radius: 50%;
 }
 
-.day:hover {
+.day:hover:not(:disabled) {
   background: var(--color-primary-soft);
 }
 
@@ -123,4 +123,12 @@
   border: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* 고를 수 없는 날(오늘 전): 옅게 + 가운데 줄. 빨간 점(원래 날짜)은 그대로 보인다 */
+.day:disabled {
+  color: var(--color-text-3);
+  opacity: 0.45;
+  text-decoration: line-through;
+  cursor: default;
 }

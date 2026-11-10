@@ -9,6 +9,8 @@ type DatePickerProps = {
   /** 빨간 점으로 짚어 줄 날짜 (예: 지나 버린 원래 도착일) */
   markedDate?: string
   markedLabel?: string
+  /** YYYY-MM-DD. 이 날 전은 고를 수 없다(예: 도착 예정일은 오늘부터) */
+  minDate?: string
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -28,8 +30,12 @@ export function DatePicker({
   onChange,
   markedDate,
   markedLabel,
+  minDate,
 }: DatePickerProps) {
-  const start = (value || todayKey()).split('-').map(Number)
+  // 고른 날이 고를 수 없는 날(지난 날)이면 오늘 달부터 연다 — 다 막힌 달에서 시작하지 않게
+  const start = (value && !(minDate && value < minDate) ? value : todayKey())
+    .split('-')
+    .map(Number)
   const [view, setView] = useState({ year: start[0], month: start[1] - 1 })
   const today = todayKey()
 
@@ -68,6 +74,7 @@ export function DatePicker({
           if (day === null) return <span key={`blank-${index}`} />
           const key = toKey(view.year, view.month, day)
           const marked = key === markedDate
+          const blocked = Boolean(minDate && key < minDate)
           return (
             <button
               aria-label={`${view.month + 1}월 ${day}일${marked && markedLabel ? ` (${markedLabel})` : ''}`}
@@ -76,6 +83,7 @@ export function DatePicker({
               data-marked={marked || undefined}
               data-today={key === today || undefined}
               data-weekday={(firstWeekday + day - 1) % 7}
+              disabled={blocked}
               key={key}
               onClick={() => onChange(key)}
               type="button"
