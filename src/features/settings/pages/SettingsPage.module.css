@@ -351,11 +351,11 @@
 }
 .tableWrap td .numField input {
   min-width: 0;
-  width: 64px;
+  width: 68px;
   /* 표 칸도 숫자 크기로(11/6 "상품별 칸도 뚱뚱해") */
   min-height: 0;
   height: 36px;
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-2);
   border-radius: 9px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -581,4 +581,17 @@
 .defaultGrid input::placeholder {
   color: #b5ad9f;
   font-weight: 400;
+}
+
+/* 숫자 칸의 위아래 화살표가 칸을 먹어 세 자리부터 잘려 보였다(11/6) → 화살표를 숨긴다 */
+.defaultGrid input[type='number'],
+.tableWrap td input[type='number'] {
+  appearance: textfield;
+}
+.defaultGrid input[type='number']::-webkit-inner-spin-button,
+.defaultGrid input[type='number']::-webkit-outer-spin-button,
+.tableWrap td input[type='number']::-webkit-inner-spin-button,
+.tableWrap td input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
 }
