@@ -60,13 +60,10 @@ describe('SkuPage', () => {
     expect(screen.getByText('58개')).toBeInTheDocument()
     expect(screen.getByText(/입고 단위 \d+개로 올림/)).toBeInTheDocument()
     expect(screen.getByText('상품별')).toBeInTheDocument()
-    // 정확도는 기획서 말: 커버 성공률과 예측 오차
+    // 정확도: 권장량으로 버틴 비율과 예측이 빗나간 정도
     expect(screen.getByText('정확도 높음')).toBeInTheDocument()
     expect(screen.getByText('90%')).toBeInTheDocument()
-    expect(
-      screen.getByRole('img', { name: '10번 중 9번 성공' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('12%')).toBeInTheDocument()
+    expect(screen.getByText('±12%')).toBeInTheDocument()
   })
 
   it('마지막 기록 재고와 서버 계산 시작 재고가 다르면 기록 기준임을 밝히고 서버 값을 알린다', async () => {

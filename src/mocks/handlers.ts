@@ -779,7 +779,40 @@ export const handlers = [
             coverSuccessCount: isEmpty ? null : isReference ? 5 : 9,
             coverTrialCount: isEmpty ? null : 10,
             forecastErrorRate: isEmpty ? null : isReference ? 0.38 : 0.12,
-            history: [],
+            // 지난 예측 맞춰 보기 그래프를 로컬에서도 보이게: 최근 10주, 기준일마다 다음 10일 예측·실제·버텼나
+            evaluation: isEmpty
+              ? null
+              : {
+                  status: 'AVAILABLE',
+                  reason: null,
+                  source: 'HISTORICAL_REPLAY',
+                  period: 'TUNE',
+                  periodStart: isoFromToday(-77),
+                  periodEnd: isoFromToday(-14),
+                  observedThrough: isoFromToday(-1),
+                  horizonDays: 10,
+                },
+            history: isEmpty
+              ? []
+              : (
+                  [
+                    [13, 12],
+                    [12, 13],
+                    [14, 13],
+                    [13, 11],
+                    [15, 19, false],
+                    [14, 14],
+                    [13, 12],
+                    [12, 13],
+                    [14, 15],
+                    [15, 13],
+                  ] as Array<[number, number, boolean?]>
+                ).map(([forecastQty, actualQty, covered = true], index) => ({
+                  originDate: isoFromToday(-77 + index * 7),
+                  forecastQty,
+                  actualQty,
+                  covered,
+                })),
             range: isReference ? { low: 40, high: 70 } : null,
             firstInboundOn: '2026-03-02',
           },

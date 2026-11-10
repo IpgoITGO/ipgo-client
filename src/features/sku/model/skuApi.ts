@@ -134,6 +134,8 @@ export type SkuDetail = {
       date: string
       outbound: number
       predictedOutbound: number
+      // 엔진이 그날 재고로 권장량을 넣었다고 다시 돌려 봤을 때 끝까지 재고가 남았나
+      covered: boolean
     }>
   } | null
 }
@@ -214,6 +216,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
         date: item.originDate,
         outbound: item.actualQty,
         predictedOutbound: item.forecastQty,
+        covered: item.covered,
       })),
     },
   }

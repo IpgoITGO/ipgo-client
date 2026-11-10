@@ -1133,113 +1133,244 @@ function TrendChart({
 }
 
 // 예측 정확도 그래프: 가로는 기간, 세로는 출고량(개). 실제 선과 예측 선이 얼마나 붙어 있는지로 정확도를 봅니다.
-function AccuracyChart({ history }: { history: AccuracyHistory }) {
-  const box = {
-    width: 600,
-    height: 236,
-    left: 56,
-    right: 568,
-    top: 36,
-    bottom: 186,
-  }
+// 지난 예측 맞춰 보기: 엔진이 고른 기준일마다 "그날부터 H일 동안 나갈 양" 예측과 실제(11/10 사장님 — 채점용 선 그래프 대신
+// 위 숫자 두 개를 각각 풀어 주는 그래프 두 개). 버텼나(covered)는 엔진이 그날 재고로 권장량을 넣었다고 다시 돌려 본 결과라
+// 화면에서 개수로 다시 계산하지 않는다.
+// 칸 폭을 재서 그 폭 그대로 그린다(늘려 그리면 넓은 화면에서 글자가 커짐)
+const accBox = (width: number) => ({
+  width,
+  height: 168,
+  left: 38,
+  right: width - 6,
+  top: 22,
+  bottom: 144,
+})
+type AccBox = ReturnType<typeof accBox>
+
+function accDates(history: AccuracyHistory, ACC: AccBox) {
+  const step = (ACC.right - ACC.left) / history.length
+  // 날짜 글자가 붙지 않게: 칸이 넉넉하면 다 적고, 좁으면 마지막 주부터 거꾸로 한 칸 건너 적되 품절 주는 늘 적고 그 양옆은 비운다
+  const roomy = step >= 44
+  const out = new Set(
+    history.flatMap((item, index) => (item.covered ? [] : [index])),
+  )
+  return history.map((item, index) => ({
+    ...item,
+    x: ACC.left + step * (index + 0.5),
+    showDate:
+      roomy ||
+      out.has(index) ||
+      (!out.has(index - 1) &&
+        !out.has(index + 1) &&
+        (history.length - 1 - index) % 2 === 0),
+  }))
+}
+
+function AccTick({
+  x,
+  y,
+  item,
+}: {
+  x: number
+  y: number
+  item: AccuracyHistory[number]
+}) {
+  return (
+    <text
+      className={styles.xTick}
+      data-out={!item.covered || undefined}
+      x={x}
+      y={y}
+    >
+      {slashDate(item.date, item.date)}
+    </text>
+  )
+}
+
+function CoverChart({
+  history,
+  horizon,
+}: {
+  history: AccuracyHistory
+  horizon: number | null
+}) {
+  const [wrapRef, width] = useWidth()
+  const ACC = accBox(width)
   const max = Math.max(
     ...history.map((item) => Math.max(item.outbound, item.predictedOutbound)),
     1,
   )
   const top = Math.ceil(max / 5) * 5
-  const gap =
-    history.length > 1 ? (box.right - box.left) / (history.length - 1) : 0
-  const x = (index: number) =>
-    history.length === 1 ? (box.left + box.right) / 2 : box.left + index * gap
   const y = (value: number) =>
-    box.bottom - (value / top) * (box.bottom - box.top)
-  const line = (pick: (item: AccuracyHistory[number]) => number) =>
-    history.map((item, index) => `${x(index)},${y(pick(item))}`).join(' ')
-  const labelIndexes = [
-    0,
-    Math.floor((history.length - 1) / 2),
-    history.length - 1,
-  ]
-
+    ACC.bottom - (value / top) * (ACC.bottom - ACC.top)
+  const band = Math.min(26, ((ACC.right - ACC.left) / history.length) * 0.62)
   return (
-    <svg
-      aria-label="과거 실제 출고량과 예측 출고량 비교 그래프"
-      className={styles.chart}
-      role="img"
-      viewBox={`0 0 ${box.width} ${box.height}`}
-    >
-      <title>과거 실제 출고량과 예측 출고량 비교</title>
-      {[0, top / 2, top].map((tick) => (
-        <g key={tick}>
-          <line
-            className={styles.gridLine}
-            x1={box.left}
-            x2={box.right}
-            y1={y(tick)}
-            y2={y(tick)}
-          />
-          <text className={styles.tick} x={box.left - 8} y={y(tick) + 4}>
-            {tick}
-          </text>
-        </g>
-      ))}
-      <text className={styles.axisTitle} x={0} y={box.top - 18}>
-        출고량(개)
-      </text>
-      <polyline
-        className={styles.actualLine}
-        fill="none"
-        points={line((item) => item.outbound)}
-      />
-      <polyline
-        className={styles.predictionLine}
-        fill="none"
-        points={line((item) => item.predictedOutbound)}
-      />
-      {history.map((item, index) => (
-        <g key={item.date}>
-          <circle
-            className={styles.actualLine}
-            cx={x(index)}
-            cy={y(item.outbound)}
-            fill="none"
-            r={4}
-          >
-            <title>
-              {item.date} · 실제 출고량 {item.outbound}개
-            </title>
-          </circle>
-          <circle
-            className={styles.predictionLine}
-            cx={x(index)}
-            cy={y(item.predictedOutbound)}
-            fill="none"
-            r={3}
-          >
-            <title>
-              {item.date} · 예측 출고량 {item.predictedOutbound}개
-            </title>
-          </circle>
-        </g>
-      ))}
-      {[...new Set(labelIndexes)].map((index) => (
-        <text
-          className={styles.xTick}
-          key={history[index].date}
-          x={x(index)}
-          y={box.bottom + 20}
-        >
-          {history[index].date}
-        </text>
-      ))}
-      <text
-        className={styles.xTitle}
-        x={(box.left + box.right) / 2}
-        y={box.bottom + 42}
+    <div className={styles.accChartWrap} ref={wrapRef}>
+      <svg
+        aria-label="지난 예측과 실제 출고, 버텼는지"
+        className={styles.accChart}
+        role="img"
+        height={ACC.height}
+        viewBox={`0 0 ${ACC.width} ${ACC.height}`}
+        width={ACC.width}
       >
-        기간
-      </text>
-    </svg>
+        {[0, top / 2, top].map((tick) => (
+          <g key={tick}>
+            <line
+              className={styles.accGrid}
+              x1={ACC.left}
+              x2={ACC.right}
+              y1={y(tick)}
+              y2={y(tick)}
+            />
+            <text className={styles.tick} x={ACC.left - 6} y={y(tick) + 4}>
+              {tick}
+            </text>
+          </g>
+        ))}
+        {accDates(history, ACC).map((item) => (
+          <g key={item.date}>
+            <title>
+              {`${slashDate(item.date, item.date)}부터${horizon ? ` ${horizon}일` : ''} · 예측 ${item.predictedOutbound}개 · 실제 ${item.outbound}개 · ${item.covered ? '권장량으로 버팀' : '품절'}`}
+            </title>
+            <rect
+              className={styles.accForecast}
+              height={ACC.bottom - y(item.predictedOutbound)}
+              rx={4}
+              width={band}
+              x={item.x - band / 2}
+              y={y(item.predictedOutbound)}
+            />
+            <rect
+              className={styles.accActual}
+              data-out={!item.covered || undefined}
+              height={Math.max(ACC.bottom - y(item.outbound), 1)}
+              rx={3}
+              width={band - 10}
+              x={item.x - band / 2 + 5}
+              y={y(item.outbound)}
+            />
+            {!item.covered && (
+              <text
+                className={styles.accOutLabel}
+                x={item.x}
+                y={Math.min(y(item.outbound), y(item.predictedOutbound)) - 6}
+              >
+                품절
+              </text>
+            )}
+            {item.showDate && (
+              <AccTick item={item} x={item.x} y={ACC.bottom + 16} />
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+function MissChart({
+  history,
+  errorRate,
+}: {
+  history: AccuracyHistory
+  errorRate: number | null
+}) {
+  const [wrapRef, width] = useWidth()
+  const ACC = accBox(width)
+  // 예측보다 몇 % 더(+)·덜(−) 팔렸나. 예측이 0이면 비율을 낼 수 없어 막대 없이 둔다
+  const rows = accDates(history, ACC).map((item) => ({
+    ...item,
+    miss:
+      item.predictedOutbound > 0
+        ? Math.round(
+            ((item.outbound - item.predictedOutbound) /
+              item.predictedOutbound) *
+              100,
+          )
+        : null,
+  }))
+  const biggest = Math.max(
+    ...rows.map((row) => Math.abs(row.miss ?? 0)),
+    errorRate ?? 0,
+    10,
+  )
+  const lim = Math.ceil(biggest / 10) * 10
+  const mid = (ACC.top + ACC.bottom) / 2
+  const y = (value: number) =>
+    mid - (value / lim) * ((ACC.bottom - ACC.top) / 2)
+  const band = Math.min(20, ((ACC.right - ACC.left) / history.length) * 0.5)
+  return (
+    <div className={styles.accChartWrap} ref={wrapRef}>
+      <svg
+        aria-label="지난 예측이 빗나간 정도"
+        className={styles.accChart}
+        role="img"
+        height={ACC.height}
+        viewBox={`0 0 ${ACC.width} ${ACC.height}`}
+        width={ACC.width}
+      >
+        {errorRate != null && errorRate > 0 && (
+          <rect
+            className={styles.accBand}
+            height={y(-errorRate) - y(errorRate)}
+            width={ACC.right - ACC.left}
+            x={ACC.left}
+            y={y(errorRate)}
+          />
+        )}
+        {[lim, 0, -lim].map((tick) => (
+          <g key={tick}>
+            <line
+              className={tick === 0 ? styles.accZero : styles.accGrid}
+              x1={ACC.left}
+              x2={ACC.right}
+              y1={y(tick)}
+              y2={y(tick)}
+            />
+            <text className={styles.tick} x={ACC.left - 6} y={y(tick) + 4}>
+              {tick > 0 ? `+${tick}%` : tick < 0 ? `−${-tick}%` : '0'}
+            </text>
+          </g>
+        ))}
+        {rows.map((row) => (
+          <g key={row.date}>
+            <title>
+              {row.miss == null
+                ? `${slashDate(row.date, row.date)} · 예측이 0개라 비율 없음`
+                : `${slashDate(row.date, row.date)} · 예측보다 ${Math.abs(row.miss)}% ${row.miss >= 0 ? '더' : '덜'} 팔림`}
+            </title>
+            {row.miss != null && (
+              <>
+                <rect
+                  className={styles.accMiss}
+                  data-dir={row.miss > 0 ? 'over' : 'under'}
+                  data-out={!row.covered || undefined}
+                  height={Math.max(Math.abs(y(row.miss) - mid), 2)}
+                  rx={3}
+                  width={band}
+                  x={row.x - band / 2}
+                  y={row.miss >= 0 ? y(row.miss) : mid}
+                />
+                {(!row.covered || Math.abs(row.miss) >= 15) && (
+                  <text
+                    className={styles.accMissLabel}
+                    data-out={!row.covered || undefined}
+                    x={row.x}
+                    y={row.miss >= 0 ? y(row.miss) - 5 : y(row.miss) + 12}
+                  >
+                    {row.miss > 0 ? `+${row.miss}%` : `${row.miss}%`}
+                  </text>
+                )}
+              </>
+            )}
+            {row.showDate && (
+              <AccTick item={row} x={row.x} y={ACC.bottom + 16} />
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
   )
 }
 
@@ -1742,18 +1873,16 @@ export function AccuracyCard({
 }: {
   accuracy: NonNullable<SkuDetail['accuracy']>
 }) {
-  const { coverSuccess, coverTrials, errorRate } = accuracy
+  const { coverSuccess, coverTrials, errorRate, history, evaluation } = accuracy
   const evaluated = (coverTrials ?? 0) > 0 && coverSuccess != null
   const coverRate =
     coverSuccess != null && coverTrials
       ? Math.round((coverSuccess / coverTrials) * 100)
       : null
-  // 점은 최대 10개. 시도가 10번보다 많으면 비율대로 칠한다.
-  const dots = Math.min(coverTrials ?? 0, 10)
-  const filled =
-    coverTrials && coverSuccess != null
-      ? Math.round((coverSuccess / coverTrials) * dots)
-      : 0
+  const horizon = evaluation?.horizonDays ?? null
+  const outDays = history.filter((item) => !item.covered)
+  const first = history[0]
+  const last = history.at(-1)
 
   return (
     <section className={styles.card}>
@@ -1768,47 +1897,76 @@ export function AccuracyCard({
             : '실제 정확도 미평가'}
         </span>
       </div>
+      {first && last && (
+        <p className={styles.accPeriod}>
+          {slashDate(first.date, first.date)}~{slashDate(last.date, last.date)}{' '}
+          · {history.length}번 · 매번 그날부터
+          {horizon ? ` ${horizon}일 동안` : ''} 나갈 양을 예측해 실제와 맞춰
+          봤어요
+        </p>
+      )}
       <div className={styles.accuracyBoxes}>
-        <div data-tone="cover">
-          <span>커버 성공률</span>
+        <div>
+          <span>권장량으로 버틴 비율</span>
           <strong>
             {coverRate == null ? <EmptyValue kind="short" /> : `${coverRate}%`}
           </strong>
-          {dots > 0 && (
-            <span
-              aria-label={`${coverTrials}번 중 ${coverSuccess}번 성공`}
-              className={styles.dots}
-              role="img"
-            >
-              {Array.from({ length: dots }, (_, index) => (
-                <i data-on={index < filled} key={index} />
-              ))}
-            </span>
-          )}
           <p>
             {coverRate == null
               ? '비교할 지난 예측이 아직 없어요.'
-              : `${coverTrials}번 중 ${coverSuccess}번, 권장량대로 넣었으면 품절을 피했어요.`}
+              : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
+                  outDays.length > 0
+                    ? ` · ${outDays
+                        .slice(0, 2)
+                        .map((item) => slashDate(item.date, item.date))
+                        .join('·')}${outDays.length > 2 ? ' 등' : ''} 품절`
+                    : ''
+                }`}
           </p>
-        </div>
-        <div data-tone="error">
-          <span>예측 오차</span>
-          <strong>
-            {errorRate == null ? <EmptyValue kind="short" /> : `${errorRate}%`}
-          </strong>
-          {errorRate != null && (
-            <span aria-hidden="true" className={styles.bar}>
-              <i style={{ width: `${Math.min(errorRate, 100)}%` }} />
-            </span>
+          {history.length > 0 && (
+            <>
+              <CoverChart history={history} horizon={horizon} />
+              <div
+                aria-label="버틴 비율 그래프 범례"
+                className={styles.accLegend}
+                role="group"
+              >
+                <span data-series="forecast">예측한 양</span>
+                <span data-series="actual">실제 나간 양</span>
+                <span data-series="out">품절</span>
+              </div>
+            </>
           )}
+        </div>
+        <div>
+          <span>예측이 빗나간 정도</span>
+          <strong>
+            {errorRate == null ? <EmptyValue kind="short" /> : `±${errorRate}%`}
+          </strong>
           <p>
             {errorRate == null
-              ? accuracy.history.length > 0 &&
-                accuracy.history.every((item) => item.outbound === 0)
-                ? '비교 기간의 실제 출고가 0이라 예측 오차 비율을 계산할 수 없어요.'
+              ? history.length > 0 &&
+                history.every((item) => item.outbound === 0)
+                ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
                 : '비교할 지난 예측이 쌓이면 보여요.'
-              : '예측이 실제 출고와 평균 이만큼 빗나갔어요. 낮을수록 좋아요.'}
+              : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
           </p>
+          {history.length > 0 && (
+            <>
+              <MissChart errorRate={errorRate} history={history} />
+              <div
+                aria-label="빗나간 정도 그래프 범례"
+                className={styles.accLegend}
+                role="group"
+              >
+                <span data-series="over">예측보다 더 팔림</span>
+                <span data-series="under">덜 팔림</span>
+                {errorRate != null && errorRate > 0 && (
+                  <span data-series="band">평균 범위 ±{errorRate}%</span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
       {accuracy.range && (
@@ -1817,36 +1975,14 @@ export function AccuracyCard({
           {accuracy.range.high.toLocaleString()}개 · 참고용
         </p>
       )}
-      {accuracy.evaluation?.status === 'AVAILABLE' && (
-        <p>
-          과거 자료 재생 · 정책 조정 구간(TUNE){' '}
-          {accuracy.evaluation.periodStart}~{accuracy.evaluation.periodEnd}
-          {' · '}각 점은 기준일 다음 날부터 {accuracy.evaluation.horizonDays}일
-          출고 합계예요. 현재 계산 조건으로 다시 계산한 결과이며, 당시 발행한
-          예측의 실측 성과는 아니에요. 평가 구간이 겹칠 수 있어 각각을 독립
-          표본으로 보지 않아요. 수량은 올림해 표시하고 예측 오차는 올림 전
-          값으로 계산해요.
+      {history.length === 0 && (
+        <p className={styles.accNote}>
+          {evaluation?.status === 'EMPTY'
+            ? '맞춰 볼 수 있는 지난 자료가 없어 그래프를 그리지 않아요.'
+            : evaluation?.status === 'UNAVAILABLE'
+              ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'
+              : '지난 예측 맞춰 보기 자료가 아직 없어요.'}
         </p>
-      )}
-      {!accuracy.evaluation && accuracy.history.length === 0 && (
-        <p>이 계산에는 저장된 과거 재생 이력이 없어요.</p>
-      )}
-      {accuracy.evaluation?.status === 'EMPTY' && (
-        <p>
-          정책 조정 구간에 비교할 유효한 자료가 없어 이력을 표시하지 않아요.
-        </p>
-      )}
-      {accuracy.evaluation?.status === 'UNAVAILABLE' && (
-        <p>이 계산은 과거 자료 재생 평가를 수행하지 않았어요.</p>
-      )}
-      {accuracy.history.length > 0 && (
-        <>
-          <div className={styles.legend} role="group" aria-label="그래프 범례">
-            <span data-series="actual">실제 출고량</span>
-            <span data-series="prediction">예측 출고량</span>
-          </div>
-          <AccuracyChart history={accuracy.history} />
-        </>
       )}
     </section>
   )
