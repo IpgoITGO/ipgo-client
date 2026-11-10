@@ -91,7 +91,6 @@ const slashDate = (day: string, fallback: string) => {
   return match ? `${Number(match[1])}/${Number(match[2])}` : fallback
 }
 
-const ALREADY_OUT = '기록 기준 이미 바닥났을 수 있어요'
 const isoDayMs = (iso: string) => Date.parse(iso.slice(0, 10))
 
 const perDayText = (value: number) =>
@@ -239,9 +238,7 @@ function TrendChart({
   orderQty,
   shortageOn,
   startStock,
-  alreadyOut,
 }: {
-  alreadyOut?: boolean
   coverDays: number
   forecastQty: number | null
   history: SkuDetail['history']
@@ -357,9 +354,7 @@ function TrendChart({
     startStock != null && startStock !== stock ? (
       <span className={styles.trendChip}>
         오늘 남았을 재고 <b>{startStock.toLocaleString()}개</b>
-        {alreadyOut ? (
-          <> · {ALREADY_OUT}</>
-        ) : shortageOn ? (
+        {shortageOn ? (
           <>
             {' '}
             → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
@@ -1337,12 +1332,11 @@ export function SkuPage() {
     : 0
   const showGap = startEstimated && startInv != null && !!lastRec && gapDays > 0
   const gapOut = lastRec && startInv != null ? lastRec.inventory - startInv : 0
-  // 엔진은 추정 시작 재고가 0이면 소진일을 오늘+1로 눌러 둔다 → 날짜 대신 말로
-  const alreadyOut =
-    startEstimated &&
-    startInv === 0 &&
-    data.shortageOn != null &&
-    isoDayMs(data.shortageOn) === isoDayMs(todayIso) + 864e5
+  // 엔진이 이미 지난 소진일을 실제 날짜로 준다(ai #76) → 날짜 옆에 며칠 지났는지만
+  const daysPast =
+    stockoutPassed && data.shortageOn
+      ? Math.round((isoDayMs(todayIso) - isoDayMs(data.shortageOn)) / 864e5)
+      : 0
   // 판매일 부족이면 "N일이에요 · M일이 되면" 말과 진행 막대로 보여 준다
   const salesMatch = /최근 (\d+)일 중 판매한 날이 (\d+)일로 (\d+)일/.exec(
     data.unavailableReason ?? '',
@@ -1567,19 +1561,11 @@ export function SkuPage() {
               <div>
                 <dt>현재 예상 소진일</dt>
                 <dd>
-                  {alreadyOut ? (
-                    <>
-                      <span className={styles.outValue}>이미 바닥</span>
-                      <small className={styles.costWork}>
-                        {lastRec
-                          ? `${slashDate(lastRec.day, lastRec.date)} 기록 기준`
-                          : '기록 기준'}
-                      </small>
-                    </>
-                  ) : (
-                    (data.recommendation.expectedStockoutDate ?? (
-                      <EmptyValue kind="short" />
-                    ))
+                  {data.recommendation.expectedStockoutDate ?? (
+                    <EmptyValue kind="short" />
+                  )}
+                  {daysPast > 0 && (
+                    <small className={styles.outValue}>{daysPast}일 지남</small>
                   )}
                 </dd>
               </div>
@@ -1600,7 +1586,6 @@ export function SkuPage() {
                   orderQty={data.recommendation.quantity}
                   shortageOn={data.shortageOn}
                   startStock={data.calculation.startingInventory}
-                  alreadyOut={alreadyOut}
                 />
               ) : (
                 <AsyncState
