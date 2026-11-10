@@ -32,7 +32,37 @@ const FIXED: [RegExp, string][] = [
   ],
 ]
 
+// 검산 제외(재고 숫자 안 맞음): "기초 34 + 입고 0 − 출고 3 + 조정 0 = 31개인데 기록된 기말은 34개예요"
+// → 셀러 말로 "34개로 시작해 3개 나가서 31개가 남아야 하는데 34개로 적혀 있어요" + 고칠 일 한 줄.
+// 계산식(기초·기말·조정 칸 이름)은 화면에 그대로 내보이지 않는다(11/10).
+export function inventoryMismatch(reason: string) {
+  const m =
+    /기초\s*(-?\d+)\s*\+\s*입고\s*(\d+)\s*[−-]\s*출고\s*(\d+)\s*\+\s*조정\s*([−-]?\d+)\s*=\s*([−-]?\d+)개인데\s*기록된 기말은\s*([−-]?\d+)개/.exec(
+      reason,
+    )
+  if (!m) return null
+  const [start, inbound, outbound, adjust, expected, recorded] = m
+    .slice(1)
+    .map((s) => Number(s.replace('−', '-')))
+  const diff = recorded - expected
+  const moves = [
+    inbound > 0 ? `${inbound}개 들어오고` : '',
+    `${outbound}개 나가`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const adjusted =
+    adjust !== 0 ? ` 조정 ${adjust > 0 ? '+' : ''}${adjust}개까지 하면` : ''
+  return {
+    diff,
+    explain: `${start}개로 시작해 ${moves}서${adjusted} ${expected}개가 남아야 하는데, 수불부에는 ${recorded}개로 적혀 있어요.`,
+    todo: `그날 줄을 고치거나, 재고 조사로 맞춘 거면 조정 칸에 ${diff > 0 ? '+' : ''}${diff}을 적어 다시 올려 주세요.`,
+  }
+}
+
 export function calculationReason(reason: string) {
+  const mismatch = inventoryMismatch(reason)
+  if (mismatch) return `${mismatch.explain} ${mismatch.todo}`
   // 옛 문장은 "(유효 관측일)", 새 문장(ipgo-ai#70)은 "최근 N일 중 판매한 날이 M일로 K일"
   const days =
     /유효 관측일\).*?(\d+)일로\s*(\d+)일/.exec(reason) ??
