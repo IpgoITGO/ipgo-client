@@ -81,17 +81,40 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 
 ## 명령
 
-| 명령                      | 설명                                                |
-| ------------------------- | --------------------------------------------------- |
-| `npm run dev`             | 개발 서버 실행                                      |
-| `npm run build`           | TypeScript 검사 후 production build                 |
-| `npm run typecheck`       | TypeScript 검사                                     |
-| `npm run lint`            | ESLint 검사                                         |
-| `npm run format:check`    | Prettier 형식 검사                                  |
-| `npm test`                | Vitest 테스트 1회 실행                              |
-| `npm run test:watch`      | Vitest watch 실행                                   |
-| `npm run ci:check`        | CI에서 사용하는 전체 코드 검사                      |
-| `npm run automation:test` | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사 |
+| 명령                        | 설명                                                                |
+| --------------------------- | ------------------------------------------------------------------- |
+| `npm run dev`               | 개발 서버 실행                                                      |
+| `npm run build`             | TypeScript 검사 후 production build                                 |
+| `npm run typecheck`         | TypeScript 검사                                                     |
+| `npm run lint`              | ESLint 검사                                                         |
+| `npm run format:check`      | Prettier 형식 검사                                                  |
+| `npm test`                  | Vitest 테스트 1회 실행                                              |
+| `npm run test:watch`        | Vitest watch 실행                                                   |
+| `npm run ci:check`          | CI에서 사용하는 전체 코드 검사                                      |
+| `npm run automation:test`   | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사                 |
+| `npm run verification:test` | 로컬 검증 도구의 중단·요청 차단 규칙 검사                           |
+| `npm run verify:browser`    | 로컬 합성 응답으로 PC·모바일 화면 검사·캡처                         |
+| `npm run verify:local`      | 포맷 확인 → 검증 도구 검사 → 기존 전체 검사 → 빌드 → PC·모바일 검증 |
+
+`ci:check`는 기존 앱·자동화 검사에 검증 도구 단위 검사도 추가로 실행합니다.
+브라우저 검사는 화면 연결 IPGO-196 선행 병합 후 사용합니다.
+
+화면 수정의 반복 탐색·모의 응답 준비·결과 기록은 [구현·검증 절차](docs/rules/workflow.md#구현검증-절차)를
+따릅니다. 최초 한 번 `npm ci` 후 `npx playwright install chromium`으로 브라우저를 준비합니다.
+검증 명령은 브라우저를 자동 다운로드하거나 실제 API에 업로드하지 않습니다. 실행 중인 프로젝트
+config에 실제 API proxy가 있으면 브라우저 검증을 중단합니다.
+
+`verify:local`은 `.env`를 작성하거나 소스를 자동 포맷하지 않습니다. 명시적으로 수정한 파일만
+포맷한 뒤 실행합니다. 원문 로그·PC/모바일 캡처·진행 상태와 최종 결과(`summary.json`)는
+저장소 밖의 새 보호 폴더에 모읍니다. 기본 위치는 OS 임시 폴더이며, 장기 보관이 필요하면
+이미 존재하는 저장소 밖 경로를 `IPGO_VERIFY_OUTPUT_ROOT`로 지정합니다. 폴더0700/파일0600이며
+임시 서버·브라우저는 검사 종료 시 닫습니다. 실패하면 후속 단계는 실행하지 않습니다.
+
+브라우저 검증은 현재 실패 이유·작년 출고 연결과 주변 인증/설정 API의 **합성 응답**을
+재사용합니다. 화면/요청이 바뀌면 `scripts/verification/browser-fixtures.mjs`와 확인 동작을
+함께 갱신합니다. 알 수 없는 API·예상 밖 쓰기·외부 주소는 실제로 전송하지 않고 실패로 남깁니다.
+외부 font CSS도 빈 응답으로 대체합니다. PC1280/모바일390 viewport의 Chromium 검증이며
+실제 모바일 기기·실계정·실데이터 업무 E2E 또는 개발 사이트 배포의 성공을 뜻하지 않습니다.
 
 ## 환경 변수
 
