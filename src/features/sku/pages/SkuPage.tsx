@@ -141,6 +141,7 @@ const OK = 'var(--color-success)'
 const MUTED = 'var(--color-text-3)'
 const BAR = 'var(--color-chart-muted)'
 const FUT = 'var(--color-accent)'
+const LAST_YEAR = 'var(--color-text-2)'
 const toneColor: Record<Tone, string> = { danger: BAD, ok: OK, ink: INK }
 
 // 선을 부드럽게 잇는다. 값이 튀지 않게 제어점은 이웃 두 점 높이 안에 가둔다.
@@ -364,8 +365,11 @@ function TrendChart({
     ) : null
 
   function flowView(): View {
+    const hasLastYear = history.some((h) => h.lastYearOutbound != null)
     const max = Math.max(
-      ...history.map((h) => Math.max(h.inventory, h.outbound)),
+      ...history.map((h) =>
+        Math.max(h.inventory, h.outbound, h.lastYearOutbound ?? 0),
+      ),
       daily,
       1,
     )
@@ -383,6 +387,14 @@ function TrendChart({
     const zone = box.right - todayX
     const outX = xd(lastDay + daysLeft)
     const pts = history.map((h, i): Pt => [x(i), y(h.inventory)])
+    // 값이 없는 날짜에서는 선을 끊는다. 기록 없음(null)을 출고 0개로 그리지 않는다.
+    const lastYearPath = history
+      .map((h, i) =>
+        h.lastYearOutbound == null
+          ? ''
+          : `${i === 0 || history[i - 1].lastYearOutbound == null ? 'M' : 'L'}${x(i)},${y(h.lastYearOutbound)}`,
+      )
+      .join(' ')
     const stockouts = history
       .map((h, i) => ({ h, i }))
       .filter(({ h }) => h.inventory === 0)
@@ -457,6 +469,30 @@ function TrendChart({
           d={smooth(pts)}
           pathLength="1"
         />
+        {hasLastYear && (
+          <g data-series="last-year-outbound">
+            <path
+              d={lastYearPath}
+              fill="none"
+              stroke={LAST_YEAR}
+              strokeDasharray="4 3"
+              strokeWidth="2"
+            />
+            {history.map((h, i) =>
+              h.lastYearOutbound == null ? null : (
+                <circle
+                  cx={x(i)}
+                  cy={y(h.lastYearOutbound)}
+                  fill={LAST_YEAR}
+                  key={h.day}
+                  r="3"
+                >
+                  <title>{`${slashDate(h.day, h.date)} · 작년 같은 날 출고 ${h.lastYearOutbound.toLocaleString()}개`}</title>
+                </circle>
+              ),
+            )}
+          </g>
+        )}
         {runsOut && (
           <path
             className={`${styles.line} ${styles.later} ${styles.projLine}`}
@@ -600,6 +636,18 @@ function TrendChart({
                   label: '출고',
                   value: `${history[i].outbound.toLocaleString()}개`,
                 },
+                ...(hasLastYear
+                  ? [
+                      {
+                        color: LAST_YEAR,
+                        label: '작년 같은 날 출고',
+                        value:
+                          history[i].lastYearOutbound == null
+                            ? '기록 없음'
+                            : `${history[i].lastYearOutbound.toLocaleString()}개`,
+                      },
+                    ]
+                  : []),
               ],
             }
           : {
@@ -631,6 +679,15 @@ function TrendChart({
           ? [{ kind: 'dash' as const, color: INK, text: '예상 재고' }]
           : []),
         { kind: 'bar', color: BAR, text: '하루 출고' },
+        ...(hasLastYear
+          ? [
+              {
+                kind: 'dash' as const,
+                color: LAST_YEAR,
+                text: '작년 같은 날 출고',
+              },
+            ]
+          : []),
         ...(future > 0
           ? [{ kind: 'bar' as const, color: FUT, text: '예상 출고' }]
           : []),

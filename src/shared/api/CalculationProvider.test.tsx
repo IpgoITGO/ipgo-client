@@ -122,6 +122,25 @@ describe('수불부 확인 단계 추적', () => {
     expect(await screen.findByText('합성 실패 이유')).toBeVisible()
     expect(screen.getByTestId('phase')).toHaveTextContent('failed')
   })
+
+  it('확인 실패의 구체적 이유를 상단 상태 안내에도 반영한다', async () => {
+    server.use(
+      upload({
+        status: 'FAILED',
+        error: {
+          code: 'INVALID_SOURCE',
+          message: '수불부 형식을 확인해 주세요.',
+          reason: '전월에 남은 재고 3개가 이번 자료에 없어요.',
+        },
+      }),
+    )
+    const { user } = setup(2000)
+    await user.click(screen.getByText('업로드 번호 받기'))
+    expect(
+      await screen.findByText('전월에 남은 재고 3개가 이번 자료에 없어요.'),
+    ).toBeVisible()
+    expect(screen.getByTestId('phase')).toHaveTextContent('failed')
+  })
 })
 
 describe('계산 완료·실패 추적', () => {

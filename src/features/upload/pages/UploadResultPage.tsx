@@ -7,7 +7,7 @@ import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
-import { getUploadResult } from '../model/uploadApi'
+import { getUploadResult, uploadFailureMessage } from '../model/uploadApi'
 import {
   describeExclusion,
   formatDate,
@@ -127,7 +127,10 @@ export function UploadResultPage() {
     const fileProblem = !data.error || data.error.code === 'INVALID_SOURCE'
     return fileProblem ? (
       <AsyncState
-        description="수불부 형식을 확인하고 고친 뒤 다시 올려 주세요."
+        description={uploadFailureMessage(
+          data.error,
+          '수불부 형식을 확인하고 고친 뒤 다시 올려 주세요.',
+        )}
         onRetry={() => navigate('/upload')}
         retryLabel="다시 올리기"
         status="error"

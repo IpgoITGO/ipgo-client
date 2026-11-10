@@ -25,6 +25,52 @@ function renderPage() {
 }
 
 describe('UploadResultPage', () => {
+  it('입력 오류의 구체적 이유를 텍스트로 보여주고 재업로드를 안내한다', async () => {
+    const reason =
+      '전월 잔여 재고의 재고관리단위가 이번 자료에 없어요(3개). 같은 셀러·창고인지 확인해 주세요.'
+    server.use(
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({
+          uploadId: 15,
+          status: 'FAILED',
+          error: {
+            code: 'INVALID_SOURCE',
+            message: '기존 안내',
+            reason,
+            details: { reason: 'PREVIOUS_MONTH_MISMATCH' },
+          },
+        }),
+      ),
+    )
+    renderPage()
+    expect(await screen.findByText(reason)).toBeVisible()
+    expect(screen.getByRole('button', { name: '다시 올리기' })).toBeVisible()
+    expect(screen.queryByText('기존 안내')).not.toBeInTheDocument()
+  })
+
+  it('서버 장애는 내부 이유를 표시하지 않고 같은 파일 재시도를 안내한다', async () => {
+    server.use(
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json({
+          uploadId: 15,
+          status: 'FAILED',
+          error: {
+            code: 'ENGINE_UNAVAILABLE',
+            message: '고정 안내',
+            reason: '내부 장애 문자열',
+          },
+        }),
+      ),
+    )
+    renderPage()
+    expect(
+      await screen.findByText(
+        '파일 문제는 아니에요. 잠시 뒤 같은 파일을 그대로 다시 올려 주세요.',
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText('내부 장애 문자열')).not.toBeInTheDocument()
+  })
+
   it('업로드 요약과 검산 제외 사유를 보여준다', async () => {
     renderPage()
 

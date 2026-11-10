@@ -2,9 +2,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { SkuPage } from './SkuPage'
+import { server } from '../../../mocks/server'
+import detailFixture from '../model/fixtures/accuracy-history-k1.json'
 
 function renderSku(path: string) {
   return render(
@@ -21,6 +24,43 @@ function renderSku(path: string) {
 }
 
 describe('SkuPage', () => {
+  it('작년 같은 날 출고를 점선·값으로 표시하고 기록 없는 날은 선을 끊는다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...detailFixture,
+          trend: [5000, null, 0, 20].map((lastYearOutboundQty, i) => ({
+            date: `2026-10-0${i + 1}`,
+            closingQty: 10,
+            outboundQty: 3,
+            isValidObservation: true,
+            lastYearOutboundQty,
+          })),
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    const chart = await screen.findByRole('img', { name: '재고·출고 그래프' })
+    expect(screen.getByText('작년 같은 날 출고')).toBeVisible()
+    expect(screen.getByText('10/3 · 작년 같은 날 출고 0개')).toBeInTheDocument()
+    const series = chart.querySelector('[data-series="last-year-outbound"]')
+    expect(series?.querySelectorAll('circle')).toHaveLength(3)
+    expect(
+      series?.querySelector('path')?.getAttribute('d')?.match(/M/g),
+    ).toHaveLength(2)
+    expect(series?.querySelector('path')).toHaveAttribute(
+      'stroke-dasharray',
+      '4 3',
+    )
+    expect(screen.getByText('5,000')).toBeInTheDocument()
+  })
+
+  it('작년 필드가 없는 기존 응답은 비교 출고를 만들어 표시하지 않는다', async () => {
+    renderSku('/sku/1')
+    await screen.findByRole('img', { name: '재고·출고 그래프' })
+    expect(screen.queryByText('작년 같은 날 출고')).not.toBeInTheDocument()
+  })
+
   it('서버 상세를 받아 권장 입고량, 기획서대로의 계산 근거, 정확도를 보여준다', async () => {
     renderSku('/sku/1')
 
