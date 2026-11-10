@@ -774,7 +774,8 @@
 
 .tab[aria-selected='true'] {
   color: var(--color-text);
-  font-weight: 800;
+  /* 굵기를 바꾸면 글자 폭이 달라져 옆 칸이 흔들린다 → 획만 두껍게(11/10) */
+  -webkit-text-stroke: 0.4px currentColor;
   border-color: var(--color-primary);
 }
 

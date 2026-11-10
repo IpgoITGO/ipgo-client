@@ -62,7 +62,8 @@
   color: var(--color-text);
   background: var(--color-card);
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
-  font-weight: 700;
+  /* 굵기를 바꾸면 글자 폭이 달라져 옆 칸이 흔들린다 → 획만 두껍게(11/10) */
+  -webkit-text-stroke: 0.4px currentColor;
 }
 
 .tab:focus-visible {
