@@ -62,7 +62,8 @@ export function DashboardSkeleton({ note }: { note?: WaitNote }) {
 
       <div aria-hidden="true" className={styles.rest}>
         <div className={styles.boxes}>
-          {[0, 1, 2, 3].map((i) => (
+          {/* 실제 화면과 같이 요약 카드 3장(11/11) */}
+          {[0, 1, 2].map((i) => (
             <div className={styles.card} key={i}>
               <span className={`${styles.sk} ${styles.a}`} />
               <span className={`${styles.sk} ${styles.b}`} />
@@ -71,12 +72,17 @@ export function DashboardSkeleton({ note }: { note?: WaitNote }) {
           ))}
         </div>
         <div className={styles.panel}>
+          <div className={styles.toolbar}>
+            <span className={`${styles.sk} ${styles.tabs}`} />
+            <span className={`${styles.sk} ${styles.search}`} />
+          </div>
           <span className={`${styles.sk} ${styles.h}`} />
           {ROW_WIDTHS.map((w) => (
             <div className={styles.row} key={w}>
               <span className={`${styles.sk} ${styles.ck}`} />
               <span className={styles.sk} style={{ width: w }} />
-              {[0, 1, 2, 3, 4].map((i) => (
+              {/* 상태·소진일·품절 위험·유통기한·입고량·금액 */}
+              {[0, 1, 2, 3, 4, 5].map((i) => (
                 <span className={styles.sk} key={i} />
               ))}
             </div>

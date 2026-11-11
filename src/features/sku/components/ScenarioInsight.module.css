@@ -76,12 +76,22 @@
   cursor: pointer;
   transition:
     transform 0.15s ease-out,
+    box-shadow 0.15s ease-out,
     border-color 0.15s ease-out,
     background 0.2s ease-out;
 }
 
+/* 떠오르기는 transform·그림자라 옆 칸은 안 밀린다(11/11 되살림) */
 .scenario:hover {
   border-color: var(--color-accent);
+  box-shadow: 0 10px 22px rgba(31, 37, 55, 0.12);
+  transform: translateY(-3px);
+}
+
+.scenario[data-selected='true']:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--color-accent),
+    0 10px 22px rgba(31, 37, 55, 0.12);
 }
 
 .scenario:focus-visible {
@@ -103,7 +113,8 @@
   border-color: var(--color-accent);
   box-shadow:
     inset 0 0 0 1px var(--color-accent),
-    0 8px 18px rgba(31, 37, 55, 0.08);
+    0 10px 22px rgba(31, 37, 55, 0.14);
+  transform: translateY(-4px);
 }
 
 .decidedBand {
@@ -322,6 +333,13 @@
 
 .error {
   color: var(--color-danger);
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+.error::first-line {
+  font-weight: 700;
 }
 
 .empty {
