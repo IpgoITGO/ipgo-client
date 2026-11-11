@@ -196,6 +196,12 @@ PR·dev push는 `npm ci --prefer-offline --no-fund`와 전체 `ci:check`를 실�
 
 앱의 `npm ci`는 캐시를 우선 사용하되 lockfile·integrity·설치 스크립트·npm audit는 유지합니다.
 캐시가 없으면 온라인에서 내려받습니다. `node_modules`를 복원하거나 설치 성공을 생략하지 않습니다.
+개발·운영 deploy job에서는 Vercel 빌드 밖의 앱 `npm ci`를 실행하지 않습니다.
+`prepare-vercel-build.mjs`가 두 환경 모두 `installCommand`를 `npm ci --prefer-offline --no-fund`로
+고정해 Vercel 빌드 안에서 한 번 설치합니다. Preview는 기존 `VITE_ENABLE_MSW=false npm run build`,
+Production은 `npm run ci:check && npm run build` 순서로 실행합니다. 운영의 전체 검사를 생략하거나
+게시 뒤로 옮기지 않습니다. 설치·검사·타입 검사·빌드 중 하나라도 실패하면 후보 게시/alias/승격으로
+진행하지 않습니다. PR/dev push의 설치·전체 CI·빌드와 정확 SHA 증거 검사는 유지합니다.
 Vercel CLI는 검토한 정확 `x.y.z` 버전만 허용하고, OS/아키텍처/실제 Node 버전/CLI 버전별로
 `runner.temp/vercel-npm-cache/_cacache`만 별도 보관합니다. 매번 global install을 수행하며
 캐시된 실행 파일·`.vercel` 환경 파일·인증정보·npm 로그는 보관하지 않습니다. CLI 설치는
@@ -303,7 +309,8 @@ PR/dev push는 기존 `npm ci`·전체 `ci:check`·`npm run build` 검사를 유
 빌드 실패 시 게시/alias 변경으로 넘어가지 않는다. PR의 환경과 Preview 환경이 같다고 가정해
 PR `dist`를 배포에 재사용하지 않는다. 승인 SHA·도메인·환경·CLI 버전·smoke/복구 검사는 유지한다.
 dev가 아닌 수동 실행도 일반 빌드 검사는 생략하지 않으며 실제 배포는 기존 조건으로 차단한다.
-최신 성공 CI를 읽기 위해 GitHub token에는 `actions: read`만 추가한다. 배포 job의 의존성 설치·환경/SHA·Preview 빌드·alias·smoke 검사는 그대로다.
+최신 성공 CI를 읽기 위해 GitHub token에는 `actions: read`만 추가한다. 배포 job의 앱 설치는
+Vercel 빌드 안의 한 번으로 합치며 환경/SHA·Preview 빌드·alias·smoke 검사는 유지한다.
 총 배포 시간에는 준비·CI 증거 조회·승인 대기·최종 Vercel 빌드/게시·smoke/기록을 포함한다.
 이번 변경만으로 실제 시간 단축이나 총 10분대 달성을 검증했다고 보고하지 않는다.
 

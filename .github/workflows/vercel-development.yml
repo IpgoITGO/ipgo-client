@@ -73,9 +73,6 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: 의존성 설치
-        run: npm ci --prefer-offline --no-fund
-
       - name: 승인 SHA 확인
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -101,13 +98,7 @@ jobs:
 
       - name: Preview build
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs'
-          const file = 'vercel.json'
-          const config = JSON.parse(fs.readFileSync(file, 'utf8'))
-          config.buildCommand = 'VITE_ENABLE_MSW=false npm run build'
-          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n')
-          NODE
+          node scripts/automation/prepare-vercel-build.mjs preview
           vercel build
 
       - id: deploy

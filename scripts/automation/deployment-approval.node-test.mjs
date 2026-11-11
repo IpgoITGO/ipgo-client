@@ -57,7 +57,10 @@ test('수동 dev 배포만 중복 일반 빌드를 생략하고 최종 환경 �
     /name: Build CI source outside a dev deployment\s+if: github.event_name != 'workflow_dispatch' \|\| github.ref != 'refs\/heads\/dev'\s+run: npm run build:ci/,
   )
   assert.match(workflow, /run: npm run ci:check/)
-  assert.match(workflow, /VITE_ENABLE_MSW=false npm run build/)
+  assert.match(
+    workflow,
+    /node scripts\/automation\/prepare-vercel-build.mjs preview/,
+  )
   assert.ok(
     workflow.indexOf('vercel build') <
       workflow.indexOf('vercel deploy --prebuilt'),
