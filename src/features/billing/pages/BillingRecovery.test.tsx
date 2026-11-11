@@ -126,7 +126,7 @@ describe('최초 승인 거절 후 기존 청구 재결제', () => {
     const retry = vi.fn(() => HttpResponse.json({}, { status: 202 }))
     server.use(http.post('/api/billing/invoices/first-declined/retry', retry))
     const { user } = await openApp('/account')
-    await user.click(await screen.findByRole('button', { name: '바꾸기' }))
+    await user.click(await screen.findByRole('button', { name: '카드 바꾸기' }))
     await screen.findByRole('heading', { name: '카드를 바꿨어요' })
     await user.click(screen.getByRole('button', { name: '내 계정으로' }))
     await user.click(await screen.findByRole('button', { name: '다시 결제' }))
