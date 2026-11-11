@@ -266,6 +266,20 @@ rollback은 새 운영 push의 자동 alias 연결에 영향을 줄 수 있으�
 
 ## 개발 배포 승인
 
+### 중복 빌드 줄이기
+
+PR/dev push는 기존 `npm ci`·전체 `ci:check`·`npm run build` 검사를 유지한다.
+승인된 dev의 수동 배포는 `verify`에서 전체 `ci:check`를 수행한 뒤, 별도 일반 빌드만 생략한다.
+환경 승인을 받은 `deploy`가 Preview 환경을 가져와 `VITE_ENABLE_MSW=false npm run build`를
+`vercel build`로 한 번 수행하고 그 결과를 `vercel deploy --prebuilt`로 게시한다.
+빌드 실패 시 게시/alias 변경으로 넘어가지 않는다. PR의 환경과 Preview 환경이 같다고 가정해
+PR `dist`를 배포에 재사용하지 않는다. 승인 SHA·도메인·환경·CLI 버전·smoke/복구 검사는 유지한다.
+dev가 아닌 수동 실행도 일반 빌드 검사는 생략하지 않으며 실제 배포는 기존 조건으로 차단한다.
+총 배포 시간에는 전체 검사·승인 대기·최종 Vercel 빌드/게시·smoke/기록을 포함한다.
+이번 변경만으로 실제 시간 단축이나 총 10분대 달성을 검증했다고 보고하지 않는다.
+
+### 기존 승인 경계
+
 `Vercel 개발 배포` workflow는 PR/dev push에서 `verify`만 실행합니다. 배포는 dev에서
 `workflow_dispatch`로 승인된 전체 SHA를 `expected_sha`에 넣어 실행합니다. 실행 SHA와 다르거나
 dev가 아니면 Vercel API 호출 전에 중단합니다. 새 commit으로 승인 SHA를 임의 교체하지 않습니다.
