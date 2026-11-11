@@ -98,13 +98,14 @@ export function AppLayout() {
               {planLabel}
             </NavLink>
           )}
-          <AlertBell />
           <AccountMenu
             company={user?.companyName ?? ''}
             name={user?.name ?? ''}
             onSignOut={() => void handleSignOut()}
             signingOut={signingOut && !logoutFailed}
           />
+          {/* 알림은 맨 오른쪽 고정(11/11): 이름 길이에 따라 종 자리가 흔들리지 않게 */}
+          <AlertBell />
         </div>
       </header>
       {subscription && <BillingStrip subscription={subscription} />}

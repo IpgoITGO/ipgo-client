@@ -79,78 +79,20 @@
   background: var(--color-primary-soft);
 }
 
+.previewArt {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 460px;
+  object-fit: contain;
+}
+
 .previewCaption {
   margin: 0;
   color: var(--color-text);
   font-size: 24px;
   font-weight: 800;
   line-height: 1.4;
-}
-
-/* 대시보드의 "지금 넣어야 해요" 카드와 같은 모양 */
-.previewCard {
-  position: relative;
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-6);
-  background: var(--color-card);
-  border: 2px solid var(--color-primary);
-  border-radius: var(--radius-input);
-}
-
-.tape {
-  --tape-rotate: -4deg;
-  top: -12px;
-  left: var(--space-5);
-  width: 88px;
-}
-
-.previewCard span {
-  color: var(--color-primary);
-  font-weight: 700;
-}
-
-.previewCard strong {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.previewCard small {
-  color: var(--color-danger);
-  font-size: var(--text-caption);
-  font-weight: 700;
-}
-
-.previewList {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: var(--color-card);
-  border-radius: var(--radius-input);
-}
-
-.previewList li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-caption);
-}
-
-.previewList li + li {
-  border-top: 1px solid var(--color-border);
-}
-
-.previewList b {
-  font-variant-numeric: tabular-nums;
-}
-
-.previewNote {
-  margin: 0;
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
 }
 
 @media (max-width: 900px) {

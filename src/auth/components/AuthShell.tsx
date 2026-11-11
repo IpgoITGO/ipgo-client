@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Tape } from '../../shared/ui/Tape/Tape'
+import cornerArt from '../assets/login-corner.webp'
 import styles from './AuthShell.module.css'
 
 type AuthShellProps = {
@@ -14,14 +14,7 @@ const tabs = [
   { id: 'signup', to: '/signup', label: '회원가입' },
 ] as const
 
-// 오른쪽 미리보기에 쓰는 예시 숫자. 실제 계정 값이 아니다.
-const sampleItems = [
-  { name: '상품 A', quantity: 72 },
-  { name: '상품 B', quantity: 40 },
-  { name: '상품 C', quantity: 24 },
-]
-
-// S01 로그인 · S02 회원가입이 함께 쓰는 틀: 왼쪽 입력 + 오른쪽 서비스 화면 미리보기
+// S01 로그인 · S02 회원가입이 함께 쓰는 틀: 왼쪽 입력 + 오른쪽 셀러 선반 그림(11/11 코덱스)
 export function AuthShell({ tab, children }: AuthShellProps) {
   return (
     <main className={styles.page}>
@@ -51,21 +44,7 @@ export function AuthShell({ tab, children }: AuthShellProps) {
             <br />
             지금 넣을 상품을 알려드려요
           </p>
-          <div className={styles.previewCard}>
-            <Tape className={styles.tape} />
-            <span>지금 넣어야 해요</span>
-            <strong>3개</strong>
-            <small>오늘 발주해야 제때 도착해요</small>
-          </div>
-          <ul className={styles.previewList}>
-            {sampleItems.map((item) => (
-              <li key={item.name}>
-                <span>{item.name}</span>
-                <b>권장 {item.quantity}개</b>
-              </li>
-            ))}
-          </ul>
-          <p className={styles.previewNote}>예시 화면이에요</p>
+          <img alt="" className={styles.previewArt} src={cornerArt} />
         </aside>
       </div>
     </main>

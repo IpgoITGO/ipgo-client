@@ -46,7 +46,7 @@ const STATE_CHIP = {
 // 서버 NeedJudgment.MAX_DAYS_SINCE_AS_OF와 같은 7일(넘으면 직접 수량 비교를 SCENARIO_STALE로 거절)
 const SCENARIO_MAX_DAYS = 7
 const STALE_TEXT =
-  '이 결과 뒤에 새 계산이 돌았거나(실패한 계산 포함) 수불부가 바뀌었어요. 새로고침한 뒤 다시 넣어 주세요.'
+  '지금은 비교가 막혀 있어요\n이 결과 뒤에 새 계산이 있었어요\n수량 정하기는 바로 돼요'
 
 // "2026. 10. 14" → 오늘까지 며칠
 function daysSinceDot(dotted: string) {
