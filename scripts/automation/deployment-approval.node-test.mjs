@@ -46,3 +46,24 @@ test('PR와 push는 검증만 수행하며 Git 연동 배포도 차단한다', (
   )
   assert.equal(config.git.deploymentEnabled, false)
 })
+
+test('수동 dev 배포만 중복 일반 빌드를 생략하고 최종 환경 빌드는 유지한다', () => {
+  const workflow = readFileSync(
+    new URL('../../.github/workflows/vercel-development.yml', import.meta.url),
+    'utf8',
+  )
+  assert.match(
+    workflow,
+    /name: Build CI source outside a dev deployment\s+if: github.event_name != 'workflow_dispatch' \|\| github.ref != 'refs\/heads\/dev'\s+run: npm run build/,
+  )
+  assert.match(workflow, /run: npm run ci:check/)
+  assert.match(workflow, /VITE_ENABLE_MSW=false npm run build/)
+  assert.ok(
+    workflow.indexOf('vercel build') <
+      workflow.indexOf('vercel deploy --prebuilt'),
+  )
+  assert.ok(
+    workflow.indexOf('validate-dev-deployment.mjs') <
+      workflow.indexOf('vercel pull'),
+  )
+})

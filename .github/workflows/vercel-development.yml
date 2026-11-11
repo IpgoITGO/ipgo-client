@@ -33,7 +33,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ci:check
-      - run: npm run build
+      - name: Build CI source outside a dev deployment
+        if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
+        run: npm run build
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'
