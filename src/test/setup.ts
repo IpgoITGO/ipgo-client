@@ -1,3 +1,4 @@
+import { resetBillingMock } from '../features/billing/mocks/billingHandlers'
 import { resetPlannedQuantitiesMock } from '../features/sku/mocks/plannedQuantityHandlers'
 import { resetStorageCostMock } from '../features/settings/mocks/storageCostHandlers'
 import { resetExpiryMock } from '../features/expiry/mocks/expiryHandlers'
@@ -19,11 +20,13 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   cleanup()
   server.resetHandlers()
+  server.events.removeAllListeners()
   resetAuthMock()
   resetUploadMock()
   resetPlannedQuantitiesMock()
   resetStorageCostMock()
   resetExpiryMock()
+  resetBillingMock()
   resetPlannedReceiptsMock()
   resetCsrfToken()
   setAccessToken(null)

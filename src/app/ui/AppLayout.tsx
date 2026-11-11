@@ -1,15 +1,13 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
 import {
   calcLock,
-  loadSubscription,
-  onSubscriptionChange,
   planOf,
-  subscriptionSnapshot,
   trialDaysLeft,
 } from '../../features/billing/model/billing'
+import { useSubscription } from '../../features/billing/model/billingApi'
 import { BillingStrip } from '../../features/billing/components/BillingStrip'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
@@ -49,16 +47,18 @@ export function AppLayout() {
   )
 
   // 지금 요금제 알약(#186). 체험이면 남은 날을 같이 보여 준다. 누르면 요금제 화면.
-  // 결제하면 저장 알림을 받아 바로 다시 그린다.
-  useSyncExternalStore(onSubscriptionChange, subscriptionSnapshot)
-  const subscription = loadSubscription()
-  const trialEnded = calcLock(subscription)?.reason === 'TRIAL_ENDED'
-  const planLabel =
-    subscription.plan === 'trial'
+  // 서버 구독을 받아 오기 전·결제가 꺼져 있을 때(503)는 알약과 띠를 그리지 않는다.
+  const { data: subscription } = useSubscription()
+  const trialEnded = subscription
+    ? calcLock(subscription)?.reason === 'TRIAL_ENDED'
+    : false
+  const planLabel = !subscription
+    ? ''
+    : subscription.planId === 'trial'
       ? trialEnded
         ? '체험 끝남'
         : `체험 ${trialDaysLeft(subscription)}일 남음`
-      : planOf(subscription.plan).name
+      : planOf(subscription.planId).name
 
   function leaveAnyway() {
     setLogoutFailed(false)
@@ -88,14 +88,16 @@ export function AppLayout() {
           ))}
         </nav>
         <div className={styles.account}>
-          <NavLink
-            aria-label={`지금 요금제: ${planLabel}`}
-            className={styles.planPill}
-            data-ended={trialEnded || undefined}
-            to="/plans"
-          >
-            {planLabel}
-          </NavLink>
+          {subscription && (
+            <NavLink
+              aria-label={`지금 요금제: ${planLabel}`}
+              className={styles.planPill}
+              data-ended={trialEnded || undefined}
+              to="/plans"
+            >
+              {planLabel}
+            </NavLink>
+          )}
           <AccountMenu
             company={user?.companyName ?? ''}
             name={user?.name ?? ''}
@@ -106,7 +108,7 @@ export function AppLayout() {
           <AlertBell />
         </div>
       </header>
-      <BillingStrip subscription={subscription} />
+      {subscription && <BillingStrip subscription={subscription} />}
       <main className={styles.main}>
         <CalculationStatus />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}

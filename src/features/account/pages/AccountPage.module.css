@@ -17,15 +17,8 @@
   min-width: 0;
 }
 
-.pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-
 @media (max-width: 900px) {
-  .layout,
-  .pair {
+  .layout {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -358,6 +351,47 @@
   outline-offset: 2px;
 }
 
+/* 요금제 상자 오른쪽: 주 버튼 + 그 아래 작은 "구독 해지" */
+.planActions {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+/* 프로필 상자 맨 아래 회원 탈퇴(레퍼런스 Medium: 빨간 글자 + 한 줄 설명) */
+.danger {
+  display: grid;
+  gap: 2px;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.danger span {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.dangerLink {
+  justify-self: start;
+  padding: 0;
+  color: var(--color-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.dangerLink:hover {
+  text-decoration: underline;
+}
+
+.dangerLink:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
 .textButton {
   justify-self: start;
   min-height: 44px;
@@ -540,7 +574,39 @@
   background: var(--color-danger-bg);
   border-color: transparent;
 }
+.manageRow .card {
+  color: var(--color-text-2);
+  font-weight: 700;
+}
+/* 결제 내역: 이름은 왼쪽 고정 폭, 내역은 오른쪽 나머지 */
+.historyRow {
+  align-items: baseline;
+  justify-content: flex-start;
+}
+.historyRow > b {
+  flex: none;
+  width: 120px;
+}
+.historyRow .history {
+  flex: 1;
+}
+.historyRow .history tr:first-child td {
+  padding-top: 0;
+}
+.manageButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 .manageButton:focus-visible {
   outline: 3px solid var(--color-link);
   outline-offset: 2px;
+}
+
+.planActions .textButton {
+  justify-self: end;
+}
+
+/* 해지 예약 뒤에도 같은 높이(아래 줄 자리 유지 → 상자 높이 안 바뀜) */
+.planActions .slot {
+  visibility: hidden;
 }

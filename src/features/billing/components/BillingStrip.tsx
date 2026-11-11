@@ -2,8 +2,9 @@ import { Link, useLocation } from 'react-router-dom'
 
 import {
   calcLock,
+  dayOf,
   monthDayKo,
-  renewalDeadline,
+  paymentProblem,
   type Subscription,
 } from '../model/billing'
 import styles from './BillingStrip.module.css'
@@ -14,8 +15,7 @@ export function BillingStrip({ subscription }: { subscription: Subscription }) {
   const { pathname } = useLocation()
   if (pathname.startsWith('/checkout')) return null
   const lock = calcLock(subscription)
-  const failed =
-    subscription.plan !== 'trial' ? subscription.renewalFailed : null
+  const failed = paymentProblem(subscription)
 
   let text: React.ReactNode
   let action: { to: string; label: string }
@@ -27,6 +27,14 @@ export function BillingStrip({ subscription }: { subscription: Subscription }) {
       </>
     )
     action = { to: '/plans', label: '요금제 고르기' }
+  } else if (lock?.reason === 'SUBSCRIPTION_ENDED') {
+    text = (
+      <>
+        <b>구독이 끝났어요.</b> 자료는 그대로 볼 수 있어요. 새로 계산하려면
+        요금제를 골라 주세요.
+      </>
+    )
+    action = { to: '/plans', label: '요금제 고르기' }
   } else if (failed) {
     text = lock ? (
       <>
@@ -34,14 +42,14 @@ export function BillingStrip({ subscription }: { subscription: Subscription }) {
       </>
     ) : (
       <>
-        <b>{monthDayKo(failed.on)} 결제가 안 됐어요.</b>{' '}
-        {monthDayKo(renewalDeadline(failed.on))}까지 바꾸지 않으면 새 계산이
-        멈춰요.
+        <b>결제가 안 됐어요.</b>{' '}
+        {failed.until && `${monthDayKo(dayOf(failed.until))}까지 `}해결하지
+        않으면 새 계산이 멈춰요.
       </>
     )
     action = {
-      to: `/checkout?plan=${subscription.plan}&retry=1`,
-      label: '결제 수단 바꾸기',
+      to: '/account',
+      label: '결제 확인하기',
     }
   } else {
     return null

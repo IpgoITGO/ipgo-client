@@ -2,17 +2,16 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
-import { demoSubscription } from '../model/billing'
+import { demoSubscription } from '../mocks/billingHandlers'
 import { BillingStrip } from './BillingStrip'
 
-const today = new Date()
 const show = (
   name: Parameters<typeof demoSubscription>[0],
   path = '/dashboard',
 ) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <BillingStrip subscription={demoSubscription(name, today)} />
+      <BillingStrip subscription={demoSubscription(name)} />
     </MemoryRouter>,
   )
 
@@ -27,7 +26,13 @@ describe('결제 띠', () => {
   })
   it('결제 실패는 마감 날짜, 지나면 멈췄다고', () => {
     const { unmount } = show('pay-failed')
-    expect(screen.getByText(/까지 바꾸지 않으면 새 계산이/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/까지 해결하지 않으면 새 계산이/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '결제 확인하기' })).toHaveAttribute(
+      'href',
+      '/account',
+    )
     unmount()
     show('pay-locked')
     expect(
@@ -41,5 +46,15 @@ describe('결제 띠', () => {
     expect(
       show('pay-failed', '/checkout?plan=seller').container,
     ).toBeEmptyDOMElement()
+  })
+  it('모르는 상태값이 와도 권한이 허용이면 아무것도 안 띄운다', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <BillingStrip
+          subscription={{ ...demoSubscription('seller'), status: 'WEIRD' }}
+        />
+      </MemoryRouter>,
+    )
+    expect(container).toBeEmptyDOMElement()
   })
 })

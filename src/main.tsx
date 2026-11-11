@@ -20,9 +20,6 @@ async function enableApiMocking() {
     },
   })
   keepMockingActive(registration)
-  // 예외 화면 확인용: ?demo=trial-ended 같은 주소면 그 구독 상태를 화면을 그리기 전에 저장한다(#214)
-  const { applyDemoFromUrl } = await import('./features/billing/model/billing')
-  applyDemoFromUrl(location.search)
 }
 
 // 회원가입은 단계가 나뉘어 새로고침하면 입력이 사라지므로, 그 탭에서 회원가입 화면을 다시 불러오면
