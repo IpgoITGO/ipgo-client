@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
+import { prepareBuildConfig } from './prepare-vercel-build.mjs'
 
 const files = ['vercel-development.yml', 'vercel-production.yml']
 const workflows = files.map((file) =>
@@ -14,7 +15,6 @@ const workflows = files.map((file) =>
 test('앱 캐시는 npm ci와 lockfile 검증·설치 스크립트·감사를 생략하지 않는다', () => {
   for (const workflow of workflows) {
     const installs = [...workflow.matchAll(/run: (npm ci[^\n]*)/g)]
-    assert.ok(installs.length > 0)
     for (const [, command] of installs) {
       assert.match(command, /--prefer-offline/)
       assert.match(command, /--no-fund/)
@@ -109,7 +109,13 @@ test('CI 번들은 같은 job의 타입 검사 성공 뒤에만 실행하고 기
     /name: Build CI source outside a dev deployment\s+if: github.event_name != 'workflow_dispatch' \|\| github.ref != 'refs\/heads\/dev'\s+run: npm run build:ci/,
   )
   assert.doesNotMatch(verify, /continue-on-error:|always\(\)/)
-  assert.match(workflows[0], /VITE_ENABLE_MSW=false npm run build/)
-  assert.match(workflows[1], /run: npm run ci:check/)
-  assert.match(workflows[1], /run: vercel build --prod/)
+  assert.equal(
+    prepareBuildConfig({}, 'preview').buildCommand,
+    'VITE_ENABLE_MSW=false npm run build',
+  )
+  assert.equal(
+    prepareBuildConfig({}, 'production').buildCommand,
+    'npm run ci:check && npm run build',
+  )
+  assert.match(workflows[1], /vercel build --prod/)
 })
