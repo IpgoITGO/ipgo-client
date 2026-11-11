@@ -333,6 +333,13 @@ export function DashboardPage() {
   // 계산 중엔 지난 숫자 대신 스켈레톤. 오래 걸리면 "지난 결과 보기"로 열 수 있고, 끝나면 다시 닫힌다
   const busy = ['checking', 'pending', 'updating'].includes(calculation.phase)
   const [showPast, setShowPast] = useState(false)
+  // 엑셀을 받으면 버튼이 1.6초 "✓ 받았어요"(11/11)
+  const [exported, setExported] = useState(false)
+  useEffect(() => {
+    if (!exported) return
+    const timer = setTimeout(() => setExported(false), 1600)
+    return () => clearTimeout(timer)
+  }, [exported])
   if (!busy && showPast) setShowPast(false)
   const routeRun = Number(params.get('run'))
   const routeRunId =
@@ -687,6 +694,7 @@ export function DashboardPage() {
         })),
       ]),
     )
+    setExported(true)
   }
 
   // 같은 자리에 BusyStrip을 두어 끝났을 때 "바꿨어요" 한 줄이 이어진다
@@ -1268,8 +1276,13 @@ export function DashboardPage() {
               <Button onClick={() => setPicked(new Set())} variant="text">
                 선택 해제
               </Button>
-              <Button disabled={!plannedQuery.isSuccess} onClick={exportOrder}>
-                엑셀로 받기
+              <Button
+                className={styles.exportButton}
+                data-done={exported || undefined}
+                disabled={!plannedQuery.isSuccess}
+                onClick={exportOrder}
+              >
+                {exported ? '✓ 받았어요' : '엑셀로 받기'}
               </Button>
             </div>
           )}

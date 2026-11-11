@@ -11,7 +11,7 @@ import { Modal } from '../../../shared/ui/Modal/Modal'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
 import { getPlannedReceipts } from '../../settings/model/plannedReceiptsApi'
 import { getUploadPeriods } from '../../upload/model/uploadApi'
-import eraseArt from '../assets/withdraw-erase.webp'
+import shredArt from '../assets/withdraw-shred.webp'
 import styles from './WithdrawModal.module.css'
 
 type Props = {
@@ -142,7 +142,7 @@ export function WithdrawModal({
       <form className={styles.body} noValidate onSubmit={submit}>
         {/* 한 화면(11/11, 레퍼런스 Notion·Bonsai): 지워지는 것 → 비밀번호 → 버튼. 단계가 없어 높이가 안 바뀌고 빈 공간도 없다 */}
         <div className={styles.hd}>
-          <img alt="" src={eraseArt} />
+          <img alt="" src={shredArt} />
         </div>
         <h2 className={styles.title} id={titleId} ref={titleRef} tabIndex={-1}>
           탈퇴하면 아래 자료가 모두 지워져요
