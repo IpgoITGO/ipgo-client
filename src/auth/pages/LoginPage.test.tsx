@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -111,5 +111,26 @@ describe('LoginPage', () => {
     expect(
       screen.queryByText('이메일 또는 비밀번호가 맞지 않아요.'),
     ).not.toBeInTheDocument()
+  })
+  it('아이디·비밀번호 찾기 링크로 창을 열고, 로그인하기로 이메일을 채운다', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.click(
+      await screen.findByRole('button', { name: '아이디·비밀번호 찾기' }),
+    )
+    await user.click(screen.getByRole('tab', { name: '비밀번호 찾기' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await user.type(dialog.getByLabelText('이메일'), 'seller@a.com')
+    await user.click(screen.getByRole('button', { name: '코드 보내기' }))
+    await user.type(await screen.findByLabelText('인증 코드'), '123456')
+    await user.click(screen.getByRole('button', { name: '확인' }))
+    await user.type(await screen.findByLabelText('새 비밀번호'), 'Abcd1234!')
+    await user.type(screen.getByLabelText('새 비밀번호 확인'), 'Abcd1234!')
+    await user.click(screen.getByRole('button', { name: '비밀번호 바꾸기' }))
+    await user.click(await screen.findByRole('button', { name: '로그인하기' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('이메일')).toHaveValue('seller@a.com')
   })
 })

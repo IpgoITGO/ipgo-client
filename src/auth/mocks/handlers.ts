@@ -1,5 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
+import { withdrawHandlers } from '../../features/account/mocks/withdrawHandlers'
+
 import { PASSWORD_RULE } from '../model/passwordRule'
 
 // ipgo-server의 인증 API 규칙(PR #7·#9·#13의 README)을 따르는 MSW handler입니다.
@@ -150,6 +152,8 @@ function isName(value: unknown) {
 }
 
 export const authHandlers = [
+  // 회원 탈퇴(계정 기능이라 여기 함께 등록)
+  ...withdrawHandlers,
   // CSRF 토큰 받기 (로그인 전에도 호출 가능)
   http.get('/api/auth/csrf', () =>
     HttpResponse.json({
@@ -366,6 +370,44 @@ export const authHandlers = [
     users.push(user)
 
     return HttpResponse.json(toMe(user), { status: 201 })
+  }),
+  // 비밀번호 찾기: 없는 이메일도 204로 답해 가입 여부를 알려 주지 않는다. 코드는 '123456'이 맞다.
+  http.post(
+    '/api/auth/password-reset/code',
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
+  http.post('/api/auth/password-reset/verify', async ({ request }) => {
+    const body = (await request.json()) as { code?: string }
+    if (body.code !== '123456') {
+      return error(400, 'INVALID_CODE', '코드가 맞지 않아요.', {
+        field: 'code',
+      })
+    }
+    return HttpResponse.json({ resetToken: 'mock-reset-token' })
+  }),
+
+  http.post('/api/auth/password-reset', async ({ request }) => {
+    const body = (await request.json()) as {
+      resetToken?: string
+      newPassword?: string
+    }
+    if (body.resetToken !== 'mock-reset-token') {
+      return error(400, 'INVALID_TOKEN', '다시 시도해 주세요.')
+    }
+    if (!PASSWORD_RULE.test(body.newPassword ?? '')) {
+      return invalidInput('newPassword')
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // 아이디 찾기: 아이디는 가입 이메일이라 가린 이메일을 돌려준다.
+  http.post('/api/auth/find-id', async ({ request }) => {
+    const body = (await request.json()) as { businessNumber?: string }
+    if (body.businessNumber !== '123-45-67890') {
+      return error(404, 'NOT_FOUND', '가입한 계정이 없어요.')
+    }
+    return HttpResponse.json({ maskedEmail: 'se***@a.com' })
   }),
 ]
 

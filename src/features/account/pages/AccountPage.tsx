@@ -25,6 +25,7 @@ import {
   trialDaysLeft,
 } from '../../billing/model/billing'
 import { CancelModal } from '../ui/CancelModal'
+import { WithdrawModal } from '../ui/WithdrawModal'
 import { Toast } from '../../../shared/ui/Toast/Toast'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
 import styles from './AccountPage.module.css'
@@ -47,6 +48,7 @@ export function AccountPage() {
   })
   const [editMethod, setEditMethod] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
   // 해지·해지 취소가 됐는지 바로 알 수 있게 아래에 잠깐 띄운다
   const [notice, setNotice] = useState<string | null>(null)
   const products = useQuery({
@@ -295,32 +297,76 @@ export function AccountPage() {
             </section>
           </div>
 
-          {!trial &&
-            (subscription.cancelOn ? (
-              <p className={styles.cancelLine}>
-                {monthDayKo(subscription.cancelOn)}까지 쓰고 끝나요.{' '}
-                <button
-                  className={styles.textButton}
-                  onClick={() => {
-                    setSubscription(setCancel(subscription, false))
-                    setNotice('해지를 취소했어요. 지금처럼 계속 써요')
-                  }}
-                  type="button"
-                >
-                  해지 취소
-                </button>
-              </p>
-            ) : (
+          {/* 구독·계정 관리(11/11): 해지와 탈퇴를 맨 아래 한 상자에 줄마다 설명 + 같은 폭 버튼으로.
+              흩어진 글자 링크 두 개 대신(레퍼런스: Craft "Danger zone", Notion 계정 설정) */}
+          <section
+            aria-labelledby="manage-title"
+            className={`${styles.block} ${styles.manage}`}
+          >
+            <h2 className={styles.label} id="manage-title">
+              구독·계정 관리
+            </h2>
+            {!trial && (
+              <div className={styles.manageRow}>
+                <div>
+                  <b>
+                    {subscription.cancelOn ? '구독 해지 예약됨' : '구독 해지'}
+                  </b>
+                  <span>
+                    {subscription.cancelOn
+                      ? `${monthDayKo(subscription.cancelOn)}까지 쓰고 끝나요. 취소하면 지금처럼 계속 써요`
+                      : '다음 결제부터 멈춰요. 남은 기간은 그대로 써요'}
+                  </span>
+                </div>
+                {subscription.cancelOn ? (
+                  <button
+                    className={styles.manageButton}
+                    onClick={() => {
+                      setSubscription(setCancel(subscription, false))
+                      setNotice('해지를 취소했어요. 지금처럼 계속 써요')
+                    }}
+                    type="button"
+                  >
+                    해지 취소
+                  </button>
+                ) : (
+                  <button
+                    aria-label="구독 해지"
+                    className={styles.manageButton}
+                    onClick={() => setConfirmCancel(true)}
+                    type="button"
+                  >
+                    해지하기
+                  </button>
+                )}
+              </div>
+            )}
+            <div className={styles.manageRow}>
+              <div>
+                <b>회원 탈퇴</b>
+                <span>계정과 올린 수불부·계산 결과를 모두 지워요</span>
+              </div>
               <button
-                className={styles.textButton}
-                onClick={() => setConfirmCancel(true)}
+                aria-label="회원 탈퇴"
+                className={styles.manageButton}
+                data-danger=""
+                onClick={() => setWithdrawing(true)}
                 type="button"
               >
-                구독 해지
+                탈퇴하기
               </button>
-            ))}
+            </div>
+          </section>
         </div>
       </div>
+      {withdrawing && (
+        <WithdrawModal
+          onClose={() => setWithdrawing(false)}
+          planName={plan.name}
+          subscribed={!trial && !subscription.cancelOn}
+          usableUntil={nextOn ? monthDayKo(nextOn) : null}
+        />
+      )}
       {/* 해지는 팝업 두 단계(#237): 놓치는 것 → 진짜 확인 */}
       {confirmCancel && nextOn && (
         <CancelModal
@@ -346,9 +392,6 @@ export function AccountPage() {
   )
 }
 
-// 내 자료 막대 칸 수(계산식 A까지 쓰는 기간)
-const WINDOW_MONTHS = 16
-
 // 올린 첫 달 ~ 마지막 달 사이에 빠진 달 수
 function monthGap(months: string[]) {
   const toIndex = (key: string) => {
@@ -368,7 +411,8 @@ function slash(iso: string) {
   return `${m}/${d}`
 }
 
-// 내 자료: 언제 것까지 올렸고 언제까지 계산되는지, 어느 달이 비었는지(11/10 — 7일 규칙을 대시보드에서만 늦게 알던 것)
+// 내 자료: 언제 것까지 올렸고 언제까지 계산되는지, 빈 달이 몇 개인지(11/10 — 7일 규칙을 대시보드에서만 늦게 알던 것).
+// 올린 달 16칸 막대는 "채워야 하는 숙제"처럼 보여 빼고 숫자만 둔다.
 function MyData() {
   const needs = useQuery({
     queryKey: ['dashboard', 'account'],
@@ -383,20 +427,6 @@ function MyData() {
   const months = (periods.data?.items ?? []).map((item) => item.period).sort()
   const first = months[0]
   const last = months.at(-1)
-  // 이번 달에서 거꾸로 16개월을 늘 그린다 — 계산식 A(작년 같은 날 앞 90일 ~ 뒤 계산 기간)까지 다 쓰려면
-  // 이만큼 필요해서 "최대"로 둔다(11/10). 올린 달은 초록, 빈 달은 회색.
-  const have = new Set(months)
-  const thisMonth = (needs.data?.today ?? last ?? '').slice(0, 7)
-  const strip: { key: string; has: boolean }[] = []
-  if (/^\d{4}-\d{2}$/.test(thisMonth)) {
-    const [y0, m0] = thisMonth.split('-').map(Number)
-    for (let back = WINDOW_MONTHS - 1; back >= 0; back--) {
-      const index = y0 * 12 + (m0 - 1) - back
-      const key = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`
-      strip.push({ key, has: have.has(key) })
-    }
-  }
-  const filled = strip.filter((cell) => cell.has).length
   const until = asOf
     ? isoDate(new Date(Date.parse(asOf) + FRESH_DAYS * 864e5))
     : null
@@ -452,35 +482,6 @@ function MyData() {
           )}
         </div>
       </div>
-      {strip.length > 0 && (
-        <div className={styles.window}>
-          <p className={styles.windowHead}>
-            <span>올린 달</span>
-            <small>
-              {WINDOW_MONTHS}칸 중 <b>{filled}칸</b> · 다 차면 작년 같은 시기
-              계산까지 돼요
-            </small>
-          </p>
-          <div
-            aria-label={`최근 ${WINDOW_MONTHS}개월 중 ${filled}개월 올림`}
-            className={styles.strip}
-            role="img"
-          >
-            {strip.map((cell) => (
-              <i
-                data-has={cell.has || undefined}
-                key={cell.key}
-                title={cell.key}
-              />
-            ))}
-          </div>
-          <p className={styles.ends}>
-            <span>{strip[0].key}</span>
-            <span>{strip[Math.floor(strip.length / 2)].key}</span>
-            <span>{strip.at(-1)!.key} (이번 달)</span>
-          </p>
-        </div>
-      )}
     </section>
   )
 }
