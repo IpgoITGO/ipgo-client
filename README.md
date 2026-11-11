@@ -1,6 +1,6 @@
 # Ipgo Client
 
-개발 수동 배포는 전체 `ci:check`를 유지하고, Vercel Preview 환경에서 최종 빌드를 한 번 수행합니다. PR·push의 빌드 검사는 유지하며 세부사항은 [자동화 운영](docs/automation.md)을 따릅니다.
+개발 수동 배포는 같은 SHA의 성공한 dev push CI에서 전체 `ci:check`·빌드 증거를 확인해 재사용하고, Vercel Preview 환경에서 최종 빌드를 한 번 수행합니다. PR·push의 빌드 검사는 유지하며 세부사항은 [자동화 운영](docs/automation.md)을 따릅니다.
 
 Ipgo 서비스의 사용자 화면과 클라이언트 동작을 관리하는 React 애플리케이션입니다.
 풀필먼트 수불부를 바탕으로 다음 입고 수량과 판단 근거를 제공하는 화면을 만듭니다.
