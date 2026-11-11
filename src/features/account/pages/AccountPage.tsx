@@ -319,58 +319,64 @@ export function AccountPage() {
 
           <MyData />
 
+          {/* 결제(11/11): 반쪽 상자 두 개가 비어 보여서 아래 관리 상자처럼 한 상자에 줄로 */}
           {!billingOff && (
-            <div className={styles.pair}>
-              <section aria-labelledby="method-title" className={styles.block}>
-                <div className={styles.row}>
-                  <h2 className={styles.label} id="method-title">
-                    결제 수단
-                  </h2>
-                  {current && (
-                    <button
-                      className={styles.textButton}
-                      disabled={changing}
-                      onClick={() => void changeCard()}
-                      type="button"
-                    >
-                      바꾸기
-                    </button>
+            <section
+              aria-labelledby="pay-title"
+              className={`${styles.block} ${styles.manage}`}
+            >
+              <h2 className={styles.label} id="pay-title">
+                결제
+              </h2>
+              <div className={styles.manageRow}>
+                <div>
+                  <b>결제 수단</b>
+                  {current ? (
+                    <span>
+                      신용·체크카드{' '}
+                      <span className={styles.card}>
+                        {current.maskedNumber}
+                      </span>
+                      <span className={styles.via}>토스페이먼츠</span>
+                    </span>
+                  ) : (
+                    <span>아직 없어요 · 체험은 카드 없이 써요</span>
                   )}
                 </div>
-                {current ? (
-                  <p className={styles.value}>
-                    신용·체크카드
-                    <span className={styles.card}> {current.maskedNumber}</span>
-                    <span className={styles.via}>토스페이먼츠</span>
-                  </p>
-                ) : (
-                  <p className={styles.value}>
-                    아직 없어요 · 체험은 카드 없이 써요
-                  </p>
+                {current && (
+                  <button
+                    className={styles.manageButton}
+                    disabled={changing}
+                    onClick={() => void changeCard()}
+                    type="button"
+                  >
+                    카드 바꾸기
+                  </button>
                 )}
-              </section>
-
-              <section aria-labelledby="history-title" className={styles.block}>
-                <h2 className={styles.label} id="history-title">
-                  결제 내역
-                </h2>
-                <table className={styles.history}>
-                  <tbody>
-                    {(invoices ?? []).map((item) => (
-                      <tr key={item.invoiceId}>
-                        <td>
-                          {monthDayKo(dayOf(item.paidAt ?? item.periodStart))}
-                        </td>
-                        <td>
-                          {planOf(item.planId).name} · {invoiceState(item)}
-                        </td>
-                        <td>{item.amount.toLocaleString('ko-KR')}원</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            </div>
+              </div>
+              <div className={`${styles.manageRow} ${styles.historyRow}`}>
+                <b>결제 내역</b>
+                {invoices?.length ? (
+                  <table className={styles.history}>
+                    <tbody>
+                      {invoices.map((item) => (
+                        <tr key={item.invoiceId}>
+                          <td>
+                            {monthDayKo(dayOf(item.paidAt ?? item.periodStart))}
+                          </td>
+                          <td>
+                            {planOf(item.planId).name} · {invoiceState(item)}
+                          </td>
+                          <td>{item.amount.toLocaleString('ko-KR')}원</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <span>아직 결제한 적 없어요</span>
+                )}
+              </div>
+            </section>
           )}
 
           {/* 구독·계정 관리(11/11): 해지와 탈퇴를 맨 아래 한 상자에 줄마다 설명 + 같은 폭 버튼으로.

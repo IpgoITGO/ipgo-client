@@ -5,6 +5,7 @@ import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { monthDayKo } from '../../billing/model/billing'
 import { getDashboard } from '../../dashboard/model/dashboardApi'
+import pauseArt from '../assets/cancel-pause.webp'
 import styles from './CancelModal.module.css'
 
 const REASONS = [
@@ -157,130 +158,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
       {step === 1 ? (
         <div className={styles.body}>
           <div className={styles.hd}>
-            <svg
-              aria-hidden="true"
-              preserveAspectRatio="xMidYMid slice"
-              viewBox="0 0 460 150"
-            >
-              <defs>
-                <linearGradient id="cm-f1" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="#f6c766" />
-                  <stop offset="1" stopColor="#e6a33a" />
-                </linearGradient>
-                <linearGradient id="cm-f2" x1="0" x2="1">
-                  <stop offset="0" stopColor="#e8ac4d" />
-                  <stop offset="1" stopColor="#d48d28" />
-                </linearGradient>
-                <linearGradient id="cm-f3" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0" stopColor="#fbd98f" />
-                  <stop offset="1" stopColor="#f0bd5c" />
-                </linearGradient>
-                <pattern
-                  id="cm-dots"
-                  width="14"
-                  height="14"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <circle cx="2" cy="2" r="1.2" fill="#f0dfae" />
-                </pattern>
-              </defs>
-              <rect width="460" height="150" fill="url(#cm-dots)" />
-              <path
-                d="M0 130 Q230 112 460 130 L460 150 L0 150 Z"
-                fill="#f3e6c6"
-              />
-              <ellipse
-                cx="230"
-                cy="136"
-                rx="92"
-                ry="8"
-                fill="#e3cf9f"
-                opacity=".8"
-              />
-              <path
-                d="M158 70 L230 46 L302 70 L302 122 L230 140 L158 122 Z"
-                fill="url(#cm-f1)"
-                stroke="#a8641a"
-                strokeWidth="2.2"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M230 94 L302 70 L302 122 L230 140 Z"
-                fill="url(#cm-f2)"
-                stroke="#a8641a"
-                strokeWidth="2.2"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M158 70 L230 94 L302 70 L230 46 Z"
-                fill="url(#cm-f3)"
-                stroke="#a8641a"
-                strokeWidth="2.2"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M194 58 L266 82"
-                stroke="#a8641a"
-                strokeWidth="1.6"
-                opacity=".55"
-              />
-              {/* 포장 테이프: 윗면 이음매를 따라 붙고 앞면 모서리에서 꺾여 내려와 끝이 찢겨 있다 */}
-              <g className={styles.tape}>
-                <path
-                  d="M182 62 L206 54 L278 78 L254 86 Z"
-                  fill="#ffc53d"
-                  opacity=".9"
-                />
-                <path
-                  d="M254 86 L278 78 L278 92 L274 92.6 L271 95.4 L267 95.3 L263 98 L259 97.9 L254 101 Z"
-                  fill="#f0ad1f"
-                  opacity=".92"
-                />
-                <path
-                  d="M190 61.3 L262 85.3"
-                  stroke="#fff6cf"
-                  strokeLinecap="round"
-                  strokeWidth="2.4"
-                  opacity=".7"
-                />
-                <path
-                  d="M182 62 L206 54 M216 64 l3 4 M240 72 l2 3"
-                  stroke="#c98a12"
-                  strokeLinecap="round"
-                  strokeWidth="1"
-                  opacity=".6"
-                />
-              </g>
-              <g transform="translate(236 114) skewY(-17)">
-                <rect
-                  width="32"
-                  height="17"
-                  rx="3"
-                  fill="#fff"
-                  stroke="#a8641a"
-                  strokeWidth="1.2"
-                />
-                <text
-                  x="16"
-                  y="12"
-                  textAnchor="middle"
-                  fontSize="8.5"
-                  fontWeight="800"
-                  fill="#1f2537"
-                >
-                  ITGO
-                </text>
-              </g>
-              <text
-                x="40"
-                y="44"
-                fontFamily="Nanum Pen Script"
-                fontSize="22"
-                fill="#8a5200"
-              >
-                {day}부터 계산 멈춤
-              </text>
-            </svg>
+            <img alt="" src={pauseArt} />
           </div>
           <h2 className={styles.title} id={titleId}>
             해지하면 {monthDayKo(nextOn)}부터 이걸 놓쳐요
