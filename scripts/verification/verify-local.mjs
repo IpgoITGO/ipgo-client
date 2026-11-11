@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
 import { spawn, execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -12,19 +13,85 @@ export const stages = [
   'build',
   'verify:browser',
 ]
+export const automationStages = [
+  'lint',
+  'format:check',
+  'typecheck',
+  'automation:test',
+  'verification:test',
+  'build:ci',
+]
 const root = fileURLToPath(new URL('../../', import.meta.url))
+
+export function automationPlan({ changedPaths, beforePackage, afterPackage }) {
+  if (
+    !Array.isArray(changedPaths) ||
+    !beforePackage ||
+    !afterPackage ||
+    changedPaths.some(
+      (name) =>
+        !['AGENTS.md', 'README.md', 'package.json'].includes(name) &&
+        !/^(?:docs\/|scripts\/(?:automation|verification)\/|\.github\/workflows\/)/.test(
+          name,
+        ),
+    )
+  )
+    throw new Error('AUTOMATION_SCOPE_REQUIRES_FULL_CHECKS')
+  const { scripts: beforeScripts, ...before } = beforePackage
+  const { scripts: afterScripts, ...after } = afterPackage
+  const allowed = {
+    'build:ci': 'vite build',
+    'verify:automation':
+      'node scripts/verification/verify-local.mjs --profile automation',
+  }
+  if (!beforeScripts || !afterScripts || !isDeepStrictEqual(before, after))
+    throw new Error('DEPENDENCY_OR_PACKAGE_METADATA_CHANGED')
+  for (const name of new Set([
+    ...Object.keys(beforeScripts),
+    ...Object.keys(afterScripts),
+  ])) {
+    if (
+      beforeScripts[name] !== afterScripts[name] &&
+      (!Object.hasOwn(allowed, name) || afterScripts[name] !== allowed[name])
+    )
+      throw new Error('CHECK_OR_BUILD_COMMAND_CHANGED')
+  }
+  if (afterScripts['build:ci'] !== allowed['build:ci'])
+    throw new Error('CI_BUNDLE_COMMAND_REQUIRED')
+  return [...automationStages]
+}
+
+export function currentImpact(
+  git = (args) => execFileSync('git', args, { cwd: root }).toString(),
+) {
+  const baseSha = git(['merge-base', 'HEAD', 'origin/dev']).trim()
+  if (!/^[a-f0-9]{40}$/.test(baseSha))
+    throw new Error('AUTOMATION_BASE_REQUIRED')
+  const changed = git(['diff', '--name-only', '-z', baseSha]).split('\0')
+  const extra = git(['ls-files', '--others', '--exclude-standard', '-z']).split(
+    '\0',
+  )
+  return {
+    baseSha,
+    changedPaths: [...new Set([...changed, ...extra])].filter(Boolean),
+    beforePackage: JSON.parse(git(['show', `${baseSha}:package.json`])),
+    afterPackage: JSON.parse(fs.readFileSync(path.join(root, 'package.json'))),
+  }
+}
 
 export function sourceFingerprint() {
   const paths = [
     'src',
     'scripts',
+    '.github/workflows',
+    'AGENTS.md',
     'package.json',
     'package-lock.json',
     'vite.config.ts',
     'tsconfig*.json',
     'eslint.config.js',
     'README.md',
-    'docs/rules/workflow.md',
+    'docs',
   ]
   const tracked = execFileSync('git', ['ls-files', '-z', '--', ...paths], {
     cwd: root,
@@ -59,17 +126,31 @@ export async function runChecks({
   fingerprint,
   save,
   clock = () => Date.now(),
+  profile = 'full',
+  impact,
 }) {
+  if (!['full', 'automation'].includes(profile))
+    throw new Error('UNKNOWN_CHECK_PROFILE')
+  const selected =
+    profile === 'automation' ? automationPlan(impact ?? {}) : stages
   const report = {
     started_at: new Date(clock()).toISOString(),
-    provenance: 'local_checks_and_synthetic_browser',
+    provenance:
+      profile === 'full'
+        ? 'local_checks_and_synthetic_browser'
+        : 'local_automation_checks',
+    profile,
+    full_pr_ci_required: true,
+    omitted_local_checks:
+      profile === 'automation' ? ['app_ui_tests', 'synthetic_browser'] : [],
     stages: [],
     passed: false,
     actual_savings: 'not_measured',
     deployment: false,
   }
   const before = fingerprint()
-  for (const name of stages) {
+  report.source_fingerprint = before
+  for (const name of selected) {
     const started = clock()
     report.stages.push({ name, status: 'running' })
     save(report)
@@ -89,7 +170,7 @@ export async function runChecks({
   }
   report.source_unchanged = before === fingerprint()
   report.passed =
-    report.stages.length === stages.length &&
+    report.stages.length === selected.length &&
     report.stages.every((s) => s.status === 'passed') &&
     report.source_unchanged
   report.finished_at = new Date(clock()).toISOString()
@@ -102,6 +183,15 @@ async function main() {
   process.umask(0o077)
   const npm = process.env.npm_execpath
   if (!npm) throw new Error('RUN_VIA_NPM')
+  const args = process.argv.slice(2)
+  if (
+    args.length &&
+    (args.length !== 2 || args[0] !== '--profile' || args[1] !== 'automation')
+  )
+    throw new Error('UNKNOWN_CHECK_PROFILE')
+  const profile = args.length ? 'automation' : 'full'
+  const impact = profile === 'automation' ? currentImpact() : undefined
+  if (impact) automationPlan(impact)
   const outputRoot = fs.realpathSync(
     process.env.IPGO_VERIFY_OUTPUT_ROOT || os.tmpdir(),
   )
@@ -142,10 +232,13 @@ async function main() {
     runStage,
     fingerprint: sourceFingerprint,
     save,
+    profile,
+    impact,
   })
   console.log(
     JSON.stringify({
       passed: report.passed,
+      profile: report.profile,
       seconds: report.seconds,
       summary: path.join(out, 'summary.json'),
       stages: report.stages.map((s) => ({ name: s.name, status: s.status })),

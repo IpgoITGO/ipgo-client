@@ -40,13 +40,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: node scripts/automation/verify-source-ci.mjs
-      - run: npm ci
+      - name: Run npm ci
+        run: npm ci --prefer-offline --no-fund
         if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
       - run: npm run ci:check
         if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
       - name: Build CI source outside a dev deployment
         if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
-        run: npm run build
+        run: npm run build:ci
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'
@@ -66,21 +67,34 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - id: node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: npm
 
       - name: 의존성 설치
-        run: npm ci
+        run: npm ci --prefer-offline --no-fund
 
       - name: 승인 SHA 확인
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: node scripts/automation/validate-dev-deployment.mjs
 
+      - name: Vercel CLI 버전 확인
+        run: >-
+          node --input-type=module -e
+          'if (!/^\d+\.\d+\.\d+$/.test(process.env.VERCEL_CLI_VERSION ?? ""))
+          throw new Error("VERCEL_CLI_VERSION은 검토한 정확한 버전이어야 합니다")'
+
+      - name: Vercel CLI 다운로드 캐시
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/vercel-npm-cache/_cacache
+          key: vercel-npm-v1-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-cli-${{ env.VERCEL_CLI_VERSION }}
+
       - name: Vercel CLI 설치
-        run: npm install --global "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
+        run: npm install --global --no-fund --cache "$RUNNER_TEMP/vercel-npm-cache" "vercel@${VERCEL_CLI_VERSION:?VERCEL_CLI_VERSION가 필요합니다}"
 
       - name: Preview 환경 가져오기
         run: vercel pull --yes --environment=preview
