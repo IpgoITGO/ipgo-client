@@ -411,4 +411,35 @@ export const billingHandlers = [
       { status: 202 },
     )
   }),
+  http.post(
+    '/api/billing/invoices/:id/cancel-payment',
+    async ({ request, params }) => {
+      if (!mockAccountKey(request)) return unauthorized()
+      const rejected = badKey(request)
+      if (rejected) return rejected
+      const body = (await request.json()) as { reason?: string }
+      if (!body.reason?.trim() || body.reason.length > 200)
+        return fail(400, 'INVALID_INPUT', '취소 사유를 확인해 주세요')
+      const invoice = state.invoices.find(
+        (item) => String(item.invoiceId) === params.id,
+      )
+      if (
+        !invoice ||
+        (invoice.status !== 'PAID' && invoice.refundStatus !== 'CANCELED')
+      )
+        return fail(409, 'PAYMENT_NOT_APPROVED', '승인된 결제를 확인해 주세요')
+      invoice.status = 'VOID'
+      invoice.refundStatus = 'CANCELED'
+      invoice.canceledAt = new Date().toISOString()
+      state.sub.status = 'CANCELED'
+      state.sub.periodEnd = invoice.canceledAt
+      state.sub.cancelAtPeriodEnd = true
+      state.sub.nextChargeAt = null
+      return HttpResponse.json({
+        invoiceId: invoice.invoiceId,
+        status: 'CANCELED',
+        canceledAt: invoice.canceledAt,
+      })
+    },
+  ),
 ]

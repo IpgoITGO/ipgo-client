@@ -116,6 +116,10 @@ test('외부 주소·알 수 없는 API·예상 밖 쓰기는 실제 네트워�
 test('합성 인증·주변 API와 작년0/기록없음·실패 이유를 반복 사용한다', () => {
   for (const route of [
     '/api/auth/me',
+    '/api/billing/subscription',
+    '/api/dashboard/replenishment-needs',
+    '/api/expiry',
+    '/api/planned-receipts',
     '/api/auth/csrf',
     '/api/settings/storage-cost',
     '/api/planned-quantities',

@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Modal } from '../../../shared/ui/Modal/Modal'
+import { Button } from '../../../shared/ui/Button/Button'
 
 import { useAuth } from '../../../auth/model/useAuth'
 import { apiRequest } from '../../../shared/api/client'
@@ -36,6 +38,13 @@ import styles from './AccountPage.module.css'
 
 // 결제 내역 한 줄의 상태를 쉬운 말로
 function invoiceState(invoice: Invoice) {
+  if (invoice.refundStatus === 'CANCELED') return '취소·환불 완료'
+  if (
+    invoice.refundStatus === 'PROCESSING' ||
+    invoice.refundStatus === 'UNKNOWN'
+  )
+    return '취소 확인 중'
+  if (invoice.refundStatus === 'REVIEW_REQUIRED') return '취소 확인 필요'
   if (invoice.status === 'VOID' || invoice.paymentStatus === 'VOID')
     return '취소됨'
   if (invoice.paymentStatus === 'SUCCEEDED' || invoice.status === 'PAID')
@@ -78,6 +87,7 @@ const NEAR = 0.8
 // 결제 수단 → 결제 내역 → 계정 → 맨 아래 작은 글씨로 해지(11/5 승인 시안).
 export function AccountPage() {
   const { user, signOut } = useAuth()
+  const billingCache = useQueryClient()
   const subQuery = useSubscription()
   const billingOff = !subQuery.data
   const subscription = subQuery.data ?? OFF
@@ -94,6 +104,32 @@ export function AccountPage() {
     consentVersion,
   }))
   const retry = useBillingMutation('/invoices')
+  const [refundTarget, setRefundTarget] = useState<Invoice | null>(null)
+  const [refundReason, setRefundReason] = useState('테스트 결제 취소')
+  const refundTitle = useId()
+  const refund = useBillingMutation<{ status: string }>('/invoices', () => ({
+    reason: refundReason,
+  }))
+  const newestPaid = invoices?.find(
+    (item) => item.status === 'PAID' && item.paymentStatus === 'SUCCEEDED',
+  )
+  async function cancelPayment() {
+    if (!refundTarget) return
+    await attempt(async () => {
+      const result = await refund
+        .mutateAsync(`/invoices/${refundTarget.invoiceId}/cancel-payment`)
+        .catch((error: unknown) => {
+          void billingCache.invalidateQueries({ queryKey: ['billing'] })
+          throw error
+        })
+      setNotice(
+        result.status === 'CANCELED'
+          ? '결제 취소·환불이 확인됐어요'
+          : '취소 결과를 확인하고 있어요. 결제 내역에서 확인해 주세요',
+      )
+      setRefundTarget(null)
+    })
+  }
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   // 해지·해지 취소가 됐는지 바로 알 수 있게 아래에 잠깐 띄운다
@@ -123,7 +159,10 @@ export function AccountPage() {
   const periodEnd = subscription.periodEnd
     ? dayOf(subscription.periodEnd)
     : null
-  const cancelOn = subscription.cancelAtPeriodEnd ? periodEnd : null
+  const cancelOn =
+    subscription.status !== 'CANCELED' && subscription.cancelAtPeriodEnd
+      ? periodEnd
+      : null
   const nextOn = subscription.nextChargeAt
     ? dayOf(subscription.nextChargeAt)
     : null
@@ -237,20 +276,24 @@ export function AccountPage() {
                     </h2>
                     <p className={styles.planLine}>
                       <strong>{plan.name}</strong>
-                      {trial
-                        ? trialEnd && (
-                            <span className={styles.pill}>
-                              {trialLeft}일 남음 · {monthDayKo(trialEnd)}까지
-                            </span>
-                          )
-                        : !failed &&
-                          (cancelOn || nextOn) && (
-                            <span className={styles.pill}>
-                              {cancelOn
-                                ? `${monthDayKo(cancelOn)}에 끝나요`
-                                : `다음 결제 ${monthDayKo(nextOn!)} · ${(subscription.amount ?? plan.price).toLocaleString('ko-KR')}원`}
-                            </span>
-                          )}
+                      {trial ? (
+                        trialEnd && (
+                          <span className={styles.pill}>
+                            {trialLeft}일 남음 · {monthDayKo(trialEnd)}까지
+                          </span>
+                        )
+                      ) : subscription.status === 'CANCELED' ? (
+                        <span className={styles.pill}>이용 종료</span>
+                      ) : (
+                        !failed &&
+                        (cancelOn || nextOn) && (
+                          <span className={styles.pill}>
+                            {cancelOn
+                              ? `${monthDayKo(cancelOn)}에 끝나요`
+                              : `다음 결제 ${monthDayKo(nextOn!)} · ${(subscription.amount ?? plan.price).toLocaleString('ko-KR')}원`}
+                          </span>
+                        )
+                      )}
                     </p>
                   </div>
                   {/* 구독 해지는 요금제 상자 안에(11/11 레퍼런스: Whereby·Washington Post) */}
@@ -279,6 +322,7 @@ export function AccountPage() {
                       </Link>
                     )}
                     {!trial &&
+                      subscription.status !== 'CANCELED' &&
                       (cancelOn ? (
                         <span
                           aria-hidden="true"
@@ -420,6 +464,27 @@ export function AccountPage() {
                             {planOf(item.planId).name} · {invoiceState(item)}
                           </td>
                           <td>{item.amount.toLocaleString('ko-KR')}원</td>
+                          <td>
+                            {item.canceledAt && (
+                              <span>
+                                취소일 {monthDayKo(dayOf(item.canceledAt))}
+                              </span>
+                            )}
+                            {item.invoiceId === newestPaid?.invoiceId &&
+                              !item.refundStatus && (
+                                <button
+                                  className={styles.textButton}
+                                  type="button"
+                                  onClick={() => {
+                                    setProblem(null)
+                                    setRefundReason('테스트 결제 취소')
+                                    setRefundTarget(item)
+                                  }}
+                                >
+                                  결제 취소·환불
+                                </button>
+                              )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -432,11 +497,51 @@ export function AccountPage() {
           )}
         </div>
       </div>
+      {refundTarget && (
+        <Modal
+          labelledBy={refundTitle}
+          onClose={() => {
+            if (!refund.isPending) setRefundTarget(null)
+          }}
+        >
+          <h2 id={refundTitle}>결제를 전액 취소할까요?</h2>
+          <p>
+            {refundTarget.amount.toLocaleString('ko-KR')}원 전액을 취소합니다.
+            취소가 확인되면 유료 이용이 종료되고 다음 자동 청구도 중지됩니다.
+          </p>
+          <p>토스 테스트 결제이며 실제 돈은 청구·환불되지 않습니다.</p>
+          <label className={styles.refundReason}>
+            취소 사유
+            <input
+              maxLength={200}
+              value={refundReason}
+              disabled={refund.isPending}
+              onChange={(event) => setRefundReason(event.target.value)}
+            />
+          </label>
+          {problem && <p role="alert">{problem}</p>}
+          <div className={styles.refundActions}>
+            <Button
+              disabled={refund.isPending || !refundReason.trim()}
+              onClick={() => void cancelPayment()}
+            >
+              전액 취소 요청
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={refund.isPending}
+              onClick={() => setRefundTarget(null)}
+            >
+              돌아가기
+            </Button>
+          </div>
+        </Modal>
+      )}
       {withdrawing && (
         <WithdrawModal
           onClose={() => setWithdrawing(false)}
           planName={plan.name}
-          subscribed={!trial && !cancelOn}
+          subscribed={!trial && subscription.status !== 'CANCELED' && !cancelOn}
           usableUntil={periodEnd ? monthDayKo(periodEnd) : null}
         />
       )}
@@ -454,7 +559,7 @@ export function AccountPage() {
           onClose={() => setConfirmCancel(false)}
         />
       )}
-      {problem && (
+      {problem && !refundTarget && (
         <Toast
           duration={6000}
           message={problem}

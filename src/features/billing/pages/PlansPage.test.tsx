@@ -90,4 +90,20 @@ describe('요금제 상태 줄', () => {
     await show()
     expect(await screen.findByText('500')).toBeInTheDocument()
   })
+  it('확정 환불된 요금제는 쓰는 중이 아닌 다시 시작하기를 제공한다', async () => {
+    applyMockDemo('seller')
+    patchMockSubscription({
+      status: 'CANCELED',
+      cancelAtPeriodEnd: true,
+      nextChargeAt: null,
+    })
+    await openApp('/plans')
+    await screen.findByText('유료 이용이 끝났어요')
+    expect(
+      screen.getByRole('button', { name: '셀러로 시작하기' }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: '쓰는 중' }),
+    ).not.toBeInTheDocument()
+  })
 })
