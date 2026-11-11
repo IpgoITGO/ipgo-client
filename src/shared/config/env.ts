@@ -3,6 +3,7 @@ import { z } from 'zod'
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().min(1).default('/api'),
   VITE_ENABLE_MSW: z.enum(['true', 'false']).default('false'),
+  VITE_TOSS_CLIENT_KEY: z.string().optional(),
 })
 
 const result = envSchema.safeParse(import.meta.env)
@@ -19,4 +20,5 @@ if (!result.success) {
 export const env = Object.freeze({
   apiBaseUrl: result.data.VITE_API_BASE_URL,
   enableMsw: result.data.VITE_ENABLE_MSW === 'true',
+  tossClientKey: result.data.VITE_TOSS_CLIENT_KEY || '',
 })

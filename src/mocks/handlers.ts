@@ -1,3 +1,4 @@
+import { billingHandlers } from '../features/billing/mocks/billingHandlers'
 import { receiptHandlers } from '../features/receipts/mocks/receiptHandlers'
 import { plannedQuantityHandlers } from '../features/sku/mocks/plannedQuantityHandlers'
 import { storageCostHandlers } from '../features/settings/mocks/storageCostHandlers'
@@ -287,6 +288,7 @@ export const handlers = [
   ...plannedQuantityHandlers,
   ...storageCostHandlers,
   ...expiryHandlers,
+  ...billingHandlers,
   http.get('/api/health', () => {
     return HttpResponse.json({ status: 'ok' })
   }),

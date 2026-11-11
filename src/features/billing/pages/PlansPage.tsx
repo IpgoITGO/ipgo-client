@@ -1,17 +1,16 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
 import {
   COMPARE,
-  isoDate,
-  loadSubscription,
+  dayOf,
   monthDayKo,
-  nextBillingOn,
+  paymentProblem,
   PLANS,
   TRIAL_DAYS,
   trialDaysLeft,
 } from '../model/billing'
+import { usePlans, useSubscription } from '../model/billingApi'
 import styles from './Billing.module.css'
 
 const RING = 2 * Math.PI * 22
@@ -23,16 +22,25 @@ const md = (iso: string) =>
 // 위 상태 줄(#236): 원 D-day로 지금 상태와 체험이 끝나는 날을 먼저 보여 준다.
 export function PlansPage() {
   const navigate = useNavigate()
-  const [subscription] = useState(() => loadSubscription())
+  const { data: subscription, isError } = useSubscription()
+  const serverPlans = usePlans().data
+  if (!subscription) {
+    return (
+      <p className={styles.footnote}>
+        {isError ? '결제가 아직 켜지지 않았어요' : '불러오는 중이에요'}
+      </p>
+    )
+  }
   const daysLeft = trialDaysLeft(subscription)
-  const failed = !!subscription.renewalFailed && subscription.plan !== 'trial'
-  const trial = subscription.plan === 'trial'
+  const failed = !!paymentProblem(subscription)
+  const trial = subscription.planId === 'trial'
   const ended = trial && daysLeft <= 0
   const soon = trial && daysLeft > 0 && daysLeft <= 3
-  const [y, m, d] = subscription.startedOn.split('-').map(Number)
-  const endsOn = md(isoDate(new Date(y, m - 1, d + TRIAL_DAYS)))
-  const billingOn = nextBillingOn(subscription)
-  const planName = PLANS.find((p) => p.id === subscription.plan)?.name
+  const endsOn = subscription.trialEnd ? md(dayOf(subscription.trialEnd)) : ''
+  const billingOn = subscription.nextChargeAt
+    ? dayOf(subscription.nextChargeAt)
+    : null
+  const planName = PLANS.find((p) => p.id === subscription.planId)?.name
 
   return (
     <div className={styles.page}>
@@ -108,7 +116,10 @@ export function PlansPage() {
 
       <ul aria-label="요금제" className={styles.plans} id="plan-cards">
         {PLANS.map((plan) => {
-          const current = plan.id === subscription.plan
+          const current = plan.id === subscription.planId
+          // 가격은 서버 요금제 값이 기준(서버가 바꾸면 그대로 따라간다)
+          const price =
+            serverPlans?.find((p) => p.planId === plan.id)?.amount ?? plan.price
           return (
             <li
               className={styles.plan}
@@ -139,8 +150,8 @@ export function PlansPage() {
                 )}
               </h2>
               <p className={styles.price}>
-                {plan.price.toLocaleString('ko-KR')}
-                <small>{plan.price > 0 ? '원/월' : '원'}</small>
+                {price.toLocaleString('ko-KR')}
+                <small>{price > 0 ? '원/월' : '원'}</small>
               </p>
               {current && trial && !ended && (
                 <div className={styles.days}>
@@ -194,9 +205,7 @@ export function PlansPage() {
                     : '체험은 한 번만'}
                 </Button>
               ) : current && failed ? (
-                <Button
-                  onClick={() => navigate(`/checkout?plan=${plan.id}&retry=1`)}
-                >
+                <Button onClick={() => navigate('/account')}>
                   다시 결제하기
                 </Button>
               ) : current ? (

@@ -49,7 +49,7 @@ npm run dev
 회원가입을 시험할 때 이메일 인증 코드는 항상 `482915`입니다. 가입한 계정은 MSW 메모리에만 있어
 브라우저를 새로고침하면 시험 계정만 남습니다.
 
-요금제 예외 화면은 MSW로 볼 때 주소 끝에 `?demo=trial-ended`·`pay-failed`·`pay-locked`·`seller`·`trial`을 붙이면 그 구독 상태로 바뀝니다(`src/features/billing/model/billing.ts`의 `demoSubscription`). 상품 상세는 `/sku/reference-product`·`no-trend`·`new-product`·`missing-product`로 상태를 고릅니다.
+요금제 예외 화면은 MSW로 볼 때 주소 끝에 `?demo=trial-ended`·`pay-failed`·`pay-locked`·`seller`·`trial`을 붙이면 그 구독 상태로 바뀝니다(`src/features/billing/mocks/billingHandlers.ts`의 `demoSubscription`). 상품 상세는 `/sku/reference-product`·`no-trend`·`new-product`·`missing-product`로 상태를 고릅니다.
 
 인증은 서버 계약(ipgo-server #28)을 따릅니다. `shared/api/client.ts`가 아래를 자동으로 처리합니다.
 
@@ -118,11 +118,12 @@ config에 실제 API proxy가 있으면 브라우저 검증을 중단합니다.
 
 ## 환경 변수
 
-| 이름                | 필수   | 설명                                                                                                                                                                    |
-| ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL` | 아니요 | API 요청의 기본 경로이며 기본값은 `/api`입니다.                                                                                                                         |
-| `VITE_ENABLE_MSW`   | 아니요 | `true`이면 브라우저에서 MSW를 시작합니다.                                                                                                                               |
-| `API_PROXY_TARGET`  | 아니요 | 개발 서버가 `/api` 요청을 넘겨 줄 서버 주소(예: `http://localhost:8080`). 브라우저에는 노출되지 않습니다. 실제 서버로 확인할 때는 `VITE_ENABLE_MSW`를 `false`로 둡니다. |
+| 이름                   | 필수   | 설명                                                                                                                                                                    |
+| ---------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`    | 아니요 | API 요청의 기본 경로이며 기본값은 `/api`입니다.                                                                                                                         |
+| `VITE_ENABLE_MSW`      | 아니요 | `true`이면 브라우저에서 MSW를 시작합니다.                                                                                                                               |
+| `VITE_TOSS_CLIENT_KEY` | 아니요 | 토스페이먼츠 카드 등록창 클라이언트 키(`test_ck_...`). 없고 MSW가 켜져 있으면 결제사 없이 가짜로 돌아오고, 둘 다 없으면 결제를 시작할 수 없습니다.                      |
+| `API_PROXY_TARGET`     | 아니요 | 개발 서버가 `/api` 요청을 넘겨 줄 서버 주소(예: `http://localhost:8080`). 브라우저에는 노출되지 않습니다. 실제 서버로 확인할 때는 `VITE_ENABLE_MSW`를 `false`로 둡니다. |
 
 배포 화면(Vercel)에서는 `vercel.json`이 `/api/*` 요청을 개발 서버
 `https://ipgo-dev-api.iwhya.kr/api/*`로 넘깁니다. 배포 화면을 실제 서버로 보려면 Vercel 환경 변수
