@@ -76,7 +76,7 @@ export function CheckoutPage() {
   const wasPlan = before && before.planId !== 'trial' ? before.planId : null
 
   return (
-    <div className={styles.column}>
+    <div className={styles.column} data-rise="">
       <Steps at={1} />
       <h1 className={styles.srOnly}>결제</h1>
 

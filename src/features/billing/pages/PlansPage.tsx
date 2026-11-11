@@ -114,7 +114,12 @@ export function PlansPage() {
         )}
       </section>
 
-      <ul aria-label="요금제" className={styles.plans} id="plan-cards">
+      <ul
+        aria-label="요금제"
+        className={styles.plans}
+        data-rise=""
+        id="plan-cards"
+      >
         {PLANS.map((plan) => {
           const current = plan.id === subscription.planId
           // 가격은 서버 요금제 값이 기준(서버가 바꾸면 그대로 따라간다)

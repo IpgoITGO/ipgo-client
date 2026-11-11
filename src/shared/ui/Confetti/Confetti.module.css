@@ -1,0 +1,56 @@
+/* 터지는 한 점. 조각은 여기서 출발해 위로 솟았다가 떨어진다. 눌리지 않고 칸도 안 밀린다 */
+.burst {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.burst i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+}
+
+.burst i[data-shape='1'] {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.burst i[data-shape='2'] {
+  width: 14px;
+  height: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .burst i {
+    animation: pop 1.25s cubic-bezier(0.12, 0.8, 0.3, 1) both;
+  }
+}
+
+/* 확 터져 나감(0~40%) → 살짝 내려앉으며 → 작아지고 사라짐. 화면 아래로 떨어지지 않는다 */
+@keyframes pop {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.3) rotate(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy)) scale(1)
+      rotate(calc(var(--turn) / 2));
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1.12), calc(var(--dy) + 26px))
+      scale(0) rotate(var(--turn));
+  }
+}
