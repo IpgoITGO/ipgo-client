@@ -242,10 +242,6 @@
   transform: rotate(180deg);
 }
 
-.account .menuShort {
-  display: none;
-}
-
 .menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -293,8 +289,37 @@
   border-top: 1px solid var(--color-border);
 }
 
+.menuAvatar {
+  display: none;
+}
+
+/* 휴대폰 머리줄 2줄(11/11): 첫 줄 로고 · 요금제 · 내 계정 동그라미 · 알림, 둘째 줄 메뉴 */
 @media (max-width: 768px) {
-  .account .menuShort {
+  .brand {
+    font-size: 18px;
+  }
+  .brand img {
+    width: 26px;
+    height: 26px;
+  }
+  .account {
+    gap: var(--space-2);
+  }
+  .account .menuButton {
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .account .menuButton .identity,
+  .account .menuButton .chevron {
+    display: none;
+  }
+  .account .menuAvatar {
     display: inline;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 800;
   }
 }

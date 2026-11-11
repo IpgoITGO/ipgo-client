@@ -41,11 +41,14 @@
 .modal p {
   color: var(--color-text-3);
 }
+/* 숨은 글자 기준점 + 좁은 화면에선 상품 칸이 0으로 줄지 않게 최소 폭(넘치면 이 상자 안에서 옆으로 밀기, 11/11 검수) */
 .tableWrap {
+  position: relative;
   overflow-x: auto;
 }
 .tableWrap table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
 }
 .tableWrap th,

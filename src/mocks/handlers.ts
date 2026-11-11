@@ -647,7 +647,7 @@ export const handlers = [
       ],
       summary: {
         needCount: items.length,
-        notNeededCount: 22,
+        notNeededCount: 3, // 아래 notNeededItems 줄 수와 같게(11/11: 카드 22 vs 탭 3이 달라 보이던 것)
         notCalculableCount: 1,
         excludedCount: 1,
       },
@@ -939,7 +939,7 @@ export const handlers = [
       engineVersion: '0.3.1',
       summary: {
         needCount: 6,
-        notNeededCount: 22,
+        notNeededCount: 3, // 대시보드 가짜 값(괜찮은 상품 3)과 같게(11/11)
         notCalculableCount: 2,
         excludedCount: 1,
       },

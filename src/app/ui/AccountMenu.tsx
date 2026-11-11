@@ -62,9 +62,9 @@ export function AccountMenu({
         <span className={styles.identity}>
           {name} <span aria-hidden="true">·</span> {company}
         </span>
-        {/* 휴대폰에선 이름 대신 짧게 */}
-        <span aria-hidden="true" className={styles.menuShort}>
-          내 계정
+        {/* 휴대폰에선 이름 대신 첫 글자 동그라미(11/11: 머리줄을 2줄로) */}
+        <span aria-hidden="true" className={styles.menuAvatar}>
+          {name.slice(0, 1) || '나'}
         </span>
         <svg
           aria-hidden="true"

@@ -1,15 +1,24 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
+import boxClosed from '../../features/billing/assets/box-closed.webp'
 import { AsyncState } from '../../shared/ui/AsyncState/AsyncState'
+import styles from './routeGuards.module.css'
 
 function AuthChecking() {
   return (
     <AsyncState
-      description="잠시만 기다려 주세요."
+      description=""
+      loader={<img alt="" className={styles.hop} src={boxClosed} />}
       status="loading"
-      title="로그인 상태를 확인하고 있어요"
-    />
+      title="잠깐만요, 불러오고 있어요"
+    >
+      <span aria-hidden="true" className={styles.dots}>
+        <i />
+        <i />
+        <i />
+      </span>
+    </AsyncState>
   )
 }
 

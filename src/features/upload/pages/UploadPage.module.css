@@ -43,23 +43,24 @@
   border-color: var(--color-accent-press);
   border-style: solid;
 }
-.dropzone[data-dragging='true'] .uploadIcon {
-  transform: translateY(-6px) rotate(-8deg);
+.boxArt {
+  display: block;
+  width: 120px;
+  height: auto;
+  transition: transform 260ms var(--ease-spring);
+}
+.dropzone:hover .boxArt,
+.dropzone[data-dragging='true'] .boxArt {
+  transform: scale(1.18);
+}
+@media (prefers-reduced-motion: reduce) {
+  .boxArt {
+    transition: none;
+  }
 }
 .dropzone strong {
   color: var(--color-text);
   font-size: var(--text-section);
-}
-.uploadIcon {
-  transition: transform 220ms var(--ease-spring);
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  color: var(--color-primary);
-  font-size: 28px;
-  background: var(--color-primary-soft);
-  border-radius: 18px;
 }
 .fileInput {
   position: absolute;

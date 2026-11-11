@@ -977,3 +977,73 @@ tr[data-soon] .weeks i[data-on] {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* 휴대폰(11/11 검수): 한 표의 고정 폭(920px·칸 폭)이 카드 모양을 깨서 화면 밖으로 밀던 것 풀기 */
+@media (max-width: 720px) {
+  .tableWrap .unified {
+    min-width: 0;
+    table-layout: auto;
+  }
+  .tableWrap .unified colgroup {
+    display: none;
+  }
+  .tableWrap .unified td {
+    text-align: left;
+  }
+}
+/* 좁은 화면 두 칸일 때 마지막 카드가 혼자 남으면 한 줄 다 쓰기 */
+@media (max-width: 800px) {
+  .summary > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 휴대폰 요약 카드(11/11): 두 칸에서 설명이 세 줄로 접히던 것 → 큰 숫자 왼쪽 · 이름·설명 오른쪽의 낮은 카드 한 줄씩 */
+@media (max-width: 560px) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .box {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: 2px;
+    padding: var(--space-3) var(--space-4);
+  }
+  .box strong {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    font-size: 34px;
+    line-height: 1;
+  }
+  .boxLabel,
+  .box em {
+    grid-column: 2;
+  }
+}
+
+/* 엑셀 받기(11/11): 받으면 1.6초 초록 "✓ 받았어요". 폭 고정이라 옆 버튼이 안 밀린다 */
+.exportButton {
+  min-width: 128px;
+}
+/* 버튼 기본(노란 주 버튼)의 마우스 올림 색보다 앞서도록 한 단계 더 구체적으로 */
+.orderBar .exportButton[data-done],
+.orderBar .exportButton[data-done]:hover:not(:disabled) {
+  color: #fff;
+  background: var(--color-success);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .exportButton[data-done] {
+    animation: export-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+}
+@keyframes export-pop {
+  from {
+    transform: scale(0.94);
+  }
+  to {
+    transform: none;
+  }
+}

@@ -16,6 +16,36 @@ import {
 } from '../../features/upload/model/uploadApi'
 
 // 정제/계산을 재실행하지 않고 같은 C2만 조회한다. 확인 시간 초과는 계산 실패가 아니다.
+// 브라우저 탭 제목에 계산 상태(11/11): 다른 탭에 가 있어도 끝난 걸 안다.
+// 끝·실패 표시는 이 화면을 다시 보고 4초 뒤 원래 제목으로
+const BASE_TITLE = 'ITGO 입고 예측'
+function useTabTitle(phase: CalculationState['phase']) {
+  useEffect(() => {
+    const busy = ['checking', 'pending', 'updating'].includes(phase)
+    const ended = phase === 'done' || phase === 'failed'
+    document.title = busy
+      ? '⏳ 계산 중 · ' + BASE_TITLE
+      : phase === 'done'
+        ? '✓ 계산 끝 · ' + BASE_TITLE
+        : phase === 'failed'
+          ? '! 계산 못 마침 · ' + BASE_TITLE
+          : BASE_TITLE
+    if (!ended) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const restoreSoon = () => {
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(timer)
+      timer = setTimeout(() => (document.title = BASE_TITLE), 4000)
+    }
+    restoreSoon()
+    document.addEventListener('visibilitychange', restoreSoon)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', restoreSoon)
+    }
+  }, [phase])
+}
+
 export function CalculationProvider({
   children,
   pollInterval = 2000,
@@ -175,6 +205,7 @@ export function CalculationProvider({
     }
   }
   const busy = ['checking', 'pending', 'updating', 'unknown'].includes(phase)
+  useTabTitle(phase)
 
   return (
     <CalculationContext.Provider
