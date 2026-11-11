@@ -1,14 +1,17 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
+import { Button } from '../../shared/ui/Button/Button'
 import { PagePlaceholder } from '../../shared/ui/PagePlaceholder/PagePlaceholder'
 
 export function NotFoundPage() {
+  const navigate = useNavigate()
   return (
     <PagePlaceholder
-      description="요청한 주소를 찾을 수 없어요."
-      title="페이지가 없습니다"
+      description="주소가 바뀌었거나 없어진 페이지예요."
+      kind="empty"
+      title="찾는 페이지가 없어요"
     >
-      <Link to="/">처음으로 돌아가기</Link>
+      <Button onClick={() => navigate('/')}>대시보드로 돌아가기</Button>
     </PagePlaceholder>
   )
 }
