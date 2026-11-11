@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   verify:
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,8 +34,16 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Verify successful CI for the exact approved source
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: node scripts/automation/verify-source-ci.mjs
       - run: npm ci
+        if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
       - run: npm run ci:check
+        if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
       - name: Build CI source outside a dev deployment
         if: github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/dev'
         run: npm run build

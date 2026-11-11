@@ -269,13 +269,17 @@ rollback은 새 운영 push의 자동 alias 연결에 영향을 줄 수 있으�
 ### 중복 빌드 줄이기
 
 PR/dev push는 기존 `npm ci`·전체 `ci:check`·`npm run build` 검사를 유지한다.
-승인된 dev의 수동 배포는 `verify`에서 전체 `ci:check`를 수행한 뒤, 별도 일반 빌드만 생략한다.
+승인된 dev의 수동 배포는 `verify-source-ci.mjs`로 정확한 SHA의 최신 dev push CI 증거를 검증한다.
+같은 workflow·저장소·branch·성공한 최신 attempt의 `verify`와 필수 npm 설치/전체 검사/빌드 step이 모두 성공해야 한다.
+목록·job 누락, CI 실패/진행 중, PR CI, 다른 SHA, 확인 중 rerun이 시작되면 중단한다.
+증거가 없다고 검사 없이 배포하거나 자동으로 재실행하지 않는다. 이 확인 뒤에만 수동 배포의 `npm ci`·`ci:check`·일반 빌드를 생략한다.
 환경 승인을 받은 `deploy`가 Preview 환경을 가져와 `VITE_ENABLE_MSW=false npm run build`를
 `vercel build`로 한 번 수행하고 그 결과를 `vercel deploy --prebuilt`로 게시한다.
 빌드 실패 시 게시/alias 변경으로 넘어가지 않는다. PR의 환경과 Preview 환경이 같다고 가정해
 PR `dist`를 배포에 재사용하지 않는다. 승인 SHA·도메인·환경·CLI 버전·smoke/복구 검사는 유지한다.
 dev가 아닌 수동 실행도 일반 빌드 검사는 생략하지 않으며 실제 배포는 기존 조건으로 차단한다.
-총 배포 시간에는 전체 검사·승인 대기·최종 Vercel 빌드/게시·smoke/기록을 포함한다.
+최신 성공 CI를 읽기 위해 GitHub token에는 `actions: read`만 추가한다. 배포 job의 의존성 설치·환경/SHA·Preview 빌드·alias·smoke 검사는 그대로다.
+총 배포 시간에는 준비·CI 증거 조회·승인 대기·최종 Vercel 빌드/게시·smoke/기록을 포함한다.
 이번 변경만으로 실제 시간 단축이나 총 10분대 달성을 검증했다고 보고하지 않는다.
 
 ### 기존 승인 경계
