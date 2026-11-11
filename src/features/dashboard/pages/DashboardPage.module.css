@@ -977,3 +977,23 @@ tr[data-soon] .weeks i[data-on] {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* 휴대폰(11/11 검수): 한 표의 고정 폭(920px·칸 폭)이 카드 모양을 깨서 화면 밖으로 밀던 것 풀기 */
+@media (max-width: 720px) {
+  .tableWrap .unified {
+    min-width: 0;
+    table-layout: auto;
+  }
+  .tableWrap .unified colgroup {
+    display: none;
+  }
+  .tableWrap .unified td {
+    text-align: left;
+  }
+}
+/* 좁은 화면 두 칸일 때 마지막 카드가 혼자 남으면 한 줄 다 쓰기 */
+@media (max-width: 800px) {
+  .summary > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}

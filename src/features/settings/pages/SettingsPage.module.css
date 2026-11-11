@@ -142,7 +142,9 @@
 .sectionHeader input {
   max-width: 280px;
 }
+/* 화면 읽기용 숨은 글자(absolute)가 이 상자 밖으로 나가 휴대폰 화면을 넓히지 않게 기준점을 둔다(11/11 검수) */
 .tableWrap {
+  position: relative;
   overflow-x: auto;
 }
 .tableWrap table {
