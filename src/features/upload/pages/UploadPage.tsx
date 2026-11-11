@@ -26,6 +26,7 @@ import {
   uploadFile,
 } from '../model/uploadApi'
 import { formatUploadedAt } from '../model/uploadFormat'
+import boxOpen from '../../billing/assets/box-open.webp'
 import styles from './UploadPage.module.css'
 
 // 이미 올린 기간(U3)과 겹치는 파일은 덮어쓰기 확인이 필요한 상태로 바꾼다.
@@ -247,9 +248,8 @@ export function UploadPage() {
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
       >
-        <span aria-hidden="true" className={styles.uploadIcon}>
-          ↑
-        </span>
+        {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
+        <img alt="" className={styles.boxArt} src={boxOpen} />
         <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
         <span>XLSX · 파일명 예시 2026-09.xlsx · 여러 파일 가능</span>
         <Button onClick={() => inputRef.current?.click()} variant="secondary">
