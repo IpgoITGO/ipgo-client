@@ -3,7 +3,15 @@ import { loadPlanned, savePlanned } from '../model/plannedQuantity'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
@@ -28,7 +36,30 @@ function renderInsight(resultId: number | string = 101) {
   )
 }
 
+// 기준일 11/4에서 7일 안쪽인 날로 "오늘"을 고정한다(7일 넘으면 직접 수량 비교가 잠긴다). 시계(타이머)는 그대로 둔다
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+  vi.setSystemTime(new Date(2026, 10, 6, 10))
+})
+afterAll(() => {
+  vi.useRealTimers()
+})
+
 describe('ScenarioInsight', () => {
+  it('기준일이 7일 넘게 지나면 비교 계산 버튼을 잠그고 이유를 알린다', async () => {
+    vi.setSystemTime(new Date(2026, 10, 20, 10))
+    const user = userEvent.setup()
+    renderInsight()
+    await user.click(
+      await screen.findByRole('button', { name: '수량 넣어 비교' }),
+    )
+    expect(screen.getByRole('button', { name: '비교에 추가' })).toBeDisabled()
+    expect(
+      screen.getByText(/7일 넘게 지나 비교 계산은 막혀/),
+    ).toBeInTheDocument()
+    vi.setSystemTime(new Date(2026, 10, 6, 10))
+  })
+
   it('80%, 100%, 120% 비교와 AI 숫자를 함께 보여준다', async () => {
     renderInsight()
 
@@ -342,14 +373,13 @@ describe('ScenarioInsight', () => {
       screen.getByRole('button', { name: '수량 넣어 비교' }),
     ).toBeInTheDocument()
 
-    // 권장 3 + 직접 2 = 5칸이 차면 "+"는 줄 아래 버튼으로 내려간다
+    // 4칸 격자(11/11): 더 넣어도 "+" 카드는 늘 마지막 칸에 남고 다음 줄로 넘어간다
     await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
     await user.type(screen.getByLabelText('직접 입력'), '100')
     await user.click(screen.getByRole('button', { name: '비교에 추가' }))
     expect(await screen.findByText('100개')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: '+ 수량 넣어 비교' }),
-    ).toBeInTheDocument()
+    const grid = screen.getByRole('radiogroup', { name: '입고량 비교' })
+    expect(grid.lastElementChild).toHaveTextContent('수량 넣어 비교')
   })
 
   it('AI 실패 응답은 기본 문장으로 구분하고 이유를 알린다', async () => {

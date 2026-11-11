@@ -11,6 +11,22 @@
   gap: var(--space-5);
   margin-bottom: var(--space-5);
 }
+.headTools {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+}
+/* 입고 조건 표 검색칸과 같은 모양 */
+.headTools input {
+  flex-shrink: 0;
+  width: min(280px, 100%);
+  min-height: var(--h-input);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-input);
+}
 .header h2,
 .header p,
 .modal h2,
@@ -125,6 +141,11 @@
   }
   .header {
     flex-direction: column;
+  }
+  /* 좁은 화면: 검색칸이 남는 폭을 쓰고 등록은 옆에 그대로 */
+  .headTools input {
+    flex: 1;
+    min-width: 0;
   }
 }
 /* 표의 수량은 오른쪽 정렬 (자릿수가 맞아야 크기를 비교하기 쉽다) */

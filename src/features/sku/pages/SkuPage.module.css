@@ -932,8 +932,10 @@
   fill: var(--color-accent-soft);
 }
 
-.outBand {
-  fill: rgb(200 38 28 / 14%);
+.outMark {
+  stroke: #d96c50;
+  stroke-linecap: round;
+  stroke-width: 4;
 }
 
 .bar {

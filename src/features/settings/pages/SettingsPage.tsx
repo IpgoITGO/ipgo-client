@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { type ClipboardEvent, useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -20,6 +20,7 @@ import {
   saveProductSettings,
   setProductActive,
 } from '../model/inboundSettingsApi'
+import { ExpiryDaysField } from '../components/ExpiryDaysField'
 import styles from './SettingsPage.module.css'
 
 const positiveInteger = z
@@ -74,6 +75,31 @@ const PRODUCT_FIELDS = [
   { field: 'inboundUnit', unit: '개', label: '입고 단위' },
 ] as const
 
+// 입고 기록이 모자라 서버가 주기를 못 정하면 처음부터 이 값을 넣어 두고 셀러가 고치게 한다(11/11 — 빈칸이면 계산을 못 눌렀음)
+const FALLBACK_ORDER_CYCLE = 14
+
+type ProductField = (typeof PRODUCT_FIELDS)[number]['field']
+// 한 번에 넣기 칸(64px) 안 안내 글자는 잘리지 않게 두 글자로
+const BULK_HINT: Record<ProductField, string> = {
+  leadTime: '리드',
+  orderCycle: '주기',
+  inboundUnit: '단위',
+}
+type RowFilter = 'all' | 'changed' | 'noCost' | 'off'
+type Row = SettingsValues['products'][number]
+const ROW_FILTERS: Record<
+  RowFilter,
+  { label: string; test: (row: Row) => boolean }
+> = {
+  all: { label: '전체', test: () => true },
+  changed: { label: '바꾼 상품', test: (row) => row.overridden.length > 0 },
+  noCost: {
+    label: '원가 빈 상품',
+    test: (row) => row.cost == null || !Number.isFinite(row.cost),
+  },
+  off: { label: '꺼진 상품', test: (row) => !row.isActive },
+}
+
 // 사용 스위치를 누른 뒤 "저장됨" 안내를 보여 주는 시간
 const SAVED_MS = 2000
 
@@ -81,6 +107,7 @@ const SAVED_MS = 2000
 async function loadSettings(): Promise<{
   values: SettingsValues
   sourceIsEstimated: boolean
+  cycleIsFallback: boolean
 }> {
   const [defaults, products] = await Promise.all([
     getDefaultSettings(),
@@ -88,10 +115,11 @@ async function loadSettings(): Promise<{
   ])
   return {
     sourceIsEstimated: defaults.reviewCycleSource === 'ESTIMATED',
+    cycleIsFallback: defaults.reviewCycleDays == null,
     values: {
       defaults: {
         leadTime: defaults.leadTimeDays,
-        orderCycle: defaults.reviewCycleDays,
+        orderCycle: defaults.reviewCycleDays ?? FALLBACK_ORDER_CYCLE,
         inboundUnit: defaults.orderUnitQty,
       },
       products: products.items.map((item) => ({
@@ -118,6 +146,15 @@ export function SettingsPage() {
   const lock = useCalcLock()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  // 상품이 수백 개라(실데이터 289개) 거르기 + 골라서 같은 조건 한 번에 넣기(11/11)
+  const [filter, setFilter] = useState<RowFilter>('all')
+  const [picked, setPicked] = useState<Set<number>>(() => new Set())
+  const [bulk, setBulk] = useState<Record<ProductField, string>>({
+    leadTime: '',
+    orderCycle: '',
+    inboundUnit: '',
+  })
+  const [bulkError, setBulkError] = useState('')
   // 저장 뒤 상자가 오른쪽으로 출고되는 짧은 효과를 보여 준 다음 대시보드로 간다.
   const [shipping, setShipping] = useState(false)
   // 사용 스위치를 누르는 중인 상품, 저장·스위치 실패 안내
@@ -172,13 +209,76 @@ export function SettingsPage() {
     () =>
       products
         .map((product, index) => ({ index, product }))
-        .filter(({ product }) =>
-          `${product.name} ${product.barcode}`
-            .toLowerCase()
-            .includes(search.toLowerCase()),
+        .filter(
+          ({ product }) =>
+            ROW_FILTERS[filter].test(product) &&
+            `${product.name} ${product.barcode}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
         ),
-    [products, search],
+    [products, search, filter],
   )
+  const shownIds = filteredProducts
+    .filter(({ product }) => product.isActive)
+    .map(({ product }) => product.productId)
+  const allShownPicked =
+    shownIds.length > 0 && shownIds.every((id) => picked.has(id))
+
+  function togglePick(id: number) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  // 고른 상품에 적은 칸만 넣는다(빈 칸은 그대로). 직접 친 것과 같게 "바꾼 칸"으로 표시
+  function applyBulk() {
+    const values = PRODUCT_FIELDS.flatMap(({ field }) => {
+      const text = bulk[field].trim()
+      if (text === '') return []
+      const value = Number(text)
+      return [{ field, value, ok: Number.isInteger(value) && value > 0 }]
+    })
+    if (values.length === 0 || values.some((item) => !item.ok)) {
+      setBulkError('넣을 칸에 1 이상의 정수를 적어 주세요')
+      return
+    }
+    setBulkError('')
+    getValues('products').forEach((product, index) => {
+      if (!picked.has(product.productId) || !product.isActive) return
+      values.forEach(({ field, value }) =>
+        setValue(`products.${index}.${field}`, value, { shouldDirty: true }),
+      )
+      const overridden = getValues(`products.${index}.overridden`)
+      setValue(
+        `products.${index}.overridden`,
+        [...new Set([...overridden, ...values.map(({ field }) => field)])],
+        { shouldDirty: true },
+      )
+    })
+    setSavedNotice(`✓ 상품 ${picked.size}개에 넣었어요 · 계산할 때 저장돼요`)
+    setPicked(new Set())
+  }
+  // 엑셀 원가 열을 복사해 붙여 넣으면 지금 보이는 순서대로 아래 줄까지 채운다
+  function pasteCosts(event: ClipboardEvent<HTMLInputElement>, from: number) {
+    const lines = event.clipboardData
+      .getData('text')
+      .split(/\r?\n/)
+      .map((line) => line.replace(/\D/g, ''))
+    while (lines.length > 0 && lines.at(-1) === '') lines.pop()
+    if (lines.length < 2) return
+    event.preventDefault()
+    const start = filteredProducts.findIndex(({ index }) => index === from)
+    lines.forEach((digits, offset) => {
+      const row = filteredProducts[start + offset]
+      if (!row || !row.product.isActive || digits === '') return
+      setValue(`products.${row.index}.cost`, Number(digits), {
+        shouldDirty: true,
+      })
+    })
+    setSavedNotice(`✓ 원가 ${lines.length}줄을 붙여 넣었어요`)
+  }
 
   // 사용 여부는 서버가 알아서 끄지 않으므로(업로드에 안 나와도 그대로) 셀러가 켜고 끄고, 누르는 즉시 저장한다.
   async function toggleActive(index: number) {
@@ -344,8 +444,8 @@ export function SettingsPage() {
               </div>
               <small>
                 {errors.defaults?.orderCycle?.message ??
-                  (query.data?.values.defaults.orderCycle == null
-                    ? '입고 기록이 부족해요. 주기를 직접 입력하거나 수불부를 더 올려 주세요'
+                  (query.data?.cycleIsFallback
+                    ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
                     : query.data.sourceIsEstimated
                       ? '수불부 입고 간격으로 추정했어요'
                       : '직접 정해 저장한 값이에요')}
@@ -365,6 +465,7 @@ export function SettingsPage() {
                   '박스 단위가 있으면 바꿔 주세요'}
               </small>
             </label>
+            <ExpiryDaysField />
           </div>
         </section>
 
@@ -384,7 +485,72 @@ export function SettingsPage() {
               value={search}
             />
           </div>
+          {/* 거르기 + 같은 조건 한 번에 넣기. 바는 늘 자리를 잡아 고르기 시작해도 표가 밀리지 않는다 */}
+          <div className={styles.rowTools}>
+            <div
+              aria-label="상품 거르기"
+              className={styles.filterChips}
+              role="group"
+            >
+              {(Object.keys(ROW_FILTERS) as RowFilter[]).map((key) => (
+                <button
+                  aria-pressed={filter === key}
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  type="button"
+                >
+                  {ROW_FILTERS[key].label}
+                  <b>
+                    {products
+                      .filter(ROW_FILTERS[key].test)
+                      .length.toLocaleString()}
+                  </b>
+                </button>
+              ))}
+            </div>
+            <div
+              aria-label="고른 상품에 같은 조건 넣기"
+              className={styles.bulkBar}
+              data-off={picked.size === 0 || undefined}
+              role="group"
+            >
+              <b>
+                {picked.size > 0
+                  ? `${picked.size}개 고름`
+                  : '같은 조건은 골라서 한 번에'}
+              </b>
+              {PRODUCT_FIELDS.map(({ field, label, unit }) => (
+                <span className={styles.numField} key={field}>
+                  <input
+                    aria-label={`고른 상품 ${label}`}
+                    disabled={picked.size === 0}
+                    inputMode="numeric"
+                    onChange={(event) =>
+                      setBulk((prev) => ({
+                        ...prev,
+                        [field]: event.target.value.replace(/\D/g, ''),
+                      }))
+                    }
+                    placeholder={BULK_HINT[field]}
+                    type="text"
+                    value={bulk[field]}
+                  />
+                  <b>{unit}</b>
+                </span>
+              ))}
+              <button
+                className={styles.bulkApply}
+                disabled={picked.size === 0}
+                onClick={applyBulk}
+                type="button"
+              >
+                넣기
+              </button>
+              {bulkError && <small role="alert">{bulkError}</small>}
+            </div>
+          </div>
           <div className={styles.useNote}>
+            <p>원가는 엑셀 열을 복사해 첫 칸에 붙여 넣으면 아래로 채워져요.</p>
             <span aria-live="polite" className={styles.savedNotice}>
               {savedNotice}
             </span>
@@ -393,6 +559,26 @@ export function SettingsPage() {
             <table>
               <thead>
                 <tr>
+                  <th className={styles.pickHead}>
+                    <input
+                      aria-label="보이는 상품 모두 고르기"
+                      checked={allShownPicked}
+                      className={styles.pickBox}
+                      disabled={shownIds.length === 0}
+                      onChange={(event) =>
+                        setPicked((prev) => {
+                          const next = new Set(prev)
+                          shownIds.forEach((id) =>
+                            event.target.checked
+                              ? next.add(id)
+                              : next.delete(id),
+                          )
+                          return next
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </th>
                   <th>사용</th>
                   <th>상품</th>
                   {PRODUCT_FIELDS.map(({ field, label }) => (
@@ -405,7 +591,21 @@ export function SettingsPage() {
               </thead>
               <tbody>
                 {filteredProducts.map(({ index, product }) => (
-                  <tr data-inactive={!product.isActive} key={product.productId}>
+                  <tr
+                    data-inactive={!product.isActive}
+                    data-picked={picked.has(product.productId) || undefined}
+                    key={product.productId}
+                  >
+                    <td className={styles.pickHead}>
+                      <input
+                        aria-label={`${product.name} 고르기`}
+                        checked={picked.has(product.productId)}
+                        className={styles.pickBox}
+                        disabled={!product.isActive}
+                        onChange={() => togglePick(product.productId)}
+                        type="checkbox"
+                      />
+                    </td>
                     <td className={styles.useCell}>
                       <input
                         aria-label={`${product.name} 사용`}
@@ -469,6 +669,7 @@ export function SettingsPage() {
                               className={styles.costInput}
                               inputMode="numeric"
                               onBlur={field.onBlur}
+                              onPaste={(event) => pasteCosts(event, index)}
                               placeholder="미입력"
                               readOnly={!product.isActive}
                               onChange={(event) => {

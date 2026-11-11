@@ -124,17 +124,17 @@ describe('입고 주기 제안과 상속', () => {
     )
     expect(f.savedProducts).toEqual([])
   })
-  it('표본 부족에서는 빈칸을 유지하고 수동 기본값 입력을 상속해 저장한다', async () => {
+  it('표본 부족이면 처음 값 14일을 넣어 두고, 고친 기본값을 상품이 따라 저장한다', async () => {
     const f = fixture(null)
     const user = userEvent.setup()
     renderSettings()
-    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(
-      null,
-    )
-    expect(screen.getByText(/입고 기록이 부족해요/)).toBeInTheDocument()
-    await user.type(screen.getByLabelText('기본 입고 주기'), '14')
+    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(14)
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue(14)
+    expect(screen.getByText(/처음 값 14일이에요/)).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('기본 입고 주기'))
+    await user.type(screen.getByLabelText('기본 입고 주기'), '10')
     await waitFor(() =>
-      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(14),
+      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(10),
     )
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))

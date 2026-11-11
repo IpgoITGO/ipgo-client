@@ -17,6 +17,7 @@ import { CalculationStatus } from '../../shared/ui/CalculationStatus/Calculation
 import { Modal } from '../../shared/ui/Modal/Modal'
 import styles from './AppLayout.module.css'
 import { AccountMenu } from './AccountMenu'
+import { AlertBell } from './AlertBell'
 import { RouteToast } from './RouteToast'
 
 const navigation = [
@@ -95,6 +96,7 @@ export function AppLayout() {
           >
             {planLabel}
           </NavLink>
+          <AlertBell />
           <AccountMenu
             company={user?.companyName ?? ''}
             name={user?.name ?? ''}

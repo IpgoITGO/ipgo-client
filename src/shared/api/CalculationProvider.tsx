@@ -142,7 +142,11 @@ export function CalculationProvider({
   } else if (runId !== null) {
     if (query.data?.status === 'FAILED') {
       phase = 'failed'
-      message = query.data.errorMessage ?? '계산을 마치지 못했어요.'
+      // 서버 고정 문구 "계산을 완료하지 못했습니다. …"의 첫 문장은 제목과 같은 말이라 뺀다(작은 창 2줄)
+      message =
+        query.data.errorMessage
+          ?.replace(/^계산을 \S+ 못했\S*\.\s*/, '')
+          .trim() || '계산을 마치지 못했어요.'
     } else if (query.data?.status === 'CANCELED') {
       phase = 'failed'
       message = '계산을 멈췄어요. 이전 결과는 그대로예요.'

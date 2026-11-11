@@ -213,10 +213,14 @@
 }
 .sectionHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-3);
+}
+.sectionHeader > .search {
+  flex: none;
+  width: 280px;
 }
 .sectionHeader p {
   margin-top: var(--space-1);
@@ -224,9 +228,10 @@
 }
 /* 정렬: 탭처럼 붙은 버튼 세 개. 고른 것만 흰 바탕에 굵게 */
 .sort {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
+  margin-bottom: var(--space-3);
   padding: var(--space-1);
   background: var(--color-bg);
   border-radius: 14px;
@@ -332,12 +337,6 @@
   background: var(--color-accent-soft);
   border-radius: var(--radius-chip);
 }
-.tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
 .search {
   display: flex;
   align-items: center;
@@ -435,28 +434,27 @@
   background: var(--color-accent-soft);
   border-radius: var(--radius-chip);
 }
-.tableWrap tr[data-soon] td {
-  background: rgb(255 197 61 / 8%);
-}
-.tableWrap tr[data-soon] .nameCell {
-  box-shadow: inset 3px 0 0 var(--color-accent);
-}
 .muted {
   color: var(--color-text-3);
 }
 .room {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-top: 2px;
   white-space: nowrap;
+}
+.room small {
+  color: var(--color-text-3);
+  font-size: 12px;
 }
 .weeks {
   display: inline-flex;
   gap: 3px;
 }
 .weeks i {
-  width: 16px;
-  height: 22px;
+  width: 10px;
+  height: 12px;
   background: var(--color-primary-soft);
   border-radius: 4px;
 }
@@ -465,49 +463,6 @@
 }
 tr[data-soon] .weeks i[data-on] {
   background: var(--color-accent);
-}
-.roomText {
-  display: grid;
-  line-height: 1.2;
-}
-.roomText small {
-  color: var(--color-text-3);
-  font-size: 11px;
-}
-.headHint {
-  margin-left: 4px;
-  color: var(--color-text-3);
-  font-size: 11px;
-  font-weight: 500;
-}
-.reasons {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.reasons > li {
-  display: grid;
-  /* 버튼 칸 폭을 고정해 버튼이 없는 줄도 설명 시작선이 같게(11/10) */
-  grid-template-columns: minmax(140px, 1fr) 2fr 176px;
-  /* 사유를 펼쳐도 상품 이름이 따라 내려가지 않게 위에 맞춤(11/6) */
-  align-items: start;
-  gap: var(--space-4);
-  padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-.reasons > li:last-child {
-  border-bottom: 0;
-}
-.reasons a {
-  color: var(--color-primary);
-  font-weight: 700;
-  text-decoration: none;
-}
-.reasonText {
-  display: grid;
-  gap: var(--space-1);
-  justify-items: start;
 }
 .errorDate {
   padding: 2px 8px;
@@ -597,13 +552,6 @@ tr[data-soon] .weeks i[data-on] {
   .rowLink:hover td {
     background: none;
   }
-  .tableWrap tr[data-soon] {
-    background: rgb(255 197 61 / 8%);
-    box-shadow: inset 3px 0 0 var(--color-accent);
-  }
-  .tableWrap tr[data-soon] .nameCell {
-    box-shadow: none;
-  }
   .tableWrap td[data-label]::before {
     display: block;
     color: var(--color-text-3);
@@ -628,6 +576,24 @@ tr[data-soon] .weeks i[data-on] {
   .tableWrap .qtyCell {
     font-size: 18px;
     font-weight: 800;
+  }
+  /* 한 표도 카드로: 칸 폭 고정은 풀고, 계산 못 한 이유 줄은 위 카드 아래에 붙인다 */
+  .unified {
+    min-width: 0;
+  }
+  .sectionHeader > .search {
+    width: 100%;
+  }
+  .unified .planBelow {
+    justify-items: start;
+  }
+  /* 휴대폰 카드에서는 칸 정렬을 풀고 모두 왼쪽 */
+  .unified td:nth-child(n) {
+    padding-left: 0;
+    text-align: left;
+  }
+  .unified td:nth-child(4) .room {
+    justify-content: flex-start;
   }
 }
 /* 줄 전체가 링크: 올리면 연한 노랑, 상품명은 남색 굵게 */
@@ -658,13 +624,6 @@ tr[data-soon] .weeks i[data-on] {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-.late {
-  margin-left: var(--space-2);
-  color: var(--color-danger);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  white-space: nowrap;
 }
 /* "지금 넣어야 해요" 카드: 빈 상자 그림 + 굵은 개수 */
 .soldNote {
@@ -874,11 +833,6 @@ tr[data-soon] .weeks i[data-on] {
   background: var(--color-card);
   box-shadow: 0 1px 2px rgb(25 31 40 / 8%);
 }
-.allTable td:first-child a {
-  color: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
 .kind {
   padding: 3px 10px;
   font-size: var(--text-caption);
@@ -898,34 +852,128 @@ tr[data-soon] .weeks i[data-on] {
   color: var(--color-text-3);
   background: var(--color-primary-soft);
 }
-.reasonHead {
-  display: block;
-  color: var(--color-text);
-}
-.reasonTodo {
-  display: block;
-  margin-top: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-text-2);
-  background: var(--color-warning-bg);
-  border-radius: 8px;
-}
-/* 전체 표 칸 폭 고정(체크해도 흔들리지 않게) */
-.allTable {
+/* 한 표(11/11): 모든 탭이 같은 칸·같은 폭이라 탭을 바꿔도 상품명·바코드 자리가 그대로. 고르거나 수량 칸이 열려도 칸 폭이 안 변한다 */
+.unified {
+  min-width: 920px;
   table-layout: fixed;
 }
-.allPick {
+.cPick {
   width: 48px;
 }
-.allKind {
+.cKind {
+  width: 116px;
+}
+.cDate {
+  width: 150px;
+}
+.cRisk {
   width: 140px;
 }
-.allDate {
+.cExpiry {
+  width: 152px;
+}
+.cQty {
+  width: 132px;
+}
+.cCost {
   width: 120px;
 }
-.allQty {
-  width: 120px;
+.unified td {
+  vertical-align: top;
 }
-.allTable input:disabled {
+.unified input:disabled {
   opacity: 0.35;
+}
+/* 칸 안 첫 줄은 굵은 값, 둘째 줄은 작은 회색 글씨로 같은 높이에 맞춘다 */
+.dateMain {
+  display: block;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cellSub {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.planBelow {
+  display: grid;
+  justify-items: end;
+  margin-top: 2px;
+  font-size: 12px;
+}
+/* 소진일·유통기한 아래 줄 색: 지남은 빨강, 임박은 주황(두 칸 같은 모양) */
+.cellSub[data-tone='danger'] {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+.cellSub[data-tone='warn'] {
+  color: var(--color-warning);
+  font-weight: 700;
+}
+/* 보관비 한 줄 자리: 탭마다 잡아 두어 아래 정렬·표가 위아래로 안 움직인다 */
+/* 품절 위험(오른쪽 맞춤)과 유통기한(왼쪽 맞춤)이 붙어 보이지 않게 사이를 띄운다 */
+/* 한 표 정렬 기준(11/11): 상품 왼쪽 · 상태 가운데 · 그 밖(날짜·숫자)은 모두 오른쪽.
+   칸 머리와 아래 작은 줄도 같은 쪽. 칸 순서: 1 고르기 2 상품 3 상태 4 소진일 5 품절 위험 6 유통기한 7 입고량 8 금액 */
+.unified th:nth-child(3),
+.unified td:nth-child(3) {
+  text-align: center;
+}
+.unified th:nth-child(n + 4),
+.unified td:nth-child(n + 4) {
+  text-align: right;
+}
+.unified td:nth-child(4) .room {
+  justify-content: flex-end;
+}
+/* 품절 위험은 칸을 넓혀 소진일과 띄우고, 유통기한 칸은 아래 줄 폭만큼만(11/11 "품절이 소진과 너무 가깝고 유통과는 멀다") */
+.riskCell [data-high] {
+  color: var(--color-danger);
+}
+.storageSlot {
+  /* 보관비 칸(36px + 위 여백 12px)과 같은 높이 */
+  min-height: 48px;
+}
+/* 괜찮은 상품 수량 칸: 줄 높이가 안 변하게 위아래로 당겨 넣는다 */
+.safeQty {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  margin-block: -6px;
+}
+.safeQty input {
+  width: 72px;
+  height: 30px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.safeQty input:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 1px;
+}
+/* 계산 못 한 이유: 상자 없이 이름 아래 회색 한 줄 + 작은 링크(11/11 시안 2안) */
+.naReason {
+  display: block;
+  /* 한 단어만 다음 줄로 떨어지지 않게 두 줄을 고르게 */
+  text-wrap: balance;
+  word-break: keep-all;
+  margin-top: 2px;
+  color: var(--color-text-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.unified .naLink {
+  display: inline;
+  margin-left: var(--space-2);
+  color: var(--color-text-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

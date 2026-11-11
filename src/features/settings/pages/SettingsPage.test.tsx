@@ -124,6 +124,50 @@ describe('SettingsPage', () => {
     )
   }
 
+  it('상품별 조건: 거르기, 골라서 같은 조건 한 번에, 원가 여러 줄 붙여 넣기', async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    await screen.findByLabelText('케어트릿 120g leadTime')
+
+    await user.click(screen.getByRole('button', { name: /^꺼진 상품/ }))
+    expect(screen.queryByLabelText('케어트릿 120g leadTime')).toBeNull()
+    await user.click(screen.getByRole('button', { name: /^전체/ }))
+
+    await user.type(
+      screen.getByLabelText('상품명 또는 바코드 검색'),
+      '케어트릿',
+    )
+    await user.click(screen.getByLabelText('보이는 상품 모두 고르기'))
+    const bar = screen.getByRole('group', {
+      name: '고른 상품에 같은 조건 넣기',
+    })
+    await user.type(within(bar).getByLabelText('고른 상품 리드타임'), '9')
+    await user.click(within(bar).getByRole('button', { name: '넣기' }))
+    expect(screen.getByLabelText('케어트릿 120g leadTime')).toHaveValue(9)
+    expect(screen.getByLabelText('케어트릿 8g 낱개 leadTime')).toHaveValue(9)
+
+    await user.click(screen.getByLabelText('케어트릿 120g 원가'))
+    await user.paste('1,000\n2,000')
+    expect(screen.getByLabelText('케어트릿 120g 원가')).toHaveValue('1,000')
+    expect(screen.getByLabelText('케어트릿 8g 낱개 원가')).toHaveValue('2,000')
+  })
+
+  it('유통기한 임박 기준: 처음 30일, 바꾸면 칸을 벗어날 때 바로 저장하고 범위 밖은 막는다', async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    const field = await screen.findByLabelText('유통기한 임박 기준')
+    await waitFor(() => expect(field).toHaveValue('30'))
+    await user.clear(field)
+    await user.type(field, '400')
+    await user.tab()
+    expect(await screen.findByText('1~365일로 넣어 주세요')).toBeInTheDocument()
+    await user.clear(field)
+    await user.type(field, '14')
+    await user.tab()
+    expect(await screen.findByText('✓ 14일로 저장했어요')).toBeInTheDocument()
+    expect(field).toHaveValue('14')
+  })
+
   it('보관 비용: #storage-cost로 오면 접힌 칸이 펼쳐진다', async () => {
     await login({ email: 'seller@a.com', password: 'pass1234' })
     render(
@@ -197,6 +241,29 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: '되돌리기' }))
     expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
     expect(screen.getByLabelText('덴탈껌 S 10입 상자 가로')).toHaveValue('20')
+  })
+
+  it('보관 비용: 검색으로 거른 상품을 모두 골라 같은 상자 크기를 한 번에 넣는다', async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+    const user = userEvent.setup()
+    renderSettings()
+    await screen.findByLabelText('덴탈껌 S 10입 상자 가로')
+    await user.type(screen.getByLabelText('보관 비용 상품 검색'), '케어트릿')
+    expect(screen.queryByLabelText('덴탈껌 S 10입 상자 고르기')).toBeNull()
+    await user.click(screen.getByLabelText('보관 비용 보이는 상품 모두 고르기'))
+    expect(screen.getByText('2개 고름')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('고른 상품 상자 가로'), '20')
+    await user.type(screen.getByLabelText('고른 상품 상자 세로'), '20')
+    await user.type(screen.getByLabelText('고른 상품 상자 높이'), '30')
+    await user.click(
+      within(
+        screen.getByRole('group', { name: '고른 상품에 같은 크기 넣기' }),
+      ).getByRole('button', { name: '넣기' }),
+    )
+    expect(await screen.findAllByText('0.012 CBM')).toHaveLength(2)
+    expect(
+      await screen.findByText('✓ 상품 2개 상자 크기 저장했어요'),
+    ).toBeInTheDocument()
   })
 
   it('사용 스위치를 끄면 서버에 저장하고, 새로 불러와도 꺼져 있다', async () => {
@@ -346,9 +413,7 @@ describe('SettingsPage 표 모양', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '입고 기록이 부족해요. 주기를 직접 입력하거나 수불부를 더 올려 주세요',
-      ),
+      screen.getByText('처음 값 14일이에요. 실제 입고 주기로 바꿔 주세요'),
     ).toBeInTheDocument()
     expect(screen.queryByText('검색 결과가 없어요.')).toBeNull()
     // 상품이 없으면 계산할 게 없다: 계산 버튼은 막고 수불부 올리기로 안내한다

@@ -57,6 +57,14 @@ function StorageCostForm({
     draft?: Partial<Box>
   } | null>(null)
   const [rev, setRev] = useState<Record<string, number>>({})
+  // 규격이 같은 상품은 골라서 한 번에(11/11 — 289개를 줄마다 넣을 수는 없음)
+  const [search, setSearch] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const [bulk, setBulk] = useState<Record<keyof Box, string>>({
+    width: '',
+    depth: '',
+    height: '',
+  })
   useEffect(() => {
     if (!undo) return
     const id = window.setTimeout(() => setUndo(null), 4000)
@@ -191,6 +199,65 @@ function StorageCostForm({
     setUndo(null)
   }
 
+  const shown = products.filter((product) =>
+    `${product.name} ${product.barcode}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase()),
+  )
+  const shownKeys = shown.map((product) => String(product.productId))
+  const allShownPicked =
+    shownKeys.length > 0 && shownKeys.every((key) => picked.has(key))
+  function togglePick(key: string) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+  function pickShown(checked: boolean) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      shownKeys.forEach((key) => (checked ? next.add(key) : next.delete(key)))
+      return next
+    })
+  }
+  // 고른 상품 모두에 같은 상자 크기를 넣고 한 번에 저장한다
+  function applyBulk() {
+    const width = positiveNumber(bulk.width)
+    const depth = positiveNumber(bulk.depth)
+    const height = positiveNumber(bulk.height)
+    if (!width || !depth || !height) {
+      return setError('bulk', '가로·세로·높이를 0보다 큰 숫자로 다 넣어 주세요')
+    }
+    const box: Box = { width, depth, height }
+    const keys = [...picked]
+    const boxes = { ...settings.boxes }
+    keys.forEach((key) => (boxes[key] = box))
+    setDrafts((prev) => {
+      const next = { ...prev }
+      keys.forEach((key) => delete next[key])
+      return next
+    })
+    setErrors((prev) => {
+      const next = { ...prev }
+      keys.forEach((key) => delete next[key])
+      delete next.bulk
+      return next
+    })
+    commit(
+      { ...settings, boxes },
+      `상품 ${keys.length}개 상자 크기`,
+      Promise.all(keys.map((key) => saveBox(key, box))),
+    )
+    setRev((prev) => {
+      const next = { ...prev }
+      keys.forEach((key) => (next[key] = (next[key] ?? 0) + 1))
+      return next
+    })
+    setPicked(new Set())
+  }
+
   const boxCount = products.filter(
     (product) => settings.boxes[String(product.productId)],
   ).length
@@ -247,6 +314,55 @@ function StorageCostForm({
         </label>
       </div>
 
+      {/* 위 "상품별로 다른 조건"처럼 왼쪽은 할 일, 오른쪽 끝에 검색 */}
+      <div className={`${styles.sectionHeader} ${styles.bulkHead}`}>
+        {/* 자리를 늘 잡아 두어 고르기 시작해도 표가 밀리지 않는다 */}
+        <div
+          aria-label="고른 상품에 같은 크기 넣기"
+          className={styles.bulkBar}
+          data-off={picked.size === 0 || undefined}
+          role="group"
+        >
+          <b>
+            {picked.size > 0
+              ? `${picked.size}개 고름`
+              : '같은 규격은 골라서 한 번에'}
+          </b>
+          {SIDES.map(([side, label]) => (
+            <span className={styles.numField} key={side}>
+              <input
+                aria-label={`고른 상품 상자 ${label}`}
+                disabled={picked.size === 0}
+                inputMode="decimal"
+                onChange={(event) =>
+                  setBulk((prev) => ({ ...prev, [side]: event.target.value }))
+                }
+                placeholder={label}
+                type="text"
+                value={bulk[side]}
+              />
+              <b>cm</b>
+            </span>
+          ))}
+          <button
+            className={styles.bulkApply}
+            disabled={picked.size === 0}
+            onClick={applyBulk}
+            type="button"
+          >
+            넣기
+          </button>
+          {errors.bulk && <small role="alert">{errors.bulk}</small>}
+        </div>
+        <input
+          aria-label="보관 비용 상품 검색"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="상품명 · 바코드 검색"
+          type="search"
+          value={search}
+        />
+      </div>
+
       <div className={styles.useNote}>
         <p>상자 1개 크기를 cm로 넣으면 CBM으로 바꿔 드려요.</p>
         <span aria-live="polite" className={styles.savedNotice}>
@@ -271,6 +387,7 @@ function StorageCostForm({
         {/* 칸 폭을 고정해 부피가 채워져도 가로·세로·높이 칸이 밀리지 않게(#255) */}
         <table className={styles.boxTable}>
           <colgroup>
+            <col className={styles.pickCol} />
             <col />
             <col className={styles.sideCol} />
             <col className={styles.sideCol} />
@@ -280,6 +397,15 @@ function StorageCostForm({
           </colgroup>
           <thead>
             <tr>
+              <th>
+                <input
+                  aria-label="보관 비용 보이는 상품 모두 고르기"
+                  checked={allShownPicked}
+                  className={styles.pickBox}
+                  onChange={(event) => pickShown(event.target.checked)}
+                  type="checkbox"
+                />
+              </th>
               <th>상품</th>
               {SIDES.map(([side, label]) => (
                 <th className={styles.numHead} key={side}>
@@ -293,13 +419,25 @@ function StorageCostForm({
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => {
+            {shown.map((product) => {
               const key = String(product.productId)
               const box = settings.boxes[key]
               const hasAny =
                 Boolean(box) || Object.keys(drafts[key] ?? {}).length > 0
               return (
-                <tr key={`${key}-${rev[key] ?? 0}`}>
+                <tr
+                  data-picked={picked.has(key) || undefined}
+                  key={`${key}-${rev[key] ?? 0}`}
+                >
+                  <td>
+                    <input
+                      aria-label={`${product.name} 상자 고르기`}
+                      checked={picked.has(key)}
+                      className={styles.pickBox}
+                      onChange={() => togglePick(key)}
+                      type="checkbox"
+                    />
+                  </td>
                   <td className={styles.nameCell}>
                     <strong>{product.name}</strong>
                     <span>{product.barcode}</span>
@@ -352,6 +490,9 @@ function StorageCostForm({
             })}
           </tbody>
         </table>
+        {shown.length === 0 && (
+          <p className={styles.empty}>검색 결과가 없어요.</p>
+        )}
       </div>
     </details>
   )

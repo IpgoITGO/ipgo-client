@@ -2,12 +2,12 @@
 export type OrderLine = {
   name: string
   barcode: string
-  /** 권장 입고량 */
-  quantity: number
+  /** 권장 입고량. 아직 괜찮은 상품은 권장량이 없어 null(빈칸) */
+  quantity: number | null
   /** 상세에서 내가 정한 입고량. 없으면 권장대로 */
   planned?: number | null
-  /** 주문 수량 기준 사입비 */
-  cost: number
+  /** 주문 수량 기준 사입비. 단가를 모르면 null(빈칸) */
+  cost: number | null
   stockoutDate: string
 }
 
@@ -46,10 +46,10 @@ export function toOrderCsv(lines: OrderLine[]) {
     ...lines.map((line) => [
       line.name,
       barcodeCell(line.barcode),
-      line.quantity,
+      line.quantity ?? '',
       line.planned ?? '',
-      orderQty(line),
-      line.cost,
+      orderQty(line) ?? '',
+      line.cost ?? '',
       line.stockoutDate,
     ]),
     [
@@ -59,7 +59,7 @@ export function toOrderCsv(lines: OrderLine[]) {
       lines.some((line) => line.planned != null)
         ? lines.reduce((total, line) => total + (line.planned ?? 0), 0)
         : '',
-      lines.reduce((total, line) => total + orderQty(line), 0),
+      lines.reduce((total, line) => total + (orderQty(line) ?? 0), 0),
       sum(lines, 'cost'),
       '',
     ],
@@ -70,7 +70,7 @@ export function toOrderCsv(lines: OrderLine[]) {
 const orderQty = (line: OrderLine) => line.planned ?? line.quantity
 
 function sum(lines: OrderLine[], key: 'quantity' | 'cost') {
-  return lines.reduce((total, line) => total + line[key], 0)
+  return lines.reduce((total, line) => total + (line[key] ?? 0), 0)
 }
 
 // "발주목록_20261105.csv"

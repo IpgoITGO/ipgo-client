@@ -30,6 +30,17 @@ it('고른 상품을 합계 줄까지 붙여 CSV로 만든다', () => {
   expect(csv.endsWith('합계,,112,,112,181600,')).toBe(true)
 })
 
+it('아직 괜찮은 상품은 권장량·사입비를 비우고, 수량을 안 적었으면 주문 수량도 비운다', () => {
+  const line = { barcode: 'A-1', quantity: null, cost: null, stockoutDate: '—' }
+  const csv = toOrderCsv([
+    { ...line, name: '저키 스틱', planned: 30 },
+    { ...line, name: '동결 큐브' },
+  ])
+  expect(csv).toContain('저키 스틱,A-1,,30,30,,—')
+  expect(csv).toContain('동결 큐브,A-1,,,,,—')
+  expect(csv.endsWith('합계,,0,30,30,0,')).toBe(true)
+})
+
 it('내 입고량이 있으면 주문 수량은 그 수량이다', () => {
   const csv = toOrderCsv([
     {
