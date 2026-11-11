@@ -63,6 +63,9 @@ export type Invoice = {
   status: string
   paymentStatus: string | null
   paidAt: string | null
+  refundStatus?:
+    'PROCESSING' | 'UNKNOWN' | 'CANCELED' | 'REVIEW_REQUIRED' | null
+  canceledAt?: string | null
 }
 
 export type RegistrationSession = {
@@ -137,6 +140,13 @@ export const useInvoices = () =>
         '/billing/invoices',
       ),
     retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.items.some(
+        (item) =>
+          item.refundStatus === 'PROCESSING' || item.refundStatus === 'UNKNOWN',
+      )
+        ? 5000
+        : false,
   })
 
 // 서버 오류를 사용자 말로
@@ -158,7 +168,10 @@ export function billingErrorText(error: unknown) {
 
 // 해지·해지 취소·다시 결제 같은 변경 요청. 같은 동작을 다시 보낼 때는 같은 키, 성공하면 새 키.
 // 끝나면 결제 정보를 모두 다시 받는다.
-export function useBillingMutation(path: string, body?: () => unknown) {
+export function useBillingMutation<T = unknown>(
+  path: string,
+  body?: () => unknown,
+) {
   const queryClient = useQueryClient()
   const keyRef = useRef<{ path: string; key: string } | null>(null)
   return useMutation({
@@ -167,7 +180,7 @@ export function useBillingMutation(path: string, body?: () => unknown) {
       if (keyRef.current?.path !== target) {
         keyRef.current = { path: target, key: newIdempotencyKey() }
       }
-      return billingPost(target, keyRef.current.key, body?.())
+      return billingPost<T>(target, keyRef.current.key, body?.())
     },
     onSuccess: () => {
       keyRef.current = null

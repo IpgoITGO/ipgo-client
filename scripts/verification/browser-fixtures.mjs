@@ -27,6 +27,59 @@ export function fixtureResponse(url, method, origin) {
         companyName: '합성 검증',
       }
       break
+    case '/api/dashboard/replenishment-needs':
+      body = {
+        asOfDate: null,
+        today: '2026-11-11',
+        daysSinceAsOf: null,
+        resultStatus: null,
+        runId: null,
+        resultComputedAt: null,
+        lastFailedRunAt: null,
+        latestUploadId: null,
+        summary: {
+          needCount: 0,
+          notNeededCount: 0,
+          notCalculableCount: 0,
+          excludedCount: 0,
+        },
+        items: [],
+        notCalculable: [],
+      }
+      break
+    case '/api/billing/subscription':
+      body = {
+        planId: 'trial',
+        status: 'TRIALING',
+        trialEnd: '2026-12-11T00:00:00Z',
+        periodStart: null,
+        periodEnd: null,
+        nextChargeAt: null,
+        cancelAtPeriodEnd: false,
+        graceUntil: null,
+        amount: 0,
+        priceVersion: 'test-fixture',
+        entitlements: {
+          canCalculate: true,
+          canUpload: true,
+          canGenerateInsight: true,
+          productLimit: 300,
+          monthlyInsightLimit: 100,
+          reason: null,
+        },
+      }
+      break
+    case '/api/expiry':
+      body = {
+        asOfDate: null,
+        imminentDays: 30,
+        summary: { expired: 0, imminent: 0, ok: 0, unknown: 0 },
+        items: [],
+      }
+      break
+    case '/api/planned-receipts':
+      body = { items: [], total: 0 }
+      break
     case '/api/settings/storage-cost':
       body = { ratePerCbm: null, boxes: [] }
       break

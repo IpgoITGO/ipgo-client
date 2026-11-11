@@ -17,6 +17,7 @@ let server,
   page,
   complete = false
 let phase = 'local_server'
+let failureDiagnostic = null
 try {
   server = await createServer({
     server: { host: '127.0.0.1', port: 0, strictPort: true, open: false },
@@ -59,7 +60,9 @@ try {
         origin,
       )
       if (response.blocked) {
-        blocked.push(response.blocked)
+        blocked.push(
+          `${request.method()} ${new URL(request.url()).pathname}: ${response.blocked}`,
+        )
         return route.abort()
       }
       return response.asset
@@ -148,7 +151,9 @@ try {
     await context.close()
   }
   complete = true
-} catch {
+} catch (error) {
+  failureDiagnostic =
+    error.code === 'ERR_ASSERTION' ? error.message.slice(0, 700) : error.name
   process.exitCode = 1
   if (page && !page.isClosed())
     await page
@@ -160,6 +165,7 @@ try {
   const result = {
     complete,
     failure_phase: complete ? null : phase,
+    failure_diagnostic: failureDiagnostic,
     reports,
     business_e2e: 'not_verified',
     actual_savings: 'not_measured',

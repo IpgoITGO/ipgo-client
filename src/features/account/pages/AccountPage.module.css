@@ -13,6 +13,7 @@
 
 .main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-width: 0;
 }
@@ -609,4 +610,49 @@
 /* 해지 예약 뒤에도 같은 높이(아래 줄 자리 유지 → 상자 높이 안 바뀜) */
 .planActions .slot {
   visibility: hidden;
+}
+
+/* 환불 확인과 결제 내역은 작은 화면에서도 가로로 넘치지 않는다. */
+.refundReason {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--space-4);
+}
+.refundReason input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+}
+.refundActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--space-4);
+}
+@media (max-width: 560px) {
+  .historyRow {
+    display: block;
+  }
+  .historyRow > b {
+    display: block;
+    margin-bottom: 12px;
+  }
+  .historyRow .history {
+    width: 100%;
+    table-layout: fixed;
+  }
+  .historyRow .history td:first-child {
+    width: 54px;
+  }
+  .historyRow .history td:last-child {
+    width: 86px;
+    word-break: keep-all;
+  }
+  .historyRow .textButton {
+    font-size: inherit;
+    white-space: normal;
+  }
 }

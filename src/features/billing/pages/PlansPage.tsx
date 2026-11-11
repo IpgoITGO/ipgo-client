@@ -33,6 +33,7 @@ export function PlansPage() {
   }
   const daysLeft = trialDaysLeft(subscription)
   const failed = !!paymentProblem(subscription)
+  const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
   const ended = trial && daysLeft <= 0
   const soon = trial && daysLeft > 0 && daysLeft <= 3
@@ -89,6 +90,11 @@ export function PlansPage() {
               <b>14일 체험 쓰는 중</b>
               <span>{endsOn}까지 셀러와 똑같이 써요</span>
             </>
+          ) : paidEnded ? (
+            <>
+              <b>유료 이용이 끝났어요</b>
+              <span>요금제를 선택해 다시 시작할 수 있어요</span>
+            </>
           ) : (
             <b>
               {planName} 쓰는 중{billingOn && ` · 다음 결제 ${md(billingOn)}`}
@@ -121,7 +127,7 @@ export function PlansPage() {
         id="plan-cards"
       >
         {PLANS.map((plan) => {
-          const current = plan.id === subscription.planId
+          const current = plan.id === subscription.planId && !paidEnded
           // 가격은 서버 요금제 값이 기준(서버가 바꾸면 그대로 따라간다)
           const price =
             serverPlans?.find((p) => p.planId === plan.id)?.amount ?? plan.price
