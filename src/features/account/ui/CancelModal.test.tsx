@@ -27,7 +27,7 @@ describe('CancelModal 1단계 그림', () => {
     for (const items of [null, []]) {
       renderWith(items)
       expect(
-        screen.getByText('아직 계산 결과가 없어 아래 그림은 예시예요'),
+        screen.getByText('아직 계산 결과가 없어 아래 표는 예시예요'),
       ).toBeInTheDocument()
       expect(screen.getAllByText('지금 · 예시').length).toBeGreaterThan(0)
       expect(screen.queryByText(/케어트릿/)).not.toBeInTheDocument()
@@ -49,7 +49,7 @@ describe('CancelModal 1단계 그림', () => {
       },
     ])
     expect(
-      screen.queryByText('아직 계산 결과가 없어 아래 그림은 예시예요'),
+      screen.queryByText('아직 계산 결과가 없어 아래 표는 예시예요'),
     ).not.toBeInTheDocument()
     expect(screen.getAllByText('실제 상품').length).toBeGreaterThan(0)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)

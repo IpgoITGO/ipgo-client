@@ -11,6 +11,7 @@ import { Modal } from '../../../shared/ui/Modal/Modal'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
 import { getPlannedReceipts } from '../../settings/model/plannedReceiptsApi'
 import { getUploadPeriods } from '../../upload/model/uploadApi'
+import eraseArt from '../assets/withdraw-erase.webp'
 import styles from './WithdrawModal.module.css'
 
 type Props = {
@@ -110,14 +111,22 @@ export function WithdrawModal({
     setPending(true)
     setError(undefined)
     try {
-      // ponytail: server API 아직 없음(POST /api/account/withdraw), 생기면 경로만 맞추기
+      // server #176: 맞으면 204, 틀리면 400 WRONG_PASSWORD, 결제 진행 중이면 409
       await apiRequest<void>('/account/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '탈퇴하지 못했어요.')
+      setError(
+        e instanceof ApiError && e.code === 'WRONG_PASSWORD'
+          ? '비밀번호가 맞지 않아요.'
+          : e instanceof ApiError && e.status === 409
+            ? '결제가 진행 중이라 지금은 탈퇴할 수 없어요. 잠시 뒤 다시 해 주세요.'
+            : e instanceof ApiError
+              ? e.message
+              : '탈퇴하지 못했어요.',
+      )
       setPending(false)
       return
     }
@@ -132,10 +141,13 @@ export function WithdrawModal({
     <Modal labelledBy={titleId} onClose={onClose}>
       <form className={styles.body} noValidate onSubmit={submit}>
         {/* 한 화면(11/11, 레퍼런스 Notion·Bonsai): 지워지는 것 → 비밀번호 → 버튼. 단계가 없어 높이가 안 바뀌고 빈 공간도 없다 */}
+        <div className={styles.hd}>
+          <img alt="" src={eraseArt} />
+        </div>
         <h2 className={styles.title} id={titleId} ref={titleRef} tabIndex={-1}>
           탈퇴하면 아래 자료가 모두 지워져요
         </h2>
-        <ul className={styles.list}>
+        <ul className={styles.list} data-rise="">
           {rows.map((row) => (
             <li key={row.name}>
               <Icon d={row.icon} />
