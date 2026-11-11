@@ -431,6 +431,93 @@ fieldset.block legend.label {
   text-align: center;
 }
 
+/* 결제 완료 상자(11/11): 0~0.7초 닫힌 상자 흔들림 → 0.72초 열린 상자로 바뀌며 톡 → 색종이.
+   움직임 줄이기면 처음부터 열린 상자만 */
+.boxStage {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.boxClosed,
+.boxOpen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.boxClosed {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .boxClosed {
+    animation: boxShake 0.72s ease-in-out both;
+  }
+
+  .boxOpen {
+    animation: boxPop 0.5s 0.72s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  }
+}
+
+@keyframes boxShake {
+  0%,
+  99% {
+    opacity: 1;
+  }
+
+  15% {
+    transform: rotate(-5deg);
+  }
+
+  35% {
+    transform: rotate(5deg) translateY(-3px);
+  }
+
+  55% {
+    transform: rotate(-7deg);
+  }
+
+  75% {
+    transform: rotate(7deg) translateY(-4px) scale(1.04);
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes boxPop {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.done {
+  position: relative;
+}
+
+.doneTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.doneTitle .ring {
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  border-width: 2px;
+}
+
 .done h1 {
   margin: 0;
   font-size: var(--text-section);

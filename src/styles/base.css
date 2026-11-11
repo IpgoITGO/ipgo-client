@@ -59,3 +59,50 @@ h1 {
 a {
   color: var(--color-primary);
 }
+
+/* 등장 효과(11/11): data-rise를 단 상자의 바로 아래 자식들이 아래에서 차례로 떠오른다.
+   data-rise-self는 그 요소 하나만. --rise-at으로 시작을 늦출 수 있다(예: 결제 완료 상자가 열린 뒤).
+   transform·opacity만 써서 옆 칸은 안 밀린다. 움직임 줄이기면 없음 */
+@media (prefers-reduced-motion: no-preference) {
+  [data-rise] > *,
+  [data-rise-self] {
+    animation: rise-in 560ms cubic-bezier(0.2, 0.9, 0.25, 1.1) both;
+    animation-delay: calc(var(--rise-at, 0ms) + var(--rise-n, 0) * 80ms);
+  }
+
+  [data-rise] > :nth-child(2) {
+    --rise-n: 1;
+  }
+
+  [data-rise] > :nth-child(3) {
+    --rise-n: 2;
+  }
+
+  [data-rise] > :nth-child(4) {
+    --rise-n: 3;
+  }
+
+  [data-rise] > :nth-child(5) {
+    --rise-n: 4;
+  }
+
+  [data-rise] > :nth-child(6) {
+    --rise-n: 5;
+  }
+
+  [data-rise] > :nth-child(n + 7) {
+    --rise-n: 6;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

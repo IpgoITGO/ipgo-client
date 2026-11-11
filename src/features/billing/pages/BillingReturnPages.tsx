@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
+import { Confetti } from '../../../shared/ui/Confetti/Confetti'
 import {
   billingErrorText,
   billingPost,
@@ -11,6 +12,8 @@ import {
   type SessionResult,
 } from '../model/billingApi'
 import { reasonText, returnPath } from '../model/payment'
+import boxClosed from '../assets/box-closed.webp'
+import boxOpen from '../assets/box-open.webp'
 import styles from './Billing.module.css'
 import { Steps } from './CheckoutPage'
 
@@ -132,12 +135,43 @@ export function BillingAuthSuccessPage() {
       {(phase.kind === 'paid' || phase.kind === 'replaced') && (
         <>
           <div className={styles.done} role="status">
-            <span aria-hidden="true" className={styles.ring}>
-              ✓
-            </span>
-            <h1>{phase.kind === 'paid' ? '결제됐어요' : '카드를 바꿨어요'}</h1>
+            {/* 결제 완료(11/11): 우리 상자가 흔들리다 열리고 색종이가 터진다 */}
+            {phase.kind === 'paid' && (
+              <div aria-hidden="true" className={styles.boxStage}>
+                <img alt="" className={styles.boxClosed} src={boxClosed} />
+                <img alt="" className={styles.boxOpen} src={boxOpen} />
+                <Confetti delayMs={720} />
+              </div>
+            )}
+            {/* ✓는 제목 옆에(11/11) */}
+            <div
+              className={styles.doneTitle}
+              data-rise-self=""
+              style={
+                {
+                  '--rise-at': phase.kind === 'paid' ? '850ms' : '0ms',
+                } as CSSProperties
+              }
+            >
+              <span aria-hidden="true" className={styles.ring}>
+                ✓
+              </span>
+              <h1>
+                {phase.kind === 'paid' ? '결제됐어요' : '카드를 바꿨어요'}
+              </h1>
+            </div>
           </div>
-          <Button onClick={() => navigate('/account')}>내 계정으로</Button>
+          <Button
+            data-rise-self=""
+            onClick={() => navigate('/account')}
+            style={
+              {
+                '--rise-at': phase.kind === 'paid' ? '1000ms' : '80ms',
+              } as CSSProperties
+            }
+          >
+            내 계정으로
+          </Button>
         </>
       )}
       {phase.kind === 'unknown' && (

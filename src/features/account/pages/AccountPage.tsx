@@ -169,7 +169,11 @@ export function AccountPage() {
 
       {/* 11/10 배치 A: 왼쪽 = 누구인지, 오른쪽 = 요금제 → 내 자료 → 결제 */}
       <div className={styles.layout}>
-        <aside aria-labelledby="me-title" className={styles.profile}>
+        <aside
+          aria-labelledby="me-title"
+          className={styles.profile}
+          data-rise-self=""
+        >
           <h2 className={styles.srOnly} id="me-title">
             계정
           </h2>
@@ -199,9 +203,19 @@ export function AccountPage() {
           >
             로그아웃
           </button>
+          <div className={styles.danger}>
+            <button
+              className={styles.dangerLink}
+              onClick={() => setWithdrawing(true)}
+              type="button"
+            >
+              회원 탈퇴
+            </button>
+            <span>계정과 올린 자료를 모두 지워요</span>
+          </div>
         </aside>
 
-        <div className={styles.main}>
+        <div className={styles.main} data-rise="">
           <section aria-labelledby="plan-title" className={styles.block}>
             {billingOff ? (
               <>
@@ -239,12 +253,49 @@ export function AccountPage() {
                           )}
                     </p>
                   </div>
-                  <Link
-                    className={trial ? styles.primaryLink : styles.linkButton}
-                    to="/plans"
-                  >
-                    {trial ? '셀러 요금제로 계속 쓰기' : '요금제 바꾸기'}
-                  </Link>
+                  {/* 구독 해지는 요금제 상자 안에(11/11 레퍼런스: Whereby·Washington Post) */}
+                  <div className={styles.planActions}>
+                    {cancelOn && !trial ? (
+                      <button
+                        className={styles.primaryLink}
+                        onClick={() => {
+                          void attempt(
+                            () => resume.mutateAsync(undefined),
+                            '해지를 취소했어요. 지금처럼 계속 써요',
+                          )
+                        }}
+                        type="button"
+                      >
+                        해지 취소
+                      </button>
+                    ) : (
+                      <Link
+                        className={
+                          trial ? styles.primaryLink : styles.linkButton
+                        }
+                        to="/plans"
+                      >
+                        {trial ? '셀러 요금제로 계속 쓰기' : '요금제 바꾸기'}
+                      </Link>
+                    )}
+                    {!trial &&
+                      (cancelOn ? (
+                        <span
+                          aria-hidden="true"
+                          className={`${styles.textButton} ${styles.slot}`}
+                        >
+                          구독 해지
+                        </span>
+                      ) : (
+                        <button
+                          className={styles.textButton}
+                          onClick={() => setConfirmCancel(true)}
+                          type="button"
+                        >
+                          구독 해지
+                        </button>
+                      ))}
+                  </div>
                 </div>
                 {status && (
                   <p className={styles.status}>
@@ -378,67 +429,6 @@ export function AccountPage() {
               </div>
             </section>
           )}
-
-          {/* 구독·계정 관리(11/11): 해지와 탈퇴를 맨 아래 한 상자에 줄마다 설명 + 같은 폭 버튼으로.
-              흩어진 글자 링크 두 개 대신(레퍼런스: Craft "Danger zone", Notion 계정 설정) */}
-          <section
-            aria-labelledby="manage-title"
-            className={`${styles.block} ${styles.manage}`}
-          >
-            <h2 className={styles.label} id="manage-title">
-              구독·계정 관리
-            </h2>
-            {!billingOff && !trial && (
-              <div className={styles.manageRow}>
-                <div>
-                  <b>{cancelOn ? '구독 해지 예약됨' : '구독 해지'}</b>
-                  <span>
-                    {cancelOn
-                      ? `${monthDayKo(cancelOn)}까지 쓰고 끝나요. 취소하면 지금처럼 계속 써요`
-                      : '다음 결제부터 멈춰요. 남은 기간은 그대로 써요'}
-                  </span>
-                </div>
-                {cancelOn ? (
-                  <button
-                    className={styles.manageButton}
-                    onClick={() => {
-                      void attempt(
-                        () => resume.mutateAsync(undefined),
-                        '해지를 취소했어요. 지금처럼 계속 써요',
-                      )
-                    }}
-                    type="button"
-                  >
-                    해지 취소
-                  </button>
-                ) : (
-                  <button
-                    aria-label="구독 해지"
-                    className={styles.manageButton}
-                    onClick={() => setConfirmCancel(true)}
-                    type="button"
-                  >
-                    해지하기
-                  </button>
-                )}
-              </div>
-            )}
-            <div className={styles.manageRow}>
-              <div>
-                <b>회원 탈퇴</b>
-                <span>계정과 올린 수불부·계산 결과를 모두 지워요</span>
-              </div>
-              <button
-                aria-label="회원 탈퇴"
-                className={styles.manageButton}
-                data-danger=""
-                onClick={() => setWithdrawing(true)}
-                type="button"
-              >
-                탈퇴하기
-              </button>
-            </div>
-          </section>
         </div>
       </div>
       {withdrawing && (
