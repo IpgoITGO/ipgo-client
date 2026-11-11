@@ -31,7 +31,8 @@
 /* 기본값: 숫자 한두 자리라 칸을 작게. 이름·설명은 왼쪽, 숫자 칸(단위 안)은 오른쪽(11/6 "너무 뚱뚱해") */
 .defaultGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 리드타임·입고 주기 / 입고 단위·유통기한 임박 2×2(11/11 — 4칸이면 설명이 세 줄로 꺾였다) */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
 .defaultGrid label {
@@ -42,10 +43,19 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px var(--space-3);
   align-items: center;
-  padding: var(--space-3) var(--space-4);
-  background: #fffdf9;
+  /* 대시보드 요약 카드와 같은 상자(11/11): 흰 바탕·연한 테두리·카드 둥글기, 올리면 진해지고 입력 중이면 노란 테두리 */
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: var(--radius-card);
+  transition: border-color 0.2s;
+}
+.defaultGrid label:hover {
+  border-color: var(--color-chart-muted);
+}
+.defaultGrid label:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 .defaultGrid label > span {
   grid-area: name;
@@ -594,4 +604,158 @@
 .tableWrap td input[type='number']::-webkit-outer-spin-button {
   margin: 0;
   appearance: none;
+}
+
+/* 보관 비용: 검색 + 같은 규격 한 번에 넣기(11/11). 바는 늘 자리를 잡아 표가 밀리지 않는다 */
+.bulkHead {
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 44px;
+  padding: 4px var(--space-2) 4px var(--space-3);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-input);
+}
+
+.bulkBar[data-off] {
+  background: var(--color-surface-2, #f6f1e9);
+}
+
+.bulkBar > b {
+  min-width: 11em;
+  font-size: var(--text-caption);
+}
+
+.bulkBar[data-off] > b {
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+
+/* .sectionHeader input(검색칸 크기)을 받지 않게 한 단계 더 좁혀 쓴다 */
+.sectionHeader .bulkBar input,
+.rowTools .bulkBar input {
+  width: 64px;
+  min-height: 0;
+  height: 32px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: 9px;
+}
+
+.bulkBar input:disabled {
+  background: transparent;
+}
+
+.bulkBar small[role='alert'] {
+  flex-basis: 100%;
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+}
+
+.bulkApply {
+  height: 32px;
+  padding: 0 var(--space-4);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.bulkApply:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.pickCol {
+  width: 44px;
+}
+
+/* 표 안 공통 입력칸 모양(넓이·테두리)을 고르기 칸은 받지 않는다 */
+.pickBox,
+.tableWrap td input.pickBox {
+  width: 18px;
+  min-width: 0;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.boxTable tr[data-picked] td {
+  background: var(--color-accent-soft);
+}
+
+/* 상품별 조건: 거르기 칩 + 같은 조건 한 번에(11/11) */
+.rowTools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filterChips button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.filterChips button b {
+  color: var(--color-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 고른 칩: 노란 바탕 + 안쪽 그림자(테두리 두께를 안 바꿔 칩이 안 밀림) */
+.filterChips button[aria-pressed='true'] {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.filterChips button:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.pickHead {
+  width: 40px;
+}
+
+.tableWrap tr[data-picked] td {
+  background: var(--color-accent-soft);
 }

@@ -507,10 +507,14 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('tabpanel')).toHaveTextContent(
       '판매 기록이 5일 쌓였어요',
     )
-    // 자세한 계산 사유: 기간마다 판매한 날 칸(7칸 중 5칸)
+    // 표에서는 이유를 상품명 아래 한 줄로(11/11). 자세한 판매한 날 칸은 상품 상세에서 본다
     expect(
-      screen.getByRole('img', { name: '판매한 날 5일, 7일 필요' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('img', { name: '판매한 날 5일, 7일 필요' }),
+    ).not.toBeInTheDocument()
+    // 재고가 안 맞는 상품은 줄 안에 "수불부 다시 올리기" 링크
+    expect(
+      screen.getByRole('link', { name: '수불부 다시 올리기 →' }),
+    ).toHaveAttribute('href', '/upload')
 
     // 검산 제외도 같은 칸에: 날짜·차이 먼저, 계산식 칸 이름(기초·기말)은 안 보인다
     expect(screen.getByRole('tabpanel')).not.toHaveTextContent(/기초|기말/)
@@ -714,12 +718,40 @@ describe('주문까지 칸', () => {
     )
     const { container } = renderSafe()
     await screen.findByText('여유상품')
-    expect(
-      screen.getByRole('columnheader', { name: /주문까지/ }),
-    ).toBeInTheDocument()
+    // 한 표(11/11): 주문까지는 예상 소진일 칸 아래 작은 줄로
     expect(screen.getByLabelText('주문까지 19일, 11월 20일까지')).toBeVisible()
     expect(container.querySelectorAll('i[data-on]')).toHaveLength(3)
-    expect(screen.getByText('11/20까지')).toBeInTheDocument()
+    expect(screen.getByText('주문까지 19일')).toBeInTheDocument()
+  })
+
+  it('전체 탭에서 괜찮은 상품을 고르면 수량 칸이 열리고 발주 합계에 더해진다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...safeDashboard,
+          today: '2026-11-01',
+          notNeededItems: [
+            {
+              productId: 1,
+              skuName: '여유상품',
+              skuBarcode: '8800000000001',
+              expectedShortageOn: '2026-11-25',
+              leadTimeDays: 5,
+            },
+          ],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSafe()
+    await user.click(await screen.findByRole('button', { name: /^전체/ }))
+    expect(screen.queryByLabelText('여유상품 수량')).not.toBeInTheDocument()
+    await user.click(screen.getByLabelText('여유상품 발주 목록에 넣기'))
+    await user.type(screen.getByLabelText('여유상품 수량'), '3a0')
+    expect(screen.getByLabelText('여유상품 수량')).toHaveValue('30')
+    expect(screen.getByRole('region', { name: '발주 목록' })).toHaveTextContent(
+      '1개 골랐어요 · 30개',
+    )
   })
 })
 
@@ -776,9 +808,8 @@ describe('내 입고량 칸', () => {
     const row = (id: string) =>
       screen.getByRole('link', { name: id }).closest('tr') as HTMLElement
     await screen.findByRole('link', { name: '케어트릿 120g' })
-    expect(
-      screen.getByRole('columnheader', { name: '내 입고량' }),
-    ).toBeVisible()
+    // 한 표(11/11): 권장량과 내 입고량을 "입고량" 칸 하나에 위아래로
+    expect(screen.getByRole('columnheader', { name: '입고량' })).toBeVisible()
     // 현재 계산 기준: 60개 + "11/5 정함", 권장 72개에 취소선
     await waitFor(() => expect(row('케어트릿 120g')).toHaveTextContent('60개'))
     expect(row('케어트릿 120g')).toHaveTextContent('정함')
@@ -786,9 +817,8 @@ describe('내 입고량 칸', () => {
     // 지난 계산 기준: 노란 꼬리표, 권장 40개는 그대로
     expect(row('연어 져키 80g')).toHaveTextContent('⟲ 이전 계산 기준')
     expect(screen.getByText('40개')).not.toHaveAttribute('data-struck')
-    expect(
-      within(row('덴탈껌 S')).getByRole('cell', { name: '—' }),
-    ).toBeInTheDocument()
+    expect(row('덴탈껌 S')).not.toHaveTextContent('정함')
+    expect(row('덴탈껌 S')).not.toHaveTextContent('계산 기준')
 
     // 고른 합계·사입비는 내 입고량 우선: 60개 × 1,000원 + 40개의 30개 × 1,000원
     await user.click(

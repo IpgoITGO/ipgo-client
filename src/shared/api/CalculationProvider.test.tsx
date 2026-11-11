@@ -291,6 +291,26 @@ describe('계산 완료·실패 추적', () => {
     expect(screen.getByText('다시 계산')).toBeEnabled()
   })
 
+  it('서버 고정 실패 문구는 제목과 겹치는 첫 문장을 빼고 보여 준다', async () => {
+    server.use(
+      http.get('/api/calculation-runs/71', () =>
+        HttpResponse.json({
+          runId: 71,
+          status: 'FAILED',
+          errorMessage:
+            '계산을 완료하지 못했습니다. 입력과 서버 상태를 확인하고 다시 시도해 주세요.',
+        }),
+      ),
+    )
+    const { user } = setup()
+    await user.click(screen.getByText('계산 번호 받기'))
+    expect(
+      await screen.findByText(
+        '입력과 서버 상태를 확인하고 다시 시도해 주세요.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('상태 조회 오류는 계산 실패와 구분하고 같은 runId의 GET만 다시 확인한다', async () => {
     let available = false
     let writes = 0

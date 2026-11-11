@@ -236,9 +236,14 @@ export function PurchaseOrdersSection() {
   const activeProducts = (products.data?.items ?? []).filter(
     (item) => item.isActive,
   )
-  const orders = [...(receipts.data?.items ?? [])].sort(
-    (a, b) => statusOrder[a.status] - statusOrder[b.status],
-  )
+  const [listSearch, setListSearch] = useState('')
+  const allOrders = receipts.data?.items ?? []
+  // 목록 검색(11/11 — 발주가 쌓이면 줄을 넘겨 찾아야 했음)
+  const orders = allOrders
+    .filter((order) =>
+      order.skuName.toLowerCase().includes(listSearch.trim().toLowerCase()),
+    )
+    .sort((a, b) => statusOrder[a.status] - statusOrder[b.status])
 
   const {
     register,
@@ -381,13 +386,25 @@ export function PurchaseOrdersSection() {
           <h2>이미 발주한 물량</h2>
           <p>발주했지만 아직 안 온 물량은 그만큼 빼고 계산해요.</p>
         </div>
-        <Button
-          disabled={calculationBusy}
-          onClick={() => openModal(null)}
-          type="button"
-        >
-          등록
-        </Button>
+        {/* 검색칸을 맨 오른쪽에 두어 위 입고 조건 표 검색칸과 끝을 맞춘다 */}
+        <div className={styles.headTools}>
+          <Button
+            disabled={calculationBusy}
+            onClick={() => openModal(null)}
+            type="button"
+          >
+            등록
+          </Button>
+          {allOrders.length > 0 && (
+            <input
+              aria-label="발주 물량 검색"
+              onChange={(event) => setListSearch(event.target.value)}
+              placeholder="상품명 검색"
+              type="search"
+              value={listSearch}
+            />
+          )}
+        </div>
       </div>
       {receipts.isPending ? (
         <p className={styles.empty}>발주 물량을 불러오고 있어요.</p>
@@ -396,7 +413,11 @@ export function PurchaseOrdersSection() {
           발주 물량을 불러오지 못했어요. {receipts.error.message}
         </p>
       ) : orders.length === 0 ? (
-        <p className={styles.empty}>등록한 발주 물량이 없어요.</p>
+        <p className={styles.empty}>
+          {allOrders.length === 0
+            ? '등록한 발주 물량이 없어요.'
+            : `"${listSearch}"에 맞는 발주가 없어요.`}
+        </p>
       ) : (
         <div className={styles.tableWrap}>
           <table>

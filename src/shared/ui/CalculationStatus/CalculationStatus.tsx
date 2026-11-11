@@ -74,32 +74,29 @@ export function CalculationStatus() {
               : 'running'
         }
       />
-      <div className={styles.text}>
-        <strong>{title}</strong>
-        {detail && <p>{detail}</p>}
-        {(phase === 'checking' ||
-          phase === 'pending' ||
-          phase === 'unknown') && (
-          <div className={styles.actions}>
-            {phase === 'unknown' && (
-              <Button onClick={retry} variant="text">
-                상태 다시 확인
-              </Button>
-            )}
-            <Button onClick={() => void stop()} variant="text">
-              {phase === 'unknown'
-                ? '그만 기다리기'
-                : phase === 'checking'
-                  ? '그만 보기'
-                  : '계산 멈추기'}
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* 제목 줄 오른쪽에 "확인", 설명은 그 아래 창 폭을 다 쓴다(11/11 — 옆에 버튼이 있어 3줄로 꺾이던 것) */}
+      <strong className={styles.title}>{title}</strong>
       {(phase === 'done' || phase === 'failed') && (
         <Button aria-label="계산 상태 닫기" onClick={dismiss} variant="text">
           확인
         </Button>
+      )}
+      {detail && <p className={styles.detail}>{detail}</p>}
+      {(phase === 'checking' || phase === 'pending' || phase === 'unknown') && (
+        <div className={styles.actions}>
+          {phase === 'unknown' && (
+            <Button onClick={retry} variant="text">
+              상태 다시 확인
+            </Button>
+          )}
+          <Button onClick={() => void stop()} variant="text">
+            {phase === 'unknown'
+              ? '그만 기다리기'
+              : phase === 'checking'
+                ? '그만 보기'
+                : '계산 멈추기'}
+          </Button>
+        </div>
       )}
     </section>
   )

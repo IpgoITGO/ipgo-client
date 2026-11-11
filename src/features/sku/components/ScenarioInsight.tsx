@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { type FormEvent, useCallback, useState } from 'react'
+import { type FormEvent, useCallback, useMemo, useState } from 'react'
 
+import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
+import { shortExpiry, useExpiry } from '../../expiry/model/expiryApi'
+import {
+  monthlyStorageCost,
+  useStorageSettings,
+} from '../../settings/model/storageCost'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Tape } from '../../../shared/ui/Tape/Tape'
@@ -37,7 +43,26 @@ const STATE_CHIP = {
 } as const
 
 // 품절 위험이 이 값 이상이면 빨간 글씨로 강조한다.
-const ROW_SIZE = 5
+// 서버 NeedJudgment.MAX_DAYS_SINCE_AS_OF와 같은 7일(넘으면 직접 수량 비교를 SCENARIO_STALE로 거절)
+const SCENARIO_MAX_DAYS = 7
+const STALE_TEXT =
+  '이 결과 뒤에 새 계산이 돌았거나(실패한 계산 포함) 수불부가 바뀌었어요. 새로고침한 뒤 다시 넣어 주세요.'
+
+// "2026. 10. 14" → 오늘까지 며칠
+function daysSinceDot(dotted: string) {
+  const match = dotted.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/)
+  if (!match) return null
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const base = Date.UTC(+match[1], +match[2] - 1, +match[3])
+  return Math.round((today - base) / 864e5)
+}
+
+// "2026. 12. 1"·"2026-12-01" → 하루 단위 숫자
+function dayNum(date: string) {
+  const m = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(date)
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5 : NaN
+}
 const HIGH_RISK = 20
 
 function formatRisk(risk: number | null) {
@@ -83,24 +108,29 @@ const SCENARIO_SOURCE: Record<string, PlannedSource> = {
 }
 
 export function ScenarioInsight({
+  baseDate,
   inboundUnit,
+  leadTime,
   productId,
   resultId,
 }: {
   /** 대시보드 "기준일"과 같은 글자. 내 입고량이 어느 계산에서 나왔는지 가른다 */
   baseDate: string
   inboundUnit: number
+  /** 새로 넣는 물건이 언제 도착하는지(유통기한 검사) */
+  leadTime?: number | null
   productId: string
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
 }) {
+  // 서버는 기준일이 7일 넘게 지난 계산에는 직접 수량 비교를 받지 않는다(SCENARIO_STALE) → 누르기 전에 알린다
+  const tooOld = (daysSinceDot(baseDate) ?? 0) > SCENARIO_MAX_DAYS
   const [quantity, setQuantity] = useState('')
   const [customScenarios, setCustomScenarios] = useState<Scenario[]>([])
   const [inputError, setInputError] = useState('')
   const [actionError, setActionError] = useState('')
   // "+" 카드를 눌러 입력 중인지, 한 줄(5칸)을 넘는 카드를 펼쳤는지
   const [adding, setAdding] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   // 눌러서 고른 카드(처음엔 권장량)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const plannedQuery = usePlannedQuery()
@@ -170,9 +200,11 @@ export function ScenarioInsight({
         setAdding(false)
       } catch (error) {
         setActionError(
-          error instanceof Error
-            ? error.message
-            : '시나리오를 계산하지 못했어요.',
+          error instanceof ApiError && error.code === 'SCENARIO_STALE'
+            ? STALE_TEXT
+            : error instanceof Error
+              ? error.message
+              : '시나리오를 계산하지 못했어요.',
         )
       }
     },
@@ -223,11 +255,38 @@ export function ScenarioInsight({
       (item) => !isCustom(item) && item.quantity === data?.recommendedQuantity,
     ) ??
     scenarios[0]
-  // 한 줄에 5칸("+" 카드 포함). 넘치면 처음 5개만 보이고 나머지는 "더 보기"로 편다.
-  const overflow = scenarios.length + 1 > ROW_SIZE
-  const showAll = expanded || !overflow
-  const visible = showAll ? scenarios : scenarios.slice(0, ROW_SIZE)
-  const hiddenCount = scenarios.length - visible.length
+  // 한 줄 4칸("+" 카드 포함, 11/11). 더 넣으면 "+" 카드가 다음 칸으로 가고 4칸마다 줄이 바뀐다
+  const visible = scenarios
+  // 보관료·유통기한은 정보가 넘치지 않게 "있을 때만" 한 줄씩(11/11).
+  // 보관료: 요율과 이 상품 상자 크기가 다 있을 때만
+  const storage = useStorageSettings()
+  const monthlyFee = (quantity: number) =>
+    monthlyStorageCost(storage.boxes[productId], quantity, storage.ratePerCbm)
+  const showFee = scenarios.some((item) => monthlyFee(item.quantity) != null)
+  // 유통기한: 이 상품 입고 묶음에서 유통기한 일수(유통기한 − 입고일)를 구해,
+  // 지금 넣으면 도착일 + 그 일수까지 다 팔리는지 본다. 묶음 기록이 없으면 안 보인다
+  const expiryQuery = useExpiry()
+  const freshExpiry = useMemo(() => {
+    const lives = (expiryQuery.data?.items ?? [])
+      .filter((lot) => String(lot.productId) === productId)
+      .map((lot) =>
+        lot.receivedOn && lot.expiryDate
+          ? dayNum(lot.expiryDate) - dayNum(lot.receivedOn)
+          : NaN,
+      )
+      .filter((days) => days > 0)
+    if (lives.length === 0) return null
+    const now = new Date()
+    const today =
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 864e5
+    const day = today + (leadTime ?? 0) + Math.min(...lives)
+    const date = new Date(day * 864e5)
+    return { day, label: shortExpiry(date.toISOString().slice(0, 10)) }
+  }, [expiryQuery.data, productId, leadTime])
+  const outlasts = (scenario: Scenario) =>
+    freshExpiry != null &&
+    dayNum(scenario.expectedStockoutDate) > freshExpiry.day
+  const showExpiry = scenarios.some(outlasts)
   // 권장량이 0이라 카드가 없으면 처음부터 입력칸을 연다.
   const showInput = adding || scenarios.length === 0
   // 한 카드라도 입고 뒤에 모자라면 모든 카드에 같은 줄을 넣어 아래 줄(품절 위험 막대)이 나란히 맞게 한다
@@ -452,6 +511,16 @@ export function ScenarioInsight({
                           <dd>{formatRisk(scenario.preArrivalRisk)}</dd>
                         </div>
                       )}
+                      {showFee && (
+                        <div>
+                          <dt>월 보관료</dt>
+                          <dd>
+                            {monthlyFee(scenario.quantity)?.toLocaleString() ??
+                              '—'}
+                            원
+                          </dd>
+                        </div>
+                      )}
                       <div>
                         <dt>도착 후 품절 위험</dt>
                         <dd
@@ -472,6 +541,17 @@ export function ScenarioInsight({
                         }}
                       />
                     </div>
+                    {/* 한 카드라도 걸리면 모든 카드에 같은 자리를 잡아 줄이 나란히 맞는다 */}
+                    {showExpiry && (
+                      <p
+                        className={styles.expiryLine}
+                        data-warn={outlasts(scenario) || undefined}
+                      >
+                        {outlasts(scenario)
+                          ? `유통기한 ${freshExpiry?.label} 뒤에도 남아요`
+                          : '유통기한 안에 다 팔려요'}
+                      </p>
+                    )}
                     <p className={styles.note}>{note}</p>
                     <Button
                       className={styles.decideButton}
@@ -491,7 +571,7 @@ export function ScenarioInsight({
                 )
               })}
 
-              {showAll && !showInput && (
+              {!showInput && (
                 <button
                   className={styles.addCard}
                   onClick={() => setAdding(true)}
@@ -502,7 +582,7 @@ export function ScenarioInsight({
                 </button>
               )}
 
-              {showAll && showInput && (
+              {showInput && (
                 <form
                   className={styles.inputCard}
                   noValidate
@@ -528,6 +608,7 @@ export function ScenarioInsight({
                   {/* 버튼을 칸 너비에 맞춰 두면 "계산 중"으로 글자가 바뀌어도 칸이 흔들리지 않는다. */}
                   <Button
                     className={styles.addButton}
+                    disabled={tooOld}
                     loading={action.isPending}
                     loadingLabel="계산 중"
                     type="submit"
@@ -567,44 +648,14 @@ export function ScenarioInsight({
                     </p>
                   ) : (
                     <p className={styles.hint}>
-                      입고 단위 {inboundUnit}개로 올려서 계산해요
+                      {tooOld
+                        ? `기준일(${baseDate})이 7일 넘게 지나 비교 계산은 막혀 있어요. 새 수불부를 올리면 돼요 · "이 수량으로 정하기"는 돼요`
+                        : `입고 단위 ${inboundUnit}개로 올려서 계산해요`}
                     </p>
                   )}
                 </form>
               )}
             </div>
-            {overflow && (
-              <div className={styles.more}>
-                {expanded ? (
-                  <Button
-                    onClick={() => {
-                      setExpanded(false)
-                      setAdding(false)
-                    }}
-                    variant="text"
-                  >
-                    접기
-                  </Button>
-                ) : (
-                  <>
-                    {hiddenCount > 0 && (
-                      <Button onClick={() => setExpanded(true)} variant="text">
-                        더 보기 {hiddenCount}개
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => {
-                        setExpanded(true)
-                        setAdding(true)
-                      }}
-                      variant="secondary"
-                    >
-                      + 수량 넣어 비교
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
             {data?.recommendedQuantity === 0 &&
               customScenarios.length === 0 && (
                 <p className={styles.empty}>

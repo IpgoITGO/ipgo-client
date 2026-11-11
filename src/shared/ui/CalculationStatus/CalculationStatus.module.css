@@ -4,10 +4,12 @@
   right: max(var(--space-6), env(safe-area-inset-right, 0px));
   bottom: max(var(--space-6), env(safe-area-inset-bottom, 0px));
   z-index: 15;
-  display: flex;
-  gap: var(--space-3);
+  /* 로고 | 제목 | 확인 / 설명·버튼은 둘째 칸부터 끝까지 */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 2px var(--space-3);
   align-items: center;
-  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
   padding: var(--space-4);
   color: var(--color-text);
   background: var(--color-card);
@@ -16,19 +18,28 @@
   box-shadow: var(--shadow-card);
 }
 
-.text {
-  display: grid;
-  flex: 1;
-  gap: 2px;
-  justify-items: start;
-  min-width: 0;
+.window > :first-child {
+  grid-row: span 3;
 }
 
-.text strong {
+.title {
+  grid-column: 2;
   font-size: 14px;
 }
 
-.text p {
+/* 누르는 칸 44px은 두고 위아래로 겹쳐, 제목 줄이 버튼 높이만큼 벌어지지 않게 */
+.window > button {
+  grid-row: 1;
+  grid-column: 3;
+  margin-block: -12px;
+}
+
+.detail,
+.actions {
+  grid-column: 2 / 4;
+}
+
+.detail {
   margin: 0;
   color: var(--color-text-2);
   font-size: var(--text-caption);

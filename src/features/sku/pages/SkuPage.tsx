@@ -111,7 +111,7 @@ type Note = {
   arrow: [number, number, number, number] | null
 }
 type LegendItem = {
-  kind: 'line' | 'dash' | 'bar' | 'dot' | 'band'
+  kind: 'line' | 'dash' | 'bar' | 'dot'
   color: string
   text: string
 }
@@ -142,6 +142,8 @@ const MUTED = 'var(--color-text-3)'
 const BAR = 'var(--color-chart-muted)'
 const FUT = 'var(--color-accent)'
 const LAST_YEAR = 'var(--color-text-2)'
+// 품절 흙빨강(11/6 정한 색, 정확도 그래프와 같음)
+const OUT_MARK = '#d96c50'
 const toneColor: Record<Tone, string> = { danger: BAD, ok: OK, ink: INK }
 
 // 선을 부드럽게 잇는다. 값이 튀지 않게 제어점은 이웃 두 점 높이 안에 가둔다.
@@ -201,9 +203,6 @@ function Swatch({ kind, color }: { kind: LegendItem['kind']; color: string }) {
         <rect fill={color} height="11" rx="2" width="8" x="7" y="1" />
       )}
       {kind === 'dot' && <circle cx="11" cy="6" fill={color} r="4.5" />}
-      {kind === 'band' && (
-        <rect fill={color} height="10" rx="2" width="20" x="1" y="1" />
-      )}
     </svg>
   )
 }
@@ -398,6 +397,7 @@ function TrendChart({
     const stockouts = history
       .map((h, i) => ({ h, i }))
       .filter(({ h }) => h.inventory === 0)
+    const outHalf = Math.max(2, Math.min(10, gap / 2))
     const fw = Math.max(2, Math.min(10, perDay * 0.55))
     const every = Math.max(1, Math.ceil(46 / Math.max(gap, 1)))
     const labels = history
@@ -423,16 +423,6 @@ function TrendChart({
             y={box.top - 6}
           />
         )}
-        {stockouts.map(({ h, i }) => (
-          <rect
-            className={`${styles.outBand} ${styles.later}`}
-            height="14"
-            key={h.day}
-            width={Math.max(gap, 4)}
-            x={x(i) - Math.max(gap, 4) / 2}
-            y={box.bottom - 14}
-          />
-        ))}
         {axis(top, step, y)}
         {history.map((h, i) =>
           h.outbound > 0 ? (
@@ -499,14 +489,23 @@ function TrendChart({
             d={`M${todayX},${y(stock)}L${outX},${y(0)}`}
           />
         )}
+        {/* 재고 없던 날: 바닥선 위 짧은 흙빨강 줄 + 점(넓은 분홍 칸은 뺌, 11/10) */}
         {stockouts.map(({ h, i }) => (
-          <circle
-            className={`${styles.dotRed} ${styles.later}`}
-            cx={x(i)}
-            cy={box.bottom}
-            key={h.day}
-            r="4.5"
-          />
+          <g className={styles.later} key={h.day}>
+            <line
+              className={styles.outMark}
+              x1={x(i) - outHalf}
+              x2={x(i) + outHalf}
+              y1={box.bottom}
+              y2={box.bottom}
+            />
+            <circle
+              className={styles.dotRed}
+              cx={x(i)}
+              cy={box.bottom}
+              r="4.5"
+            />
+          </g>
         ))}
         {stock > 0 && future > 0 && (
           <circle
@@ -694,8 +693,8 @@ function TrendChart({
         ...(stockouts.length > 0
           ? [
               {
-                kind: 'band' as const,
-                color: 'rgb(200 38 28 / 22%)',
+                kind: 'line' as const,
+                color: OUT_MARK,
                 text: `재고 없던 날 ${stockouts.length}일`,
               },
             ]
@@ -1911,6 +1910,7 @@ export function SkuPage() {
             <ScenarioInsight
               baseDate={data.baseDate}
               inboundUnit={data.calculation.inboundUnit ?? 1}
+              leadTime={data.settings.leadTimeDays}
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
