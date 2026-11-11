@@ -111,3 +111,35 @@ export function confirmVerificationCode(request: {
 export function signUp(request: SignUpRequest) {
   return apiRequest<Me>('/auth/signup', postJson(request))
 }
+
+// ponytail: server API 아직 없음, 생기면 경로만 맞추기
+export function sendPasswordResetCode(email: string) {
+  return apiRequest<void>('/auth/password-reset/code', postJson({ email }))
+}
+
+// ponytail: server API 아직 없음, 생기면 경로만 맞추기
+export function verifyPasswordResetCode(request: {
+  email: string
+  code: string
+}) {
+  return apiRequest<{ resetToken: string }>(
+    '/auth/password-reset/verify',
+    postJson(request),
+  )
+}
+
+// ponytail: server API 아직 없음, 생기면 경로만 맞추기
+export function resetPassword(request: {
+  resetToken: string
+  newPassword: string
+}) {
+  return apiRequest<void>('/auth/password-reset', postJson(request))
+}
+
+// ponytail: server API 아직 없음, 생기면 경로만 맞추기
+export function findId(businessNumber: string) {
+  return apiRequest<{ maskedEmail: string }>(
+    '/auth/find-id',
+    postJson({ businessNumber }),
+  )
+}

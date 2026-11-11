@@ -11,6 +11,8 @@ import { AuthShell } from '../components/AuthShell'
 import { PasswordField } from '../components/PasswordField'
 import { TextField } from '../components/TextField'
 import { useAuth } from '../model/useAuth'
+import { FindAccountModal } from '../ui/FindAccountModal'
+import { RouteToast } from '../../app/ui/RouteToast'
 import styles from './LoginPage.module.css'
 
 const loginSchema = z.object({
@@ -47,10 +49,13 @@ export function LoginPage() {
     ?.signedUp
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [savedEmail] = useState(readSavedEmail)
+  const [findOpen, setFindOpen] = useState(false)
   const [saveEmail, setSaveEmail] = useState(savedEmail !== '')
   const {
     register,
     handleSubmit,
+    setValue,
+    setFocus,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -122,8 +127,29 @@ export function LoginPage() {
         >
           로그인
         </Button>
+        <div className={styles.findRow}>
+          <button
+            className={styles.findLink}
+            onClick={() => setFindOpen(true)}
+            type="button"
+          >
+            아이디·비밀번호 찾기
+          </button>
+        </div>
         <p className={styles.footnote}>소셜 로그인은 추후 제공해요</p>
       </form>
+      {findOpen && (
+        <FindAccountModal
+          onClose={() => setFindOpen(false)}
+          onDone={(email) => {
+            setFindOpen(false)
+            if (email) setValue('email', email)
+            setFocus(email ? 'password' : 'email')
+          }}
+        />
+      )}
+      {/* 회원 탈퇴 뒤 "탈퇴했어요" 같은 안내를 로그인 화면에서도 보여 준다 */}
+      <RouteToast />
     </AuthShell>
   )
 }

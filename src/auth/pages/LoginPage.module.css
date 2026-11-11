@@ -43,8 +43,36 @@
   width: 100%;
 }
 
+/* 로그인 버튼 아래 가운데 작은 글자 링크. 위쪽 요소는 그대로 두고 안내 문구만 아래로 내려간다 */
+.findRow {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.findLink {
+  min-height: var(--h-button);
+  padding: 0 var(--space-3);
+  color: var(--color-text-3);
+  background: none;
+  border: 0;
+  font-size: var(--text-caption);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: keep-all;
+}
+
+.findLink:hover {
+  color: var(--color-text-2);
+}
+
+.findLink:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  border-radius: var(--radius-input);
+}
+
 .footnote {
-  margin: var(--space-6) 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--color-text-3);
   font-size: var(--text-caption);
   text-align: center;
