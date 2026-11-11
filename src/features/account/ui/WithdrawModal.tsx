@@ -6,6 +6,7 @@ import { PasswordField } from '../../../auth/components/PasswordField'
 import { useAuth } from '../../../auth/model/useAuth'
 import { ApiError, apiRequest } from '../../../shared/api/client'
 import { Button } from '../../../shared/ui/Button/Button'
+import { queueRouteToast } from '../../../app/ui/routeToastQueue'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
 import { getPlannedReceipts } from '../../settings/model/plannedReceiptsApi'
@@ -120,12 +121,11 @@ export function WithdrawModal({
       setPending(false)
       return
     }
-    // 계정이 이미 없어졌으니 서버 로그아웃 없이 이 화면에서만 잊는다
+    // 계정이 이미 없어졌으니 서버 로그아웃 없이 이 화면에서만 잊는다.
+    // 로그아웃되면 로그인 지키는 장치가 /login으로 보내며 location.state를 덮으므로 안내는 따로 맡겨 둔다
+    queueRouteToast('탈퇴했어요. 그동안 고마웠어요')
     signOutLocally()
-    navigate('/login', {
-      replace: true,
-      state: { toast: '탈퇴했어요. 그동안 고마웠어요' },
-    })
+    navigate('/login', { replace: true })
   }
 
   return (

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { Toast } from '../../shared/ui/Toast/Toast'
+import { takeQueuedToast } from './routeToastQueue'
 
 /**
  * 다른 화면에서 `navigate(path, { state: { toast: '문구' } })`로 넘긴 안내를 보여 준다.
@@ -12,7 +13,10 @@ export function RouteToast() {
   const navigate = useNavigate()
   const incoming = (location.state as { toast?: string } | null)?.toast
   const [shown, setShown] = useState<{ key: string; message: string } | null>(
-    null,
+    () => {
+      const message = takeQueuedToast()
+      return message ? { key: 'queued', message } : null
+    },
   )
   const close = useCallback(() => setShown(null), [])
 
