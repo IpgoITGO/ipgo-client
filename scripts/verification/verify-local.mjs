@@ -79,44 +79,29 @@ export function currentImpact(
   }
 }
 
-export function sourceFingerprint() {
-  const paths = [
-    'src',
-    'scripts',
-    '.github/workflows',
-    'AGENTS.md',
-    'package.json',
-    'package-lock.json',
-    'vite.config.ts',
-    'tsconfig*.json',
-    'eslint.config.js',
-    'README.md',
-    'docs',
-  ]
-  const tracked = execFileSync('git', ['ls-files', '-z', '--', ...paths], {
-    cwd: root,
+export function sourceFingerprint(directory = root) {
+  const tracked = execFileSync('git', ['ls-files', '-z'], {
+    cwd: directory,
   })
     .toString()
     .split('\0')
   const extra = execFileSync(
     'git',
-    ['ls-files', '--others', '--exclude-standard', '-z', '--', ...paths],
-    { cwd: root },
+    ['ls-files', '--others', '--exclude-standard', '-z'],
+    { cwd: directory },
   )
     .toString()
     .split('\0')
   const hash = crypto.createHash('sha256')
-  hash.update(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root }))
+  hash.update(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: directory }))
   for (const name of [...new Set([...tracked, ...extra])]
     .filter(Boolean)
     .sort()) {
     if (path.basename(name).startsWith('.env')) continue
     hash.update(name + '\0')
-    hash.update(
-      fs.existsSync(path.join(root, name))
-        ? fs.readFileSync(path.join(root, name))
-        : 'DELETED',
-    )
+    const exists = fs.existsSync(path.join(directory, name))
+    hash.update(exists ? 'FILE\0' : 'DELETED\0')
+    hash.update(exists ? fs.readFileSync(path.join(directory, name)) : '')
   }
   return hash.digest('hex')
 }

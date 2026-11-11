@@ -1,17 +1,69 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import {
   runChecks,
   stages,
   automationPlan,
   automationStages,
   currentImpact,
+  sourceFingerprint,
 } from './verify-local.mjs'
 import { fixtureResponse } from './browser-fixtures.mjs'
 
 const origin = 'http://127.0.0.1:5183'
 const response = (route, method = 'GET') =>
   fixtureResponse(new URL(route, origin), method, origin)
+
+test('정적 자산·배포 설정·새 파일·삭제도 검증 소스 변경으로 감지한다', () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'ipgo-fingerprint-test-'),
+  )
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: directory, stdio: 'pipe' })
+  try {
+    fs.mkdirSync(path.join(directory, 'public'))
+    fs.writeFileSync(path.join(directory, 'public', 'asset.txt'), 'original')
+    fs.writeFileSync(path.join(directory, 'index.html'), 'original')
+    fs.writeFileSync(path.join(directory, 'vercel.json'), '{}')
+    fs.writeFileSync(path.join(directory, 'delete.txt'), 'DELETED')
+    git('init', '-q')
+    git('add', '.')
+    git(
+      '-c',
+      'user.name=Verification',
+      '-c',
+      'user.email=verification@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'core.hooksPath=/dev/null',
+      'commit',
+      '-qm',
+      'fixture',
+    )
+    const baseline = sourceFingerprint(directory)
+    for (const name of ['public/asset.txt', 'index.html', 'vercel.json']) {
+      const file = path.join(directory, name)
+      const original = fs.readFileSync(file)
+      fs.writeFileSync(file, 'changed')
+      assert.notEqual(sourceFingerprint(directory), baseline, name)
+      fs.writeFileSync(file, original)
+      assert.equal(sourceFingerprint(directory), baseline)
+    }
+    const extra = path.join(directory, 'new-config.json')
+    fs.writeFileSync(extra, '{}')
+    assert.notEqual(sourceFingerprint(directory), baseline)
+    fs.unlinkSync(extra)
+    fs.unlinkSync(path.join(directory, 'delete.txt'))
+    assert.notEqual(sourceFingerprint(directory), baseline)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
 
 test('범위는 dev 공통 기준점부터 비교해 커밋된 앱 변경도 거부한다', () => {
   const base = 'a'.repeat(40)
