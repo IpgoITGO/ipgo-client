@@ -1,11 +1,199 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { runChecks, stages } from './verify-local.mjs'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import {
+  runChecks,
+  stages,
+  automationPlan,
+  automationStages,
+  currentImpact,
+  sourceFingerprint,
+} from './verify-local.mjs'
 import { fixtureResponse } from './browser-fixtures.mjs'
 
 const origin = 'http://127.0.0.1:5183'
 const response = (route, method = 'GET') =>
   fixtureResponse(new URL(route, origin), method, origin)
+
+test('정적 자산·배포 설정·새 파일·삭제도 검증 소스 변경으로 감지한다', () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'ipgo-fingerprint-test-'),
+  )
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: directory, stdio: 'pipe' })
+  try {
+    fs.mkdirSync(path.join(directory, 'public'))
+    fs.writeFileSync(path.join(directory, 'public', 'asset.txt'), 'original')
+    fs.writeFileSync(path.join(directory, 'index.html'), 'original')
+    fs.writeFileSync(path.join(directory, 'vercel.json'), '{}')
+    fs.writeFileSync(path.join(directory, 'delete.txt'), 'DELETED')
+    git('init', '-q')
+    git('add', '.')
+    git(
+      '-c',
+      'user.name=Verification',
+      '-c',
+      'user.email=verification@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'core.hooksPath=/dev/null',
+      'commit',
+      '-qm',
+      'fixture',
+    )
+    const baseline = sourceFingerprint(directory)
+    for (const name of ['public/asset.txt', 'index.html', 'vercel.json']) {
+      const file = path.join(directory, name)
+      const original = fs.readFileSync(file)
+      fs.writeFileSync(file, 'changed')
+      assert.notEqual(sourceFingerprint(directory), baseline, name)
+      fs.writeFileSync(file, original)
+      assert.equal(sourceFingerprint(directory), baseline)
+    }
+    const extra = path.join(directory, 'new-config.json')
+    fs.writeFileSync(extra, '{}')
+    assert.notEqual(sourceFingerprint(directory), baseline)
+    fs.unlinkSync(extra)
+    fs.unlinkSync(path.join(directory, 'delete.txt'))
+    assert.notEqual(sourceFingerprint(directory), baseline)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('범위는 dev 공통 기준점부터 비교해 커밋된 앱 변경도 거부한다', () => {
+  const base = 'a'.repeat(40)
+  const impact = automationImpact()
+  const calls = []
+  const git = (args) => {
+    calls.push(args)
+    if (args[0] === 'merge-base') return base
+    if (args[0] === 'diff') return 'src/App.tsx\0'
+    if (args[0] === 'ls-files') return ''
+    if (args[0] === 'show') return JSON.stringify(impact.beforePackage)
+    throw new Error('unexpected git operation')
+  }
+  const actual = currentImpact(git)
+  assert.equal(actual.baseSha, base)
+  assert.deepEqual(calls[0], ['merge-base', 'HEAD', 'origin/dev'])
+  assert.ok(calls.some((args) => args[0] === 'diff' && args.at(-1) === base))
+  assert.ok(
+    calls.some(
+      (args) => args[0] === 'show' && args[1] === `${base}:package.json`,
+    ),
+  )
+  assert.throws(() => automationPlan(actual))
+})
+
+function automationImpact() {
+  const pkg = {
+    dependencies: { react: 'fixed' },
+    scripts: {
+      'ci:check': 'npm run typecheck && npm test',
+      build: 'tsc -b && vite build',
+      'build:ci': 'vite build',
+      typecheck: 'tsc -b',
+    },
+  }
+  return {
+    changedPaths: [
+      '.github/workflows/vercel-development.yml',
+      'scripts/verification/verify-local.mjs',
+    ],
+    beforePackage: structuredClone(pkg),
+    afterPackage: structuredClone(pkg),
+  }
+}
+
+test('자동화 전용 경로는 관련 검사를 한 번씩 수행하고 전체 PR CI 의무를 남긴다', async () => {
+  const seen = []
+  const result = await runChecks({
+    profile: 'automation',
+    impact: automationImpact(),
+    runStage: async (name) => {
+      seen.push(name)
+      return 0
+    },
+    fingerprint: () => 'same',
+    save: () => {},
+  })
+  assert.deepEqual(seen, automationStages)
+  assert.equal(new Set(seen).size, seen.length)
+  assert.equal(result.passed, true)
+  assert.equal(result.profile, 'automation')
+  assert.equal(result.full_pr_ci_required, true)
+  assert.deepEqual(result.omitted_local_checks, [
+    'app_ui_tests',
+    'synthetic_browser',
+  ])
+  assert.equal(result.source_fingerprint, 'same')
+})
+
+test('앱·lockfile·빌드 설정·검사 명령·의존성 변경은 좁은 검사 경로를 거부한다', () => {
+  for (const name of [
+    'src/App.tsx',
+    'package-lock.json',
+    'vite.config.ts',
+    'tsconfig.app.json',
+    'public/asset.png',
+  ]) {
+    const impact = automationImpact()
+    impact.changedPaths.push(name)
+    assert.throws(() => automationPlan(impact))
+  }
+  for (const change of [
+    (p) => {
+      p.dependencies.react = 'changed'
+    },
+    (p) => {
+      delete p.scripts['ci:check']
+    },
+    (p) => {
+      p.scripts['ci:check'] = 'echo skipped'
+    },
+    (p) => {
+      p.scripts.build = 'vite build'
+    },
+    (p) => {
+      p.scripts.typecheck = 'echo skipped'
+    },
+  ]) {
+    const impact = automationImpact()
+    change(impact.afterPackage)
+    assert.throws(() => automationPlan(impact))
+  }
+  assert.throws(() => automationPlan({}))
+})
+
+test('자동화 검사 실패나 실행 중 소스 변경은 재사용 가능한 성공을 만들지 않는다', async () => {
+  const seen = []
+  const failed = await runChecks({
+    profile: 'automation',
+    impact: automationImpact(),
+    runStage: async (name) => {
+      seen.push(name)
+      return name === 'typecheck' ? 1 : 0
+    },
+    fingerprint: () => 'same',
+    save: () => {},
+  })
+  assert.equal(failed.passed, false)
+  assert.deepEqual(seen, automationStages.slice(0, 3))
+  let n = 0
+  const changed = await runChecks({
+    profile: 'automation',
+    impact: automationImpact(),
+    runStage: async () => 0,
+    fingerprint: () => String(n++),
+    save: () => {},
+  })
+  assert.equal(changed.source_unchanged, false)
+  assert.equal(changed.passed, false)
+})
 
 test('기존 전체 검사·빌드와 브라우저를 순서대로 보존하고 결과를 모은다', async () => {
   const seen = [],

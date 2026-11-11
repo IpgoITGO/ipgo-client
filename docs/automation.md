@@ -171,13 +171,38 @@ workflow를 실행하거나 Jira를 완료로 바꾼 뒤 정기 동기화가 Iss
 
 ## Vercel 배포
 
+### 로컬 검사 선택
+
+자동화·검증 도구·문서만 바꾼 로컬 작업은 `npm run verify:automation`을 사용합니다. 변경 경로와
+origin/dev와의 공통 기준점 대비 커밋/미커밋 변경 및 package 내용을 검사해 앱·의존성·빌드 설정·기존 검사 명령 변경을 거부하고, lint/format/
+typecheck/자동화 테스트/검증 도구 테스트/CI 번들을 한 번씩 수행합니다. 변경 중 소스가 달라져도 실패합니다.
+기본 verify:local과 PR의 전체 ci:check는 유지하며, 앱 소스가 바뀌면 전체 검사·필요한 브라우저 검증을 수행합니다.
+보고서는 보호된 외부 디렉터리의 summary.json 하나이며 생략한 로컬 UI 검사를 성공한 검사로 표시하지 않습니다.
+동일 근거는 이 원문을 재사용하고, 소스·검사 범위·환경이 달라지거나 실패/누락이면 재검사합니다.
+상태 문서는 결과·한계·보고서 링크만 남깁니다. 자동 보고서는 전체 PR CI 통과나 실제 업무 성공을 뜻하지 않습니다.
+
 | branch | Vercel 환경 | 고정 주소 |
 |---|---|---|
 | `dev` | Preview | `https://ipgo-client-dev.vercel.app` |
 | `main` | Production | `https://ipgo-client.vercel.app` |
 
-두 workflow 모두 의존성 설치와 `npm run ci:check`를 먼저 실행하고, 고정한 Vercel CLI 버전으로
-`vercel pull`과 `vercel build`를 수행합니다.
+PR·dev push는 `npm ci --prefer-offline --no-fund`와 전체 `ci:check`를 실행한 뒤 `build:ci`로
+번들을 만듭니다. `ci:check`에 타입 검사가 포함되므로 같은 job의 두 번째 `tsc -b`만 생략합니다.
+같은 이름의 필수 CI step은 유지해 정확 SHA 증거 검증과 호환합니다. 기본 `npm run build`는
+계속 타입 검사 후 빌드하며 로컬/Vercel 경로는 그대로입니다.
+
+수동 dev 배포는 기존 정확 SHA의 성공한 dev push CI 증거를 검증하고, 운영 배포는 전체
+`ci:check`를 직접 수행합니다. 각 환경의 최종 Vercel 빌드·승인·smoke·운영 승격은 유지합니다.
+
+앱의 `npm ci`는 캐시를 우선 사용하되 lockfile·integrity·설치 스크립트·npm audit는 유지합니다.
+캐시가 없으면 온라인에서 내려받습니다. `node_modules`를 복원하거나 설치 성공을 생략하지 않습니다.
+Vercel CLI는 검토한 정확 `x.y.z` 버전만 허용하고, OS/아키텍처/실제 Node 버전/CLI 버전별로
+`runner.temp/vercel-npm-cache/_cacache`만 별도 보관합니다. 매번 global install을 수행하며
+캐시된 실행 파일·`.vercel` 환경 파일·인증정보·npm 로그는 보관하지 않습니다. CLI 설치는
+`prefer-offline` 없이 메타데이터의 최신성 확인을 유지합니다. 기존 앱 캐시와 서로 오염시키지 않습니다.
+
+다음 실제 승인 배포에서 앱 설치·CLI 캐시 hit/miss·CLI 설치·빌드 job/step 시간을 비교합니다.
+로컬 통과와 실제 Actions 캐시 적중/단축 효과는 구분하며, 측정용 배포를 추가 실행하지 않습니다.
 
 - 개발: `vercel deploy --prebuilt`로 Preview를 만든 뒤 개발 고정 alias를 연결합니다.
 - 운영: `vercel deploy --prebuilt --prod --skip-domain`으로 Production 후보를 만듭니다.
