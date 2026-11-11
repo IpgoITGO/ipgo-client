@@ -72,12 +72,16 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 /api/settings/storage-cost`, `PUT·DELETE /api/products/{productId}/box`). 칸을 벗어나면 바로 저장하며, 한 달
 보관비는 `상자 CBM × 권장 입고량 × 요율`로 화면에서 계산합니다(`src/features/settings/model/storageCost.ts`).
 
-요금제(`/plans`)와 결제(`/checkout?plan=seller|business`)는 요구사항 밖 추가 기능이며 서버 API가
-아직 없습니다. 구독 상태는 브라우저 `localStorage`(`ipgo:subscription`)에만 두고 처음 열면 14일
-체험이 시작됩니다. 결제창·승인 확인은 `src/features/billing/model/payment.ts`가 모의로 성공을
-돌려주며, 포트원 키와 서버 승인 API가 생기면 이 함수만 바꿉니다. 실제로 돈이 나가지 않습니다.
-위쪽 오른쪽 이름을 누르면 계정 메뉴(내 계정·요금제·결제·로그아웃)가 열리고, 내 계정(`/account`)은
-같은 구독 상태로 요금제·사용량·결제 내역·해지 예정일을 보여 줍니다.
+요금제(`/plans`)·결제(`/checkout?plan=seller|business`)·내 계정(`/account`)은 서버 결제 API로
+요금제·구독·결제 수단·청구 내역을 읽습니다. 토스 카드 등록 후 서버의 세션 조회에서 승인 성공을
+확인해야 결제 완료로 안내합니다. 등록 완료 응답이 유실돼도 같은 세션을 조회하며, 결과가
+미확정이면 실패로 단정하거나 새 결제를 요청하지 않습니다.
+
+첫 결제가 거절되면 체험 중이거나 체험이 끝났어도 내 계정에서 기존 OPEN/DECLINED 청구를
+다시 결제할 수 있습니다. 카드 교체만으로 기존 청구를 다시 결제하지 않으며, 교체 후 내 계정에서
+재결제를 요청합니다. UNKNOWN/REVIEW_REQUIRED 청구에는 재결제 버튼을 제공하지 않습니다.
+MSW는 이 흐름을 모의 처리합니다. 실제 토스 테스트 결제에는 서버 #170의 개발 환경·키 준비가,
+환불에는 서버 #171의 API가 필요합니다.
 
 ## 명령
 

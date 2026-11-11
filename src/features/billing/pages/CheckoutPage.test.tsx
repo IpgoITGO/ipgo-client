@@ -92,7 +92,7 @@ describe('결제', () => {
       ),
     )
     expect(
-      await screen.findByText('카드를 등록했어요 · 결제를 확인하고 있어요'),
+      await screen.findByText('카드 등록과 결제 결과를 확인하고 있어요'),
     ).toBeInTheDocument()
     expect(await screen.findByText('결제됐어요')).toBeInTheDocument()
     expect(sent.filter((s) => s.url.endsWith('/complete'))).toHaveLength(1)
@@ -153,7 +153,7 @@ describe('결제', () => {
     )
     expect(screen.queryByText('결제됐어요')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: '다시 시도' }),
+      screen.getByRole('button', { name: '내 계정에서 다시 결제' }),
     ).toBeInTheDocument()
   })
 

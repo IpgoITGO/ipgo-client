@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
 import {
-  billingErrorText,
   billingPost,
   getSession,
   newIdempotencyKey,
@@ -23,7 +22,7 @@ type Phase =
   | { kind: 'checking' }
   | { kind: 'paid' }
   | { kind: 'replaced' }
-  | { kind: 'failed'; reason: string }
+  | { kind: 'failed'; reason: string; invoiceId?: number | string }
   | { kind: 'unknown' }
 
 // 결제 성공·실패는 카드 등록과 따로 확인한다. 돈이 나갔다고 말하는 건 paymentStatus가 SUCCEEDED일 때뿐이다.
@@ -31,7 +30,11 @@ function verdict(session: SessionResult): Phase | null {
   const { status, paymentStatus, errorCode } = session
   if (paymentStatus === 'SUCCEEDED') return { kind: 'paid' }
   if (paymentStatus === 'DECLINED' || paymentStatus === 'VOID') {
-    return { kind: 'failed', reason: reasonText(errorCode) }
+    return {
+      kind: 'failed',
+      reason: reasonText(errorCode),
+      invoiceId: session.invoiceId ?? undefined,
+    }
   }
   if (status === 'REJECTED' || status === 'CANCELED' || status === 'EXPIRED') {
     return { kind: 'failed', reason: reasonText(errorCode) }
@@ -95,9 +98,9 @@ export function BillingAuthSuccessPage() {
           newIdempotencyKey(),
           { authKey, customerKey, state },
         )
-      } catch (error) {
-        setPhase({ kind: 'failed', reason: billingErrorText(error) })
-        return
+      } catch {
+        // 응답 유실·서버 오류만으로 승인 여부를 알 수 없다. 같은 세션을 조회하고
+        // complete나 새 구독 요청을 자동으로 다시 보내지 않는다.
       }
       setPhase({ kind: 'checking' })
       for (let i = 0; i <= POLL_MAX; i++) {
@@ -126,7 +129,7 @@ export function BillingAuthSuccessPage() {
         <p className={styles.info} role="status">
           {phase.kind === 'registering'
             ? '카드를 등록하고 있어요'
-            : '카드를 등록했어요 · 결제를 확인하고 있어요'}
+            : '카드 등록과 결제 결과를 확인하고 있어요'}
         </p>
       )}
       {(phase.kind === 'paid' || phase.kind === 'replaced') && (
@@ -154,7 +157,13 @@ export function BillingAuthSuccessPage() {
               카드나 다른 카드로 다시 해 주세요.
             </span>
           </div>
-          <Retry />
+          {failed.invoiceId != null ? (
+            <Button onClick={() => navigate('/account')} variant="secondary">
+              내 계정에서 다시 결제
+            </Button>
+          ) : (
+            <Retry />
+          )}
         </>
       )}
       {phase.kind === 'unknown' && (

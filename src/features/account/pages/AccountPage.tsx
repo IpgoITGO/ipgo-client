@@ -136,16 +136,16 @@ export function AccountPage() {
   const lock = calcLock(subscription)
   const failed = paymentProblem(subscription)
   const declined = invoices?.find(
-    (item) => item.paymentStatus === 'DECLINED' && item.status !== 'VOID',
+    (item) => item.paymentStatus === 'DECLINED' && item.status === 'OPEN',
   )
   const status =
-    lock?.reason === 'TRIAL_ENDED'
+    !declined && lock?.reason === 'TRIAL_ENDED'
       ? { text: '체험 끝남', to: '/plans', label: '요금제 고르기' }
-      : failed
+      : declined || failed
         ? {
             text: lock
               ? '결제 안 됨 · 새 계산 멈춤'
-              : `결제 안 됨${failed.until ? ` · ${monthDayKo(dayOf(failed.until))}까지` : ''}`,
+              : `결제 안 됨${failed?.until ? ` · ${monthDayKo(dayOf(failed.until))}까지` : ''}`,
             // 안 된 결제가 목록에 있으면 바로 다시 결제, 없으면 카드부터 바꾼다
             onClick: () =>
               void attempt(
@@ -255,6 +255,7 @@ export function AccountPage() {
                     ) : (
                       <button
                         className={styles.textButton}
+                        disabled={retry.isPending || changing}
                         onClick={status.onClick}
                         type="button"
                       >
