@@ -41,7 +41,11 @@ import {
   shortExpiry,
   useExpiry,
 } from '../../expiry/model/expiryApi'
-import { type DemandShift, getDashboard } from '../model/dashboardApi'
+import {
+  type DemandShift,
+  getDashboard,
+  shiftTimes,
+} from '../model/dashboardApi'
 import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
@@ -218,7 +222,7 @@ type SortKey = 'stockout' | 'risk' | 'cost' | 'shift'
 // 판매 급변 순: 급증(배수 큰 순) → 다시 줄어듦 → 나머지. 나머지는 소진일 순으로 이어진다
 function shiftScore(shift?: DemandShift | null) {
   if (!shift) return 0
-  return shift.direction === 'UP' ? 1000 + shift.ratio : 500
+  return shift.direction === 'UP' ? 1000 + (shift.ratio ?? 1e6) : 500
 }
 
 // 상품 이름 옆 꼬리표("곧 넣어야 해요"와 같은 모양, 다른 색). 마우스를 올리면 숫자
@@ -231,7 +235,7 @@ function ShiftTag({ shift }: { shift?: DemandShift | null }) {
       title={`최근 7일 하루 ${shift.recentDailyQty}개 · 그 전 4주 하루 ${shift.baselineDailyQty}개`}
     >
       {shift.direction === 'UP'
-        ? `판매 급증 ${Math.round(shift.ratio)}배`
+        ? `판매 급증${shiftTimes(shift.ratio)}`
         : '판매 다시 줄었어요'}
     </span>
   )

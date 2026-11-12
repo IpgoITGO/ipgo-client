@@ -4,6 +4,7 @@ import { type FormEvent, useCallback, useMemo, useState } from 'react'
 import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { SurgeCardChart } from '../../dashboard/ui/DemandShift'
+import { shiftTimes } from '../../dashboard/model/dashboardApi'
 import type { Week } from '../../dashboard/model/weekly'
 import { shortExpiry, useExpiry } from '../../expiry/model/expiryApi'
 import {
@@ -130,7 +131,7 @@ export function ScenarioInsight({
    *  늘었으면 권장보다 많을 때, 다시 줄었으면 권장보다 적을 때만(계산식은 급변이 지난 뒤에야 따라온다) */
   surge?: {
     direction: 'UP' | 'DOWN'
-    ratio: number
+    ratio: number | null
     recent: number
     baseline: number
     quantity: number
@@ -281,7 +282,7 @@ export function ScenarioInsight({
   const surgeName = surgeUp ? '최근 판매 속도라면' : '평소 속도로 돌아왔다면'
   const surgeTape = surge
     ? surgeUp
-      ? `판매 급증 ${Math.round(surge.ratio)}배`
+      ? `판매 급증${shiftTimes(surge.ratio)}`
       : '판매 다시 줄었어요'
     : ''
   // 카드 이름 줄 오른쪽 "이유 보기"(줄 높이가 안 늘게 같은 줄에)

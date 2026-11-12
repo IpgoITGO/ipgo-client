@@ -9,9 +9,14 @@ export type DemandShift = {
   direction: 'UP' | 'DOWN'
   recentDailyQty: number
   baselineDailyQty: number
-  ratio: number
+  /** 그 전 28일 판매가 0이면 서버가 null(#195) */
+  ratio: number | null
   since: string
 }
+
+/** " 8배" — 배수가 없으면(평소 판매 0) 빈 글자 */
+export const shiftTimes = (ratio: number | null) =>
+  ratio == null ? '' : ` ${Math.round(ratio)}배`
 
 // ipgo-server README "대시보드와 SKU 상세"(D1). 화면 모양은 그대로 두고 서버 응답을 화면 값으로 옮긴다.
 export type ReplenishmentNeeds = {
