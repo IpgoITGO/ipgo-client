@@ -20,6 +20,7 @@ import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { useCountUp } from '../../../shared/hooks/useCountUp'
 import { Button } from '../../../shared/ui/Button/Button'
 import { LockedButton } from '../../billing/components/LockedButton'
+import { PlanGate } from '../../billing/components/PlanGate'
 import { useCalcLock } from '../../billing/model/useCalcLock'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
@@ -906,6 +907,7 @@ export function DashboardPage() {
         </div>
       )}
 
+      {noResult && <PlanGate hasUpload={Boolean(data.hasUpload)} />}
       {noResult ? (
         <AsyncState
           description={

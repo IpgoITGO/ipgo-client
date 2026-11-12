@@ -5,10 +5,19 @@ import styles from './Modal.module.css'
 
 type ModalProps = PropsWithChildren<{
   labelledBy: string
-  onClose: () => void
+  onClose?: () => void
+  /** false면 바깥 누르기·Esc로 닫히지 않고 뒤 화면도 못 누른다(요금제 고르기) */
+  dismissible?: boolean
+  wide?: boolean
 }>
 
-export function Modal({ children, labelledBy, onClose }: ModalProps) {
+export function Modal({
+  children,
+  labelledBy,
+  onClose,
+  dismissible = true,
+  wide = false,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef(onClose)
   useEffect(() => {
@@ -24,21 +33,50 @@ export function Modal({ children, labelledBy, onClose }: ModalProps) {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeRef.current()
+      if (event.key === 'Escape' && dismissible) closeRef.current?.()
+      // 못 닫는 창은 Tab 초점이 창 안에서만 돈다(뒤 화면은 inert라 못 감)
+      const dialog = dialogRef.current
+      if (event.key !== 'Tab' || dismissible || !dialog) return
+      const items = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled])',
+        ),
+      ]
+      if (!items.length) return
+      const at = document.activeElement
+      const edge = event.shiftKey ? items[0] : items[items.length - 1]
+      if (at === edge || !dialog.contains(at)) {
+        event.preventDefault()
+        ;(event.shiftKey ? items[items.length - 1] : items[0]).focus()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [dismissible])
+
+  // 못 닫는 창이면 뒤 화면을 통째로 막는다(키보드 Tab으로도 못 감)
+  useEffect(() => {
+    const root = document.getElementById('root')
+    if (dismissible || !root) return
+    root.inert = true
+    return () => {
+      root.inert = false
+    }
+  }, [dismissible])
 
   // 화면 전환 효과(transform)가 있는 본문 안에 두면 fixed가 본문 기준이 되어 배경이 덜 덮인다 → body로 띄운다
   return createPortal(
-    <div className={styles.backdrop} onMouseDown={onClose}>
+    <div
+      className={styles.backdrop}
+      onMouseDown={dismissible ? onClose : undefined}
+    >
       <div
         ref={dialogRef}
         aria-labelledby={labelledBy}
         aria-modal="true"
         className={styles.dialog}
+        data-wide={wide || undefined}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
         tabIndex={-1}

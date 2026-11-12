@@ -1,0 +1,66 @@
+.body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  text-wrap: balance;
+}
+
+.sub {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: 14px;
+}
+
+/* 체험 시작 확인: 가운데 한 메시지, 체크만 살짝 커지며 나타남 */
+.started {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  text-align: center;
+  padding: var(--space-2) 0;
+}
+
+.check {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  background: var(--color-done-bg);
+  border-radius: 50%;
+  animation: pop 260ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+.check svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--color-done);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check {
+    animation: none;
+  }
+}
