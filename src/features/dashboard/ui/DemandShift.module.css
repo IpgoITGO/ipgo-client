@@ -1,0 +1,172 @@
+/* 판매 급변 팝업(11/12 시안 "실제 판매 그래프"): 이번 주 노랑, 지난 주들 모래색, 작년 같은 주 남색 점선 */
+.body {
+  display: grid;
+  gap: var(--space-3);
+}
+.kicker {
+  color: var(--color-accent-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+.kicker[data-dir='DOWN'] {
+  color: var(--color-success);
+}
+.title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.sub {
+  margin: -6px 0 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--color-text-2);
+  font-size: 12px;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.swBar,
+.swNow {
+  width: 12px;
+  height: 10px;
+  background: var(--color-chart-muted);
+  border-radius: 2px;
+}
+.swNow {
+  background: var(--color-accent);
+}
+.swLy {
+  width: 14px;
+  border-top: 2px dashed var(--color-primary);
+}
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.grid {
+  stroke: var(--color-border);
+}
+.tick {
+  fill: var(--color-text-3);
+  font-size: 10px;
+}
+.bar {
+  fill: var(--color-chart-muted);
+}
+.now {
+  fill: var(--color-accent);
+}
+.lastYear {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.5;
+}
+/* 숫자 세 칸: 같은 폭, 이번 주만 형광펜 */
+.cmp {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.cmp > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border-radius: 12px;
+}
+.cmp span {
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+.cmp b {
+  color: var(--color-primary);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.cmp small {
+  margin-left: 2px;
+  font-size: 12px;
+}
+.cmp > [data-now] b {
+  justify-self: start;
+  background: linear-gradient(transparent 60%, var(--color-accent-soft) 60%);
+}
+.note {
+  margin: 0;
+  color: var(--color-text-2);
+  font-size: 14px;
+  word-break: keep-all;
+}
+.actions {
+  display: grid;
+  gap: var(--space-2);
+}
+.primary,
+.secondary {
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.primary {
+  background: var(--color-accent);
+  box-shadow: 0 3px 0 var(--color-accent-press);
+}
+.secondary {
+  background: var(--color-primary-soft);
+}
+/* 대시보드 목록: 이름 | 작은 막대 | 보기 */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+.list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+.list b {
+  display: block;
+}
+.list small {
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+.mini {
+  min-height: 40px;
+}
+.list a {
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .mini {
+    display: none;
+  }
+}

@@ -417,11 +417,13 @@ describe('DashboardPage', () => {
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('케어트릿 120g')
     expect(screen.getAllByRole('row')).toHaveLength(7)
 
-    // 판매 급변 순: 급증한 상품이 맨 위, 이름 옆 꼬리표
+    // 판매 급변: 급변 상품만 남고(급증이 맨 위), 이름 옆 꼬리표
     await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
-    await user.click(screen.getByRole('radio', { name: '판매 급변 순' }))
+    await user.click(screen.getByRole('radio', { name: '판매 급변' }))
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('케어트릿 120g')
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('판매 급증 10배')
+    // 지금 넣기 탭엔 급변 상품이 케어트릿 하나뿐(머리줄 + 1줄)
+    expect(screen.getAllByRole('row')).toHaveLength(2)
   })
 
   it('예상 소진일이 지난 상품은 이미 소진으로 표시하고 요약 카드에 몇 개인지 알린다', async () => {

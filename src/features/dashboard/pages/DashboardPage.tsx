@@ -42,6 +42,7 @@ import {
   useExpiry,
 } from '../../expiry/model/expiryApi'
 import { type DemandShift, getDashboard } from '../model/dashboardApi'
+import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
@@ -198,6 +199,21 @@ function SummaryCard({
   )
 }
 
+// 탭·거르기로 줄 수가 바뀌어도 목록 판 높이는 줄이지 않는다(11/12 — 줄면 화면이 위로 끌려 올라감). 커지는 건 그대로.
+function keepTallest(node: HTMLElement | null) {
+  if (!node || typeof ResizeObserver === 'undefined') return
+  let tallest = 0
+  const observer = new ResizeObserver(() => {
+    const height = node.offsetHeight
+    if (height > tallest) {
+      tallest = height
+      node.style.minHeight = `${height}px`
+    }
+  })
+  observer.observe(node)
+  return () => observer.disconnect()
+}
+
 type SortKey = 'stockout' | 'risk' | 'cost' | 'shift'
 
 // 판매 급변 순: 급증(배수 큰 순) → 다시 줄어듦 → 나머지. 나머지는 소진일 순으로 이어진다
@@ -280,7 +296,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'stockout', label: '소진일 빠른 순' },
   { value: 'risk', label: '품절 위험 높은 순' },
   { value: 'cost', label: '금액 큰 순' },
-  { value: 'shift', label: '판매 급변 순' },
+  // 정렬이 아니라 거르기: 판매 급변 상품만(급증 배수 큰 순 → 다시 줄어듦)
+  { value: 'shift', label: '판매 급변' },
 ]
 
 const PANEL_TITLE: Record<Tab, string> = {
@@ -692,6 +709,7 @@ export function DashboardPage() {
               rowDate(a).localeCompare(rowDate(b))) ||
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
+    .filter((row) => sort !== 'shift' || shiftOf(row) !== null)
   const pickable = rows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
@@ -758,6 +776,12 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
+      {!noResult && (
+        <ShiftSummary
+          items={[...data.neededItems, ...(data.safeItems ?? [])]}
+          runId={data.runId}
+        />
+      )}
       <BusyStrip baseDate={noResult ? undefined : data.baseDate} />
       {plannedQuery.isError && (
         <p role="alert">
@@ -953,6 +977,7 @@ export function DashboardPage() {
           className={styles.panel}
           data-tab={tab}
           id="dashboard-list"
+          ref={keepTallest}
           role="tabpanel"
         >
           {tab !== 'all' && (

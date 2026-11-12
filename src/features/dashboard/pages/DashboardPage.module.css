@@ -226,12 +226,15 @@
   margin-top: var(--space-1);
   color: var(--color-text-3);
 }
-/* 정렬: 탭처럼 붙은 버튼 세 개. 고른 것만 흰 바탕에 굵게 */
+/* 정렬: 탭처럼 붙은 버튼. 고른 것만 흰 바탕. 오른쪽 끝(11/12) */
 .sort {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  width: max-content;
+  max-width: 100%;
   margin-bottom: var(--space-3);
+  margin-left: auto;
   padding: var(--space-1);
   background: var(--color-bg);
   border-radius: 14px;
@@ -247,7 +250,8 @@
 }
 .sort button[aria-checked='true'] {
   color: var(--color-text);
-  font-weight: 700;
+  /* 굵기를 바꾸면 글자 폭이 달라져 옆 버튼이 흔들린다 → 획만 두껍게(11/12) */
+  -webkit-text-stroke: 0.4px currentColor;
   background: var(--color-card);
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }

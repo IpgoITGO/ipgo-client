@@ -32,6 +32,7 @@ import {
   type SkuDetail,
 } from '../model/skuApi'
 import { niceStep, tickText } from '../model/trendScale'
+import { ShiftPopup } from '../../dashboard/ui/DemandShift'
 import styles from './SkuPage.module.css'
 
 type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
@@ -1580,6 +1581,16 @@ export function SkuPage() {
 
   return (
     <div className={styles.page}>
+      <ShiftPopup
+        history={data.history}
+        name={data.name}
+        onAdjust={() =>
+          document
+            .getElementById('sku-scenarios')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+        productId={skuId}
+      />
       <header className={styles.header}>
         <div>
           {/* 출고지는 없으면 줄째 뺀다 */}
@@ -1906,6 +1917,7 @@ export function SkuPage() {
             </section>
           </div>
 
+          {data.resultId !== null && <div id="sku-scenarios" />}
           {data.resultId !== null && (
             <ScenarioInsight
               baseDate={data.baseDate}
