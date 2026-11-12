@@ -268,9 +268,45 @@ describe('결제', () => {
     )
     await vi.waitFor(() => expect(pay).toBeEnabled(), { timeout: 5000 })
     await user.click(pay)
-    // 두 번째 누름: 첫 키는 닫혀서(취소 때 지움) 새 키로 바로 연다
+    // 두 번째 누름: 닫힌 키를 다시 보내지 않고 새 키로 바로 연다
     await vi.waitFor(() => expect(keys).toHaveLength(2), { timeout: 5000 })
     expect(keys[1]).not.toBe(keys[0])
+  })
+
+  it('결제가 끝난 뒤 같은 결제를 또 해도 끝난 시도 대신 새 시도로 연다(11/12 검수)', async () => {
+    // 가짜 서버는 서버 계약(0012)대로 같은 키면 처음 시도를 그대로 돌려준다
+    const keys: string[] = []
+    server.events.on('request:start', ({ request }) => {
+      if (
+        request.method === 'POST' &&
+        new URL(request.url).pathname === '/api/billing/registration-sessions'
+      )
+        keys.push(request.headers.get('Idempotency-Key') ?? '')
+    })
+    vi.mocked(openCardWindow).mockResolvedValue(undefined)
+    const { user } = await openApp('/checkout?plan=seller')
+    await user.click(
+      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
+    )
+    const pay = await screen.findByRole('button', {
+      name: '49,000원 결제하기',
+    })
+    await user.click(pay)
+    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(1), {
+      timeout: 5000,
+    })
+    await vi.waitFor(() => expect(pay).toBeEnabled(), { timeout: 5000 })
+    await user.click(pay)
+    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(2), {
+      timeout: 5000,
+    })
+    expect(keys).toHaveLength(2)
+    expect(keys[1]).not.toBe(keys[0])
+    expect(sessionStorage.length).toBe(
+      Object.keys(sessionStorage).filter(
+        (k) => !k.startsWith('ipgo:billing-key'),
+      ).length,
+    )
   })
 
   it('주소의 요금제가 틀리면 요금제 화면으로', async () => {

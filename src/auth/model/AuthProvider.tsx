@@ -1,5 +1,4 @@
 import { clearReceiptAttempts } from '../../features/receipts/model/attemptStorage'
-import { clearBillingKeys } from '../../features/billing/model/payment'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type PropsWithChildren,
@@ -39,7 +38,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // 401 → 만료 신호 → 지우기가 서로를 다시 부르지 않습니다.
   const clearSession = useCallback(() => {
     clearReceiptAttempts()
-    clearBillingKeys()
     queryClient.removeQueries({
       predicate: (query) => query.queryKey[0] !== ME_KEY[0],
     })

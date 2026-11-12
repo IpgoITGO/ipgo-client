@@ -224,9 +224,12 @@ export function BillingAuthFailPage() {
   }))
   useEffect(cleanAddress, [])
   // 결제사가 실패로 돌려보낸 건 확실한 실패라 이 등록 시도를 닫는다(#294). 다시 하면 새 시도로 열린다
+  // 개발 모드(StrictMode)에서 두 번 돌아도 취소는 한 번만 보낸다
+  const canceled = useRef(false)
   useEffect(() => {
-    if (read.sessionId)
-      void cancelRegistration(read.sessionId).catch(() => undefined)
+    if (!read.sessionId || canceled.current) return
+    canceled.current = true
+    void cancelRegistration(read.sessionId).catch(() => undefined)
   }, [read.sessionId])
   return (
     <div className={styles.column}>
