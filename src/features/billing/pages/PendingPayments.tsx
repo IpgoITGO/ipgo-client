@@ -35,13 +35,15 @@ export function PendingPayments() {
       <h3>진행 중인 결제</h3>
       {orders.data.map((o) => (
         <p key={o.orderId}>
-          {o.refundStatus
-            ? '취소 결과 확인 중'
-            : o.status === 'PENDING'
-              ? '입금 대기 중'
-              : o.status === 'REVIEW_REQUIRED'
-                ? '결제 확인이 필요해요. 관리자에게 문의해주세요.'
-                : '결제 결과 확인 중'}
+          {o.refundStatus === 'ACCOUNT_REQUIRED'
+            ? '아래 결제 내역에서 환불 계좌를 입력해 주세요'
+            : o.refundStatus
+              ? '취소 결과 확인 중'
+              : o.status === 'PENDING'
+                ? '입금 대기 중'
+                : o.status === 'REVIEW_REQUIRED'
+                  ? '결제 확인이 필요해요. 관리자에게 문의해주세요.'
+                  : '결제 결과 확인 중'}
         </p>
       ))}
       {error && <p role="alert">{error}</p>}

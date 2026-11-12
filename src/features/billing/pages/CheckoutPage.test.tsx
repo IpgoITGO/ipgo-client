@@ -158,6 +158,10 @@ describe('결제', () => {
   })
 
   it('카드창 실패 화면: 결제사 말을 그대로, 다시 시도', async () => {
+    const cancel = vi.fn(() =>
+      HttpResponse.json({ sessionId: 's', status: 'CANCELED' }),
+    )
+    server.use(http.post('/api/billing/registration-sessions/s/cancel', cancel))
     const { router } = await openApp('/plans')
     await act(() =>
       router.navigate(
@@ -170,6 +174,7 @@ describe('결제', () => {
     expect(
       screen.getByRole('button', { name: '다시 시도' }),
     ).toBeInTheDocument()
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledTimes(1))
   })
 
   it('카드창 실패로 돌아오면 그 등록 시도를 닫고, 결제사 코드를 작게 보여 준다(#294)', async () => {

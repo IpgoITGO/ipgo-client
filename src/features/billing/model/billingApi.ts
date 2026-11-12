@@ -53,6 +53,12 @@ export type PaymentMethodRow = {
   status: 'ACTIVE' | 'RETIRED' | 'DELETED'
 }
 
+export type RefundAccount = {
+  bank: string
+  accountNumber: string
+  holderName: string
+}
+
 export type Invoice = {
   invoiceId: number | string
   planId: 'seller' | 'business'
@@ -64,8 +70,14 @@ export type Invoice = {
   paymentStatus: string | null
   paidAt: string | null
   refundStatus?:
-    'PROCESSING' | 'UNKNOWN' | 'CANCELED' | 'REVIEW_REQUIRED' | null
+    | 'PROCESSING'
+    | 'UNKNOWN'
+    | 'ACCOUNT_REQUIRED'
+    | 'CANCELED'
+    | 'REVIEW_REQUIRED'
+    | null
   canceledAt?: string | null
+  paymentMethod?: string | null
 }
 
 export type RegistrationSession = {
@@ -166,6 +178,12 @@ export function billingErrorText(error: unknown) {
     // 다른 결제 시도(다른 요금제·카드 바꾸기·카드 발급 중)가 아직 안 끝난 것. 승인 중과 같은 뜻이 아니다(#294)
     if (error.code === 'BILLING_IN_PROGRESS')
       return '이전 결제 시도가 아직 끝나지 않았어요. 1~2분 뒤 다시 해 주세요'
+    if (
+      ['REFUND_ACCOUNT_REQUIRED', 'REFUND_ACCOUNT_INVALID'].includes(error.code)
+    )
+      return '환불받을 은행·계좌번호·예금주명을 확인해 주세요.'
+    if (error.code === 'REFUND_DETAILS_CHANGED')
+      return '취소 결과를 확인하는 동안에는 환불 계좌를 바꿀 수 없어요. 결제 내역에서 결과를 확인해 주세요.'
     if (error.code === 'PLAN_PRICE_CHANGED')
       return '요금이 바뀌었어요. 새 금액을 확인하고 다시 눌러 주세요'
     if (error.code === 'BILLING_SESSION_EXPIRED')

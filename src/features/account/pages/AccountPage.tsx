@@ -5,7 +5,7 @@ import { Modal } from '../../../shared/ui/Modal/Modal'
 import { Button } from '../../../shared/ui/Button/Button'
 
 import { useAuth } from '../../../auth/model/useAuth'
-import { apiRequest } from '../../../shared/api/client'
+import { ApiError, apiRequest } from '../../../shared/api/client'
 import type { ReplenishmentNeeds } from '../../dashboard/model/dashboardApi'
 import { getUploadPeriods } from '../../upload/model/uploadApi'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
@@ -23,6 +23,7 @@ import {
 import {
   billingErrorText,
   type Invoice,
+  type RefundAccount,
   useBillingMutation,
   useInvoices,
   usePaymentMethods,
@@ -31,6 +32,7 @@ import {
 } from '../../billing/model/billingApi'
 import { useCardRegistration } from '../../billing/model/payment'
 import { PendingPayments } from '../../billing/pages/PendingPayments'
+import { RefundAccountFields } from '../ui/RefundAccountFields'
 import { CancelModal } from '../ui/CancelModal'
 import { WithdrawModal } from '../ui/WithdrawModal'
 import { Toast } from '../../../shared/ui/Toast/Toast'
@@ -40,12 +42,18 @@ import styles from './AccountPage.module.css'
 
 // 결제 내역 한 줄의 상태를 쉬운 말로
 function invoiceState(invoice: Invoice) {
-  if (invoice.refundStatus === 'CANCELED') return '취소·환불 완료'
+  if (invoice.refundStatus === 'CANCELED')
+    return invoice.paymentMethod === '가상계좌' && !invoice.paidAt
+      ? '발급 취소 완료'
+      : '취소·환불 완료'
+  if (invoice.refundStatus === 'ACCOUNT_REQUIRED') return '환불 계좌 입력 필요'
   if (
     invoice.refundStatus === 'PROCESSING' ||
     invoice.refundStatus === 'UNKNOWN'
   )
-    return '취소 확인 중'
+    return invoice.paymentMethod === '가상계좌'
+      ? '환불 처리 중'
+      : '취소 확인 중'
   if (invoice.refundStatus === 'REVIEW_REQUIRED') return '취소 확인 필요'
   if (invoice.status === 'VOID' || invoice.paymentStatus === 'VOID')
     return '취소됨'
@@ -112,29 +120,82 @@ export function AccountPage() {
   const retry = useBillingMutation('/invoices')
   const [refundTarget, setRefundTarget] = useState<Invoice | null>(null)
   const [refundReason, setRefundReason] = useState('테스트 결제 취소')
+  const [refundAccount, setRefundAccount] = useState<RefundAccount>({
+    bank: '',
+    accountNumber: '',
+    holderName: '',
+  })
+  const [accountRequested, setAccountRequested] = useState(false)
+  const unpaidAccount =
+    refundTarget?.paymentStatus === 'WAITING_FOR_DEPOSIT' &&
+    refundTarget.refundStatus !== 'ACCOUNT_REQUIRED' &&
+    !accountRequested
+  const refundNeedsAccount =
+    !unpaidAccount &&
+    (refundTarget?.paymentMethod === '가상계좌' ||
+      refundTarget?.refundStatus === 'ACCOUNT_REQUIRED' ||
+      accountRequested)
+  const accountValid =
+    /^[0-9]{2,3}$/.test(refundAccount.bank) &&
+    /^[0-9]{1,20}$/.test(refundAccount.accountNumber) &&
+    Boolean(refundAccount.holderName.trim()) &&
+    ![...refundAccount.holderName].some(
+      (letter) => letter.charCodeAt(0) < 32 || letter.charCodeAt(0) === 127,
+    )
+  const closeRefund = () => {
+    setRefundTarget(null)
+    setRefundAccount({ bank: '', accountNumber: '', holderName: '' })
+    setAccountRequested(false)
+  }
   const refundTitle = useId()
   const refund = useBillingMutation<{ status: string }>('/invoices', () => ({
     reason: refundReason,
+    ...(refundNeedsAccount
+      ? {
+          refundReceiveAccount: {
+            ...refundAccount,
+            holderName: refundAccount.holderName.trim(),
+          },
+        }
+      : {}),
   }))
   const newestPaid = invoices?.find(
     (item) => item.status === 'PAID' && item.paymentStatus === 'SUCCEEDED',
   )
   async function cancelPayment() {
-    if (!refundTarget) return
-    await attempt(async () => {
-      const result = await refund
-        .mutateAsync(`/invoices/${refundTarget.invoiceId}/cancel-payment`)
-        .catch((error: unknown) => {
-          void billingCache.invalidateQueries({ queryKey: ['billing'] })
-          throw error
-        })
+    if (!refundTarget || (refundNeedsAccount && !accountValid)) return
+    setProblem(null)
+    try {
+      const result = await refund.mutateAsync(
+        `/invoices/${refundTarget.invoiceId}/cancel-payment`,
+      )
+      if (result.status === 'ACCOUNT_REQUIRED') {
+        setAccountRequested(true)
+        setRefundAccount({ bank: '', accountNumber: '', holderName: '' })
+        setProblem('환불 계좌 정보를 확인해 다시 입력해 주세요.')
+        return
+      }
       setNotice(
         result.status === 'CANCELED'
-          ? '결제 취소·환불이 확인됐어요'
-          : '취소 결과를 확인하고 있어요. 결제 내역에서 확인해 주세요',
+          ? unpaidAccount
+            ? '가상계좌 발급을 취소했어요'
+            : '결제 취소·환불이 확인됐어요'
+          : result.status === 'REVIEW_REQUIRED'
+            ? '환불을 확인해야 해요. 결제 내역을 확인해 주세요.'
+            : '취소 결과를 확인하고 있어요. 결제 내역에서 확인해 주세요.',
       )
-      setRefundTarget(null)
-    })
+      closeRefund()
+    } catch (error) {
+      void billingCache.invalidateQueries({ queryKey: ['billing'] })
+      if (
+        error instanceof ApiError &&
+        ['REFUND_ACCOUNT_REQUIRED', 'REFUND_ACCOUNT_INVALID'].includes(
+          error.code,
+        )
+      )
+        setAccountRequested(true)
+      setProblem(billingErrorText(error))
+    }
   }
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
@@ -493,20 +554,34 @@ export function AccountPage() {
                                 취소일 {monthDayKo(dayOf(item.canceledAt))}
                               </span>
                             )}
-                            {item.invoiceId === newestPaid?.invoiceId &&
-                              !item.refundStatus && (
-                                <button
-                                  className={styles.textButton}
-                                  type="button"
-                                  onClick={() => {
-                                    setProblem(null)
-                                    setRefundReason('테스트 결제 취소')
-                                    setRefundTarget(item)
-                                  }}
-                                >
-                                  결제 취소·환불
-                                </button>
-                              )}
+                            {((item.invoiceId === newestPaid?.invoiceId &&
+                              !item.refundStatus) ||
+                              item.refundStatus === 'ACCOUNT_REQUIRED' ||
+                              (item.status === 'OPEN' &&
+                                item.paymentStatus === 'WAITING_FOR_DEPOSIT' &&
+                                !item.refundStatus)) && (
+                              <button
+                                className={styles.textButton}
+                                type="button"
+                                onClick={() => {
+                                  setProblem(null)
+                                  setRefundReason('테스트 결제 취소')
+                                  setRefundAccount({
+                                    bank: '',
+                                    accountNumber: '',
+                                    holderName: '',
+                                  })
+                                  setAccountRequested(false)
+                                  setRefundTarget(item)
+                                }}
+                              >
+                                {item.refundStatus === 'ACCOUNT_REQUIRED'
+                                  ? '환불 계좌 입력'
+                                  : item.paymentStatus === 'WAITING_FOR_DEPOSIT'
+                                    ? '가상계좌 발급 취소'
+                                    : '결제 취소·환불'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -524,16 +599,30 @@ export function AccountPage() {
         <Modal
           labelledBy={refundTitle}
           onClose={() => {
-            if (!refund.isPending) setRefundTarget(null)
+            if (!refund.isPending) closeRefund()
           }}
         >
-          <h2 id={refundTitle}>결제를 전액 취소할까요?</h2>
+          <h2 id={refundTitle}>
+            {unpaidAccount
+              ? '가상계좌 발급을 취소할까요?'
+              : '결제를 전액 취소할까요?'}
+          </h2>
           <p>
-            {refundTarget.amount.toLocaleString('ko-KR')}원 전액을 취소합니다.
-            {normal
-              ? '취소가 확인되면 유료 이용이 종료됩니다.'
-              : '취소가 확인되면 유료 이용이 종료되고 다음 자동 청구도 중지됩니다.'}
+            {unpaidAccount
+              ? '입금 전이므로 환불할 금액은 없어요. 발급된 가상계좌를 취소합니다.'
+              : `${refundTarget.amount.toLocaleString('ko-KR')}원 전액을 취소합니다.`}
+            {!unpaidAccount &&
+              (normal
+                ? '취소가 확인되면 유료 이용이 종료됩니다.'
+                : '취소가 확인되면 유료 이용이 종료되고 다음 자동 청구도 중지됩니다.')}
           </p>
+          {refundNeedsAccount && (
+            <RefundAccountFields
+              value={refundAccount}
+              onChange={setRefundAccount}
+              disabled={refund.isPending}
+            />
+          )}
           <p>토스 테스트 결제이며 실제 돈은 청구·환불되지 않습니다.</p>
           <label className={styles.refundReason}>
             취소 사유
@@ -547,15 +636,19 @@ export function AccountPage() {
           {problem && <p role="alert">{problem}</p>}
           <div className={styles.refundActions}>
             <Button
-              disabled={refund.isPending || !refundReason.trim()}
+              disabled={
+                refund.isPending ||
+                !refundReason.trim() ||
+                (refundNeedsAccount && !accountValid)
+              }
               onClick={() => void cancelPayment()}
             >
-              전액 취소 요청
+              {unpaidAccount ? '발급 취소 요청' : '전액 취소 요청'}
             </Button>
             <Button
               variant="secondary"
               disabled={refund.isPending}
-              onClick={() => setRefundTarget(null)}
+              onClick={closeRefund}
             >
               돌아가기
             </Button>

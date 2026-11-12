@@ -1,0 +1,22 @@
+.fields {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: var(--space-4) 0;
+  border: 0;
+  min-width: 0;
+}
+.fields > div {
+  display: grid;
+  gap: 8px;
+}
+.fields input,
+.fields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+}
