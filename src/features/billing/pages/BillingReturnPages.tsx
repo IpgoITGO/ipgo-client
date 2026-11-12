@@ -186,9 +186,13 @@ export function BillingAuthSuccessPage() {
         <>
           <div className={styles.safe} role="alert">
             <span aria-hidden="true">✓</span>
-            <span>
-              결제가 안 됐어요. {failed.reason.replace(/[.\s]+$/, '')}. 같은
-              카드나 다른 카드로 다시 해 주세요.
+            {/* 첫 줄 굵게, 사유와 할 일은 다음 줄(11/12 — 한 문장이면 사유 중간에서 꺾임) */}
+            <span className={styles.safeText}>
+              <b>결제가 안 됐어요</b>
+              <span>
+                {failed.reason.replace(/[.\s]+$/, '')}. 같은 카드나 다른 카드로
+                다시 해 주세요.
+              </span>
             </span>
           </div>
           {failed.invoiceId != null ? (
