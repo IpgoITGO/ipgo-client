@@ -11,6 +11,7 @@ import { useSubscription } from '../../features/billing/model/billingApi'
 import { BillingStrip } from '../../features/billing/components/BillingStrip'
 import { useActionLock } from '../../shared/hooks/useActionLock'
 import { Button } from '../../shared/ui/Button/Button'
+import { CalcLockHint } from '../../shared/ui/CalcLockHint/CalcLockHint'
 import { CalculationStatus } from '../../shared/ui/CalculationStatus/CalculationStatus'
 import { Modal } from '../../shared/ui/Modal/Modal'
 import styles from './AppLayout.module.css'
@@ -111,6 +112,7 @@ export function AppLayout() {
       {subscription && <BillingStrip subscription={subscription} />}
       <main className={styles.main}>
         <CalculationStatus />
+        <CalcLockHint />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
         <div className={styles.page} key={pathname}>
           <Outlet />

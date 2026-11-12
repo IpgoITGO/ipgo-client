@@ -499,6 +499,42 @@ describe('SettingsPage 표 모양', () => {
 })
 
 describe('SettingsPage 단종 상품', () => {
+  it('계산 중엔 꺼진 상품 켜기만 잠기고, 켜진 상품 끄기는 된다', async () => {
+    server.use(
+      http.put('/api/replenishment-settings', () =>
+        HttpResponse.json({ saved: true, runId: 7124 }),
+      ),
+      http.get('/api/calculation-runs/7124', () =>
+        HttpResponse.json({ runId: 7124, status: 'RUNNING' }),
+      ),
+    )
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/settings']}>
+          <Routes>
+            <Route element={<SettingsPage />} path="/settings" />
+            {/* 계산을 시작하면 대시보드로 가므로, 같은 화면으로 받아 계산 중 모습을 본다 */}
+            <Route element={<SettingsPage />} path="/dashboard" />
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    await screen.findByRole('switch', { name: '케어트릿 120g 사용' })
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    expect(
+      await screen.findByText(
+        '계산 중이라 꺼진 상품 켜기는 잠겨 있어요 · 끝나면 저절로 풀려요',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('switch', { name: '단종 간식 30g 사용' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('switch', { name: '케어트릿 120g 사용' }),
+    ).toBeEnabled()
+  })
+
   it('꺼 둔 상품은 조건 칸이 잠기고, 다시 켜면 풀린다', async () => {
     const user = userEvent.setup()
     render(

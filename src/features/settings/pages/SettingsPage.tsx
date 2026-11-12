@@ -550,7 +550,17 @@ export function SettingsPage() {
             </div>
           </div>
           <div className={styles.useNote}>
-            <p>원가는 엑셀 열을 복사해 첫 칸에 붙여 넣으면 아래로 채워져요.</p>
+            {/* 계산 중엔 꺼진 상품 켜기만 잠긴다(켜면 서버가 새 계산을 시작해서). 끄기는 된다(11/12).
+                같은 한 줄 자리에서 글만 바뀌어 표가 안 밀린다 */}
+            {calculationBusy && products.some((item) => !item.isActive) ? (
+              <p className={styles.lockNote}>
+                계산 중이라 꺼진 상품 켜기는 잠겨 있어요 · 끝나면 저절로 풀려요
+              </p>
+            ) : (
+              <p>
+                원가는 엑셀 열을 복사해 첫 칸에 붙여 넣으면 아래로 채워져요.
+              </p>
+            )}
             <span aria-live="polite" className={styles.savedNotice}>
               {savedNotice}
             </span>
@@ -611,8 +621,12 @@ export function SettingsPage() {
                         aria-label={`${product.name} 사용`}
                         checked={product.isActive}
                         className={styles.switch}
+                        data-calc-locked={
+                          (calculationBusy && !product.isActive) || undefined
+                        }
                         disabled={
-                          activeBusy === product.productId || calculationBusy
+                          activeBusy === product.productId ||
+                          (calculationBusy && !product.isActive)
                         }
                         onChange={() => void toggleActive(index)}
                         role="switch"
@@ -757,6 +771,7 @@ export function SettingsPage() {
           <LockedButton>확인하고 계산하기</LockedButton>
         ) : (
           <Button
+            data-calc-locked={calculationBusy || undefined}
             disabled={products.length === 0 || calculationBusy}
             loading={isSubmitting}
             loadingLabel="계산 요청 중"
