@@ -106,6 +106,14 @@ export function billingPost<T>(path: string, key: string, body?: unknown) {
   })
 }
 
+// 카드 발급 전의 내 등록 시도를 닫는다(server #189). 결제창을 닫았거나 실패로 돌아왔을 때만 부른다.
+// 발급 중·결과 미확정이면 서버가 409로 지켜 준다.
+export const cancelRegistration = (id: string) =>
+  billingPost<SessionResult>(
+    `/registration-sessions/${id}/cancel`,
+    newIdempotencyKey(),
+  )
+
 export const getSession = (id: string) =>
   apiRequest<SessionResult>(`/billing/registration-sessions/${id}`)
 
@@ -153,8 +161,9 @@ export const useInvoices = () =>
 export function billingErrorText(error: unknown) {
   if (error instanceof ApiError) {
     if (error.code === 'BILLING_DISABLED') return '결제가 아직 켜지지 않았어요'
+    // 다른 결제 시도(다른 요금제·카드 바꾸기·카드 발급 중)가 아직 안 끝난 것. 승인 중과 같은 뜻이 아니다(#294)
     if (error.code === 'BILLING_IN_PROGRESS')
-      return '결제를 처리하고 있어요. 잠시 뒤에 다시 확인해 주세요'
+      return '이전 결제 시도가 아직 끝나지 않았어요. 1~2분 뒤 다시 해 주세요'
     if (error.code === 'PLAN_PRICE_CHANGED')
       return '요금이 바뀌었어요. 새 금액을 확인하고 다시 눌러 주세요'
     if (error.code === 'BILLING_SESSION_EXPIRED')

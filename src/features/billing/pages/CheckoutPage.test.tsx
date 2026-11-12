@@ -172,6 +172,107 @@ describe('결제', () => {
     ).toBeInTheDocument()
   })
 
+  it('카드창 실패로 돌아오면 그 등록 시도를 닫고, 결제사 코드를 작게 보여 준다(#294)', async () => {
+    const canceled: string[] = []
+    server.use(
+      http.post(
+        '/api/billing/registration-sessions/:id/cancel',
+        ({ params }) => {
+          canceled.push(String(params.id))
+          return HttpResponse.json({ sessionId: params.id, status: 'CANCELED' })
+        },
+      ),
+    )
+    const { router } = await openApp('/plans')
+    await act(() =>
+      router.navigate(
+        '/billing/auth/fail?sessionId=sess_9&state=x&code=REJECT_CARD_COMPANY&message=카드사에서 거절했어요',
+      ),
+    )
+    expect(
+      await screen.findByText('오류 코드 REJECT_CARD_COMPANY'),
+    ).toBeInTheDocument()
+    await vi.waitFor(() => expect(canceled).toEqual(['sess_9']))
+  })
+
+  it('다른 결제 시도가 안 끝났으면(409) "돈은 빠져나가지 않았어요" 없이 안내만(#294)', async () => {
+    server.use(
+      http.post('/api/billing/registration-sessions', () =>
+        HttpResponse.json(
+          { code: 'BILLING_IN_PROGRESS', message: '진행 중' },
+          { status: 409 },
+        ),
+      ),
+    )
+    const { user } = await openApp('/checkout?plan=seller')
+    await user.click(
+      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: '49,000원 결제하기' }),
+    )
+    expect(
+      await screen.findByRole('alert', {}, { timeout: 5000 }),
+    ).toHaveTextContent('이전 결제 시도가 아직 끝나지 않았어요')
+    expect(
+      screen.queryByText('돈은 빠져나가지 않았어요'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('결제창을 닫으면 시도를 닫고, 다시 누르면 닫힌 키 대신 새 키로 한 번 더 연다(#294)', async () => {
+    const keys: string[] = []
+    let canceled = false
+    server.use(
+      http.post('/api/billing/registration-sessions', ({ request }) => {
+        const key = request.headers.get('Idempotency-Key') ?? ''
+        keys.push(key)
+        if (canceled && key === keys[0])
+          return HttpResponse.json(
+            { code: 'BILLING_SESSION_CANCELED', message: '닫힌 시도' },
+            { status: 409 },
+          )
+        return HttpResponse.json(
+          {
+            sessionId: 'sess_x',
+            customerKey: 'c',
+            state: 's',
+            expiresAt: '2099-01-01T00:00:00Z',
+            successUrl: '/billing/auth/success',
+            failUrl: '/billing/auth/fail',
+          },
+          { status: 201 },
+        )
+      }),
+      http.post('/api/billing/registration-sessions/:id/cancel', () => {
+        canceled = true
+        return HttpResponse.json({ sessionId: 'sess_x', status: 'CANCELED' })
+      }),
+    )
+    vi.mocked(openCardWindow).mockResolvedValue('cancelled')
+    const { user } = await openApp('/checkout?plan=seller')
+    await user.click(
+      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
+    )
+    const pay = await screen.findByRole('button', {
+      name: '49,000원 결제하기',
+    })
+    await user.click(pay)
+    await vi.waitFor(
+      () =>
+        expect({
+          keys: keys.length,
+          canceled,
+          opened: vi.mocked(openCardWindow).mock.calls.length,
+        }).toEqual({ keys: 1, canceled: true, opened: 1 }),
+      { timeout: 5000 },
+    )
+    await vi.waitFor(() => expect(pay).toBeEnabled(), { timeout: 5000 })
+    await user.click(pay)
+    // 두 번째 누름: 첫 키는 닫혀서(취소 때 지움) 새 키로 바로 연다
+    await vi.waitFor(() => expect(keys).toHaveLength(2), { timeout: 5000 })
+    expect(keys[1]).not.toBe(keys[0])
+  })
+
   it('주소의 요금제가 틀리면 요금제 화면으로', async () => {
     await openApp('/checkout?plan=trial')
     expect(
