@@ -145,11 +145,10 @@ export type DashboardData = {
 }
 
 // 숫자 상자 = 아래 목록을 고르는 탭. 고른 상자는 주소(?tab=)에 남는다.
-// 11/10: 계산 불가·검산 제외를 "계산 못 해요" 한 장으로 합치고, 목록 위 줄에 "전체"를 둔다
-const TABS = ['need', 'safe', 'na'] as const
-type CardTab = (typeof TABS)[number]
-type Tab = CardTab | 'all'
-const LIST_TABS: Tab[] = ['all', 'need', 'safe', 'na']
+// 11/12: 상자 4장(전체·지금 넣어야·괜찮아요·계산 못 해요)이 곧 탭. 아래 탭 줄은 뺐다(같은 숫자를 두 번 보여 줘서)
+const TABS = ['all', 'need', 'safe', 'na'] as const
+type Tab = (typeof TABS)[number]
+const LIST_TABS: readonly Tab[] = TABS
 // 여유(소진일 − 오늘 − 리드타임)가 이 날수 이하면 "곧 넣어야 해요"
 const SOON_DAYS = 7
 // 이 이상이면 품절 위험 숫자를 빨갛게(상품 상세 시나리오 카드와 같은 20%)
@@ -171,7 +170,7 @@ function SummaryCard({
   onSelect: () => void
   selected: boolean
   state: string
-  tab: CardTab
+  tab: Tab
   value: number
 }) {
   const shown = useCountUp(value)
@@ -314,12 +313,6 @@ const PANEL_DESCRIPTION: Record<Tab, string> = {
   all: '올린 수불부의 상품 전체예요. 급한 순으로 묶어 보여 줘요.',
 }
 
-const LIST_LABEL: Record<Tab, string> = {
-  all: '전체',
-  need: '지금 넣기',
-  safe: '괜찮아요',
-  na: '계산 못 해요',
-}
 const KIND_LABEL = { need: '지금 넣기', safe: '괜찮아요', na: '계산 못 해요' }
 
 // 2026-11-07 · 2026. 11. 7 → 11/7
@@ -453,7 +446,7 @@ export function DashboardPage() {
     const step = { ArrowRight: 1, ArrowLeft: TABS.length - 1 }[event.key]
     if (!step) return
     event.preventDefault()
-    const at = tab === 'all' ? 0 : TABS.indexOf(tab)
+    const at = TABS.indexOf(tab)
     const next = TABS[(at + step) % TABS.length]
     selectTab(next)
     document.getElementById(`dashboard-tab-${next}`)?.focus()
@@ -858,6 +851,7 @@ export function DashboardPage() {
         >
           {(
             [
+              ['all', '전체', tabCount.all, 'all', '올린 상품 모두'],
               [
                 'need',
                 '지금 넣어야 해요',
@@ -971,36 +965,14 @@ export function DashboardPage() {
         />
       ) : (
         <section
-          aria-labelledby={
-            tab === 'all' ? 'dashboard-list-all' : `dashboard-tab-${tab}`
-          }
+          aria-labelledby={`dashboard-tab-${tab}`}
           className={styles.panel}
           data-tab={tab}
           id="dashboard-list"
           ref={keepTallest}
           role="tabpanel"
         >
-          {tab !== 'all' && (
-            <span aria-hidden="true" className={styles.notch} />
-          )}
-          {/* 위 카드 셋 + "전체". 카드를 누르지 않아도 전체를 한 표로 본다(11/10) */}
-          <div
-            aria-label="목록 고르기"
-            className={styles.listTabs}
-            role="group"
-          >
-            {LIST_TABS.map((key) => (
-              <button
-                aria-pressed={tab === key}
-                id={`dashboard-list-${key}`}
-                key={key}
-                onClick={() => selectTab(key)}
-                type="button"
-              >
-                {LIST_LABEL[key]} <b>{tabCount[key].toLocaleString()}</b>
-              </button>
-            ))}
-          </div>
+          <span aria-hidden="true" className={styles.notch} />
           <div className={styles.sectionHeader}>
             <div>
               <h2>

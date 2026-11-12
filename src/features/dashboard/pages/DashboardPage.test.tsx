@@ -528,7 +528,7 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('tabpanel')).not.toHaveTextContent(/기초|기말/)
 
     // 목록 위 "전체": 상태와 함께 모든 상품을 한 표로
-    await user.click(screen.getByRole('button', { name: /^전체/ }))
+    await user.click(screen.getByRole('tab', { name: /^전체/ }))
     expect(screen.getByRole('tabpanel')).toHaveTextContent('전체 상품')
     expect(screen.getAllByText('계산 못 해요').length).toBeGreaterThan(1)
 
@@ -752,7 +752,7 @@ describe('주문까지 칸', () => {
     )
     const user = userEvent.setup()
     renderSafe()
-    await user.click(await screen.findByRole('button', { name: /^전체/ }))
+    await user.click(await screen.findByRole('tab', { name: /^전체/ }))
     expect(screen.queryByLabelText('여유상품 수량')).not.toBeInTheDocument()
     await user.click(screen.getByLabelText('여유상품 발주 목록에 넣기'))
     await user.type(screen.getByLabelText('여유상품 수량'), '3a0')
