@@ -93,6 +93,10 @@ MSW의 인증 mock(`src/auth/mocks/handlers.ts`)도 같은 규칙을 따릅니�
 /api/settings/storage-cost`, `PUT·DELETE /api/products/{productId}/box`). 칸을 벗어나면 바로 저장하며, 한 달
 보관비는 `상자 CBM × 권장 입고량 × 요율`로 화면에서 계산합니다(`src/features/settings/model/storageCost.ts`).
 
+막 가입해 수불부가 없는 첫 대시보드에서는 요금제 카드 3장 창을 띄우고, 고르기 전엔 바깥 누르기·Esc·
+뒤 화면이 막힙니다(`src/features/billing/components/PlanGate.tsx`). 체험을 고르면 시작 확인 창을 보이고
+이 브라우저에 기억합니다(`ipgo:plan-picked:<이메일>`). 서버가 고른 시각을 주면(server #198) 그 값으로 바꿉니다.
+
 요금제(`/plans`)·결제(`/checkout?plan=seller|business`)·내 계정(`/account`)은 서버 결제 API로
 요금제·구독·결제 수단·청구 내역을 읽습니다. 토스 카드 등록 후 서버의 세션 조회에서 승인 성공을
 확인해야 결제 완료로 안내합니다. 등록 완료 응답이 유실돼도 같은 세션을 조회하며, 결과가

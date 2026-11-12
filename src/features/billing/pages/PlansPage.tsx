@@ -23,7 +23,6 @@ const md = (iso: string) =>
 export function PlansPage() {
   const navigate = useNavigate()
   const { data: subscription, isError } = useSubscription()
-  const serverPlans = usePlans().data
   if (!subscription) {
     return (
       <p className={styles.footnote}>
@@ -32,7 +31,6 @@ export function PlansPage() {
     )
   }
   const daysLeft = trialDaysLeft(subscription)
-  const failed = !!paymentProblem(subscription)
   const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
   const ended = trial && daysLeft <= 0
@@ -120,125 +118,151 @@ export function PlansPage() {
         )}
       </section>
 
-      <ul
-        aria-label="요금제"
-        className={styles.plans}
-        data-rise=""
-        id="plan-cards"
-      >
-        {PLANS.map((plan) => {
-          const current = plan.id === subscription.planId && !paidEnded
-          // 가격은 서버 요금제 값이 기준(서버가 바꾸면 그대로 따라간다)
-          const price =
-            serverPlans?.find((p) => p.planId === plan.id)?.amount ?? plan.price
-          return (
-            <li
-              className={styles.plan}
-              data-current={(current && !ended) || undefined}
-              data-ended={(current && ended) || undefined}
-              data-plan={plan.id}
-              data-recommended={plan.recommended || undefined}
-              data-sunset={(plan.id === 'seller' && ended) || undefined}
-              key={plan.id}
-            >
-              {current && !ended && (
-                <span className={styles.ribbon}>지금 쓰는 중</span>
-              )}
-              {current && ended && (
-                <span className={styles.endStamp}>체험 끝</span>
-              )}
-              <h2>
-                {plan.name}
-                {plan.recommended && (
-                  <span className={styles.recoBadge}>
-                    추천<span className={styles.srOnly}> 요금제</span>
-                  </span>
-                )}
-                {current && failed && (
-                  <span className={styles.nowBadge} data-warn>
-                    결제 안 됨
-                  </span>
-                )}
-              </h2>
-              <p className={styles.price}>
-                {price.toLocaleString('ko-KR')}
-                <small>{price > 0 ? '원/월' : '원'}</small>
-              </p>
-              {current && trial && !ended && (
-                <div className={styles.days}>
-                  <span
-                    aria-hidden="true"
-                    className={styles.dayCells}
-                    data-soon={soon || undefined}
-                  >
-                    {Array.from({ length: TRIAL_DAYS }, (_, i) => (
-                      <i
-                        data-used={i < TRIAL_DAYS - daysLeft || undefined}
-                        key={i}
-                      />
-                    ))}
-                  </span>
-                  <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
-                </div>
-              )}
-              <p className={styles.planNote}>{plan.note}</p>
-              <dl className={styles.compare}>
-                {COMPARE.map((row) => {
-                  const value = row.value(plan)
-                  return (
-                    <div
-                      data-highlight={row.highlight || undefined}
-                      key={row.label}
-                    >
-                      <dt>{row.label}</dt>
-                      <dd
-                        data-after={
-                          row.highlight
-                            ? plan.id === 'trial'
-                              ? 'stop'
-                              : 'go'
-                            : undefined
-                        }
-                        data-none={value == null || undefined}
-                      >
-                        {value ?? '—'}
-                      </dd>
-                    </div>
-                  )
-                })}
-              </dl>
-              {plan.id === 'trial' ? (
-                <Button disabled variant="secondary">
-                  {current
-                    ? daysLeft > 0
-                      ? `체험 중 · ${daysLeft}일 남음`
-                      : '체험 끝남'
-                    : '체험은 한 번만'}
-                </Button>
-              ) : current && failed ? (
-                <Button onClick={() => navigate('/account')}>
-                  다시 결제하기
-                </Button>
-              ) : current ? (
-                <Button disabled variant="secondary">
-                  쓰는 중
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => navigate(`/checkout?plan=${plan.id}`)}
-                  variant={plan.recommended ? 'primary' : 'secondary'}
-                >
-                  {plan.name}로 시작하기
-                </Button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+      <PlanCards subscription={subscription} />
       <p className={styles.footnote}>
         가격은 부가세 포함이에요. 매달 같은 날 자동으로 결제되고, 내 계정에서
         언제든 해지할 수 있어요.
       </p>
     </div>
+  )
+}
+
+// 요금제 카드 3장. 요금제 화면과 첫 대시보드의 요금제 고르기 창이 같이 쓴다.
+// onTrial이 있으면 체험 카드 버튼이 "14일 체험으로 시작"이 된다.
+export function PlanCards({
+  subscription,
+  onTrial,
+}: {
+  subscription: NonNullable<ReturnType<typeof useSubscription>['data']>
+  onTrial?: () => void
+}) {
+  const navigate = useNavigate()
+  const serverPlans = usePlans().data
+  const daysLeft = trialDaysLeft(subscription)
+  const failed = !!paymentProblem(subscription)
+  const paidEnded = subscription.status === 'CANCELED'
+  const trial = subscription.planId === 'trial'
+  const ended = trial && daysLeft <= 0
+  const soon = trial && daysLeft > 0 && daysLeft <= 3
+  return (
+    <ul
+      aria-label="요금제"
+      className={styles.plans}
+      data-rise=""
+      id="plan-cards"
+    >
+      {PLANS.map((plan) => {
+        const current = plan.id === subscription.planId && !paidEnded
+        // 가격은 서버 요금제 값이 기준(서버가 바꾸면 그대로 따라간다)
+        const price =
+          serverPlans?.find((p) => p.planId === plan.id)?.amount ?? plan.price
+        return (
+          <li
+            className={styles.plan}
+            data-current={(current && !ended) || undefined}
+            data-ended={(current && ended) || undefined}
+            data-plan={plan.id}
+            data-recommended={plan.recommended || undefined}
+            data-sunset={(plan.id === 'seller' && ended) || undefined}
+            key={plan.id}
+          >
+            {current && !ended && !onTrial && (
+              <span className={styles.ribbon}>지금 쓰는 중</span>
+            )}
+            {current && ended && (
+              <span className={styles.endStamp}>체험 끝</span>
+            )}
+            <h2>
+              {plan.name}
+              {plan.recommended && (
+                <span className={styles.recoBadge}>
+                  추천<span className={styles.srOnly}> 요금제</span>
+                </span>
+              )}
+              {current && failed && (
+                <span className={styles.nowBadge} data-warn>
+                  결제 안 됨
+                </span>
+              )}
+            </h2>
+            <p className={styles.price}>
+              {price.toLocaleString('ko-KR')}
+              <small>{price > 0 ? '원/월' : '원'}</small>
+            </p>
+            {current && trial && !ended && !onTrial && (
+              <div className={styles.days}>
+                <span
+                  aria-hidden="true"
+                  className={styles.dayCells}
+                  data-soon={soon || undefined}
+                >
+                  {Array.from({ length: TRIAL_DAYS }, (_, i) => (
+                    <i
+                      data-used={i < TRIAL_DAYS - daysLeft || undefined}
+                      key={i}
+                    />
+                  ))}
+                </span>
+                <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
+              </div>
+            )}
+            <p className={styles.planNote}>{plan.note}</p>
+            <dl className={styles.compare}>
+              {COMPARE.map((row) => {
+                const value = row.value(plan)
+                return (
+                  <div
+                    data-highlight={row.highlight || undefined}
+                    key={row.label}
+                  >
+                    <dt>{row.label}</dt>
+                    <dd
+                      data-after={
+                        row.highlight
+                          ? plan.id === 'trial'
+                            ? 'stop'
+                            : 'go'
+                          : undefined
+                      }
+                      data-none={value == null || undefined}
+                    >
+                      {value ?? '—'}
+                    </dd>
+                  </div>
+                )
+              })}
+            </dl>
+            {plan.id === 'trial' && onTrial && current && !ended ? (
+              <Button onClick={onTrial} variant="secondary">
+                14일 체험으로 시작
+              </Button>
+            ) : plan.id === 'trial' ? (
+              <Button disabled variant="secondary">
+                {current
+                  ? daysLeft > 0
+                    ? `체험 중 · ${daysLeft}일 남음`
+                    : '체험 끝남'
+                  : '체험은 한 번만'}
+              </Button>
+            ) : current && failed ? (
+              <Button onClick={() => navigate('/account')}>
+                다시 결제하기
+              </Button>
+            ) : current ? (
+              <Button disabled variant="secondary">
+                쓰는 중
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate(`/checkout?plan=${plan.id}`)}
+                variant={plan.recommended ? 'primary' : 'secondary'}
+              >
+                {plan.name}로 시작하기
+              </Button>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

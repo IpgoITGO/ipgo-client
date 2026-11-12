@@ -58,3 +58,7 @@
     transform: translateY(12px) scale(0.98);
   }
 }
+
+.dialog[data-wide] {
+  width: min(100%, 980px);
+}
