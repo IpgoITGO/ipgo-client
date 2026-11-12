@@ -42,7 +42,8 @@ export function CalcLockHint() {
     <div
       aria-hidden="true"
       className={styles.hint}
-      style={{ transform: `translate(${at.x + 14}px, ${at.y + 18}px)` }}
+      // 화살표 커서 바로 오른쪽 아래에 붙인다(11/12 — 떨어져 있으면 더 번잡해 보임)
+      style={{ transform: `translate(${at.x + 11}px, ${at.y + 11}px)` }}
     >
       <CalcMark state="running" />
       <span>계산 중이에요</span>
