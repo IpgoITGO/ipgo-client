@@ -34,7 +34,7 @@ import {
 import { niceStep, tickText } from '../model/trendScale'
 import { ShiftPopup } from '../../dashboard/ui/DemandShift'
 import { useDemandShift } from '../../dashboard/model/dashboardApi'
-import { surgeQuantity } from '../../dashboard/model/weekly'
+import { surgeQuantity, weeklyFromHistory } from '../../dashboard/model/weekly'
 import styles from './SkuPage.module.css'
 
 type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
@@ -1520,6 +1520,7 @@ export function SkuPage() {
           recent: shift.recentDailyQty,
           baseline: shift.baselineDailyQty,
           quantity: surgeQty,
+          weeks: weeklyFromHistory(data.history),
         }
       : null
   // 보관 비용(#185): 입고 조건에서 넣은 상자 크기·요율로 권장 수량을 한 달 둘 때

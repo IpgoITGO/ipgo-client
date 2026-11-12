@@ -123,6 +123,73 @@ export function ShiftChart({
   )
 }
 
+// 시나리오 "최근 판매 속도라면" 카드 안(11/12): 손글씨 대신 그래프에 직접 적어 설득 — 평소 기준선 + 이번 주 막대 숫자
+export function SurgeCardChart({
+  weeks,
+  baseline,
+  name,
+}: {
+  weeks: Week[]
+  baseline: number
+  name: string
+}) {
+  const w = 200
+  const h = 118
+  const top = 20
+  const bottom = 16
+  const last = weeks[weeks.length - 1]
+  const max = Math.max(...weeks.map((week) => week.avg), baseline, 1) * 1.05
+  const bw = w / Math.max(weeks.length, 1)
+  const y = (value: number) => h - bottom - (value / max) * (h - bottom - top)
+  return (
+    <svg
+      aria-label={`${name} 최근 ${weeks.length}주 하루 평균 판매. 평소 하루 ${baseline}개, 이번 주 ${last.avg}개`}
+      className={styles.chart}
+      role="img"
+      viewBox={`0 0 ${w} ${h}`}
+    >
+      {weeks.map((week, i) => {
+        const bh = Math.max(2, h - bottom - y(week.avg))
+        return (
+          <rect
+            className={i === weeks.length - 1 ? styles.now : styles.bar}
+            height={bh}
+            key={week.end}
+            rx={2}
+            width={bw * 0.64}
+            x={i * bw + bw * 0.18}
+            y={h - bottom - bh}
+          />
+        )
+      })}
+      <line
+        className={styles.base}
+        x1={0}
+        x2={w}
+        y1={y(baseline)}
+        y2={y(baseline)}
+      />
+      <text className={styles.baseLabel} x={0} y={y(baseline) - 4}>
+        평소 하루 {baseline}개
+      </text>
+      <text
+        className={styles.nowLabel}
+        textAnchor="end"
+        x={w}
+        y={y(last.avg) - 6}
+      >
+        이번 주 {last.avg}개
+      </text>
+      <text className={styles.tick} x={0} y={h - 2}>
+        {monthDay(weeks[0].end)}
+      </text>
+      <text className={styles.tick} textAnchor="end" x={w} y={h - 2}>
+        {monthDay(last.end)}
+      </text>
+    </svg>
+  )
+}
+
 function shiftTitle(name: string, shift: DemandShift) {
   return shift.direction === 'UP'
     ? `${name}이 평소보다 ${Math.round(shift.ratio)}배 팔렸어요`

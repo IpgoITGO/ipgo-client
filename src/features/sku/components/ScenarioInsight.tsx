@@ -3,6 +3,8 @@ import { type FormEvent, useCallback, useMemo, useState } from 'react'
 
 import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
+import { SurgeCardChart } from '../../dashboard/ui/DemandShift'
+import type { Week } from '../../dashboard/model/weekly'
 import { shortExpiry, useExpiry } from '../../expiry/model/expiryApi'
 import {
   monthlyStorageCost,
@@ -129,6 +131,8 @@ export function ScenarioInsight({
     recent: number
     baseline: number
     quantity: number
+    /** 주별 하루 평균(상품 상세 90일). 4주 이상이면 카드 안 그래프 */
+    weeks?: Week[]
   } | null
 }) {
   // 서버는 기준일이 7일 넘게 지난 계산에는 직접 수량 비교를 받지 않는다(SCENARIO_STALE) → 누르기 전에 알린다
@@ -607,20 +611,17 @@ export function ScenarioInsight({
                   <strong className={styles.quantity}>
                     {surge.quantity.toLocaleString()}개
                   </strong>
-                  <div className={styles.surgeCompare}>
-                    <p>
-                      <span className={styles.hand}>{surge.baseline}개</span>
-                      <svg aria-hidden="true" viewBox="0 0 44 12">
-                        <path d="M2 6 Q20 2 38 6" />
-                        <path d="M33 2 L40 6 L33 10" />
-                      </svg>
-                      <span className={styles.handNow}>{surge.recent}개</span>
+                  {surge.weeks && surge.weeks.length >= 4 ? (
+                    <SurgeCardChart
+                      baseline={surge.baseline}
+                      name="최근 판매 속도"
+                      weeks={surge.weeks}
+                    />
+                  ) : (
+                    <p className={styles.surgeCompare}>
+                      평소 하루 {surge.baseline}개 → 이번 주 {surge.recent}개
                     </p>
-                    <p className={styles.surgeCaption}>
-                      <span>평소 하루</span>
-                      <span>이번 주 하루</span>
-                    </p>
-                  </div>
+                  )}
                   <p className={styles.note}>
                     최근 7일 속도로 다음 입고까지 버틸 양이에요
                   </p>

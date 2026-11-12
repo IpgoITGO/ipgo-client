@@ -666,41 +666,14 @@
   transform: rotate(3deg);
   clip-path: polygon(0 10%, 5% 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 55%);
 }
-/* AI 인사이트 메모와 같은 손글씨 비교 */
+/* 그래프가 없을 때(기록 4주 미만) 한 줄 · 카드 안 문장은 말 중간에서 안 꺾이게 */
 .surgeCompare {
-  display: grid;
-  align-content: center;
-}
-.surgeCompare p {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-self: center;
   margin: 0;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
 }
-.surgeCompare svg {
-  width: 40px;
-  height: 12px;
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-width: 1.6;
-}
-.hand,
-.handNow {
-  font-family: 'Nanum Pen Script', cursive;
-  line-height: 1.1;
-}
-.hand {
-  color: var(--color-text-3);
-  font-size: 24px;
-}
-.handNow {
-  padding: 0 4px;
-  color: var(--color-primary);
-  font-size: 30px;
-  background: linear-gradient(transparent 55%, #cfe0f5 55%);
-}
-.surgeCompare .surgeCaption {
-  justify-content: space-between;
-  color: var(--color-text-3);
-  font-size: 11px;
+.surgeCard .note {
+  word-break: keep-all;
+  text-wrap: balance;
 }
