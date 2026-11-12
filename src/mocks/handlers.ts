@@ -282,6 +282,34 @@ const NEEDED_ITEMS = [
   },
 ]
 
+// 실데이터 9월 비건쿠키 블루베리와 같은 모양(주별 하루 평균): 평소 0~0.7개, 지난 입고 뒤 마지막 주만 하루 4개.
+// 작년 같은 주도 실데이터 값. 하루 기록 91일(13주)로 펼친다.
+const SHIFT_WEEKS = [0.4, 0.4, 0, 0.7, 0.1, 0.4, 0, 0.3, 0, 0, 0.1, 0.4, 4]
+const SHIFT_LAST_YEAR = [
+  0.4, 0.6, 0.4, 0.1, 1, 1.3, 1, 1.6, 0.7, 0.4, 0.1, 0.7, 1.3,
+]
+function spread(avg: number, day: number) {
+  // 한 주 합계를 앞 요일부터 하루 1개씩(급증 주는 고르게)
+  const total = Math.round(avg * 7)
+  return Math.floor(total / 7) + (day < total % 7 ? 1 : 0)
+}
+function shiftTrend() {
+  let stock = 30
+  return Array.from({ length: 91 }, (_, i) => {
+    const week = Math.floor(i / 7)
+    const outboundQty = spread(SHIFT_WEEKS[week], i % 7)
+    if (week === 11 && i % 7 === 0) stock += 20 // 지난 입고 20개
+    stock = Math.max(0, stock - outboundQty)
+    return {
+      date: isoFromToday(i - 91),
+      closingQty: stock,
+      outboundQty,
+      lastYearOutboundQty: spread(SHIFT_LAST_YEAR[week], i % 7),
+      isValidObservation: stock > 0,
+    }
+  })
+}
+
 function isoFromToday(n: number) {
   const date = new Date()
   date.setDate(date.getDate() + n)
@@ -842,18 +870,21 @@ export const handlers = [
       trend:
         id === 'no-trend'
           ? []
-          : days.map(([date, closingQty, outboundQty], index) => {
-              const soldOut =
-                needed !== undefined &&
-                needed.shortage < 0 &&
-                index === days.length - 1
-              return {
-                date,
-                closingQty: soldOut ? 0 : closingQty,
-                outboundQty,
-                isValidObservation: !soldOut && closingQty > 0,
-              }
-            }),
+          : // 판매 급변 팝업 그래프를 브라우저에서 볼 수 있게(11/12): 케어트릿(1)은 91일 하루 기록. 테스트는 짧은 주별 그대로
+            id === '1' && import.meta.env.MODE !== 'test'
+            ? shiftTrend()
+            : days.map(([date, closingQty, outboundQty], index) => {
+                const soldOut =
+                  needed !== undefined &&
+                  needed.shortage < 0 &&
+                  index === days.length - 1
+                return {
+                  date,
+                  closingQty: soldOut ? 0 : closingQty,
+                  outboundQty,
+                  isValidObservation: !soldOut && closingQty > 0,
+                }
+              }),
     })
   }),
   // K2 시나리오(명세 3.7 · ERD scenario_results). zero-recommendation = 권장량 0개라 비교표 없음
