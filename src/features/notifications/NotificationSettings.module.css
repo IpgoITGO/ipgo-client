@@ -1,0 +1,28 @@
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-card);
+}
+
+.panel h2,
+.panel p {
+  margin: 0;
+}
+.panel label {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.panel select,
+.panel button {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

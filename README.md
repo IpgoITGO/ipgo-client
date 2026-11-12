@@ -413,3 +413,24 @@ VITE_TOSS_CLIENT_KEY에는 같은 상점·환경의 test_gck_ 클라이언트 �
 유효 이용권 중 중복 구매/요금제 변경은 지원하지 않습니다. 최신 결제의 전액 취소는 기존 계정 화면에서 제공합니다.
 서버 V27·일반결제 모드와 함께 배포해야 하며 배포/Secret 변경은 별도 승인입니다.
 SDK stub·합성 API 화면 테스트는 실제 PG 승인/입금/환불 성공과 구분합니다.
+
+## 발주 필요 브라우저 알림 (#324 / IPGO-229)
+
+내 계정의 **발주 필요 알림**에서 받을 정시를 고르고 “알림 켜고 이 브라우저 연결”을 누릅니다.
+브라우저 권한을 허용해야 수신 설정을 켭니다. 기본은 꺼짐/9시/Asia/Seoul이며 저장된 시간대를 표시합니다.
+다중 기기에서는 각 브라우저를 연결해야 하고, “알림 끄기”는 모든 기기의 하루 1회 수신 설정을 끄고 현재 브라우저를 해제합니다.
+로그아웃 전에 본인 endpoint의 서버 연결과 브라우저 구독을 해제합니다. 서버 해제가 실패해도 native unsubscribe가 성공하면 로그아웃을 계속합니다.
+둘 다 실패하면 로그아웃을 막고 기존 로컬 로그아웃 선택 경로에서도 브라우저 해제를 시도합니다.
+로그인/구독 변경 뒤 이미 권한을 허용한 브라우저는 켜진 수신 설정에 한해 재등록합니다. 자동으로 권한 팝업을 띄우거나 수신 설정을 켜지 않습니다.
+
+서버 계약은 `/notifications/settings` GET/PATCH, `/push/public-key` GET, `/push/subscriptions` POST/DELETE입니다.
+공개키가 없으면 연결을 막고 준비 중으로 안내합니다. 실제 사이트의 HTTPS PC Chrome/Edge/Firefox/Safari가 첫 대상이며 iPhone Safari는 제외합니다.
+`VITE_ENABLE_MSW=true`에서는 연결을 막아 root scope의 `/mockServiceWorker.js`와 충돌하지 않습니다.
+실제 worker는 `/push-sw.js`이며 `daily-기기발송ID` payload만 표시하고 클릭은 같은 사이트 `/dashboard`로만 이동합니다.
+endpoint·키·인증 token을 localStorage에 저장하거나 로그에 출력하지 않습니다.
+
+서버의 자동 worker 활성화와 V28 적용 전에는 구독/설정만 가능하며 자동 알림은 오지 않습니다.
+발주 필요 상품이 없거나 계산이 오래됐거나 갱신 중이면 발송하지 않고, 공급자 수락과 실제 OS 표시를 구분합니다.
+시험 Preview에서 허용했던 권한은 이 사이트에 적용되지 않으므로 기존 개발 사이트에서도 한 번 연결해야 합니다.
+합성 검사는 `npm exec vitest -- run src/features/notifications`와 `node --test scripts/verification/push-sw.node-test.mjs`로 실행합니다.
+개발 배포 후 사이트를 닫은 상태의 실제 수신·클릭 이동은 동의한 시험 기기에서 별도로 확인합니다.
