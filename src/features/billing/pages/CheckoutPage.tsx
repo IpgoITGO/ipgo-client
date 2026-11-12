@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../../auth/model/useAuth'
+import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
 import { type PlanId, planOf } from '../model/billing'
@@ -50,18 +51,22 @@ export function CheckoutPage() {
   const serverPlan = usePlans().data?.find((p) => p.planId === planId)
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 409 BILLING_IN_PROGRESS는 돈이 나간 게 아니라 다른 시도가 안 끝난 것: 안심 문구 없이 안내만(#294)
+  const [inProgress, setInProgress] = useState(false)
   const [closed, setClosed] = useState(false)
   const start = useCardRegistration({ email: user?.email, name: user?.name })
   // 누르는 즉시 잠가 두 번 결제되지 않게 한다.
   const { isPending, run: pay } = useActionLock(async () => {
     if (!plan) return
     setError(null)
+    setInProgress(false)
     setClosed(false)
     try {
       if ((await start('START_SUBSCRIPTION', plan.id)) === 'cancelled') {
         setClosed(true)
       }
     } catch (e) {
+      setInProgress(e instanceof ApiError && e.code === 'BILLING_IN_PROGRESS')
       setError(billingErrorText(e))
       void queryClient.invalidateQueries({
         queryKey: ['billing', 'subscription'],
@@ -80,7 +85,12 @@ export function CheckoutPage() {
       <Steps at={1} />
       <h1 className={styles.srOnly}>결제</h1>
 
-      {error && (
+      {error && inProgress && (
+        <p className={styles.info} role="alert">
+          {error}
+        </p>
+      )}
+      {error && !inProgress && (
         <div className={styles.safe} role="alert">
           <span aria-hidden="true">✓</span>
           <span className={styles.safeText}>

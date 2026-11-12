@@ -423,6 +423,14 @@ fieldset.block legend.label {
   font-weight: 400;
 }
 
+/* 실패 화면의 결제사 오류 코드: 원인 확인용으로 작게(#294) */
+.code {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .info {
   margin: 0;
   padding: var(--space-3) var(--space-4);

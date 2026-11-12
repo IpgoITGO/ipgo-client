@@ -121,7 +121,13 @@ type State = {
   invoices: Invoice[]
   sessions: Map<
     string,
-    { purpose: string; planId?: string; gets: number } & SessionResult
+    {
+      purpose: string
+      planId?: string
+      gets: number
+      /** 이 등록을 만든 요청 키들(같은 키를 다시 보내면 같은 세션, 닫힌 세션이면 409) */
+      keys: string[]
+    } & SessionResult
   >
   lastDemo: Demo | null
 }
@@ -305,19 +311,40 @@ export const billingHandlers = [
         return fail(409, 'PLAN_PRICE_CHANGED', '요금이 바뀌었어요.')
       }
     }
-    const sessionId = `sess_${state.sessions.size + 1}`
+    // server #189: 같은 키는 같은 세션(닫혔으면 CANCELED/EXPIRED 409), 열린 같은 목적·요금제는 새 키여도 이어받기, 다르면 409
+    const key = request.headers.get('Idempotency-Key') ?? ''
+    const byKey = [...state.sessions.values()].find((item) =>
+      item.keys.includes(key),
+    )
+    if (byKey && byKey.status === 'CANCELED')
+      return fail(409, 'BILLING_SESSION_CANCELED', '닫힌 결제 시도예요.')
+    if (byKey && byKey.status === 'EXPIRED')
+      return fail(409, 'BILLING_SESSION_EXPIRED', '시간이 지난 결제 시도예요.')
+    const open = [...state.sessions.values()].find(
+      (item) => item.status === 'OPEN',
+    )
+    if (open && (open.purpose !== body.purpose || open.planId !== body.planId))
+      return fail(
+        409,
+        'BILLING_IN_PROGRESS',
+        '이전 결제 시도가 아직 끝나지 않았어요.',
+      )
+    const sessionId = open?.sessionId ?? `sess_${state.sessions.size + 1}`
     const customerKey = 'cust_mock'
     const sessionState = `state_${sessionId}`
-    state.sessions.set(sessionId, {
-      sessionId,
-      purpose: body.purpose,
-      planId: body.planId,
-      status: 'OPEN',
-      invoiceId: null,
-      paymentStatus: null,
-      errorCode: null,
-      gets: 0,
-    })
+    if (open) open.keys.push(key)
+    else
+      state.sessions.set(sessionId, {
+        keys: [key],
+        sessionId,
+        purpose: body.purpose,
+        planId: body.planId,
+        status: 'OPEN',
+        invoiceId: null,
+        paymentStatus: null,
+        errorCode: null,
+        gets: 0,
+      })
     const origin = new URL(request.url).origin
     const query = `sessionId=${sessionId}&state=${sessionState}`
     return HttpResponse.json(
@@ -332,6 +359,21 @@ export const billingHandlers = [
       { status: 201 },
     )
   }),
+  // server #189 등록 취소: 열린 시도만 닫는다(발급 중·결과 미확정은 409), 반복해도 같은 결과
+  http.post(
+    '/api/billing/registration-sessions/:id/cancel',
+    ({ request, params }) => {
+      if (!mockAccountKey(request)) return unauthorized()
+      const rejected = badKey(request)
+      if (rejected) return rejected
+      const session = state.sessions.get(String(params.id))
+      if (!session) return fail(404, 'NOT_FOUND', '세션을 찾을 수 없어요.')
+      if (session.status === 'OPEN') session.status = 'CANCELED'
+      else if (session.status !== 'CANCELED' && session.status !== 'EXPIRED')
+        return fail(409, 'BILLING_IN_PROGRESS', '결제를 확인하고 있어요.')
+      return HttpResponse.json(sessionBody(session))
+    },
+  ),
   http.post(
     '/api/billing/registration-sessions/:id/complete',
     async ({ request, params }) => {

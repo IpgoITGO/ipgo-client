@@ -6,6 +6,7 @@ import { Button } from '../../../shared/ui/Button/Button'
 import { Confetti } from '../../../shared/ui/Confetti/Confetti'
 import {
   billingPost,
+  cancelRegistration,
   getSession,
   newIdempotencyKey,
   type SessionResult,
@@ -219,8 +220,14 @@ export function BillingAuthFailPage() {
   const [read] = useState(() => ({
     code: params.get('code'),
     message: params.get('message'),
+    sessionId: params.get('sessionId'),
   }))
   useEffect(cleanAddress, [])
+  // 결제사가 실패로 돌려보낸 건 확실한 실패라 이 등록 시도를 닫는다(#294). 다시 하면 새 시도로 열린다
+  useEffect(() => {
+    if (read.sessionId)
+      void cancelRegistration(read.sessionId).catch(() => undefined)
+  }, [read.sessionId])
   return (
     <div className={styles.column}>
       <Steps at={1} />
@@ -231,6 +238,8 @@ export function BillingAuthFailPage() {
           <span>{read.message ?? reasonText(read.code)}</span>
         </span>
       </div>
+      {/* 처음 실패 원인을 찾을 수 있게 결제사 코드만(메시지·키 값은 빼고) 작게 */}
+      {read.code && <p className={styles.code}>오류 코드 {read.code}</p>}
       <Retry />
     </div>
   )
