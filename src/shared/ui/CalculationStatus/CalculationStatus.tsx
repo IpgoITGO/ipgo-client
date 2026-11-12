@@ -14,20 +14,31 @@ export const DONE_MS = 5000
 // 마친·실패 알약은 저절로 사라지지 않고 "확인"을 눌러야 닫힌다. 알약을 누르면 다시 펼친다.
 // 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
 export function CalculationStatus() {
-  const { phase, run, message, retry, dismiss, stop, checkingSince } =
+  const { phase, runId, run, message, retry, dismiss, stop, checkingSince } =
     useCalculation()
   const minutes = useMinutes(checkingSince)
-  // 마우스를 올리거나 포커스가 있으면 접지 않는다. 단계가 바뀌면 풀린다(창이 닫히며 blur가 안 와도 남지 않게).
-  const [holdFor, setHoldFor] = useState<string | null>(null)
-  const hold = holdFor === phase
-  // 접은 단계. 단계가 바뀌면 저절로 다시 펼쳐진다.
-  const [compactFor, setCompactFor] = useState<string | null>(null)
-  const compact = compactFor === phase
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const hold = hovered || focused
+  // 같은 단계로 돌아와도 이전 계산의 접힘 상태를 재사용하지 않는다.
+  const scope = `${runId}:${checkingSince}:${phase}:${run?.status}`
+  const [view, setView] = useState({ scope, compact: false })
+  if (view.scope !== scope) {
+    setView({ scope, compact: false })
+    if (phase === 'idle') {
+      setHovered(false)
+      setFocused(false)
+    }
+  }
+  const compact = view.scope === scope && view.compact
   useEffect(() => {
     if (phase === 'idle' || hold || compact) return
-    const fold = window.setTimeout(() => setCompactFor(phase), DONE_MS)
+    const fold = window.setTimeout(
+      () => setView({ scope, compact: true }),
+      DONE_MS,
+    )
     return () => window.clearTimeout(fold)
-  }, [phase, hold, compact])
+  }, [phase, scope, hold, compact])
   if (phase === 'idle') return null
   const closable = phase === 'done' || phase === 'failed'
   const markState =
@@ -57,7 +68,7 @@ export function CalculationStatus() {
       >
         <button
           className={styles.pillOpen}
-          onClick={() => setCompactFor(null)}
+          onClick={() => setView({ scope, compact: false })}
           title="누르면 자세히 보여요"
           type="button"
         >
@@ -102,10 +113,13 @@ export function CalculationStatus() {
       aria-label="입고량 계산 상태"
       aria-live="polite"
       className={styles.window}
-      onBlur={() => setHoldFor(null)}
-      onFocus={() => setHoldFor(phase)}
-      onMouseEnter={() => setHoldFor(phase)}
-      onMouseLeave={() => setHoldFor(null)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          setFocused(false)
+      }}
+      onFocus={() => setFocused(true)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <CalcMark state={markState} />
       {/* 제목 줄 오른쪽에 "확인", 설명은 그 아래 창 폭을 다 쓴다(11/11 — 옆에 버튼이 있어 3줄로 꺾이던 것) */}
