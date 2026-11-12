@@ -6,7 +6,11 @@ import { Modal } from '../../../shared/ui/Modal/Modal'
 import { getSkuDetail, type SkuDetail } from '../../sku/model/skuApi'
 
 type History = SkuDetail['history']
-import { type DemandShift, useDemandShift } from '../model/dashboardApi'
+import {
+  type DemandShift,
+  shiftTimes,
+  useDemandShift,
+} from '../model/dashboardApi'
 import { type Week, weeklyFromHistory } from '../model/weekly'
 import styles from './DemandShift.module.css'
 
@@ -190,7 +194,7 @@ export function SurgeCardChart({
 
 function shiftTitle(name: string, shift: DemandShift) {
   return shift.direction === 'UP'
-    ? `${name}이 평소보다 ${Math.round(shift.ratio)}배 팔렸어요`
+    ? `${name}이 평소보다${shiftTimes(shift.ratio) || ' 훨씬 많이'} 팔렸어요`
     : `${name} 판매가 평소로 돌아왔어요`
 }
 
@@ -367,7 +371,7 @@ export function ShiftSummary({
                   <b>{item.name}</b>
                   <small>
                     {item.shift.direction === 'UP'
-                      ? `하루 ${item.shift.baselineDailyQty}개 → ${item.shift.recentDailyQty}개 (${Math.round(item.shift.ratio)}배)`
+                      ? `하루 ${item.shift.baselineDailyQty}개 → ${item.shift.recentDailyQty}개${item.shift.ratio == null ? '' : ` (${shiftTimes(item.shift.ratio).trim()})`}`
                       : `다시 줄었어요 · 하루 ${item.shift.recentDailyQty}개`}
                   </small>
                 </span>

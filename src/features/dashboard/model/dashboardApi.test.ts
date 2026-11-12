@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { type ReplenishmentNeeds, toDashboardData } from './dashboardApi'
+import {
+  type ReplenishmentNeeds,
+  shiftTimes,
+  toDashboardData,
+} from './dashboardApi'
 
 const base: ReplenishmentNeeds = {
   asOfDate: '2026-10-14',
@@ -112,5 +116,12 @@ describe('toDashboardData (서버 D1 → 화면 값)', () => {
     expect(data.freshness).toBe('no-result')
     expect(data.lastCalculatedAt).toBeUndefined()
     expect(data.neededItems).toEqual([])
+  })
+})
+
+describe('판매 급변 배수', () => {
+  it('평소 판매가 0이라 서버가 ratio null을 주면 "0배" 대신 배수를 빼요(#195)', () => {
+    expect(shiftTimes(8.1)).toBe(' 8배')
+    expect(shiftTimes(null)).toBe('')
   })
 })
