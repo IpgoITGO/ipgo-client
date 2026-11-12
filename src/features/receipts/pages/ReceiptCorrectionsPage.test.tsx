@@ -393,9 +393,11 @@ it('미리보기 뒤 편집하면 이전 확인을 버리고 이유 칸으로 �
   const user = userEvent.setup()
   renderPage()
   await prepare(user)
-  expect(
-    screen.getByRole('heading', { name: '저장 전 변경 영향' }),
-  ).toHaveFocus()
+  await waitFor(() =>
+    expect(
+      screen.getByRole('heading', { name: '저장 전 변경 영향' }),
+    ).toHaveFocus(),
+  )
   await user.click(screen.getByRole('button', { name: '내용 다시 검토' }))
   await waitFor(() => expect(screen.getByLabelText('확인 이유')).toHaveFocus())
   expect(
