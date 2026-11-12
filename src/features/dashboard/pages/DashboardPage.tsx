@@ -981,9 +981,16 @@ export function DashboardPage() {
             <div>
               <h2>
                 {PANEL_TITLE[tab]}
-                <span className={styles.count}>{tabCount[tab]}개</span>
+                {/* 판매 급변 칸이면 보이는 줄 수(11/12 검수) */}
+                <span className={styles.count}>
+                  {sort === 'shift' ? rows.length : tabCount[tab]}개
+                </span>
               </h2>
-              <p>{PANEL_DESCRIPTION[tab]}</p>
+              <p>
+                {sort === 'shift'
+                  ? '판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'
+                  : PANEL_DESCRIPTION[tab]}
+              </p>
               {/* 보관비 줄 자리는 탭마다 잡아 두어 검색칸·표가 위아래로 안 움직인다 */}
               <div className={styles.storageSlot}>
                 {(tab === 'need' || tab === 'all') && (

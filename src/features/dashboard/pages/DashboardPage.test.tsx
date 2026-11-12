@@ -424,6 +424,13 @@ describe('DashboardPage', () => {
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('판매 급증 20배')
     // 지금 넣기 탭엔 급변 상품이 케어트릿 하나뿐(머리줄 + 1줄)
     expect(screen.getAllByRole('row')).toHaveLength(2)
+    // 제목 옆 개수도 보이는 줄 수로(11/12 검수)
+    expect(
+      screen.getByRole('heading', { name: /입고가 필요한 상품/, level: 2 }),
+    ).toHaveTextContent(/1개$/)
+    expect(
+      screen.getByText('판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'),
+    ).toBeInTheDocument()
   })
 
   it('예상 소진일이 지난 상품은 이미 소진으로 표시하고 요약 카드에 몇 개인지 알린다', async () => {
