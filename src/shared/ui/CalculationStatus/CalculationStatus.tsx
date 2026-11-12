@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useCalculation } from '../../api/calculationContext'
 import { useMinutes } from '../../lib/elapsed'
@@ -6,29 +6,72 @@ import { Button } from '../Button/Button'
 import { CalcMark } from '../CalcMark/CalcMark'
 import styles from './CalculationStatus.module.css'
 
+/** 펼친 창을 보여 주는 시간. 지나면 오른쪽 아래 작은 알약으로 접힌다. */
 export const DONE_MS = 5000
 
 // 계산 상태: 모든 화면에서 오른쪽 아래 작은 창(본문을 밀지 않는다).
+// 상태가 바뀌면 펼쳐서 5초 보여 주고 작은 알약으로 접는다(11/12 — 확대한 화면에서 아래 버튼을 가려서).
+// 마친·실패 알약은 저절로 사라지지 않고 "확인"을 눌러야 닫힌다. 알약을 누르면 다시 펼친다.
 // 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
 export function CalculationStatus() {
   const { phase, run, message, retry, dismiss, stop, checkingSince } =
     useCalculation()
   const minutes = useMinutes(checkingSince)
-  // 마친 알림은 5초 뒤 저절로 내려간다. 마우스를 올리거나 포커스가 있으면 멈춘다.
-  const [hold, setHold] = useState(false)
-  const [leaving, setLeaving] = useState(false)
-  const close = useEffectEvent(dismiss)
+  // 마우스를 올리거나 포커스가 있으면 접지 않는다. 단계가 바뀌면 풀린다(창이 닫히며 blur가 안 와도 남지 않게).
+  const [holdFor, setHoldFor] = useState<string | null>(null)
+  const hold = holdFor === phase
+  // 접은 단계. 단계가 바뀌면 저절로 다시 펼쳐진다.
+  const [compactFor, setCompactFor] = useState<string | null>(null)
+  const compact = compactFor === phase
   useEffect(() => {
-    if (phase !== 'done' || hold) return
-    const leave = window.setTimeout(() => setLeaving(true), DONE_MS)
-    const gone = window.setTimeout(close, DONE_MS + 300)
-    return () => {
-      window.clearTimeout(leave)
-      window.clearTimeout(gone)
-      setLeaving(false)
-    }
-  }, [phase, hold])
+    if (phase === 'idle' || hold || compact) return
+    const fold = window.setTimeout(() => setCompactFor(phase), DONE_MS)
+    return () => window.clearTimeout(fold)
+  }, [phase, hold, compact])
   if (phase === 'idle') return null
+  const closable = phase === 'done' || phase === 'failed'
+  const markState =
+    phase === 'done'
+      ? 'done'
+      : phase === 'failed' || phase === 'unknown'
+        ? 'failed'
+        : 'running'
+  if (compact) {
+    const short = {
+      checking: '수불부 확인 중',
+      pending: run?.status === 'QUEUED' ? '계산 기다리는 중' : '계산 중',
+      updating: '결과 불러오는 중',
+      done:
+        run?.summary?.needCount != null
+          ? `계산 끝 · 넣을 상품 ${run.summary.needCount}개`
+          : '계산 끝',
+      failed: run?.status === 'CANCELED' ? '계산 멈춤' : '계산 못 마침',
+      unknown: '계산 확인 필요',
+    }[phase]
+    return (
+      <section
+        aria-label="입고량 계산 상태"
+        aria-live="polite"
+        className={styles.pill}
+        data-tone={markState}
+      >
+        <button
+          className={styles.pillOpen}
+          onClick={() => setCompactFor(null)}
+          title="누르면 자세히 보여요"
+          type="button"
+        >
+          <CalcMark state={markState} />
+          <span>{short}</span>
+        </button>
+        {closable && (
+          <button className={styles.pillClose} onClick={dismiss} type="button">
+            확인
+          </button>
+        )}
+      </section>
+    )
+  }
   const title = {
     checking: '수불부를 확인하고 있어요',
     pending:
@@ -59,24 +102,15 @@ export function CalculationStatus() {
       aria-label="입고량 계산 상태"
       aria-live="polite"
       className={styles.window}
-      data-leaving={leaving || undefined}
-      onBlur={() => setHold(false)}
-      onFocus={() => setHold(true)}
-      onMouseEnter={() => setHold(true)}
-      onMouseLeave={() => setHold(false)}
+      onBlur={() => setHoldFor(null)}
+      onFocus={() => setHoldFor(phase)}
+      onMouseEnter={() => setHoldFor(phase)}
+      onMouseLeave={() => setHoldFor(null)}
     >
-      <CalcMark
-        state={
-          phase === 'done'
-            ? 'done'
-            : phase === 'failed' || phase === 'unknown'
-              ? 'failed'
-              : 'running'
-        }
-      />
+      <CalcMark state={markState} />
       {/* 제목 줄 오른쪽에 "확인", 설명은 그 아래 창 폭을 다 쓴다(11/11 — 옆에 버튼이 있어 3줄로 꺾이던 것) */}
       <strong className={styles.title}>{title}</strong>
-      {(phase === 'done' || phase === 'failed') && (
+      {closable && (
         <Button aria-label="계산 상태 닫기" onClick={dismiss} variant="text">
           확인
         </Button>
