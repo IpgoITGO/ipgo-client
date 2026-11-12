@@ -382,7 +382,7 @@ describe('계산 완료·실패 추적', () => {
     )
     expect(screen.getByText('다시 계산')).toBeEnabled()
   })
-  it('마친 알림은 5초 뒤 내려가고, 마우스를 올려 두면 멈춘다', async () => {
+  it('마친 알림은 5초 뒤 작은 알약으로 접히고(마우스를 올려 두면 안 접힘), 확인을 눌러야 닫힌다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       server.use(
@@ -400,6 +400,14 @@ describe('계산 완료·실패 추적', () => {
       fireEvent.mouseLeave(box)
       act(() => vi.advanceTimersByTime(DONE_MS + 500))
       expect(screen.queryByText('계산을 마쳤어요')).not.toBeInTheDocument()
+      // 접혀도 남아 있고, 누르면 다시 펼쳐진다
+      fireEvent.click(screen.getByText('계산 끝'))
+      expect(screen.getByText('계산을 마쳤어요')).toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(DONE_MS + 500))
+      fireEvent.click(screen.getByRole('button', { name: '확인' }))
+      expect(
+        screen.queryByRole('region', { name: '입고량 계산 상태' }),
+      ).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
