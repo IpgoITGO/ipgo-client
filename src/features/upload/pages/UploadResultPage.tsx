@@ -7,6 +7,7 @@ import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { replacedLabel } from '../model/fileValidation'
 import { getUploadResult, uploadFailureMessage } from '../model/uploadApi'
 import {
   describeExclusion,
@@ -159,8 +160,18 @@ export function UploadResultPage() {
       {replaced && replaced.length > 0 && (
         <p className={styles.replaced} role="status">
           <span aria-hidden="true">↻</span>
-          {replaced.join(', ')} 자료를 새 파일로 바꿨어요. 이전 결과는 이력으로
-          남아요.
+          {/* 여러 달을 한 번에 바꾸면 쉼표 목록이 몇 줄로 꺾여서(11/12): 몇 개월인지를 크게, 어느 달인지는 아래 줄에 */}
+          <span className={styles.replacedText}>
+            <b>
+              <em className={styles.count}>
+                {replacedLabel(replaced).count}개월
+              </em>{' '}
+              자료를 새 파일로 바꿨어요
+            </b>
+            <small>
+              {replacedLabel(replaced).months} · 이전 결과는 이력으로 남아요
+            </small>
+          </span>
         </p>
       )}
 

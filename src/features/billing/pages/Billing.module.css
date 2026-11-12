@@ -412,6 +412,16 @@ fieldset.block legend.label {
   background: var(--color-done-bg);
   border-radius: 12px;
 }
+/* 안심 문구는 첫 줄 굵게, 사유는 다음 줄 보통 굵기로(11/12 — 한 문장으로 이으면 사유 중간에서 꺾임) */
+.safeText {
+  display: grid;
+  gap: 2px;
+  word-break: keep-all;
+}
+.safeText > span {
+  color: var(--color-text-2);
+  font-weight: 400;
+}
 
 .info {
   margin: 0;

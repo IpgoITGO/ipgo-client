@@ -51,3 +51,19 @@ export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+// "2026년 11월" 목록 → 몇 개월인지 + 어느 달인지(3개까지는 그대로, 넘으면 "처음 ~ 끝")
+export function replacedLabel(periods: string[]) {
+  const order = (period: string) => {
+    const [year = 0, month = 0] = (period.match(/\d+/g) ?? []).map(Number)
+    return year * 100 + month
+  }
+  const sorted = [...new Set(periods)].sort((a, b) => order(a) - order(b))
+  return {
+    count: sorted.length,
+    months:
+      sorted.length <= 3
+        ? sorted.join(', ')
+        : `${sorted[0]} ~ ${sorted.at(-1)}`,
+  }
+}

@@ -83,7 +83,10 @@ export function CheckoutPage() {
       {error && (
         <div className={styles.safe} role="alert">
           <span aria-hidden="true">✓</span>
-          <span>돈은 빠져나가지 않았어요. {error}</span>
+          <span className={styles.safeText}>
+            <b>돈은 빠져나가지 않았어요</b>
+            <span>{error}</span>
+          </span>
         </div>
       )}
       {closed && (
