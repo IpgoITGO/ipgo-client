@@ -33,6 +33,8 @@ import {
 } from '../model/skuApi'
 import { niceStep, tickText } from '../model/trendScale'
 import { ShiftPopup } from '../../dashboard/ui/DemandShift'
+import { useDemandShift } from '../../dashboard/model/dashboardApi'
+import { surgeQuantity } from '../../dashboard/model/weekly'
 import styles from './SkuPage.module.css'
 
 type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
@@ -1463,6 +1465,7 @@ export function SkuPage() {
     queryKey: ['sku', skuId],
     queryFn: () => getSkuDetail(skuId),
   })
+  const shift = useDemandShift(skuId)
 
   if (query.isPending) {
     return (
@@ -1500,6 +1503,25 @@ export function SkuPage() {
   }
 
   const data = query.data
+  // 판매 급증이면 시나리오 카드 줄에 "최근 판매 속도라면" 카드(11/12)
+  const surgeQty =
+    shift?.direction === 'UP'
+      ? surgeQuantity(
+          shift.recentDailyQty,
+          data.settings.leadTimeDays,
+          data.settings.reviewCycleDays,
+          data.calculation.inboundUnit ?? 1,
+        )
+      : null
+  const surge =
+    shift && surgeQty != null
+      ? {
+          ratio: shift.ratio,
+          recent: shift.recentDailyQty,
+          baseline: shift.baselineDailyQty,
+          quantity: surgeQty,
+        }
+      : null
   // 보관 비용(#185): 입고 조건에서 넣은 상자 크기·요율로 권장 수량을 한 달 둘 때
   const storageBox = storage.boxes[skuId]
   const storageCost = monthlyStorageCost(
@@ -1581,16 +1603,6 @@ export function SkuPage() {
 
   return (
     <div className={styles.page}>
-      <ShiftPopup
-        history={data.history}
-        name={data.name}
-        onAdjust={() =>
-          document
-            .getElementById('sku-scenarios')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-        productId={skuId}
-      />
       <header className={styles.header}>
         <div>
           {/* 출고지는 없으면 줄째 뺀다 */}
@@ -1600,6 +1612,16 @@ export function SkuPage() {
           <div className={styles.title}>
             <h1>{data.name}</h1>
             {stockoutPassed && <SoldOutStamp />}
+            <ShiftPopup
+              history={data.history}
+              name={data.name}
+              onAdjust={() =>
+                document
+                  .getElementById('sku-scenarios')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              productId={skuId}
+            />
           </div>
           <p>바코드 {data.barcode}</p>
         </div>
@@ -1926,6 +1948,7 @@ export function SkuPage() {
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
+              surge={surge}
             />
           )}
 

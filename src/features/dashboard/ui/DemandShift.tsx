@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -6,7 +6,7 @@ import { Modal } from '../../../shared/ui/Modal/Modal'
 import { getSkuDetail, type SkuDetail } from '../../sku/model/skuApi'
 
 type History = SkuDetail['history']
-import { type DemandShift, getDashboard } from '../model/dashboardApi'
+import { type DemandShift, useDemandShift } from '../model/dashboardApi'
 import { type Week, weeklyFromHistory } from '../model/weekly'
 import styles from './DemandShift.module.css'
 
@@ -142,103 +142,124 @@ export function ShiftPopup({
   onAdjust: () => void
 }) {
   const titleId = useId()
-  const dashboard = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
-  const item = [
-    ...(dashboard.data?.neededItems ?? []),
-    ...(dashboard.data?.safeItems ?? []),
-  ].find((row) => row.id === productId)
-  const shift = item?.shift
+  const shift = useDemandShift(productId)
   const key = shift ? `${productId}:${shift.since}:${shift.direction}` : ''
-  const [closed, setClosed] = useState(false)
-  if (!shift || closed || seen(key)) return null
+  // 처음엔 한 번 저절로 열고, 닫은 뒤에는 이름 옆 꼬리표를 눌러 다시 연다(11/12 — 왜 더 넣거나 줄이라는지 셀러가 다시 볼 수 있게)
+  const [closedKey, setClosedKey] = useState<string | null>(null)
+  const [reopened, setReopened] = useState(false)
+  if (!shift) return null
+  const open = reopened || (closedKey !== key && !seen(key))
   const weeks = weeklyFromHistory(history)
   const close = () => {
     markSeen(key)
-    setClosed(true)
+    setClosedKey(key)
+    setReopened(false)
   }
   const up = shift.direction === 'UP'
   return (
-    <Modal labelledBy={titleId} onClose={close}>
-      <div className={styles.body}>
-        <span className={styles.kicker} data-dir={shift.direction}>
-          ● {up ? '판매가 갑자기 늘었어요' : '판매가 평소로 돌아왔어요'}
-        </span>
-        <h2 className={styles.title} id={titleId}>
-          {shiftTitle(name, shift)}
-        </h2>
-        <p className={styles.sub}>하루 평균 판매 · 최근 {weeks.length}주</p>
-        <div className={styles.legend}>
-          <span>
-            <i className={styles.swBar} />
-            지난 주들
-          </span>
-          <span>
-            <i className={styles.swNow} />
-            이번 주
-          </span>
-          <span>
-            <i className={styles.swLy} />
-            작년 같은 주
-          </span>
-        </div>
-        <ShiftChart name={name} weeks={weeks} />
-        <div className={styles.cmp}>
-          <div>
-            <span>지난 4주 하루</span>
-            <b>
-              {shift.baselineDailyQty}
-              <small>개</small>
-            </b>
+    <>
+      <button
+        className={styles.reopen}
+        data-dir={shift.direction}
+        onClick={() => setReopened(true)}
+        type="button"
+      >
+        {up ? `판매 급증 ${Math.round(shift.ratio)}배` : '판매 다시 줄었어요'} ·
+        이유 보기
+      </button>
+      {open && (
+        <Modal labelledBy={titleId} onClose={close}>
+          <div className={styles.body}>
+            <span className={styles.kicker} data-dir={shift.direction}>
+              ● {up ? '판매가 갑자기 늘었어요' : '판매가 평소로 돌아왔어요'}
+            </span>
+            <h2 className={styles.title} id={titleId}>
+              {shiftTitle(name, shift)}
+            </h2>
+            {weeks.length >= 4 && (
+              <p className={styles.sub}>
+                하루 평균 판매 · 최근 {weeks.length}주
+              </p>
+            )}
+            <div className={styles.legend}>
+              <span>
+                <i className={styles.swBar} />
+                지난 주들
+              </span>
+              <span>
+                <i className={styles.swNow} />
+                이번 주
+              </span>
+              <span>
+                <i className={styles.swLy} />
+                작년 같은 주
+              </span>
+            </div>
+            {/* 기록이 4주보다 짧으면 막대 하나짜리 그래프가 돼서 그리지 않고 숫자만(11/12) */}
+            {weeks.length >= 4 && <ShiftChart name={name} weeks={weeks} />}
+            <div className={styles.cmp}>
+              <div>
+                <span>지난 4주 하루</span>
+                <b>
+                  {shift.baselineDailyQty}
+                  <small>개</small>
+                </b>
+              </div>
+              <div>
+                <span>작년 같은 주 하루</span>
+                <b>
+                  {weeks.at(-1)?.lastYear ?? '—'}
+                  <small>개</small>
+                </b>
+              </div>
+              <div data-now="">
+                <span>이번 주 하루</span>
+                <b>
+                  {shift.recentDailyQty}
+                  <small>개</small>
+                </b>
+              </div>
+            </div>
+            <p className={styles.note}>
+              {up
+                ? '권장 입고량은 아직 평소 속도로 계산됐을 수 있어요. 행사·대량 주문처럼 이번만 그런 건지 확인해 주세요.'
+                : '급증이 끝나 권장 입고량이 크게 줄 수 있어요. 계산이 틀린 게 아니에요.'}
+            </p>
+            <div className={styles.actions}>
+              {up ? (
+                <>
+                  <button
+                    className={styles.primary}
+                    onClick={() => {
+                      close()
+                      onAdjust()
+                    }}
+                    type="button"
+                  >
+                    계속 이렇게 팔릴 것 같아요 · 수량 다시 정하기
+                  </button>
+                  <button
+                    className={styles.secondary}
+                    onClick={close}
+                    type="button"
+                  >
+                    이번만 특별했어요
+                  </button>
+                </>
+              ) : (
+                <button
+                  className={styles.secondary}
+                  onClick={close}
+                  type="button"
+                >
+                  확인했어요
+                </button>
+              )}
+            </div>
           </div>
-          <div>
-            <span>작년 같은 주 하루</span>
-            <b>
-              {weeks.at(-1)?.lastYear ?? '—'}
-              <small>개</small>
-            </b>
-          </div>
-          <div data-now="">
-            <span>이번 주 하루</span>
-            <b>
-              {shift.recentDailyQty}
-              <small>개</small>
-            </b>
-          </div>
-        </div>
-        <p className={styles.note}>
-          {up
-            ? '권장 입고량은 아직 평소 속도로 계산됐을 수 있어요. 행사·대량 주문처럼 이번만 그런 건지 확인해 주세요.'
-            : '급증이 끝나 권장 입고량이 크게 줄 수 있어요. 계산이 틀린 게 아니에요.'}
-        </p>
-        <div className={styles.actions}>
-          {up ? (
-            <>
-              <button
-                className={styles.primary}
-                onClick={() => {
-                  close()
-                  onAdjust()
-                }}
-                type="button"
-              >
-                계속 이렇게 팔릴 것 같아요 · 수량 다시 정하기
-              </button>
-              <button
-                className={styles.secondary}
-                onClick={close}
-                type="button"
-              >
-                이번만 특별했어요
-              </button>
-            </>
-          ) : (
-            <button className={styles.secondary} onClick={close} type="button">
-              확인했어요
-            </button>
-          )}
-        </div>
-      </div>
-    </Modal>
+        </Modal>
+      )}
+    </>
   )
 }
 
@@ -291,7 +312,7 @@ export function ShiftSummary({
                   </small>
                 </span>
                 <span className={styles.mini}>
-                  {history && (
+                  {history && weeklyFromHistory(history).length >= 4 && (
                     <ShiftChart
                       mini
                       name={item.name}

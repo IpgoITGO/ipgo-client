@@ -113,6 +113,7 @@ export function ScenarioInsight({
   leadTime,
   productId,
   resultId,
+  surge,
 }: {
   /** 대시보드 "기준일"과 같은 글자. 내 입고량이 어느 계산에서 나왔는지 가른다 */
   baseDate: string
@@ -122,6 +123,13 @@ export function ScenarioInsight({
   productId: string
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
+  /** 판매 급증(11/12): 최근 하루 판매로 다음 입고까지 버틸 수량 카드. 서버 demandShift(#193) */
+  surge?: {
+    ratio: number
+    recent: number
+    baseline: number
+    quantity: number
+  } | null
 }) {
   // 서버는 기준일이 7일 넘게 지난 계산에는 직접 수량 비교를 받지 않는다(SCENARIO_STALE) → 누르기 전에 알린다
   const tooOld = (daysSinceDot(baseDate) ?? 0) > SCENARIO_MAX_DAYS
@@ -249,6 +257,13 @@ export function ScenarioInsight({
   const sharedPreArrivalRisk =
     preArrivalRisks.size === 1 ? scenarios[0].preArrivalRisk : undefined
   const isCustom = (scenario: Scenario) => scenario.id.startsWith('custom')
+  const isSurge = (scenario: Scenario) =>
+    !!surge && isCustom(scenario) && scenario.quantity === surge.quantity
+  // 권장량보다 많을 때만 "최근 판매 속도라면" 카드를 둔다(적으면 비교할 뜻이 없음)
+  const surgeCard =
+    !!surge &&
+    surge.quantity > (data?.recommendedQuantity ?? 0) &&
+    !scenarios.some(isSurge)
   const selected =
     scenarios.find((item) => item.id === selectedId) ??
     scenarios.find(
@@ -465,8 +480,17 @@ export function ScenarioInsight({
                           : '✓ 이 수량으로 넣어요'}
                       </span>
                     )}
+                    {isSurge(scenario) && surge && (
+                      <span className={styles.surgeTape}>
+                        판매 급증 {Math.round(surge.ratio)}배
+                      </span>
+                    )}
                     <div className={styles.scenarioTop}>
-                      <span>{scenario.label}</span>
+                      <span>
+                        {isSurge(scenario)
+                          ? '최근 판매 속도라면'
+                          : scenario.label}
+                      </span>
                       {recommended && (
                         <span className={styles.badge}>
                           <Tape className={styles.badgeTape} />
@@ -570,6 +594,48 @@ export function ScenarioInsight({
                   </div>
                 )
               })}
+
+              {surgeCard && surge && (
+                // 옆 카드와 같은 틀·같은 줄: 이름·수량은 같은 자리, 손글씨 비교가 남는 높이를 채워 단추가 옆 카드 단추와 같은 줄에
+                <div className={`${styles.scenario} ${styles.surgeCard}`}>
+                  <span className={styles.surgeTape}>
+                    판매 급증 {Math.round(surge.ratio)}배
+                  </span>
+                  <div className={styles.scenarioTop}>
+                    <span>최근 판매 속도라면</span>
+                  </div>
+                  <strong className={styles.quantity}>
+                    {surge.quantity.toLocaleString()}개
+                  </strong>
+                  <div className={styles.surgeCompare}>
+                    <p>
+                      <span className={styles.hand}>{surge.baseline}개</span>
+                      <svg aria-hidden="true" viewBox="0 0 44 12">
+                        <path d="M2 6 Q20 2 38 6" />
+                        <path d="M33 2 L40 6 L33 10" />
+                      </svg>
+                      <span className={styles.handNow}>{surge.recent}개</span>
+                    </p>
+                    <p className={styles.surgeCaption}>
+                      <span>평소 하루</span>
+                      <span>이번 주 하루</span>
+                    </p>
+                  </div>
+                  <p className={styles.note}>
+                    최근 7일 속도로 다음 입고까지 버틸 양이에요
+                  </p>
+                  <Button
+                    className={styles.decideButton}
+                    disabled={action.isPending || tooOld}
+                    onClick={() => void action.run(surge.quantity)}
+                    title={tooOld ? STALE_TEXT : undefined}
+                    type="button"
+                    variant="secondary"
+                  >
+                    이 수량으로 비교하기
+                  </Button>
+                </div>
+              )}
 
               {!showInput && (
                 <button

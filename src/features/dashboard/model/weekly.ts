@@ -26,3 +26,17 @@ export function weeklyFromHistory(history: History, weeks = 13): Week[] {
 }
 
 const round1 = (value: number) => Math.round(value * 10) / 10
+
+// 판매 급증 카드 수량: 최근 하루 판매로 다음 입고까지(리드타임 + 입고 주기) 버틸 양을 입고 단위로 올림. 설정이 비면 없음
+export function surgeQuantity(
+  recentDaily: number,
+  leadTime: number | null | undefined,
+  reviewCycle: number | null | undefined,
+  unit: number,
+) {
+  if (leadTime == null || reviewCycle == null) return null
+  const step = Math.max(1, unit)
+  return (
+    Math.ceil(Math.ceil(recentDaily * (leadTime + reviewCycle)) / step) * step
+  )
+}

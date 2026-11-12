@@ -288,23 +288,28 @@ const SHIFT_WEEKS = [0.4, 0.4, 0, 0.7, 0.1, 0.4, 0, 0.3, 0, 0, 0.1, 0.4, 4]
 const SHIFT_LAST_YEAR = [
   0.4, 0.6, 0.4, 0.1, 1, 1.3, 1, 1.6, 0.7, 0.4, 0.1, 0.7, 1.3,
 ]
+// 다시 줄어든 상품(저키 스틱 22): 평소 하루 1개 안팎 → 4주 급증(6~7개) → 이번 주 1.2개로 돌아옴
+const CALM_WEEKS = [0.9, 1.1, 0.7, 1, 1.3, 0.9, 1, 0.8, 6.4, 7.1, 6.6, 5.9, 1.2]
+const CALM_LAST_YEAR = [
+  1, 0.9, 1.2, 1.1, 0.8, 1, 1.3, 1.1, 0.9, 1.2, 1, 0.8, 1.1,
+]
 function spread(avg: number, day: number) {
   // 한 주 합계를 앞 요일부터 하루 1개씩(급증 주는 고르게)
   const total = Math.round(avg * 7)
   return Math.floor(total / 7) + (day < total % 7 ? 1 : 0)
 }
-function shiftTrend() {
+function shiftTrend(weeks = SHIFT_WEEKS, lastYear = SHIFT_LAST_YEAR) {
   let stock = 30
   return Array.from({ length: 91 }, (_, i) => {
     const week = Math.floor(i / 7)
-    const outboundQty = spread(SHIFT_WEEKS[week], i % 7)
-    if (week === 11 && i % 7 === 0) stock += 20 // 지난 입고 20개
+    const outboundQty = spread(weeks[week], i % 7)
+    if (week % 4 === 3 && i % 7 === 0) stock += 40 // 4주마다 입고
     stock = Math.max(0, stock - outboundQty)
     return {
       date: isoFromToday(i - 91),
       closingQty: stock,
       outboundQty,
-      lastYearOutboundQty: spread(SHIFT_LAST_YEAR[week], i % 7),
+      lastYearOutboundQty: spread(lastYear[week], i % 7),
       isValidObservation: stock > 0,
     }
   })
@@ -873,18 +878,20 @@ export const handlers = [
           : // 판매 급변 팝업 그래프를 브라우저에서 볼 수 있게(11/12): 케어트릿(1)은 91일 하루 기록. 테스트는 짧은 주별 그대로
             id === '1' && import.meta.env.MODE !== 'test'
             ? shiftTrend()
-            : days.map(([date, closingQty, outboundQty], index) => {
-                const soldOut =
-                  needed !== undefined &&
-                  needed.shortage < 0 &&
-                  index === days.length - 1
-                return {
-                  date,
-                  closingQty: soldOut ? 0 : closingQty,
-                  outboundQty,
-                  isValidObservation: !soldOut && closingQty > 0,
-                }
-              }),
+            : id === '22' && import.meta.env.MODE !== 'test'
+              ? shiftTrend(CALM_WEEKS, CALM_LAST_YEAR)
+              : days.map(([date, closingQty, outboundQty], index) => {
+                  const soldOut =
+                    needed !== undefined &&
+                    needed.shortage < 0 &&
+                    index === days.length - 1
+                  return {
+                    date,
+                    closingQty: soldOut ? 0 : closingQty,
+                    outboundQty,
+                    isValidObservation: !soldOut && closingQty > 0,
+                  }
+                }),
     })
   }),
   // K2 시나리오(명세 3.7 · ERD scenario_results). zero-recommendation = 권장량 0개라 비교표 없음

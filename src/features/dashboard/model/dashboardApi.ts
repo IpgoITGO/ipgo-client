@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query'
+
 import { apiRequest } from '../../../shared/api/client'
 import { getUploadResult } from '../../upload/model/uploadApi'
 import type { DashboardData } from '../pages/DashboardPage'
@@ -160,4 +162,14 @@ export async function getDashboard() {
     }
   }
   return toDashboardData(raw, uploadStatus)
+}
+
+// 이 상품의 판매 급변(대시보드와 같은 계산 결과). 상품 상세 팝업·시나리오 카드가 쓴다
+export function useDemandShift(productId: string) {
+  const query = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
+  return (
+    [...(query.data?.neededItems ?? []), ...(query.data?.safeItems ?? [])].find(
+      (item) => item.id === productId,
+    )?.shift ?? null
+  )
 }
