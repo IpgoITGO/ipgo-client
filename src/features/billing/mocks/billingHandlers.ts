@@ -323,17 +323,23 @@ export const billingHandlers = [
     const open = [...state.sessions.values()].find(
       (item) => item.status === 'OPEN',
     )
-    if (open && (open.purpose !== body.purpose || open.planId !== body.planId))
+    // 같은 키는 처음 결과를 그대로 돌려준다(server 0012: 끝난 시도여도). 그래서 화면은 누를 때마다 새 키를 쓴다
+    const target = byKey ?? open
+    if (
+      !byKey &&
+      open &&
+      (open.purpose !== body.purpose || open.planId !== body.planId)
+    )
       return fail(
         409,
         'BILLING_IN_PROGRESS',
         '이전 결제 시도가 아직 끝나지 않았어요.',
       )
-    const sessionId = open?.sessionId ?? `sess_${state.sessions.size + 1}`
+    const sessionId = target?.sessionId ?? `sess_${state.sessions.size + 1}`
     const customerKey = 'cust_mock'
     const sessionState = `state_${sessionId}`
-    if (open) open.keys.push(key)
-    else
+    if (open && !byKey) open.keys.push(key)
+    else if (!target)
       state.sessions.set(sessionId, {
         keys: [key],
         sessionId,
