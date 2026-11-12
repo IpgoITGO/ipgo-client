@@ -170,49 +170,42 @@
     display: none;
   }
 }
-/* 이름 옆 꼬리표(대시보드 표 꼬리표와 같은 모양). 누르면 팝업을 다시 연다 */
-.reopen {
-  padding: 2px 10px;
-  color: var(--color-info);
-  font: inherit;
+/* 시나리오 카드 안 그래프: 높이 고정, 글자는 아래 설명 줄 */
+.cardChart {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+.cardChart svg {
+  display: block;
+  width: 100%;
+  height: 64px;
+}
+.cardLegend {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--color-text-2);
   font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-  background: var(--color-info-bg);
-  border: 0;
-  border-radius: var(--radius-chip);
-  cursor: pointer;
 }
-.reopen[data-dir='DOWN'] {
-  color: var(--color-success);
-  background: var(--color-success-bg);
+.cardLegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.reopen:hover {
-  text-decoration: underline;
+.keyRef {
+  width: 14px;
+  border-top: 1.5px dashed var(--color-primary);
 }
-.reopen:focus-visible {
-  outline: 3px solid var(--color-primary-soft);
+.keyNow {
+  width: 10px;
+  height: 10px;
+  background: var(--color-accent);
+  border-radius: 2px;
 }
 /* 시나리오 카드 안 그래프: 평소 기준선(남색 점선)과 이번 주 숫자를 그래프에 직접 */
 .base {
   stroke: var(--color-primary);
   stroke-dasharray: 3 3;
   stroke-width: 1;
-}
-.baseLabel,
-.nowLabel {
-  paint-order: stroke;
-  stroke: #f7fafe;
-  stroke-width: 4px;
-  stroke-linejoin: round;
-}
-.baseLabel {
-  fill: var(--color-text-2);
-  font-size: 10px;
-  font-weight: 700;
-}
-.nowLabel {
-  fill: var(--color-primary);
-  font-size: 12px;
-  font-weight: 800;
 }

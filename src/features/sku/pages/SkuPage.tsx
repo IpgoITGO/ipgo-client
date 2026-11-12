@@ -1466,6 +1466,8 @@ export function SkuPage() {
     queryFn: () => getSkuDetail(skuId),
   })
   const shift = useDemandShift(skuId)
+  // 시나리오 카드 "이유 보기"로 판매 급변 팝업을 다시 연다
+  const [reasonOpen, setReasonOpen] = useState(false)
 
   if (query.isPending) {
     return (
@@ -1504,18 +1506,18 @@ export function SkuPage() {
 
   const data = query.data
   // 판매 급증이면 시나리오 카드 줄에 "최근 판매 속도라면" 카드(11/12)
-  const surgeQty =
-    shift?.direction === 'UP'
-      ? surgeQuantity(
-          shift.recentDailyQty,
-          data.settings.leadTimeDays,
-          data.settings.reviewCycleDays,
-          data.calculation.inboundUnit ?? 1,
-        )
-      : null
+  const surgeQty = shift
+    ? surgeQuantity(
+        shift.recentDailyQty,
+        data.settings.leadTimeDays,
+        data.settings.reviewCycleDays,
+        data.calculation.inboundUnit ?? 1,
+      )
+    : null
   const surge =
     shift && surgeQty != null
       ? {
+          direction: shift.direction,
           ratio: shift.ratio,
           recent: shift.recentDailyQty,
           baseline: shift.baselineDailyQty,
@@ -1621,7 +1623,9 @@ export function SkuPage() {
                   .getElementById('sku-scenarios')
                   ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }
+              onClosed={() => setReasonOpen(false)}
               productId={skuId}
+              reopen={reasonOpen}
             />
           </div>
           <p>바코드 {data.barcode}</p>
@@ -1949,6 +1953,7 @@ export function SkuPage() {
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
+              onReason={() => setReasonOpen(true)}
               surge={surge}
             />
           )}

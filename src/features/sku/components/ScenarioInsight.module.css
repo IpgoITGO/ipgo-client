@@ -677,3 +677,30 @@
   word-break: keep-all;
   text-wrap: balance;
 }
+/* 다시 줄어든 상품 카드: 초록(대시보드 "판매 다시 줄었어요" 꼬리표와 같은 색) */
+.surgeCard[data-dir='DOWN'] {
+  background: #f3fbf8;
+  border-color: #9fd3c1;
+}
+.surgeTape[data-dir='DOWN'] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+/* 카드 이름 줄 오른쪽 "이유 보기": 줄 높이를 안 늘린다 */
+.reason {
+  padding: 0;
+  color: var(--color-info);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.reason:hover {
+  text-decoration: underline;
+}
+.reason:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}

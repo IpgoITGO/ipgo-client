@@ -123,70 +123,68 @@ export function ShiftChart({
   )
 }
 
-// 시나리오 "최근 판매 속도라면" 카드 안(11/12): 손글씨 대신 그래프에 직접 적어 설득 — 평소 기준선 + 이번 주 막대 숫자
+// 시나리오 판매 급변 카드 안 그래프(11/12): 막대 + 기준 점선만 그리고, 글자는 그래프 밖 설명 줄에(카드 폭이 좁아도 안 겹치고 안 작아지게)
 export function SurgeCardChart({
   weeks,
-  baseline,
+  refValue,
+  refLabel,
+  nowLabel,
   name,
 }: {
   weeks: Week[]
-  baseline: number
+  /** 점선 높이: 늘 때는 평소 하루, 줄 때는 급증 때 하루 */
+  refValue: number
+  refLabel: string
+  nowLabel: string
   name: string
 }) {
   const w = 200
-  const h = 118
-  const top = 20
-  const bottom = 16
-  const last = weeks[weeks.length - 1]
-  const max = Math.max(...weeks.map((week) => week.avg), baseline, 1) * 1.05
+  const h = 84
+  const max = Math.max(...weeks.map((week) => week.avg), refValue, 1) * 1.05
   const bw = w / Math.max(weeks.length, 1)
-  const y = (value: number) => h - bottom - (value / max) * (h - bottom - top)
+  const y = (value: number) => h - (value / max) * (h - 4)
   return (
-    <svg
-      aria-label={`${name} 최근 ${weeks.length}주 하루 평균 판매. 평소 하루 ${baseline}개, 이번 주 ${last.avg}개`}
-      className={styles.chart}
-      role="img"
-      viewBox={`0 0 ${w} ${h}`}
-    >
-      {weeks.map((week, i) => {
-        const bh = Math.max(2, h - bottom - y(week.avg))
-        return (
-          <rect
-            className={i === weeks.length - 1 ? styles.now : styles.bar}
-            height={bh}
-            key={week.end}
-            rx={2}
-            width={bw * 0.64}
-            x={i * bw + bw * 0.18}
-            y={h - bottom - bh}
-          />
-        )
-      })}
-      <line
-        className={styles.base}
-        x1={0}
-        x2={w}
-        y1={y(baseline)}
-        y2={y(baseline)}
-      />
-      <text className={styles.baseLabel} x={0} y={y(baseline) - 4}>
-        평소 하루 {baseline}개
-      </text>
-      <text
-        className={styles.nowLabel}
-        textAnchor="end"
-        x={w}
-        y={y(last.avg) - 6}
+    <div className={styles.cardChart}>
+      <svg
+        aria-label={`${name} 최근 ${weeks.length}주 하루 평균 판매. ${refLabel}, ${nowLabel}`}
+        preserveAspectRatio="none"
+        role="img"
+        viewBox={`0 0 ${w} ${h}`}
       >
-        이번 주 {last.avg}개
-      </text>
-      <text className={styles.tick} x={0} y={h - 2}>
-        {monthDay(weeks[0].end)}
-      </text>
-      <text className={styles.tick} textAnchor="end" x={w} y={h - 2}>
-        {monthDay(last.end)}
-      </text>
-    </svg>
+        {weeks.map((week, i) => {
+          const bh = Math.max(2, h - y(week.avg))
+          return (
+            <rect
+              className={i === weeks.length - 1 ? styles.now : styles.bar}
+              height={bh}
+              key={week.end}
+              rx={2}
+              width={bw * 0.64}
+              x={i * bw + bw * 0.18}
+              y={h - bh}
+            />
+          )
+        })}
+        <line
+          className={styles.base}
+          vectorEffect="non-scaling-stroke"
+          x1={0}
+          x2={w}
+          y1={y(refValue)}
+          y2={y(refValue)}
+        />
+      </svg>
+      <p className={styles.cardLegend}>
+        <span>
+          <i className={styles.keyRef} />
+          {refLabel}
+        </span>
+        <span>
+          <i className={styles.keyNow} />
+          {nowLabel}
+        </span>
+      </p>
+    </div>
   )
 }
 
@@ -202,38 +200,33 @@ export function ShiftPopup({
   name,
   history,
   onAdjust,
+  reopen,
+  onClosed,
 }: {
   productId: string
   name: string
   history: History
   onAdjust: () => void
+  /** 시나리오 카드의 "이유 보기"를 누르면 true */
+  reopen: boolean
+  onClosed: () => void
 }) {
   const titleId = useId()
   const shift = useDemandShift(productId)
   const key = shift ? `${productId}:${shift.since}:${shift.direction}` : ''
-  // 처음엔 한 번 저절로 열고, 닫은 뒤에는 이름 옆 꼬리표를 눌러 다시 연다(11/12 — 왜 더 넣거나 줄이라는지 셀러가 다시 볼 수 있게)
+  // 처음엔 한 번 저절로 열고, 닫은 뒤에는 시나리오 카드의 "이유 보기"로 다시 연다(11/12)
   const [closedKey, setClosedKey] = useState<string | null>(null)
-  const [reopened, setReopened] = useState(false)
   if (!shift) return null
-  const open = reopened || (closedKey !== key && !seen(key))
+  const open = reopen || (closedKey !== key && !seen(key))
   const weeks = weeklyFromHistory(history)
   const close = () => {
     markSeen(key)
     setClosedKey(key)
-    setReopened(false)
+    onClosed()
   }
   const up = shift.direction === 'UP'
   return (
     <>
-      <button
-        className={styles.reopen}
-        data-dir={shift.direction}
-        onClick={() => setReopened(true)}
-        type="button"
-      >
-        {up ? `판매 급증 ${Math.round(shift.ratio)}배` : '판매 다시 줄었어요'} ·
-        이유 보기
-      </button>
       {open && (
         <Modal labelledBy={titleId} onClose={close}>
           <div className={styles.body}>
