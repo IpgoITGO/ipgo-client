@@ -194,7 +194,7 @@ export function SurgeCardChart({
 
 function shiftTitle(name: string, shift: DemandShift) {
   return shift.direction === 'UP'
-    ? `${name}이 평소보다${shiftTimes(shift.ratio) || ' 훨씬 많이'} 팔렸어요`
+    ? `${name} 판매가 평소보다${shiftTimes(shift.ratio) || ' 훨씬 많이'} 늘었어요`
     : `${name} 판매가 평소로 돌아왔어요`
 }
 
