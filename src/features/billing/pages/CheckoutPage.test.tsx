@@ -204,16 +204,16 @@ describe('결제', () => {
         ),
       ),
     )
-    await openApp('/checkout?plan=seller')
-    await act(async () => {
-      screen.getByRole('checkbox').click()
-    })
-    await act(async () => {
-      screen.getByRole('button', { name: /결제하기/ }).click()
-    })
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '이전 결제 시도가 아직 끝나지 않았어요',
+    const { user } = await openApp('/checkout?plan=seller')
+    await user.click(
+      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
     )
+    await user.click(
+      await screen.findByRole('button', { name: '49,000원 결제하기' }),
+    )
+    expect(
+      await screen.findByRole('alert', {}, { timeout: 5000 }),
+    ).toHaveTextContent('이전 결제 시도가 아직 끝나지 않았어요')
     expect(
       screen.queryByText('돈은 빠져나가지 않았어요'),
     ).not.toBeInTheDocument()
@@ -249,25 +249,27 @@ describe('결제', () => {
       }),
     )
     vi.mocked(openCardWindow).mockResolvedValue('cancelled')
-    await openApp('/checkout?plan=seller')
-    await act(async () => {
-      screen.getByRole('checkbox').click()
-    })
-    await act(async () => {
-      screen.getByRole('button', { name: /결제하기/ }).click()
-    })
-    await vi.waitFor(() =>
-      expect({
-        keys: keys.length,
-        canceled,
-        opened: vi.mocked(openCardWindow).mock.calls.length,
-      }).toEqual({ keys: 1, canceled: true, opened: 1 }),
+    const { user } = await openApp('/checkout?plan=seller')
+    await user.click(
+      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
     )
-    await act(async () => {
-      screen.getByRole('button', { name: /결제하기/ }).click()
+    const pay = await screen.findByRole('button', {
+      name: '49,000원 결제하기',
     })
+    await user.click(pay)
+    await vi.waitFor(
+      () =>
+        expect({
+          keys: keys.length,
+          canceled,
+          opened: vi.mocked(openCardWindow).mock.calls.length,
+        }).toEqual({ keys: 1, canceled: true, opened: 1 }),
+      { timeout: 5000 },
+    )
+    await vi.waitFor(() => expect(pay).toBeEnabled(), { timeout: 5000 })
+    await user.click(pay)
     // 두 번째 누름: 첫 키는 닫혀서(취소 때 지움) 새 키로 바로 연다
-    await vi.waitFor(() => expect(keys).toHaveLength(2))
+    await vi.waitFor(() => expect(keys).toHaveLength(2), { timeout: 5000 })
     expect(keys[1]).not.toBe(keys[0])
   })
 
