@@ -91,12 +91,6 @@
   text-align: right;
 }
 
-.facts dd.muted {
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
-  font-weight: 500;
-}
-
 .signOut {
   min-height: 40px;
   color: var(--color-text);
