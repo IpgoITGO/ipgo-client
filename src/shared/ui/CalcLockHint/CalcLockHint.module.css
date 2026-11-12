@@ -3,7 +3,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 60;
+  /* 팝업(100) 안의 잠긴 버튼에서도 보이게 그 위로 */
+  z-index: 110;
   display: flex;
   align-items: center;
   gap: 6px;

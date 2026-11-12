@@ -498,41 +498,78 @@ describe('SettingsPage 표 모양', () => {
   })
 })
 
+// 계산을 시작해 계산 중 상태로 둔다(계산은 끝나지 않음). 시작하면 대시보드로 가므로 같은 화면으로 받는다.
+async function startRunningCalculation() {
+  server.use(
+    http.put('/api/replenishment-settings', () =>
+      HttpResponse.json({ saved: true, runId: 7124 }),
+    ),
+    http.get('/api/calculation-runs/7124', () =>
+      HttpResponse.json({ runId: 7124, status: 'RUNNING' }),
+    ),
+  )
+  const user = userEvent.setup()
+  render(
+    <AppProviders>
+      <MemoryRouter initialEntries={['/settings']}>
+        <Routes>
+          <Route element={<SettingsPage />} path="/settings" />
+          <Route element={<SettingsPage />} path="/dashboard" />
+        </Routes>
+      </MemoryRouter>
+    </AppProviders>,
+  )
+  await screen.findByRole('switch', { name: '케어트릿 120g 사용' })
+  await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+  expect(
+    await screen.findByText(
+      '계산 중이라 꺼진 상품 켜기는 잠겨 있어요 · 끝나면 저절로 풀려요',
+    ),
+  ).toBeInTheDocument()
+  return user
+}
+
 describe('SettingsPage 단종 상품', () => {
-  it('계산 중엔 꺼진 상품 켜기만 잠기고, 켜진 상품 끄기는 된다', async () => {
+  it('계산 중엔 꺼진 상품 켜기만 잠기고, 켜진 상품은 실제로 꺼서 저장된다', async () => {
+    let saved: unknown = null
+    const user = await startRunningCalculation()
     server.use(
-      http.put('/api/replenishment-settings', () =>
-        HttpResponse.json({ saved: true, runId: 7124 }),
-      ),
-      http.get('/api/calculation-runs/7124', () =>
-        HttpResponse.json({ runId: 7124, status: 'RUNNING' }),
-      ),
+      http.patch('/api/products/:productId', async ({ request }) => {
+        saved = await request.json()
+        return HttpResponse.json({})
+      }),
     )
-    const user = userEvent.setup()
-    render(
-      <AppProviders>
-        <MemoryRouter initialEntries={['/settings']}>
-          <Routes>
-            <Route element={<SettingsPage />} path="/settings" />
-            {/* 계산을 시작하면 대시보드로 가므로, 같은 화면으로 받아 계산 중 모습을 본다 */}
-            <Route element={<SettingsPage />} path="/dashboard" />
-          </Routes>
-        </MemoryRouter>
-      </AppProviders>,
-    )
-    await screen.findByRole('switch', { name: '케어트릿 120g 사용' })
-    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
-    expect(
-      await screen.findByText(
-        '계산 중이라 꺼진 상품 켜기는 잠겨 있어요 · 끝나면 저절로 풀려요',
-      ),
-    ).toBeInTheDocument()
     expect(
       screen.getByRole('switch', { name: '단종 간식 30g 사용' }),
     ).toBeDisabled()
+    const sw = screen.getByRole('switch', { name: '케어트릿 120g 사용' })
+    expect(sw).toBeEnabled()
+
+    await user.click(sw)
     expect(
-      screen.getByRole('switch', { name: '케어트릿 120g 사용' }),
-    ).toBeEnabled()
+      await screen.findByText('✓ 케어트릿 120g 껐어요 · 저장됨'),
+    ).toBeInTheDocument()
+    expect(saved).toEqual({ isActive: false })
+    expect(sw).not.toBeChecked()
+  })
+
+  it('계산 중 끄기 저장에 실패하면 스위치를 되돌리고 알려 준다', async () => {
+    const user = await startRunningCalculation()
+    server.use(
+      http.patch('/api/products/:productId', () =>
+        HttpResponse.json(
+          { code: 'FORBIDDEN', message: '다른 회원의 상품입니다.' },
+          { status: 403 },
+        ),
+      ),
+    )
+    const sw = screen.getByRole('switch', { name: '케어트릿 120g 사용' })
+    await user.click(sw)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '다른 회원의 상품입니다.',
+    )
+    expect(sw).toBeChecked()
   })
 
   it('꺼 둔 상품은 조건 칸이 잠기고, 다시 켜면 풀린다', async () => {
