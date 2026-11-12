@@ -98,6 +98,7 @@ export function AccountPage() {
   const current = methods?.find((item) => item.current)
   const plans = usePlans().data
   const normal = plans?.some((p) => p.interval === 'ONE_TIME') ?? false
+  const recurring = plans?.some((p) => p.interval === 'MONTH') ?? false
   const consentVersion = plans?.[0]?.consentVersion
   const startCard = useCardRegistration({
     email: user?.email,
@@ -306,7 +307,7 @@ export function AccountPage() {
                   </div>
                   {/* 구독 해지는 요금제 상자 안에(11/11 레퍼런스: Whereby·Washington Post) */}
                   <div className={styles.planActions}>
-                    {cancelOn && !trial ? (
+                    {recurring && cancelOn && !trial ? (
                       <button
                         className={styles.primaryLink}
                         onClick={() => {
