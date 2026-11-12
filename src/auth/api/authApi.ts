@@ -7,6 +7,8 @@ import {
   setAccessToken,
 } from '../../shared/api/client'
 
+import { disconnectBrowser } from '../../features/notifications/pushApi'
+
 // docs/design/api-spec.docx 3.1절 (A1~A7). 기본 경로 `/api`는 apiRequest가 붙입니다.
 
 export type Me = {
@@ -59,6 +61,7 @@ export async function login(request: LoginRequest) {
 // A3 로그아웃. 리프레시 쿠키와 CSRF로 처리하고, 서버가 끝냈을 때만 액세스 토큰을 지운다.
 // 실패하면 그대로 던진다. 서버 로그인이 남아 있어 새로고침하면 다시 로그인되므로, 화면이 알려야 한다(#32).
 export async function logout() {
+  await disconnectBrowser()
   await apiRequest<void>('/auth/logout', { method: 'POST' })
   forgetLocalLogin()
 }

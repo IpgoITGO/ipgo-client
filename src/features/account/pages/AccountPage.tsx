@@ -35,6 +35,7 @@ import { CancelModal } from '../ui/CancelModal'
 import { WithdrawModal } from '../ui/WithdrawModal'
 import { Toast } from '../../../shared/ui/Toast/Toast'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
+import { NotificationSettings } from '../../notifications/NotificationSettings'
 import styles from './AccountPage.module.css'
 
 // 결제 내역 한 줄의 상태를 쉬운 말로
@@ -263,6 +264,7 @@ export function AccountPage() {
         </aside>
 
         <div className={styles.main} data-rise="">
+          <NotificationSettings />
           <section aria-labelledby="plan-title" className={styles.block}>
             {billingOff ? (
               <>

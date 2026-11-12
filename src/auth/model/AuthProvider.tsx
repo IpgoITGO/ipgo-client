@@ -1,3 +1,9 @@
+import {
+  connectBrowser,
+  getNotificationSettings,
+  pushSupported,
+  unsubscribeNativeBrowser,
+} from '../../features/notifications/pushApi'
 import { clearReceiptAttempts } from '../../features/receipts/model/attemptStorage'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -34,6 +40,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const me = meQuery.data ?? null
   const [sessionExpired, setSessionExpired] = useState(false)
 
+  const userId = me?.userId
+  useEffect(() => {
+    if (!userId || !pushSupported() || Notification.permission !== 'granted')
+      return
+    let active = true
+    const reconcile = () => {
+      void getNotificationSettings()
+        .then((settings) => {
+          if (active && settings.enabled) return connectBrowser(false)
+        })
+        .catch(() => undefined)
+    }
+    reconcile()
+    const changed = (event: MessageEvent) => {
+      if (event.data?.type === 'push-subscription-changed') reconcile()
+    }
+    navigator.serviceWorker.addEventListener('message', changed)
+    return () => {
+      active = false
+      navigator.serviceWorker.removeEventListener('message', changed)
+    }
+  }, [userId])
+
   // 화면의 로그인 상태만 지웁니다. 서버를 부르지 않으므로
   // 401 → 만료 신호 → 지우기가 서로를 다시 부르지 않습니다.
   const clearSession = useCallback(() => {
@@ -60,6 +89,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   // 서버 로그아웃은 실패했지만 셀러가 알고서 나가기를 고른 경우: 이 화면에서만 잊는다.
   const signOutLocally = useCallback(() => {
+    void unsubscribeNativeBrowser().catch(() => undefined)
     forgetLocalLogin()
     clearSession()
   }, [clearSession])

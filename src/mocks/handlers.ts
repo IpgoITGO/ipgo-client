@@ -325,6 +325,15 @@ function isoFromToday(n: number) {
 const runPolls = new Map<number, number>()
 
 export const handlers = [
+  http.get('/api/notifications/settings', () =>
+    HttpResponse.json({ enabled: false, sendHour: 9, timeZone: 'Asia/Seoul' }),
+  ),
+  http.get('/api/push/public-key', () =>
+    HttpResponse.json(
+      { code: 'PUSH_UNAVAILABLE', message: '알림 서비스를 준비 중이에요.' },
+      { status: 503 },
+    ),
+  ),
   ...receiptHandlers,
   ...plannedQuantityHandlers,
   ...storageCostHandlers,
