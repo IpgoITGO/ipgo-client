@@ -223,9 +223,9 @@ const NEEDED_ITEMS = [
     // 판매 급변(server #193 요청 모양). 실데이터 9월 비건쿠키처럼 평소의 몇 배로 튄 상품
     demandShift: {
       direction: 'UP',
-      recentDailyQty: 4,
+      recentDailyQty: 8,
       baselineDailyQty: 0.4,
-      ratio: 10,
+      ratio: 20,
       since: isoFromToday(-7),
     },
   },
@@ -284,7 +284,7 @@ const NEEDED_ITEMS = [
 
 // 실데이터 9월 비건쿠키 블루베리와 같은 모양(주별 하루 평균): 평소 0~0.7개, 지난 입고 뒤 마지막 주만 하루 4개.
 // 작년 같은 주도 실데이터 값. 하루 기록 91일(13주)로 펼친다.
-const SHIFT_WEEKS = [0.4, 0.4, 0, 0.7, 0.1, 0.4, 0, 0.3, 0, 0, 0.1, 0.4, 4]
+const SHIFT_WEEKS = [0.4, 0.4, 0, 0.7, 0.1, 0.4, 0, 0.3, 0, 0, 0.1, 0.4, 8]
 const SHIFT_LAST_YEAR = [
   0.4, 0.6, 0.4, 0.1, 1, 1.3, 1, 1.6, 0.7, 0.4, 0.1, 0.7, 1.3,
 ]

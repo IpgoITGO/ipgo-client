@@ -421,7 +421,7 @@ describe('DashboardPage', () => {
     await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
     await user.click(screen.getByRole('radio', { name: '판매 급변' }))
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('케어트릿 120g')
-    expect(screen.getAllByRole('row')[1]).toHaveTextContent('판매 급증 10배')
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('판매 급증 20배')
     // 지금 넣기 탭엔 급변 상품이 케어트릿 하나뿐(머리줄 + 1줄)
     expect(screen.getAllByRole('row')).toHaveLength(2)
   })
