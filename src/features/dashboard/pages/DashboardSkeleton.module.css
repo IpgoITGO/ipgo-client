@@ -90,7 +90,7 @@
 }
 .boxes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
 }
 .card,
@@ -122,12 +122,6 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-4);
-}
-.tabs {
-  width: 420px;
-  max-width: 60%;
-  height: 40px;
-  border-radius: 12px;
 }
 .search {
   width: 280px;

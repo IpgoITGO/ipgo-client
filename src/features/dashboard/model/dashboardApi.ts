@@ -1,6 +1,17 @@
+import { useQuery } from '@tanstack/react-query'
+
 import { apiRequest } from '../../../shared/api/client'
 import { getUploadResult } from '../../upload/model/uploadApi'
 import type { DashboardData } from '../pages/DashboardPage'
+
+/** 판매 급변(ipgo-server #193 요청 중). 최근 7일 하루 평균이 그 전 28일보다 크게 늘면 UP, 급증이 끝나 권장량이 크게 줄면 DOWN. 오기 전엔 없다 */
+export type DemandShift = {
+  direction: 'UP' | 'DOWN'
+  recentDailyQty: number
+  baselineDailyQty: number
+  ratio: number
+  since: string
+}
 
 // ipgo-server README "대시보드와 SKU 상세"(D1). 화면 모양은 그대로 두고 서버 응답을 화면 값으로 옮긴다.
 export type ReplenishmentNeeds = {
@@ -28,6 +39,7 @@ export type ReplenishmentNeeds = {
     expectedShortageOn: string | null
     leadTimeDays: number | null
     preArrivalRisk: number | null
+    demandShift?: DemandShift | null
   }>
   /** 아직 괜찮은 상품 목록(ipgo-server#103 요청 중). 오기 전에는 없다 */
   notNeededItems?: Array<{
@@ -36,6 +48,7 @@ export type ReplenishmentNeeds = {
     skuName: string
     expectedShortageOn: string | null
     leadTimeDays: number | null
+    demandShift?: DemandShift | null
   }>
   notCalculable: Array<{ productId: number; skuName: string; reason: string }>
   excluded: Array<{
@@ -108,6 +121,7 @@ export function toDashboardData(
         item.preArrivalRisk == null
           ? null
           : Math.round(item.preArrivalRisk * 100),
+      shift: item.demandShift ?? null,
     })),
     // 서버가 목록을 주기 전에는 undefined: 화면이 상품 목록 API로 이름·바코드만 채운다
     safeItems: raw.notNeededItems?.map((item) => ({
@@ -116,6 +130,7 @@ export function toDashboardData(
       barcode: item.skuBarcode,
       stockoutDate: dotDate(item.expectedShortageOn),
       leadTime: item.leadTimeDays,
+      shift: item.demandShift ?? null,
     })),
     unavailableItems: raw.notCalculable.map((item) => ({
       id: String(item.productId),
@@ -147,4 +162,14 @@ export async function getDashboard() {
     }
   }
   return toDashboardData(raw, uploadStatus)
+}
+
+// 이 상품의 판매 급변(대시보드와 같은 계산 결과). 상품 상세 팝업·시나리오 카드가 쓴다
+export function useDemandShift(productId: string) {
+  const query = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
+  return (
+    [...(query.data?.neededItems ?? []), ...(query.data?.safeItems ?? [])].find(
+      (item) => item.id === productId,
+    )?.shift ?? null
+  )
 }

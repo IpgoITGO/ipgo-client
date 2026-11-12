@@ -83,6 +83,72 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('72개', { selector: 'mark' })).toBeInTheDocument()
   })
 
+  it('판매 급증이면 "최근 판매 속도라면" 카드를 두고, 누르면 그 수량으로 비교한 카드가 된다', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <ScenarioInsight
+          baseDate="2026. 11. 4"
+          inboundUnit={1}
+          productId="7"
+          resultId={101}
+          surge={{
+            direction: 'UP',
+            ratio: 10,
+            recent: 4,
+            baseline: 0.4,
+            quantity: 136,
+          }}
+        />
+      </AppProviders>,
+    )
+    expect(await screen.findByText('136개')).toBeInTheDocument()
+    expect(screen.getByText('최근 판매 속도라면')).toBeInTheDocument()
+    expect(screen.getByText('판매 급증 10배')).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: '이 수량으로 비교하기' }),
+    )
+    // 비교 뒤: 같은 이름·테이프의 일반 카드(남는 재고 줄이 있음)로 바뀌고 비교 단추는 사라진다
+    const card = await screen.findByRole('radio', {
+      name: /최근 판매 속도라면/,
+    })
+    expect(card).toHaveTextContent('136개')
+    expect(card).toHaveTextContent('다음 입고 때 남는 재고')
+    expect(
+      screen.queryByRole('button', { name: '이 수량으로 비교하기' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('판매가 다시 줄었으면 권장보다 적은 "평소 속도로 돌아왔다면" 카드를 두고, 많으면 두지 않는다', async () => {
+    const down = (quantity: number) => (
+      <AppProviders>
+        <ScenarioInsight
+          baseDate="2026. 11. 4"
+          inboundUnit={1}
+          productId="7"
+          resultId={101}
+          surge={{
+            direction: 'DOWN',
+            ratio: 0.2,
+            recent: 1.2,
+            baseline: 6.5,
+            quantity,
+          }}
+        />
+      </AppProviders>
+    )
+    const { unmount } = render(down(41))
+    expect(
+      await screen.findByText('평소 속도로 돌아왔다면'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('판매 다시 줄었어요')).toBeInTheDocument()
+    unmount()
+    render(down(200))
+    expect(await screen.findByText('권장량의 80%')).toBeInTheDocument()
+    expect(screen.queryByText('평소 속도로 돌아왔다면')).not.toBeInTheDocument()
+  })
+
   it('202 생성 중이면 기다리는 화면을 유지하고 완료 문장을 다시 조회한다', async () => {
     let calls = 0
     server.use(

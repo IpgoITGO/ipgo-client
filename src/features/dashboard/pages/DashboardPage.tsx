@@ -41,7 +41,8 @@ import {
   shortExpiry,
   useExpiry,
 } from '../../expiry/model/expiryApi'
-import { getDashboard } from '../model/dashboardApi'
+import { type DemandShift, getDashboard } from '../model/dashboardApi'
+import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
@@ -123,6 +124,7 @@ export type DashboardData = {
     quantity: number
     cost: number
     risk: number | null
+    shift?: DemandShift | null
   }>
   /** 아직 괜찮은 상품(서버 #103). 없으면 화면이 상품 목록으로 이름·바코드만 채운다 */
   safeItems?: Array<{
@@ -131,6 +133,7 @@ export type DashboardData = {
     barcode: string
     stockoutDate: string
     leadTime: number | null
+    shift?: DemandShift | null
   }>
   unavailableItems: Array<{ id?: string; name: string; reason: string }>
   excludedItems: Array<{
@@ -142,11 +145,10 @@ export type DashboardData = {
 }
 
 // 숫자 상자 = 아래 목록을 고르는 탭. 고른 상자는 주소(?tab=)에 남는다.
-// 11/10: 계산 불가·검산 제외를 "계산 못 해요" 한 장으로 합치고, 목록 위 줄에 "전체"를 둔다
-const TABS = ['need', 'safe', 'na'] as const
-type CardTab = (typeof TABS)[number]
-type Tab = CardTab | 'all'
-const LIST_TABS: Tab[] = ['all', 'need', 'safe', 'na']
+// 11/12: 상자 4장(전체·지금 넣어야·괜찮아요·계산 못 해요)이 곧 탭. 아래 탭 줄은 뺐다(같은 숫자를 두 번 보여 줘서)
+const TABS = ['all', 'need', 'safe', 'na'] as const
+type Tab = (typeof TABS)[number]
+const LIST_TABS: readonly Tab[] = TABS
 // 여유(소진일 − 오늘 − 리드타임)가 이 날수 이하면 "곧 넣어야 해요"
 const SOON_DAYS = 7
 // 이 이상이면 품절 위험 숫자를 빨갛게(상품 상세 시나리오 카드와 같은 20%)
@@ -168,7 +170,7 @@ function SummaryCard({
   onSelect: () => void
   selected: boolean
   state: string
-  tab: CardTab
+  tab: Tab
   value: number
 }) {
   const shown = useCountUp(value)
@@ -196,7 +198,44 @@ function SummaryCard({
   )
 }
 
-type SortKey = 'stockout' | 'risk' | 'cost'
+// 탭·거르기로 줄 수가 바뀌어도 목록 판 높이는 줄이지 않는다(11/12 — 줄면 화면이 위로 끌려 올라감). 커지는 건 그대로.
+function keepTallest(node: HTMLElement | null) {
+  if (!node || typeof ResizeObserver === 'undefined') return
+  let tallest = 0
+  const observer = new ResizeObserver(() => {
+    const height = node.offsetHeight
+    if (height > tallest) {
+      tallest = height
+      node.style.minHeight = `${height}px`
+    }
+  })
+  observer.observe(node)
+  return () => observer.disconnect()
+}
+
+type SortKey = 'stockout' | 'risk' | 'cost' | 'shift'
+
+// 판매 급변 순: 급증(배수 큰 순) → 다시 줄어듦 → 나머지. 나머지는 소진일 순으로 이어진다
+function shiftScore(shift?: DemandShift | null) {
+  if (!shift) return 0
+  return shift.direction === 'UP' ? 1000 + shift.ratio : 500
+}
+
+// 상품 이름 옆 꼬리표("곧 넣어야 해요"와 같은 모양, 다른 색). 마우스를 올리면 숫자
+function ShiftTag({ shift }: { shift?: DemandShift | null }) {
+  if (!shift) return null
+  return (
+    <span
+      className={styles.shift}
+      data-dir={shift.direction}
+      title={`최근 7일 하루 ${shift.recentDailyQty}개 · 그 전 4주 하루 ${shift.baselineDailyQty}개`}
+    >
+      {shift.direction === 'UP'
+        ? `판매 급증 ${Math.round(shift.ratio)}배`
+        : '판매 다시 줄었어요'}
+    </span>
+  )
+}
 
 // "2026. 9. 5" 같은 날짜를 자릿수 맞춘 "20260905"로 바꿔 글자 비교로도 날짜 순이 되게 한다.
 function dateKey(date: string) {
@@ -256,6 +295,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'stockout', label: '소진일 빠른 순' },
   { value: 'risk', label: '품절 위험 높은 순' },
   { value: 'cost', label: '금액 큰 순' },
+  // 정렬이 아니라 거르기: 판매 급변 상품만(급증 배수 큰 순 → 다시 줄어듦)
+  { value: 'shift', label: '판매 급변' },
 ]
 
 const PANEL_TITLE: Record<Tab, string> = {
@@ -272,12 +313,6 @@ const PANEL_DESCRIPTION: Record<Tab, string> = {
   all: '올린 수불부의 상품 전체예요. 급한 순으로 묶어 보여 줘요.',
 }
 
-const LIST_LABEL: Record<Tab, string> = {
-  all: '전체',
-  need: '지금 넣기',
-  safe: '괜찮아요',
-  na: '계산 못 해요',
-}
 const KIND_LABEL = { need: '지금 넣기', safe: '괜찮아요', na: '계산 못 해요' }
 
 // 2026-11-07 · 2026. 11. 7 → 11/7
@@ -411,7 +446,7 @@ export function DashboardPage() {
     const step = { ArrowRight: 1, ArrowLeft: TABS.length - 1 }[event.key]
     if (!step) return
     event.preventDefault()
-    const at = tab === 'all' ? 0 : TABS.indexOf(tab)
+    const at = TABS.indexOf(tab)
     const next = TABS[(at + step) % TABS.length]
     selectTab(next)
     document.getElementById(`dashboard-tab-${next}`)?.focus()
@@ -423,7 +458,10 @@ export function DashboardPage() {
       if (sort === 'cost') return b.cost - a.cost
       // 위험을 모르는 상품은 맨 뒤로
       if (sort === 'risk') return (b.risk ?? -1) - (a.risk ?? -1)
-      return dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
+      return (
+        (sort === 'shift' ? shiftScore(b.shift) - shiftScore(a.shift) : 0) ||
+        dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
+      )
     })
   }, [query.data?.neededItems, sort])
 
@@ -638,6 +676,10 @@ export function DashboardPage() {
       : dateKey(row.item.stockoutDate)
   const rowRisk = (row: Row) =>
     row.kind === 'need' ? (row.item.risk ?? -1) : -1
+  // 괜찮은 상품을 상품 목록으로 채운 경우(서버 #103 전)엔 판매 급변 칸이 없다
+  const shiftOf = (row: Row) =>
+    row.kind !== 'na' && 'shift' in row.item ? row.item.shift : null
+  const rowShift = (row: Row) => shiftScore(shiftOf(row))
   const rowCost = (row: Row) =>
     row.kind === 'need' ? orderCostOf(row.item) : -1
   const rows = (
@@ -656,9 +698,11 @@ export function DashboardPage() {
           ? rowCost(b) - rowCost(a)
           : sort === 'risk'
             ? rowRisk(b) - rowRisk(a)
-            : rowDate(a).localeCompare(rowDate(b))) ||
+            : (sort === 'shift' ? rowShift(b) - rowShift(a) : 0) ||
+              rowDate(a).localeCompare(rowDate(b))) ||
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
+    .filter((row) => sort !== 'shift' || shiftOf(row) !== null)
   const pickable = rows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
@@ -725,6 +769,12 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
+      {!noResult && (
+        <ShiftSummary
+          items={[...data.neededItems, ...(data.safeItems ?? [])]}
+          runId={data.runId}
+        />
+      )}
       <BusyStrip baseDate={noResult ? undefined : data.baseDate} />
       {plannedQuery.isError && (
         <p role="alert">
@@ -801,6 +851,7 @@ export function DashboardPage() {
         >
           {(
             [
+              ['all', '전체', tabCount.all, 'all', '올린 상품 모두'],
               [
                 'need',
                 '지금 넣어야 해요',
@@ -914,35 +965,14 @@ export function DashboardPage() {
         />
       ) : (
         <section
-          aria-labelledby={
-            tab === 'all' ? 'dashboard-list-all' : `dashboard-tab-${tab}`
-          }
+          aria-labelledby={`dashboard-tab-${tab}`}
           className={styles.panel}
           data-tab={tab}
           id="dashboard-list"
+          ref={keepTallest}
           role="tabpanel"
         >
-          {tab !== 'all' && (
-            <span aria-hidden="true" className={styles.notch} />
-          )}
-          {/* 위 카드 셋 + "전체". 카드를 누르지 않아도 전체를 한 표로 본다(11/10) */}
-          <div
-            aria-label="목록 고르기"
-            className={styles.listTabs}
-            role="group"
-          >
-            {LIST_TABS.map((key) => (
-              <button
-                aria-pressed={tab === key}
-                id={`dashboard-list-${key}`}
-                key={key}
-                onClick={() => selectTab(key)}
-                type="button"
-              >
-                {LIST_LABEL[key]} <b>{tabCount[key].toLocaleString()}</b>
-              </button>
-            ))}
-          </div>
+          <span aria-hidden="true" className={styles.notch} />
           <div className={styles.sectionHeader}>
             <div>
               <h2>
@@ -1115,6 +1145,7 @@ export function DashboardPage() {
                                   곧 넣어야 해요
                                 </span>
                               )}
+                              <ShiftTag shift={shiftOf(row)} />
                             </div>
                             {row.barcode && <span>{row.barcode}</span>}
                             {/* 계산 못 한 이유: 상자 없이 이름 아래 회색 한 줄 + 작은 링크(11/11 시안 2안) */}

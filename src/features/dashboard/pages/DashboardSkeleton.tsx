@@ -62,8 +62,8 @@ export function DashboardSkeleton({ note }: { note?: WaitNote }) {
 
       <div aria-hidden="true" className={styles.rest}>
         <div className={styles.boxes}>
-          {/* 실제 화면과 같이 요약 카드 3장(11/11) */}
-          {[0, 1, 2].map((i) => (
+          {/* 실제 화면과 같이 요약 카드 4장(11/12) */}
+          {[0, 1, 2, 3].map((i) => (
             <div className={styles.card} key={i}>
               <span className={`${styles.sk} ${styles.a}`} />
               <span className={`${styles.sk} ${styles.b}`} />
@@ -73,7 +73,6 @@ export function DashboardSkeleton({ note }: { note?: WaitNote }) {
         </div>
         <div className={styles.panel}>
           <div className={styles.toolbar}>
-            <span className={`${styles.sk} ${styles.tabs}`} />
             <span className={`${styles.sk} ${styles.search}`} />
           </div>
           <span className={`${styles.sk} ${styles.h}`} />

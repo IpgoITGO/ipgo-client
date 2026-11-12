@@ -59,7 +59,23 @@ describe('toDashboardData (서버 D1 → 화면 값)', () => {
       quantity: 72,
       cost: 129600,
       risk: 4,
+      shift: null,
     })
+  })
+
+  it('판매 급변(demandShift)이 오면 그대로 넘긴다', () => {
+    const shift = {
+      direction: 'UP' as const,
+      recentDailyQty: 4,
+      baselineDailyQty: 0.4,
+      ratio: 10,
+      since: '2026-10-12',
+    }
+    const data = toDashboardData({
+      ...base,
+      items: [{ ...base.items[0], demandShift: shift }],
+    })
+    expect(data.neededItems[0].shift).toEqual(shift)
   })
 
   it('최근 계산이 실패했으면 지난 결과, 기준일이 7일 넘었으면 다시 올리기', () => {

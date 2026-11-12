@@ -79,7 +79,7 @@
 }
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
   padding-top: var(--space-2);
 }
@@ -226,12 +226,15 @@
   margin-top: var(--space-1);
   color: var(--color-text-3);
 }
-/* 정렬: 탭처럼 붙은 버튼 세 개. 고른 것만 흰 바탕에 굵게 */
+/* 정렬: 탭처럼 붙은 버튼. 고른 것만 흰 바탕. 오른쪽 끝(11/12) */
 .sort {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  width: max-content;
+  max-width: 100%;
   margin-bottom: var(--space-3);
+  margin-left: auto;
   padding: var(--space-1);
   background: var(--color-bg);
   border-radius: 14px;
@@ -247,7 +250,8 @@
 }
 .sort button[aria-checked='true'] {
   color: var(--color-text);
-  font-weight: 700;
+  /* 굵기를 바꾸면 글자 폭이 달라져 옆 버튼이 흔들린다 → 획만 두껍게(11/12) */
+  -webkit-text-stroke: 0.4px currentColor;
   background: var(--color-card);
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
@@ -317,14 +321,17 @@
   transform: rotate(45deg);
   transition: left 0.42s var(--ease-spring);
 }
-.panel[data-tab='need'] .notch {
+.panel[data-tab='all'] .notch {
   --i: 0;
 }
-.panel[data-tab='safe'] .notch {
+.panel[data-tab='need'] .notch {
   --i: 1;
 }
-.panel[data-tab='na'] .notch {
+.panel[data-tab='safe'] .notch {
   --i: 2;
+}
+.panel[data-tab='na'] .notch {
+  --i: 3;
 }
 .panel[data-tab='ex'] .notch {
   --i: 3;
@@ -433,6 +440,20 @@
   white-space: nowrap;
   background: var(--color-accent-soft);
   border-radius: var(--radius-chip);
+}
+/* 판매 급변(11/12): "곧 넣어야 해요"와 같은 모양, 다른 색. 급증 = 파랑, 다시 줄어듦 = 초록 */
+.shift {
+  padding: 1px 8px;
+  color: var(--color-info);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--color-info-bg);
+  border-radius: var(--radius-chip);
+}
+.shift[data-dir='DOWN'] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
 }
 .muted {
   color: var(--color-text-3);
@@ -803,36 +824,6 @@ tr[data-soon] .weeks i[data-on] {
 }
 
 /* 11/10: 카드 셋(계산 불가+검산 제외 → 계산 못 해요) + 목록 위 "전체" 줄 */
-.listTabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  width: max-content;
-  max-width: 100%;
-  margin-bottom: var(--space-4);
-  padding: 4px;
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-input);
-}
-.listTabs button {
-  padding: 6px 14px;
-  color: var(--color-text-3);
-  font-weight: 700;
-  white-space: nowrap;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.listTabs button b {
-  margin-left: 2px;
-  font-variant-numeric: tabular-nums;
-}
-.listTabs button[aria-pressed='true'] {
-  color: var(--color-text);
-  background: var(--color-card);
-  box-shadow: 0 1px 2px rgb(25 31 40 / 8%);
-}
 .kind {
   padding: 3px 10px;
   font-size: var(--text-caption);

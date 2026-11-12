@@ -220,6 +220,14 @@ const NEEDED_ITEMS = [
     recommendedQty: 72,
     recommendedAmount: 129600,
     preArrivalRisk: 0.08,
+    // 판매 급변(server #193 요청 모양). 실데이터 9월 비건쿠키처럼 평소의 몇 배로 튄 상품
+    demandShift: {
+      direction: 'UP',
+      recentDailyQty: 8,
+      baselineDailyQty: 0.4,
+      ratio: 20,
+      since: isoFromToday(-7),
+    },
   },
   {
     productId: 3,
@@ -273,6 +281,39 @@ const NEEDED_ITEMS = [
     preArrivalRisk: 0.02,
   },
 ]
+
+// 실데이터 9월 비건쿠키 블루베리와 같은 모양(주별 하루 평균): 평소 0~0.7개, 지난 입고 뒤 마지막 주만 하루 4개.
+// 작년 같은 주도 실데이터 값. 하루 기록 91일(13주)로 펼친다.
+const SHIFT_WEEKS = [0.4, 0.4, 0, 0.7, 0.1, 0.4, 0, 0.3, 0, 0, 0.1, 0.4, 8]
+const SHIFT_LAST_YEAR = [
+  0.4, 0.6, 0.4, 0.1, 1, 1.3, 1, 1.6, 0.7, 0.4, 0.1, 0.7, 1.3,
+]
+// 다시 줄어든 상품(저키 스틱 22): 평소 하루 1개 안팎 → 4주 급증(6~7개) → 이번 주 1.2개로 돌아옴
+const CALM_WEEKS = [0.9, 1.1, 0.7, 1, 1.3, 0.9, 1, 0.8, 6.4, 7.1, 6.6, 5.9, 1.2]
+const CALM_LAST_YEAR = [
+  1, 0.9, 1.2, 1.1, 0.8, 1, 1.3, 1.1, 0.9, 1.2, 1, 0.8, 1.1,
+]
+function spread(avg: number, day: number) {
+  // 한 주 합계를 앞 요일부터 하루 1개씩(급증 주는 고르게)
+  const total = Math.round(avg * 7)
+  return Math.floor(total / 7) + (day < total % 7 ? 1 : 0)
+}
+function shiftTrend(weeks = SHIFT_WEEKS, lastYear = SHIFT_LAST_YEAR) {
+  let stock = 30
+  return Array.from({ length: 91 }, (_, i) => {
+    const week = Math.floor(i / 7)
+    const outboundQty = spread(weeks[week], i % 7)
+    if (week % 4 === 3 && i % 7 === 0) stock += 40 // 4주마다 입고
+    stock = Math.max(0, stock - outboundQty)
+    return {
+      date: isoFromToday(i - 91),
+      closingQty: stock,
+      outboundQty,
+      lastYearOutboundQty: spread(lastYear[week], i % 7),
+      isValidObservation: stock > 0,
+    }
+  })
+}
 
 function isoFromToday(n: number) {
   const date = new Date()
@@ -636,6 +677,14 @@ export const handlers = [
           skuBarcode: '8800272421273',
           expectedShortageOn: isoFromToday(24),
           leadTimeDays: 5,
+          // 급증이 끝나 권장량이 크게 줄어든 상품
+          demandShift: {
+            direction: 'DOWN',
+            recentDailyQty: 1.2,
+            baselineDailyQty: 6.5,
+            ratio: 0.2,
+            since: isoFromToday(-7),
+          },
         },
         {
           productId: 23,
@@ -826,18 +875,23 @@ export const handlers = [
       trend:
         id === 'no-trend'
           ? []
-          : days.map(([date, closingQty, outboundQty], index) => {
-              const soldOut =
-                needed !== undefined &&
-                needed.shortage < 0 &&
-                index === days.length - 1
-              return {
-                date,
-                closingQty: soldOut ? 0 : closingQty,
-                outboundQty,
-                isValidObservation: !soldOut && closingQty > 0,
-              }
-            }),
+          : // 판매 급변 팝업 그래프를 브라우저에서 볼 수 있게(11/12): 케어트릿(1)은 91일 하루 기록. 테스트는 짧은 주별 그대로
+            id === '1' && import.meta.env.MODE !== 'test'
+            ? shiftTrend()
+            : id === '22' && import.meta.env.MODE !== 'test'
+              ? shiftTrend(CALM_WEEKS, CALM_LAST_YEAR)
+              : days.map(([date, closingQty, outboundQty], index) => {
+                  const soldOut =
+                    needed !== undefined &&
+                    needed.shortage < 0 &&
+                    index === days.length - 1
+                  return {
+                    date,
+                    closingQty: soldOut ? 0 : closingQty,
+                    outboundQty,
+                    isValidObservation: !soldOut && closingQty > 0,
+                  }
+                }),
     })
   }),
   // K2 시나리오(명세 3.7 · ERD scenario_results). zero-recommendation = 권장량 0개라 비교표 없음

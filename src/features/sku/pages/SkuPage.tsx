@@ -32,6 +32,9 @@ import {
   type SkuDetail,
 } from '../model/skuApi'
 import { niceStep, tickText } from '../model/trendScale'
+import { ShiftPopup } from '../../dashboard/ui/DemandShift'
+import { useDemandShift } from '../../dashboard/model/dashboardApi'
+import { surgeQuantity, weeklyFromHistory } from '../../dashboard/model/weekly'
 import styles from './SkuPage.module.css'
 
 type AccuracyHistory = NonNullable<SkuDetail['accuracy']>['history']
@@ -1462,6 +1465,9 @@ export function SkuPage() {
     queryKey: ['sku', skuId],
     queryFn: () => getSkuDetail(skuId),
   })
+  const shift = useDemandShift(skuId)
+  // 시나리오 카드 "이유 보기"로 판매 급변 팝업을 다시 연다
+  const [reasonOpen, setReasonOpen] = useState(false)
 
   if (query.isPending) {
     return (
@@ -1499,6 +1505,26 @@ export function SkuPage() {
   }
 
   const data = query.data
+  // 판매 급증이면 시나리오 카드 줄에 "최근 판매 속도라면" 카드(11/12)
+  const surgeQty = shift
+    ? surgeQuantity(
+        shift.recentDailyQty,
+        data.settings.leadTimeDays,
+        data.settings.reviewCycleDays,
+        data.calculation.inboundUnit ?? 1,
+      )
+    : null
+  const surge =
+    shift && surgeQty != null
+      ? {
+          direction: shift.direction,
+          ratio: shift.ratio,
+          recent: shift.recentDailyQty,
+          baseline: shift.baselineDailyQty,
+          quantity: surgeQty,
+          weeks: weeklyFromHistory(data.history),
+        }
+      : null
   // 보관 비용(#185): 입고 조건에서 넣은 상자 크기·요율로 권장 수량을 한 달 둘 때
   const storageBox = storage.boxes[skuId]
   const storageCost = monthlyStorageCost(
@@ -1589,6 +1615,18 @@ export function SkuPage() {
           <div className={styles.title}>
             <h1>{data.name}</h1>
             {stockoutPassed && <SoldOutStamp />}
+            <ShiftPopup
+              history={data.history}
+              name={data.name}
+              onAdjust={() =>
+                document
+                  .getElementById('sku-scenarios')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              onClosed={() => setReasonOpen(false)}
+              productId={skuId}
+              reopen={reasonOpen}
+            />
           </div>
           <p>바코드 {data.barcode}</p>
         </div>
@@ -1906,6 +1944,7 @@ export function SkuPage() {
             </section>
           </div>
 
+          {data.resultId !== null && <div id="sku-scenarios" />}
           {data.resultId !== null && (
             <ScenarioInsight
               baseDate={data.baseDate}
@@ -1914,6 +1953,8 @@ export function SkuPage() {
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
+              onReason={() => setReasonOpen(true)}
+              surge={surge}
             />
           )}
 

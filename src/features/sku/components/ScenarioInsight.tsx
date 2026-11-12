@@ -3,6 +3,8 @@ import { type FormEvent, useCallback, useMemo, useState } from 'react'
 
 import { ApiError } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
+import { SurgeCardChart } from '../../dashboard/ui/DemandShift'
+import type { Week } from '../../dashboard/model/weekly'
 import { shortExpiry, useExpiry } from '../../expiry/model/expiryApi'
 import {
   monthlyStorageCost,
@@ -113,6 +115,8 @@ export function ScenarioInsight({
   leadTime,
   productId,
   resultId,
+  surge,
+  onReason,
 }: {
   /** 대시보드 "기준일"과 같은 글자. 내 입고량이 어느 계산에서 나왔는지 가른다 */
   baseDate: string
@@ -122,6 +126,19 @@ export function ScenarioInsight({
   productId: string
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
+  /** 판매 급변(11/12): 최근 하루 판매로 다음 입고까지 버틸 수량 카드. 서버 demandShift(#193).
+   *  늘었으면 권장보다 많을 때, 다시 줄었으면 권장보다 적을 때만(계산식은 급변이 지난 뒤에야 따라온다) */
+  surge?: {
+    direction: 'UP' | 'DOWN'
+    ratio: number
+    recent: number
+    baseline: number
+    quantity: number
+    /** 주별 하루 평균(상품 상세 90일). 4주 이상이면 카드 안 그래프 */
+    weeks?: Week[]
+  } | null
+  /** 카드의 "이유 보기": 판매 급변 팝업을 다시 연다 */
+  onReason?: () => void
 }) {
   // 서버는 기준일이 7일 넘게 지난 계산에는 직접 수량 비교를 받지 않는다(SCENARIO_STALE) → 누르기 전에 알린다
   const tooOld = (daysSinceDot(baseDate) ?? 0) > SCENARIO_MAX_DAYS
@@ -249,6 +266,38 @@ export function ScenarioInsight({
   const sharedPreArrivalRisk =
     preArrivalRisks.size === 1 ? scenarios[0].preArrivalRisk : undefined
   const isCustom = (scenario: Scenario) => scenario.id.startsWith('custom')
+  const isSurge = (scenario: Scenario) =>
+    !!surge && isCustom(scenario) && scenario.quantity === surge.quantity
+  const surgeUp = surge?.direction === 'UP'
+  const recommendedQty = data?.recommendedQuantity ?? 0
+  // 늘었으면 권장보다 많을 때, 줄었으면 권장보다 적을 때만 카드를 둔다(아니면 비교할 뜻이 없음)
+  const surgeCard =
+    !!surge &&
+    surge.quantity > 0 &&
+    (surgeUp
+      ? surge.quantity > recommendedQty
+      : surge.quantity < recommendedQty) &&
+    !scenarios.some(isSurge)
+  const surgeName = surgeUp ? '최근 판매 속도라면' : '평소 속도로 돌아왔다면'
+  const surgeTape = surge
+    ? surgeUp
+      ? `판매 급증 ${Math.round(surge.ratio)}배`
+      : '판매 다시 줄었어요'
+    : ''
+  // 카드 이름 줄 오른쪽 "이유 보기"(줄 높이가 안 늘게 같은 줄에)
+  const reasonButton = onReason && (
+    <button
+      className={styles.reason}
+      onClick={(event) => {
+        event.stopPropagation()
+        onReason()
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+      type="button"
+    >
+      이유 보기 ›
+    </button>
+  )
   const selected =
     scenarios.find((item) => item.id === selectedId) ??
     scenarios.find(
@@ -465,8 +514,19 @@ export function ScenarioInsight({
                           : '✓ 이 수량으로 넣어요'}
                       </span>
                     )}
+                    {isSurge(scenario) && (
+                      <span
+                        className={styles.surgeTape}
+                        data-dir={surge?.direction}
+                      >
+                        {surgeTape}
+                      </span>
+                    )}
                     <div className={styles.scenarioTop}>
-                      <span>{scenario.label}</span>
+                      <span>
+                        {isSurge(scenario) ? surgeName : scenario.label}
+                      </span>
+                      {isSurge(scenario) && reasonButton}
                       {recommended && (
                         <span className={styles.badge}>
                           <Tape className={styles.badgeTape} />
@@ -570,6 +630,58 @@ export function ScenarioInsight({
                   </div>
                 )
               })}
+
+              {surgeCard && surge && (
+                // 옆 카드와 같은 틀·같은 줄: 이름·수량은 같은 자리, 손글씨 비교가 남는 높이를 채워 단추가 옆 카드 단추와 같은 줄에
+                <div
+                  className={`${styles.scenario} ${styles.surgeCard}`}
+                  data-dir={surge.direction}
+                >
+                  <span className={styles.surgeTape} data-dir={surge.direction}>
+                    {surgeTape}
+                  </span>
+                  <div className={styles.scenarioTop}>
+                    <span>{surgeName}</span>
+                    {reasonButton}
+                  </div>
+                  <strong className={styles.quantity}>
+                    {surge.quantity.toLocaleString()}개
+                  </strong>
+                  {surge.weeks && surge.weeks.length >= 4 ? (
+                    <SurgeCardChart
+                      name={surgeName}
+                      nowLabel={`이번 주 하루 ${surge.recent}개`}
+                      refLabel={
+                        surgeUp
+                          ? `평소 하루 ${surge.baseline}개`
+                          : `급증 때 하루 ${surge.baseline}개`
+                      }
+                      refValue={surge.baseline}
+                      weeks={surge.weeks}
+                    />
+                  ) : (
+                    <p className={styles.surgeCompare}>
+                      {surgeUp ? '평소' : '급증 때'} 하루 {surge.baseline}개 →
+                      이번 주 {surge.recent}개
+                    </p>
+                  )}
+                  <p className={styles.note}>
+                    {surgeUp
+                      ? '최근 7일 속도로 다음 입고까지 버틸 양이에요'
+                      : '급증이 끝나 이만큼이면 다음 입고까지 버텨요'}
+                  </p>
+                  <Button
+                    className={styles.decideButton}
+                    disabled={action.isPending || tooOld}
+                    onClick={() => void action.run(surge.quantity)}
+                    title={tooOld ? STALE_TEXT : undefined}
+                    type="button"
+                    variant="secondary"
+                  >
+                    이 수량으로 비교하기
+                  </Button>
+                </div>
+              )}
 
               {!showInput && (
                 <button
