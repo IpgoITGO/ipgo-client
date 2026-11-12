@@ -222,8 +222,9 @@ export function BillingAuthFailPage() {
       <Steps at={1} />
       <div className={styles.safe} role="alert">
         <span aria-hidden="true">✓</span>
-        <span>
-          돈은 빠져나가지 않았어요. {read.message ?? reasonText(read.code)}
+        <span className={styles.safeText}>
+          <b>돈은 빠져나가지 않았어요</b>
+          <span>{read.message ?? reasonText(read.code)}</span>
         </span>
       </div>
       <Retry />
