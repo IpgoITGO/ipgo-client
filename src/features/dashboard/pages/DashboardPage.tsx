@@ -41,7 +41,7 @@ import {
   shortExpiry,
   useExpiry,
 } from '../../expiry/model/expiryApi'
-import { getDashboard } from '../model/dashboardApi'
+import { type DemandShift, getDashboard } from '../model/dashboardApi'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
@@ -123,6 +123,7 @@ export type DashboardData = {
     quantity: number
     cost: number
     risk: number | null
+    shift?: DemandShift | null
   }>
   /** 아직 괜찮은 상품(서버 #103). 없으면 화면이 상품 목록으로 이름·바코드만 채운다 */
   safeItems?: Array<{
@@ -131,6 +132,7 @@ export type DashboardData = {
     barcode: string
     stockoutDate: string
     leadTime: number | null
+    shift?: DemandShift | null
   }>
   unavailableItems: Array<{ id?: string; name: string; reason: string }>
   excludedItems: Array<{
@@ -196,7 +198,29 @@ function SummaryCard({
   )
 }
 
-type SortKey = 'stockout' | 'risk' | 'cost'
+type SortKey = 'stockout' | 'risk' | 'cost' | 'shift'
+
+// 판매 급변 순: 급증(배수 큰 순) → 다시 줄어듦 → 나머지. 나머지는 소진일 순으로 이어진다
+function shiftScore(shift?: DemandShift | null) {
+  if (!shift) return 0
+  return shift.direction === 'UP' ? 1000 + shift.ratio : 500
+}
+
+// 상품 이름 옆 꼬리표("곧 넣어야 해요"와 같은 모양, 다른 색). 마우스를 올리면 숫자
+function ShiftTag({ shift }: { shift?: DemandShift | null }) {
+  if (!shift) return null
+  return (
+    <span
+      className={styles.shift}
+      data-dir={shift.direction}
+      title={`최근 7일 하루 ${shift.recentDailyQty}개 · 그 전 4주 하루 ${shift.baselineDailyQty}개`}
+    >
+      {shift.direction === 'UP'
+        ? `판매 급증 ${Math.round(shift.ratio)}배`
+        : '판매 다시 줄었어요'}
+    </span>
+  )
+}
 
 // "2026. 9. 5" 같은 날짜를 자릿수 맞춘 "20260905"로 바꿔 글자 비교로도 날짜 순이 되게 한다.
 function dateKey(date: string) {
@@ -256,6 +280,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'stockout', label: '소진일 빠른 순' },
   { value: 'risk', label: '품절 위험 높은 순' },
   { value: 'cost', label: '금액 큰 순' },
+  { value: 'shift', label: '판매 급변 순' },
 ]
 
 const PANEL_TITLE: Record<Tab, string> = {
@@ -423,7 +448,10 @@ export function DashboardPage() {
       if (sort === 'cost') return b.cost - a.cost
       // 위험을 모르는 상품은 맨 뒤로
       if (sort === 'risk') return (b.risk ?? -1) - (a.risk ?? -1)
-      return dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
+      return (
+        (sort === 'shift' ? shiftScore(b.shift) - shiftScore(a.shift) : 0) ||
+        dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
+      )
     })
   }, [query.data?.neededItems, sort])
 
@@ -638,6 +666,10 @@ export function DashboardPage() {
       : dateKey(row.item.stockoutDate)
   const rowRisk = (row: Row) =>
     row.kind === 'need' ? (row.item.risk ?? -1) : -1
+  // 괜찮은 상품을 상품 목록으로 채운 경우(서버 #103 전)엔 판매 급변 칸이 없다
+  const shiftOf = (row: Row) =>
+    row.kind !== 'na' && 'shift' in row.item ? row.item.shift : null
+  const rowShift = (row: Row) => shiftScore(shiftOf(row))
   const rowCost = (row: Row) =>
     row.kind === 'need' ? orderCostOf(row.item) : -1
   const rows = (
@@ -656,7 +688,8 @@ export function DashboardPage() {
           ? rowCost(b) - rowCost(a)
           : sort === 'risk'
             ? rowRisk(b) - rowRisk(a)
-            : rowDate(a).localeCompare(rowDate(b))) ||
+            : (sort === 'shift' ? rowShift(b) - rowShift(a) : 0) ||
+              rowDate(a).localeCompare(rowDate(b))) ||
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
   const pickable = rows.filter(
@@ -1115,6 +1148,7 @@ export function DashboardPage() {
                                   곧 넣어야 해요
                                 </span>
                               )}
+                              <ShiftTag shift={shiftOf(row)} />
                             </div>
                             {row.barcode && <span>{row.barcode}</span>}
                             {/* 계산 못 한 이유: 상자 없이 이름 아래 회색 한 줄 + 작은 링크(11/11 시안 2안) */}

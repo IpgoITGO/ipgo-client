@@ -434,6 +434,20 @@
   background: var(--color-accent-soft);
   border-radius: var(--radius-chip);
 }
+/* 판매 급변(11/12): "곧 넣어야 해요"와 같은 모양, 다른 색. 급증 = 파랑, 다시 줄어듦 = 초록 */
+.shift {
+  padding: 1px 8px;
+  color: var(--color-info);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--color-info-bg);
+  border-radius: var(--radius-chip);
+}
+.shift[data-dir='DOWN'] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
 .muted {
   color: var(--color-text-3);
 }

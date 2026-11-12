@@ -220,6 +220,14 @@ const NEEDED_ITEMS = [
     recommendedQty: 72,
     recommendedAmount: 129600,
     preArrivalRisk: 0.08,
+    // 판매 급변(server #193 요청 모양). 실데이터 9월 비건쿠키처럼 평소의 몇 배로 튄 상품
+    demandShift: {
+      direction: 'UP',
+      recentDailyQty: 4,
+      baselineDailyQty: 0.4,
+      ratio: 10,
+      since: isoFromToday(-7),
+    },
   },
   {
     productId: 3,
@@ -636,6 +644,14 @@ export const handlers = [
           skuBarcode: '8800272421273',
           expectedShortageOn: isoFromToday(24),
           leadTimeDays: 5,
+          // 급증이 끝나 권장량이 크게 줄어든 상품
+          demandShift: {
+            direction: 'DOWN',
+            recentDailyQty: 1.2,
+            baselineDailyQty: 6.5,
+            ratio: 0.2,
+            since: isoFromToday(-7),
+          },
         },
         {
           productId: 23,
