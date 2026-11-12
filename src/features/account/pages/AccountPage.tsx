@@ -30,6 +30,7 @@ import {
   useSubscription,
 } from '../../billing/model/billingApi'
 import { useCardRegistration } from '../../billing/model/payment'
+import { PendingPayments } from '../../billing/pages/PendingPayments'
 import { CancelModal } from '../ui/CancelModal'
 import { WithdrawModal } from '../ui/WithdrawModal'
 import { Toast } from '../../../shared/ui/Toast/Toast'
@@ -50,6 +51,7 @@ function invoiceState(invoice: Invoice) {
   if (invoice.paymentStatus === 'SUCCEEDED' || invoice.status === 'PAID')
     return '결제됨'
   if (invoice.paymentStatus === 'DECLINED') return '결제 안 됨'
+  if (invoice.paymentStatus === 'WAITING_FOR_DEPOSIT') return '입금 대기'
   if (
     invoice.paymentStatus === 'UNKNOWN' ||
     invoice.paymentStatus === 'REVIEW_REQUIRED'
@@ -94,7 +96,9 @@ export function AccountPage() {
   const methods = usePaymentMethods().data
   const invoices = useInvoices().data?.items
   const current = methods?.find((item) => item.current)
-  const consentVersion = usePlans().data?.[0]?.consentVersion
+  const plans = usePlans().data
+  const normal = plans?.some((p) => p.interval === 'ONE_TIME') ?? false
+  const consentVersion = plans?.[0]?.consentVersion
   const startCard = useCardRegistration({
     email: user?.email,
     name: user?.name,
@@ -178,27 +182,31 @@ export function AccountPage() {
     (item) => item.paymentStatus === 'DECLINED' && item.status === 'OPEN',
   )
   const status =
-    !declined && lock?.reason === 'TRIAL_ENDED'
-      ? { text: '체험 끝남', to: '/plans', label: '요금제 고르기' }
-      : declined || failed
-        ? {
-            text: lock
-              ? '결제 안 됨 · 새 계산 멈춤'
-              : `결제 안 됨${failed?.until ? ` · ${monthDayKo(dayOf(failed.until))}까지` : ''}`,
-            // 안 된 결제가 목록에 있으면 바로 다시 결제, 없으면 카드부터 바꾼다
-            onClick: () =>
-              void attempt(
-                () =>
+    normal && lock
+      ? { text: '이용 기간이 끝났어요', to: '/plans', label: '이용권 결제하기' }
+      : !declined && lock?.reason === 'TRIAL_ENDED'
+        ? { text: '체험 끝남', to: '/plans', label: '요금제 고르기' }
+        : declined || failed
+          ? {
+              text: lock
+                ? '결제 안 됨 · 새 계산 멈춤'
+                : `결제 안 됨${failed?.until ? ` · ${monthDayKo(dayOf(failed.until))}까지` : ''}`,
+              // 안 된 결제가 목록에 있으면 바로 다시 결제, 없으면 카드부터 바꾼다
+              onClick: () =>
+                void attempt(
+                  () =>
+                    declined
+                      ? retry.mutateAsync(
+                          `/invoices/${declined.invoiceId}/retry`,
+                        )
+                      : startCard('REPLACE_METHOD'),
                   declined
-                    ? retry.mutateAsync(`/invoices/${declined.invoiceId}/retry`)
-                    : startCard('REPLACE_METHOD'),
-                declined
-                  ? '다시 결제를 요청했어요. 결과는 결제 내역에서 확인해 주세요'
-                  : undefined,
-              ),
-            label: declined ? '다시 결제' : '결제 수단 바꾸기',
-          }
-        : null
+                    ? '다시 결제를 요청했어요. 결과는 결제 내역에서 확인해 주세요'
+                    : undefined,
+                ),
+              label: declined ? '다시 결제' : '결제 수단 바꾸기',
+            }
+          : null
 
   const trialEnd = subscription.trialEnd ? dayOf(subscription.trialEnd) : null
 
@@ -321,7 +329,8 @@ export function AccountPage() {
                         {trial ? '셀러 요금제로 계속 쓰기' : '요금제 바꾸기'}
                       </Link>
                     )}
-                    {!trial &&
+                    {!normal &&
+                      !trial &&
                       subscription.status !== 'CANCELED' &&
                       (cancelOn ? (
                         <span
@@ -424,32 +433,43 @@ export function AccountPage() {
               <h2 className={styles.label} id="pay-title">
                 결제
               </h2>
-              <div className={styles.manageRow}>
-                <div>
-                  <b>결제 수단</b>
-                  {current ? (
-                    <span>
-                      신용·체크카드{' '}
-                      <span className={styles.card}>
-                        {current.maskedNumber}
+              {normal && (
+                <>
+                  <p>
+                    1개월 이용권 · 자동 청구 없음. 만료 후 직접 다시
+                    결제해주세요.
+                  </p>
+                  <PendingPayments />
+                </>
+              )}
+              {!normal && (
+                <div className={styles.manageRow}>
+                  <div>
+                    <b>결제 수단</b>
+                    {current ? (
+                      <span>
+                        신용·체크카드{' '}
+                        <span className={styles.card}>
+                          {current.maskedNumber}
+                        </span>
+                        <span className={styles.via}>토스페이먼츠</span>
                       </span>
-                      <span className={styles.via}>토스페이먼츠</span>
-                    </span>
-                  ) : (
-                    <span>아직 없어요 · 체험은 카드 없이 써요</span>
+                    ) : (
+                      <span>아직 없어요 · 체험은 카드 없이 써요</span>
+                    )}
+                  </div>
+                  {current && (
+                    <button
+                      className={styles.manageButton}
+                      disabled={changing}
+                      onClick={() => void changeCard()}
+                      type="button"
+                    >
+                      카드 바꾸기
+                    </button>
                   )}
                 </div>
-                {current && (
-                  <button
-                    className={styles.manageButton}
-                    disabled={changing}
-                    onClick={() => void changeCard()}
-                    type="button"
-                  >
-                    카드 바꾸기
-                  </button>
-                )}
-              </div>
+              )}
               <div className={`${styles.manageRow} ${styles.historyRow}`}>
                 <b>결제 내역</b>
                 {invoices?.length ? (
@@ -507,7 +527,9 @@ export function AccountPage() {
           <h2 id={refundTitle}>결제를 전액 취소할까요?</h2>
           <p>
             {refundTarget.amount.toLocaleString('ko-KR')}원 전액을 취소합니다.
-            취소가 확인되면 유료 이용이 종료되고 다음 자동 청구도 중지됩니다.
+            {normal
+              ? '취소가 확인되면 유료 이용이 종료됩니다.'
+              : '취소가 확인되면 유료 이용이 종료되고 다음 자동 청구도 중지됩니다.'}
           </p>
           <p>토스 테스트 결제이며 실제 돈은 청구·환불되지 않습니다.</p>
           <label className={styles.refundReason}>
