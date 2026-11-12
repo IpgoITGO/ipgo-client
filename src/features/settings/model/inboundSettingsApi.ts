@@ -44,11 +44,21 @@ export function getDefaultSettings() {
   return apiRequest<DefaultSettings>('/replenishment-settings')
 }
 
-// P1 상품 목록(입고 조건·바꾼 칸 포함). 한 화면에 최대 100개.
-export function getProductSettings() {
-  return apiRequest<{ items: ProductSettings[]; total: number }>(
-    '/products?query=&page=0&size=100',
-  )
+// P1 상품 목록(입고 조건·바꾼 칸 포함). 서버는 한 번에 최대 100개라, 전체(total)를 다 받을 때까지 쪽을 넘긴다.
+// (11/12: 첫 쪽만 받아 292개 중 100개만 보이던 것)
+const PAGE_SIZE = 100
+
+export async function getProductSettings() {
+  const items: ProductSettings[] = []
+  for (let page = 0; ; page++) {
+    const result = await apiRequest<{
+      items: ProductSettings[]
+      total: number
+    }>(`/products?query=&page=${page}&size=${PAGE_SIZE}`)
+    items.push(...result.items)
+    if (result.items.length < PAGE_SIZE || items.length >= result.total)
+      return { items, total: result.total }
+  }
 }
 
 // S2 기본값 저장. recalculate면 값이 같아도 계산을 시작한다.
