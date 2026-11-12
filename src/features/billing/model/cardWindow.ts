@@ -10,7 +10,7 @@ type TossWindow = Window & {
 }
 
 let sdk: Promise<void> | null = null
-function loadToss() {
+export function loadToss() {
   sdk ??= new Promise<void>((resolve, reject) => {
     if ((window as TossWindow).TossPayments) return resolve()
     const script = document.createElement('script')

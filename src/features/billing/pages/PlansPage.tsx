@@ -22,6 +22,8 @@ const md = (iso: string) =>
 // 위 상태 줄(#236): 원 D-day로 지금 상태와 체험이 끝나는 날을 먼저 보여 준다.
 export function PlansPage() {
   const navigate = useNavigate()
+  const normal =
+    usePlans().data?.some((p) => p.interval === 'ONE_TIME') ?? false
   const { data: subscription, isError } = useSubscription()
   if (!subscription) {
     return (
@@ -120,8 +122,9 @@ export function PlansPage() {
 
       <PlanCards subscription={subscription} />
       <p className={styles.footnote}>
-        가격은 부가세 포함이에요. 매달 같은 날 자동으로 결제되고, 내 계정에서
-        언제든 해지할 수 있어요.
+        {normal
+          ? '가격은 부가세 포함이에요. 결제 완료일부터 한 달 이용하며, 만료 후 직접 다시 결제해요. 자동 청구는 없어요.'
+          : '가격은 부가세 포함이에요. 매달 같은 날 자동으로 결제되고, 내 계정에서 언제든 해지할 수 있어요.'}
       </p>
     </div>
   )
@@ -138,6 +141,7 @@ export function PlanCards({
 }) {
   const navigate = useNavigate()
   const serverPlans = usePlans().data
+  const normal = serverPlans?.some((p) => p.interval === 'ONE_TIME') ?? false
   const daysLeft = trialDaysLeft(subscription)
   const failed = !!paymentProblem(subscription)
   const paidEnded = subscription.status === 'CANCELED'
@@ -187,7 +191,9 @@ export function PlanCards({
             </h2>
             <p className={styles.price}>
               {price.toLocaleString('ko-KR')}
-              <small>{price > 0 ? '원/월' : '원'}</small>
+              <small>
+                {price > 0 ? (normal ? '원/1개월' : '원/월') : '원'}
+              </small>
             </p>
             {current && trial && !ended && !onTrial && (
               <div className={styles.days}>
@@ -206,7 +212,11 @@ export function PlanCards({
                 <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
               </div>
             )}
-            <p className={styles.planNote}>{plan.note}</p>
+            <p className={styles.planNote}>
+              {normal && plan.id !== 'trial'
+                ? '1개월 이용권 · 자동 청구 없음'
+                : plan.note}
+            </p>
             <dl className={styles.compare}>
               {COMPARE.map((row) => {
                 const value = row.value(plan)
@@ -248,7 +258,7 @@ export function PlanCards({
               <Button onClick={() => navigate('/account')}>
                 다시 결제하기
               </Button>
-            ) : current ? (
+            ) : current || (normal && !trial && !paidEnded) ? (
               <Button disabled variant="secondary">
                 쓰는 중
               </Button>

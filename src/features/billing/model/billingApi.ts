@@ -9,7 +9,7 @@ export type ServerPlan = {
   priceVersion: string
   amount: number
   currency: string
-  interval: 'MONTH'
+  interval: 'MONTH' | 'ONE_TIME'
   products: number
   monthlyInsights: number | null
   testMode: boolean

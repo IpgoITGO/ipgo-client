@@ -14,6 +14,7 @@ import {
 } from '../model/billingApi'
 import { useCardRegistration } from '../model/payment'
 import styles from './Billing.module.css'
+import { NormalCheckoutPage } from './NormalCheckoutPage'
 
 const STEPS = ['요금제', '결제', '완료'] as const
 
@@ -75,6 +76,8 @@ export function CheckoutPage() {
   })
 
   if (!plan) return <Navigate replace to="/plans" />
+  if (serverPlan?.interval === 'ONE_TIME')
+    return <NormalCheckoutPage plan={serverPlan} />
   const amount = serverPlan ? serverPlan.amount.toLocaleString('ko-KR') : '—'
   // 매달 결제일 = 오늘 날짜(정기결제 고지에 금액·주기를 적는다)
   const payDay = new Date().getDate()
