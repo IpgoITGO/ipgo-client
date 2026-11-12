@@ -161,6 +161,8 @@ export const useInvoices = () =>
 export function billingErrorText(error: unknown) {
   if (error instanceof ApiError) {
     if (error.code === 'BILLING_DISABLED') return '결제가 아직 켜지지 않았어요'
+    if (error.code === 'AUTOMATIC_PAYMENT_DISABLED')
+      return '일반결제는 자동 갱신되지 않아요. 결제를 취소하려면 결제 내역의 ‘결제 취소·환불’을 이용해 주세요.'
     // 다른 결제 시도(다른 요금제·카드 바꾸기·카드 발급 중)가 아직 안 끝난 것. 승인 중과 같은 뜻이 아니다(#294)
     if (error.code === 'BILLING_IN_PROGRESS')
       return '이전 결제 시도가 아직 끝나지 않았어요. 1~2분 뒤 다시 해 주세요'
