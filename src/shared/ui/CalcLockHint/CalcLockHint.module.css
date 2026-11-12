@@ -1,0 +1,25 @@
+/* 커서에 붙는 작은 쪽지: 계산 상태 창과 같은 로고 상자 그림(작게) + 한 마디 */
+.hint {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* 팝업(100) 안의 잠긴 버튼에서도 보이게 그 위로 */
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px 2px 2px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgb(20 25 34 / 8%);
+  pointer-events: none;
+}
+/* 상태 창 그림(48px)을 반 크기로 */
+.hint > :first-child {
+  zoom: 0.5;
+}

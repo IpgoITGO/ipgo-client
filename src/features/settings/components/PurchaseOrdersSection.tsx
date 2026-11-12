@@ -389,6 +389,7 @@ export function PurchaseOrdersSection() {
         {/* 검색칸을 맨 오른쪽에 두어 위 입고 조건 표 검색칸과 끝을 맞춘다 */}
         <div className={styles.headTools}>
           <Button
+            data-calc-locked={calculationBusy || undefined}
             disabled={calculationBusy}
             onClick={() => openModal(null)}
             type="button"
@@ -474,6 +475,7 @@ export function PurchaseOrdersSection() {
                     <div className={styles.rowActions}>
                       <Button
                         aria-label={`${order.skuName} 수정`}
+                        data-calc-locked={calculationBusy || undefined}
                         disabled={calculationBusy}
                         onClick={() => openModal(order)}
                         type="button"
@@ -484,6 +486,7 @@ export function PurchaseOrdersSection() {
                       <button
                         aria-label={`${order.skuName} 발주 취소`}
                         className={styles.rowClear}
+                        data-calc-locked={calculationBusy || undefined}
                         disabled={calculationBusy}
                         onClick={() => void removeOrder(order)}
                         title="발주 취소"
@@ -613,6 +616,7 @@ export function PurchaseOrdersSection() {
                 <button
                   className={styles.cancelOrder}
                   data-confirm={confirmCancel || undefined}
+                  data-calc-locked={calculationBusy || undefined}
                   disabled={calculationBusy || isSubmitting}
                   onClick={() => void cancelOrder()}
                   type="button"
@@ -622,6 +626,7 @@ export function PurchaseOrdersSection() {
               )}
               <Button
                 loading={isSubmitting}
+                data-calc-locked={calculationBusy || undefined}
                 disabled={calculationBusy}
                 loadingLabel="저장 중"
                 type="submit"

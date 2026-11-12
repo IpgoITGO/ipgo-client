@@ -106,3 +106,8 @@ a {
     transform: none;
   }
 }
+
+/* 계산 중이라 잠긴 칸: 이벤트를 부모로 넘겨 커서 옆 "계산 중" 그림(CalcLockHint)이 칸 영역으로 알아본다 */
+[data-calc-locked] {
+  pointer-events: none;
+}
