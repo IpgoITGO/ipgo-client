@@ -30,9 +30,12 @@ export type ServerPlan = {
 }
 
 export type ServerSubscription = {
+  // 구버전 API에서 누락되면 기존 계정으로 취급한다. null만 미선택이다.
+  planChosenAt?: string | null
   planId: 'trial' | 'seller' | 'business'
   // 이 밖의 값이 와도 화면이 깨지지 않게 string도 받는다
   status:
+    | 'NOT_SELECTED'
     | 'TRIALING'
     | 'TRIAL_EXPIRED'
     | 'ACTIVE'
@@ -56,6 +59,7 @@ export type ServerSubscription = {
     monthlyInsightLimit: number | null
     reason:
       | null
+      | 'PLAN_NOT_SELECTED'
       | 'TRIAL_ENDED'
       | 'TRIAL_ALREADY_USED'
       | 'SUBSCRIPTION_ENDED'

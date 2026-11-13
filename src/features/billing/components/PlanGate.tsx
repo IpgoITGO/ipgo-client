@@ -1,55 +1,37 @@
 import { useId, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { useAuth } from '../../../auth/model/useAuth'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { dayOf, monthDayKo } from '../model/billing'
-import { useSubscription } from '../model/billingApi'
+import {
+  billingErrorText,
+  useBillingMutation,
+  useSubscription,
+} from '../model/billingApi'
+import type { ServerSubscription } from '../model/billingApi'
 import { PlanCards } from '../pages/PlansPage'
 import styles from './PlanGate.module.css'
 
-// 첫 대시보드(수불부 아직 없음)에서 요금제를 고르기 전엔 다른 걸 못 누르게 막는 창.
-// 체험을 고르면 이 브라우저에 기억하고 닫는다. 셀러·비즈니스는 결제 화면으로(결제 안 하고 돌아오면 다시 뜸).
-const KEY = 'ipgo:plan-picked:'
-function picked(email: string) {
-  try {
-    return localStorage.getItem(KEY + email) === '1'
-  } catch {
-    return false
-  }
-}
-
+// 선택 여부와 체험 종료일은 서버 원장으로 판단한다. 구버전 서버의 누락 필드는 기존 계정으로 취급한다.
 export function PlanGate({ hasUpload }: { hasUpload: boolean }) {
   const titleId = useId()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { data: subscription } = useSubscription()
-  const email = user?.email ?? ''
-  const [done, setDone] = useState(() => picked(email))
-  const [started, setStarted] = useState(false)
-  if (
-    hasUpload ||
-    (done && !started) ||
-    !subscription ||
-    subscription.planId !== 'trial' ||
-    subscription.status !== 'TRIALING'
-  )
-    return null
-  const startTrial = () => {
+  const trial = useBillingMutation<ServerSubscription>('/trial/start')
+  const [started, setStarted] = useState<ServerSubscription | null>(null)
+  const startTrial = async () => {
     try {
-      localStorage.setItem(KEY + email, '1')
+      const chosen = await trial.mutateAsync(undefined)
+      if (chosen.planId === 'trial' && chosen.status === 'TRIALING')
+        setStarted(chosen)
     } catch {
-      /* 기억 못 하면 다음에 한 번 더 묻는다 */
+      // mutation의 오류를 창 안에 표시하고 같은 키로 재시도한다.
     }
-    setDone(true)
-    setStarted(true)
   }
-  const close = () => setStarted(false)
+  const close = () => setStarted(null)
   if (started) {
-    const end = subscription.trialEnd
-      ? monthDayKo(dayOf(subscription.trialEnd))
-      : ''
+    const end = started.trialEnd ? monthDayKo(dayOf(started.trialEnd)) : ''
     // 체험 시작 확인(11/12): 꾸밈 없이 한 메시지 + 다음 할 일
     return (
       <Modal dismissible={false} labelledBy={titleId}>
@@ -77,6 +59,8 @@ export function PlanGate({ hasUpload }: { hasUpload: boolean }) {
       </Modal>
     )
   }
+  if (hasUpload || !subscription || subscription.planChosenAt !== null)
+    return null
   return (
     <Modal dismissible={false} labelledBy={titleId} wide>
       <div className={styles.body}>
@@ -87,7 +71,12 @@ export function PlanGate({ hasUpload }: { hasUpload: boolean }) {
           골라야 수불부를 올릴 수 있어요. 체험은 카드 등록 없이 14일 동안 셀러와
           똑같이 써요.
         </p>
-        <PlanCards onTrial={startTrial} subscription={subscription} />
+        {trial.isError && <p role="alert">{billingErrorText(trial.error)}</p>}
+        <PlanCards
+          onTrial={startTrial}
+          subscription={subscription}
+          trialPending={trial.isPending}
+        />
       </div>
     </Modal>
   )
