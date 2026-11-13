@@ -199,3 +199,25 @@
     max-width: none;
   }
 }
+
+/* 스크롤 막대 대신 위·아래 그림자로 "더 있어요"를 보인다(11/13). 끝에 닿으면 그림자가 사라진다 */
+.list {
+  scrollbar-width: none;
+  background:
+    linear-gradient(var(--color-card) 30%, transparent) center top,
+    linear-gradient(transparent, var(--color-card) 70%) center bottom,
+    radial-gradient(farthest-side at 50% 0, rgb(25 31 40 / 12%), transparent)
+      center top,
+    radial-gradient(farthest-side at 50% 100%, rgb(25 31 40 / 12%), transparent)
+      center bottom;
+  background-repeat: no-repeat;
+  background-size:
+    100% 32px,
+    100% 32px,
+    100% 10px,
+    100% 10px;
+  background-attachment: local, local, scroll, scroll;
+}
+.list::-webkit-scrollbar {
+  display: none;
+}
