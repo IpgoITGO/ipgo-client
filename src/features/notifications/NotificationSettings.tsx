@@ -11,7 +11,7 @@ import {
 } from './pushApi'
 import { Button } from '../../shared/ui/Button/Button'
 import bellOn from './bell-on.webp'
-import { HourSlider } from './HourSlider'
+import { TimeField } from './TimeField'
 import { hourLabel } from './hourLabel'
 import styles from './NotificationSettings.module.css'
 
@@ -159,7 +159,7 @@ export function NotificationSettings() {
         <div className={styles.timeRow}>
           <span className={styles.time}>
             받을 시각
-            <HourSlider
+            <TimeField
               disabled={!settings.data || mutation.isPending}
               label="알림 받을 시각"
               onChange={(hour) => mutation.mutate(hour)}

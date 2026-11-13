@@ -98,14 +98,14 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
   it('정시 선택은 서버에 시간만 변경한다', async () => {
     open()
     await screen.findByText('넣을 상품이 있을 때만 보내요')
-    // 받을 시각 막대(11/13): 끄는 동안은 보내지 않고, 손을 떼면 한 번 저장한다
-    const slider = screen.getByRole('slider', { name: '알림 받을 시각' })
-    await waitFor(() => expect(slider).toBeEnabled())
-    fireEvent.change(slider, { target: { value: '14' } })
-    fireEvent.change(slider, { target: { value: '15' } })
+    // 받을 시각(11/14): 시·분 칸에 고르거나 적고, 칸을 벗어나면 한 번 저장한다
+    const time = screen.getByLabelText('알림 받을 시각')
+    await waitFor(() => expect(time).toBeEnabled())
+    fireEvent.change(time, { target: { value: '15:30' } })
     expect(saveNotificationSettings).not.toHaveBeenCalled()
-    expect(slider).toHaveAttribute('aria-valuetext', '오후 3시')
-    fireEvent.pointerUp(slider)
+    // 서버가 아직 시만 받으므로 분은 안내만
+    expect(screen.getByText(/15시 정각에 보내요/)).toBeInTheDocument()
+    fireEvent.blur(time)
     await waitFor(() =>
       expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 15 }),
     )
