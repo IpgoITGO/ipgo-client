@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
 import { openApp } from '../../../test/openApp'
@@ -42,6 +42,25 @@ function invoices(items: Invoice[]) {
 afterEach(() => {
   vi.useRealTimers()
   vi.mocked(openCardWindow).mockReset()
+})
+
+// 복귀 성공은 등록 당시 세션과 별개인 현재 청구 사실로 확인한다.
+beforeEach(() => {
+  server.use(
+    http.get('/api/billing/invoices', () =>
+      HttpResponse.json({
+        items: [
+          {
+            invoiceId: 'first-declined',
+            status: 'PAID',
+            paymentStatus: 'SUCCEEDED',
+            refundStatus: null,
+          },
+        ],
+        nextCursor: null,
+      }),
+    ),
+  )
 })
 
 describe('최초 승인 거절 후 기존 청구 재결제', () => {

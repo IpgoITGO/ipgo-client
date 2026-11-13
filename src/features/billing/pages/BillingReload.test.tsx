@@ -1,9 +1,28 @@
 import { screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '../../../mocks/server'
 import { openApp } from '../../../test/openApp'
+
+// 복귀 성공은 등록 당시 세션과 별개인 현재 청구 사실로 확인한다.
+beforeEach(() => {
+  server.use(
+    http.get('/api/billing/invoices', () =>
+      HttpResponse.json({
+        items: [
+          {
+            invoiceId: 'invoice',
+            status: 'PAID',
+            paymentStatus: 'SUCCEEDED',
+            refundStatus: null,
+          },
+        ],
+        nextCursor: null,
+      }),
+    ),
+  )
+})
 
 describe('결제 복귀 화면의 새로고침 복구', () => {
   const done = {
