@@ -85,6 +85,8 @@
 .state strong {
   font-size: 22px;
   letter-spacing: -0.02em;
+  /* 좁을 때 "알려 / 드려요"처럼 말끝이 갈라지지 않게 줄을 고르게 */
+  text-wrap: balance;
 }
 
 /* 요금제 상자의 남은 날 알약과 같은 모양. 연결되면 초록 */
