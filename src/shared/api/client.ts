@@ -83,19 +83,26 @@ const REFRESH_PATH = '/auth/refresh'
 let refreshing: Promise<void> | null = null
 
 export function refreshAccessToken() {
-  refreshing ??= apiRequest<{ accessToken: string }>(REFRESH_PATH, {
-    method: 'POST',
+  // 쿠키는 탭 사이에 공유된다. 서로 다른 탭도 갱신을 순서대로 보내야
+  // 회전한 리프레시 토큰의 재사용으로 서버 세션이 폐기되지 않는다.
+  const renew = async () => {
+    try {
+      const body = await apiRequest<{ accessToken: string }>(REFRESH_PATH, {
+        method: 'POST',
+      })
+      setAccessToken(body.accessToken)
+    } catch (error) {
+      setAccessToken(null)
+      throw error
+    }
+  }
+  refreshing ??= (
+    typeof navigator !== 'undefined' && navigator.locks?.request
+      ? navigator.locks.request('ipgo:auth-refresh', renew)
+      : renew()
+  ).finally(() => {
+    refreshing = null
   })
-    .then(
-      (body) => setAccessToken(body.accessToken),
-      (error: unknown) => {
-        setAccessToken(null)
-        throw error
-      },
-    )
-    .finally(() => {
-      refreshing = null
-    })
   return refreshing
 }
 

@@ -41,7 +41,13 @@ function verdict(session: SessionResult): Phase | null {
     }
   }
   if (status === 'REJECTED' || status === 'CANCELED' || status === 'EXPIRED') {
-    return { kind: 'failed', reason: reasonText(errorCode) }
+    const code =
+      status === 'EXPIRED'
+        ? 'BILLING_SESSION_EXPIRED'
+        : status === 'CANCELED'
+          ? 'BILLING_SESSION_CANCELED'
+          : errorCode
+    return { kind: 'failed', reason: reasonText(code) }
   }
   // 카드만 바꾼 경우(결제 없음)
   if (status === 'COMPLETED' && !session.invoiceId) return { kind: 'replaced' }
@@ -51,11 +57,13 @@ function verdict(session: SessionResult): Phase | null {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // 주소에 남은 authKey가 기록에 남지 않게 지운다(라우터가 쓰는 history.state는 그대로 둔다).
-function cleanAddress() {
+function cleanAddress(sessionId?: string | null) {
+  // ID만 남겨 새로고침할 때도 본인 세션을 조회한다. authKey/state/customerKey는 지운다.
+  const query = sessionId ? `?${new URLSearchParams({ sessionId })}` : ''
   window.history.replaceState(
     window.history.state,
     '',
-    window.location.pathname,
+    `${window.location.pathname}${query}`,
   )
 }
 
@@ -83,33 +91,36 @@ export function BillingAuthSuccessPage() {
   const started = useRef(false)
 
   useEffect(() => {
-    cleanAddress()
-    // 개발 모드(StrictMode)에서 두 번 돌아도 등록 마무리는 한 번만 보낸다.
-    if (started.current) return
-    started.current = true
+    cleanAddress(read.sessionId)
+    let cancelled = false
     const { sessionId, state, authKey, customerKey } = read
     async function run() {
-      if (!sessionId || !state || !authKey || !customerKey) {
-        setPhase({
-          kind: 'failed',
-          reason: '결제창에서 돌아온 정보가 비었어요',
-        })
+      if (!sessionId) {
+        // 식별 정보가 없다는 사실만으로 미승인이라고 단정하지 않는다.
+        setPhase({ kind: 'unknown' })
         return
       }
-      try {
-        await billingPost<SessionResult>(
-          `/registration-sessions/${sessionId}/complete`,
-          newIdempotencyKey(),
-          { authKey, customerKey, state },
-        )
-      } catch {
-        // 응답 유실·서버 오류만으로 승인 여부를 알 수 없다. 같은 세션을 조회하고
-        // complete나 새 구독 요청을 자동으로 다시 보내지 않는다.
+      // 처음 복귀한 탭만 등록을 마무리한다. 새로고침은 저장한 ID로 조회만 한다.
+      // StrictMode의 효과 재실행에서도 complete는 한 번만 전송한다.
+      if (state && authKey && customerKey && !started.current) {
+        started.current = true
+        try {
+          await billingPost<SessionResult>(
+            `/registration-sessions/${sessionId}/complete`,
+            newIdempotencyKey(),
+            { authKey, customerKey, state },
+          )
+        } catch {
+          // 응답 유실·오류는 같은 세션 조회로 확인한다. complete는 재전송하지 않는다.
+        }
       }
+      if (cancelled) return
       setPhase({ kind: 'checking' })
       for (let i = 0; i <= POLL_MAX; i++) {
+        if (cancelled) return
         try {
           const done = verdict(await getSession(sessionId))
+          if (cancelled) return
           if (done) {
             setPhase(done)
             void queryClient.invalidateQueries({ queryKey: ['billing'] })
@@ -123,6 +134,9 @@ export function BillingAuthSuccessPage() {
       setPhase({ kind: 'unknown' })
     }
     void run()
+    return () => {
+      cancelled = true
+    }
   }, [read, queryClient])
 
   const failed = phase.kind === 'failed' ? phase : null
@@ -222,7 +236,7 @@ export function BillingAuthFailPage() {
     message: params.get('message'),
     sessionId: params.get('sessionId'),
   }))
-  useEffect(cleanAddress, [])
+  useEffect(() => cleanAddress(), [])
   // 결제사가 실패로 돌려보낸 건 확실한 실패라 이 등록 시도를 닫는다(#294). 다시 하면 새 시도로 열린다
   // 개발 모드(StrictMode)에서 두 번 돌아도 취소는 한 번만 보낸다
   const canceled = useRef(false)
