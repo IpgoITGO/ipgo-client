@@ -4,18 +4,21 @@ import { useId, useState } from 'react'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { monthDayKo } from '../../billing/model/billing'
+import type {
+  CancellationFeedback,
+  CancellationReason,
+} from '../../billing/model/billingApi'
 import { getDashboard } from '../../dashboard/model/dashboardApi'
 import pauseArt from '../assets/cancel-pause.webp'
 import styles from './CancelModal.module.css'
 
 const REASONS = [
-  '가격이 부담돼요',
-  '생각보다 잘 안 써요',
-  '예측이 잘 안 맞아요',
-  '다른 서비스를 쓸래요',
-  '기타',
-]
-export const REASONS_KEY = 'ipgo:cancel-reasons'
+  { code: 'PRICE', label: '가격이 부담돼요' },
+  { code: 'NOT_USING', label: '생각보다 잘 안 써요' },
+  { code: 'PREDICTION_QUALITY', label: '예측이 잘 안 맞아요' },
+  { code: 'OTHER_SERVICE', label: '다른 서비스를 쓸래요' },
+  { code: 'OTHER', label: '기타' },
+] as const
 
 // 계산 결과가 없을 때(불러오는 중·실패·빈 목록) 보여 줄 예시. 실제 상품처럼 보이지 않게 이름은 상품 A·B·C, 그림마다 "예시" 표시
 const SAMPLE_ROWS = [
@@ -28,13 +31,13 @@ type Props = {
   /** 다음 결제일(YYYY-MM-DD). 이날부터 해지가 적용된다 */
   nextOn: string
   onClose: () => void
-  onCancel: () => void
+  onCancel: (feedback: CancellationFeedback) => void
 }
 
 export function CancelModal({ nextOn, onClose, onCancel }: Props) {
   const titleId = useId()
   const [step, setStep] = useState<1 | 2>(1)
-  const [picked, setPicked] = useState<string[]>([])
+  const [picked, setPicked] = useState<CancellationReason[]>([])
   // 대시보드와 같은 키라 이미 받아 둔 값이 있으면 다시 요청하지 않는다
   const { data } = useQuery({
     queryKey: ['dashboard'],
@@ -56,20 +59,14 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
         .map((item) => ({ name: item.name, qty: item.quantity }))
     : SAMPLE_ROWS
 
-  function toggle(reason: string) {
+  function toggle(reason: CancellationReason) {
     setPicked((now) =>
       now.includes(reason) ? now.filter((r) => r !== reason) : [...now, reason],
     )
   }
 
   function confirm() {
-    // ponytail: 서버 저장은 ipgo-server#110, 그 전엔 이 브라우저에만 남긴다
-    try {
-      localStorage.setItem(REASONS_KEY, JSON.stringify(picked))
-    } catch {
-      /* 저장이 막혀도 해지는 진행 */
-    }
-    onCancel()
+    onCancel({ reasons: [...picked].sort() })
     onClose()
   }
 
@@ -160,7 +157,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
           </p>
           <fieldset className={styles.reasons}>
             <legend>해지하는 이유 (여러 개 골라도 돼요)</legend>
-            {REASONS.map((reason) => (
+            {REASONS.map(({ code: reason, label }) => (
               <label
                 className={picked.includes(reason) ? styles.on : undefined}
                 key={reason}
@@ -170,7 +167,7 @@ export function CancelModal({ nextOn, onClose, onCancel }: Props) {
                   onChange={() => toggle(reason)}
                   type="checkbox"
                 />
-                {reason}
+                {label}
               </label>
             ))}
           </fieldset>

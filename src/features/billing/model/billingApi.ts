@@ -3,6 +3,18 @@ import { useRef } from 'react'
 
 import { ApiError, apiRequest } from '../../../shared/api/client'
 
+export type CancellationReason =
+  | 'PRICE'
+  | 'NOT_USING'
+  | 'MISSING_FEATURE'
+  | 'PREDICTION_QUALITY'
+  | 'OTHER_SERVICE'
+  | 'OTHER'
+export type CancellationFeedback = {
+  reasons: CancellationReason[]
+  note?: string
+}
+
 // 서버 결제 API(#294, ipgo-server). 구독·요금제·카드·결제 내역은 모두 여기서 받는다.
 export type ServerPlan = {
   planId: 'seller' | 'business'
@@ -207,14 +219,23 @@ export function useBillingMutation<T = unknown>(
   body?: () => unknown,
 ) {
   const queryClient = useQueryClient()
-  const keyRef = useRef<{ path: string; key: string } | null>(null)
+  const keyRef = useRef<{
+    path: string
+    key: string
+    signature?: string
+  } | null>(null)
   return useMutation({
     mutationFn: (to?: string) => {
       const target = to ?? path
-      if (keyRef.current?.path !== target) {
-        keyRef.current = { path: target, key: newIdempotencyKey() }
+      const payload = body?.()
+      const signature = JSON.stringify(payload)
+      if (
+        keyRef.current?.path !== target ||
+        keyRef.current.signature !== signature
+      ) {
+        keyRef.current = { path: target, key: newIdempotencyKey(), signature }
       }
-      return billingPost<T>(target, keyRef.current.key, body?.())
+      return billingPost<T>(target, keyRef.current.key, payload)
     },
     onSuccess: () => {
       keyRef.current = null
