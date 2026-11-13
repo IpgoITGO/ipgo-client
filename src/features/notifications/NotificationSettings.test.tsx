@@ -55,9 +55,12 @@ function open() {
   )
   return userEvent.setup()
 }
-describe('발주 필요 알림 설정', () => {
+describe('재고 · 유통기한 · 발주 알림 설정', () => {
   it('사용자가 켜기를 누른 뒤에만 브라우저 권한과 수신 설정을 켠다', async () => {
     const user = open()
+    expect(
+      screen.getByRole('region', { name: '재고 · 유통기한 · 발주 알림' }),
+    ).toBeInTheDocument()
     await screen.findByText(
       'Asia/Seoul 기준 · 정시부터 1시간 안에 발송하며 대상이 없으면 보내지 않아요.',
     )

@@ -314,13 +314,13 @@ export function AccountPage() {
             <div>
               <dt>비밀번호</dt>
               <dd>
-                <button
-                  className={styles.linkButton}
+                <Button
+                  variant="secondary"
                   onClick={() => setChangingPassword(true)}
                   type="button"
                 >
                   바꾸기
-                </button>
+                </Button>
               </dd>
             </div>
           </dl>
