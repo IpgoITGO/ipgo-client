@@ -128,7 +128,9 @@ describe('입고 주기 제안과 상속', () => {
     const f = fixture(null)
     const user = userEvent.setup()
     renderSettings()
-    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue('14')
+    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(
+      '14',
+    )
     expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('14')
     expect(screen.getByText(/처음 값 14일이에요/)).toBeInTheDocument()
     await user.clear(screen.getByLabelText('기본 입고 주기'))

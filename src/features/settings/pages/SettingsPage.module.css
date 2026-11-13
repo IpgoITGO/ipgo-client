@@ -765,8 +765,13 @@
   background: var(--color-accent-soft);
 }
 
-/* 바꾼 칸 옆 ×(기본값으로). 자리는 늘 잡아 두고 바꾼 칸에서만 보인다 */
-.resetField {
+/* 줄 끝 ×(이 상품 기본값으로). 자리는 늘 잡아 두고 바꾼 상품에서만 보인다 */
+.tableWrap .resetCell {
+  width: 40px;
+  padding-inline: var(--space-1);
+  text-align: center;
+}
+.resetRow {
   display: grid;
   width: 24px;
   height: 24px;
@@ -781,12 +786,12 @@
   line-height: 1;
   cursor: pointer;
 }
-.resetField:hover {
+.resetRow:hover {
   color: var(--color-text);
 }
-.resetField:focus-visible {
+.resetRow:focus-visible {
   outline: 3px solid var(--color-primary-soft);
 }
-.resetField:disabled {
+.resetRow:disabled {
   visibility: hidden;
 }

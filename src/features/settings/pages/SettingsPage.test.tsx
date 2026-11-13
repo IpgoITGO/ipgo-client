@@ -519,7 +519,7 @@ describe('SettingsPage 표 모양', () => {
     expect(screen.queryByLabelText('덴탈껌 S 10입 leadTime')).toBeNull()
   })
 
-  it('× 누르면 기본값으로 돌아가고, 저장할 때 그 칸을 빼고 보낸다', async () => {
+  it('줄 끝 × 누르면 그 상품 세 칸이 기본값으로 돌아가고, 저장할 때 그 칸을 빼고 보낸다', async () => {
     const user = userEvent.setup()
     const bodies: Record<string, unknown>[] = []
     server.events.on('request:start', async ({ request }) => {
@@ -536,14 +536,12 @@ describe('SettingsPage 표 모양', () => {
     const unit = await screen.findByLabelText('케어트릿 120g inboundUnit')
     await user.click(
       screen.getByRole('button', {
-        name: '케어트릿 120g 입고 단위 기본값으로',
+        name: '케어트릿 120g 기본값으로',
       }),
     )
     expect(unit).toHaveValue('1')
     expect(unit.parentElement).toHaveAttribute('data-changed', 'false')
-    expect(
-      screen.getByLabelText('케어트릿 120g 입고 단위 기본값으로'),
-    ).toBeDisabled()
+    expect(screen.getByLabelText('케어트릿 120g 기본값으로')).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(bodies).toHaveLength(1))

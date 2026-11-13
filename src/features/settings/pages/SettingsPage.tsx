@@ -246,12 +246,14 @@ export function SettingsPage() {
       getValues(`products.${index}.${field}`) !== getValues(`defaults.${field}`)
     setValue(path, changed ? [...others, field] : others, { shouldDirty: true })
   }
-  // 칸 옆 ×: 기본값으로 되돌린다. 저장할 때 이 칸은 빼고 보내 서버가 기본값을 따르게 한다(#342)
-  function resetField(index: number, field: ProductField) {
-    setValue(`products.${index}.${field}`, getValues(`defaults.${field}`), {
-      shouldDirty: true,
+  // 줄 끝 ×: 세 칸을 기본값으로 되돌린다. 저장할 때 그 칸들은 빼고 보내 서버가 기본값을 따르게 한다(#342)
+  function resetRow(index: number) {
+    PRODUCT_FIELDS.forEach(({ field }) => {
+      setValue(`products.${index}.${field}`, getValues(`defaults.${field}`), {
+        shouldDirty: true,
+      })
+      markField(index, field)
     })
-    markField(index, field)
   }
   // 칸에는 숫자만 들어가게 한다(11/13 "숫자만 넣게 락")
   function digitsOnly(event: FormEvent<HTMLInputElement>) {
@@ -624,6 +626,9 @@ export function SettingsPage() {
                     </th>
                   ))}
                   <th className={styles.numHead}>원가</th>
+                  <th className={styles.resetCell}>
+                    <span className={styles.srOnly}>기본값으로</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -664,7 +669,7 @@ export function SettingsPage() {
                       <strong>{product.name}</strong>
                       <span>{product.barcode}</span>
                     </td>
-                    {PRODUCT_FIELDS.map(({ field, unit, label }) => (
+                    {PRODUCT_FIELDS.map(({ field, unit }) => (
                       <td className={styles.numCell} key={field}>
                         <span
                           className={styles.numField}
@@ -683,20 +688,6 @@ export function SettingsPage() {
                             })}
                           />
                           <b>{unit}</b>
-                          {/* 자리는 늘 잡아 두고 바꾼 칸에서만 보인다(칸이 흔들리지 않게) */}
-                          <button
-                            aria-label={`${product.name} ${label} 기본값으로`}
-                            className={styles.resetField}
-                            disabled={
-                              !product.isActive ||
-                              !product.overridden.includes(field)
-                            }
-                            onClick={() => resetField(index, field)}
-                            title="기본값으로"
-                            type="button"
-                          >
-                            ×
-                          </button>
                         </span>
                         {errors.products?.[index]?.[field] && (
                           <small role="alert">
@@ -747,6 +738,21 @@ export function SettingsPage() {
                           {errors.products[index]?.cost?.message}
                         </small>
                       )}
+                    </td>
+                    {/* 줄 끝 ×: 이 상품의 세 칸을 기본값으로(11/13 "줄 단위로"). 자리는 늘 잡아 둔다 */}
+                    <td className={styles.resetCell}>
+                      <button
+                        aria-label={`${product.name} 기본값으로`}
+                        className={styles.resetRow}
+                        disabled={
+                          !product.isActive || product.overridden.length === 0
+                        }
+                        onClick={() => resetRow(index)}
+                        title="기본값으로"
+                        type="button"
+                      >
+                        ×
+                      </button>
                     </td>
                   </tr>
                 ))}
