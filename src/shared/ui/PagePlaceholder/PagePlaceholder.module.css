@@ -39,7 +39,8 @@
 
 .art {
   position: relative;
-  width: 280px;
+  width: 340px;
+  max-width: 100%;
 }
 
 .art img {
