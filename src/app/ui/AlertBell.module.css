@@ -190,7 +190,8 @@
 .row[data-unread] .text strong {
   font-weight: 800;
 }
-.clear {
+/* 위쪽 .account button 규칙(테두리·여백)을 이기도록 이름을 겹쳐 쓴다 */
+.panel .item .clear {
   display: grid;
   flex: none;
   width: 32px;
@@ -202,9 +203,12 @@
   border: 0;
   border-radius: 8px;
   cursor: pointer;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: none;
 }
-.clear:hover,
-.clear:focus-visible {
+.panel .item .clear:hover,
+.panel .item .clear:focus-visible {
   color: var(--color-text);
   background: var(--color-primary-soft);
 }
