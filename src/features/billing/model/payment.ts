@@ -17,6 +17,9 @@ const REASONS: Record<string, string> = {
   EXPIRED_CARD: '유효 기간이 지난 카드예요',
   NETWORK: '결제사와 연결이 끊겼어요',
   USER_CANCEL: '결제창을 닫았어요',
+  BILLING_SESSION_CANCELED: '결제창을 닫았어요',
+  BILLING_SESSION_EXPIRED: '결제창 이용 시간이 지났어요',
+  CHECKOUT_EXPIRED: '결제 요청 시간이 지났어요',
 }
 
 export function reasonText(code: string | null | undefined) {
