@@ -140,10 +140,12 @@ export function resetPassword(request: {
 }
 
 // server #211: 사업자등록번호(숫자 10자리) + 담당자 이름. 최근 가입 순 최대 5개
-export function findId(request: {
-  businessRegNo: string
-  managerName: string
-}) {
+export function findId(
+  request: { managerName: string } & (
+    | { businessRegNo: string; companyName?: never }
+    | { companyName: string; businessRegNo?: never }
+  ),
+) {
   return apiRequest<{ maskedEmails: string[]; maskedEmail: string }>(
     '/auth/find-id',
     postJson(request),

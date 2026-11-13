@@ -74,35 +74,52 @@ export function FindAccountModal({ onClose, onDone }: Props) {
   )
 }
 
-type FindIdErrors = { number?: string; name?: string; form?: string }
+type FindIdErrors = {
+  number?: string
+  company?: string
+  name?: string
+  form?: string
+}
 
 function FindId({ onDone }: Pick<Props, 'onDone'>) {
+  const [legacy, setLegacy] = useState(false)
   const [number, setNumber] = useState('')
+  const [company, setCompany] = useState('')
   const [name, setName] = useState('')
   const [errors, setErrors] = useState<FindIdErrors>({})
   const [masked, setMasked] = useState<string[]>()
 
   const search = useActionLock(async () => {
     const next: FindIdErrors = {}
-    if (number.replaceAll('-', '').length !== 10)
+    if (legacy && !company.trim()) next.company = '회사명을 입력해 주세요.'
+    if (!legacy && number.replaceAll('-', '').length !== 10)
       next.number = '숫자 10자리로 입력해 주세요.'
     if (!name.trim()) next.name = '담당자 이름을 입력해 주세요.'
     setErrors(next)
-    if (next.number || next.name) return
+    if (next.number || next.company || next.name) return
     try {
-      const result = await findId({
-        businessRegNo: number.replaceAll('-', ''),
-        managerName: name.trim(),
-      })
+      // 기존 계정 찾기는 사용자가 직접 선택한다. 번호 조회 실패로 자동 전환하지 않는다.
+      const result = await findId(
+        legacy
+          ? { companyName: company.trim(), managerName: name.trim() }
+          : {
+              businessRegNo: number.replaceAll('-', ''),
+              managerName: name.trim(),
+            },
+      )
       setMasked(result.maskedEmails)
     } catch (e) {
       const field = e instanceof ApiError ? e.details?.field : undefined
       if (e instanceof ApiError && e.code === 'NOT_FOUND')
         setErrors({
-          form: '사업자등록번호와 담당자 이름이 맞는 계정이 없어요.',
+          form: legacy
+            ? '회사명과 담당자 이름이 맞는 계정이 없어요.'
+            : '사업자등록번호와 담당자 이름이 맞는 계정이 없어요.',
         })
       else if (field === 'businessRegNo')
         setErrors({ number: '숫자 10자리로 입력해 주세요.' })
+      else if (field === 'companyName')
+        setErrors({ company: '가입할 때 적은 회사명을 확인해 주세요.' })
       else if (field === 'managerName')
         setErrors({ name: '담당자 이름을 확인해 주세요.' })
       else setErrors({ form: messageOf(e) })
@@ -142,26 +159,54 @@ function FindId({ onDone }: Pick<Props, 'onDone'>) {
           </div>
         ) : (
           <div className={styles.stack}>
-            <TextField
-              autoFocus
-              error={errors.number}
-              inputMode="numeric"
-              label="사업자등록번호"
-              maxLength={12}
-              onChange={(event) =>
-                setNumber(formatBusinessNumber(event.target.value))
-              }
-              placeholder="000-00-00000"
-              value={number}
-            />
+            {legacy ? (
+              <TextField
+                autoFocus
+                error={errors.company}
+                label="회사명"
+                maxLength={50}
+                onChange={(event) => setCompany(event.target.value)}
+                value={company}
+              />
+            ) : (
+              <TextField
+                autoFocus
+                error={errors.number}
+                inputMode="numeric"
+                label="사업자등록번호"
+                maxLength={12}
+                onChange={(event) =>
+                  setNumber(formatBusinessNumber(event.target.value))
+                }
+                placeholder="000-00-00000"
+                value={number}
+              />
+            )}
             <TextField
               error={errors.name ?? errors.form}
-              hint="가입할 때 적은 사업자등록번호와 담당자 이름으로 찾아요."
+              hint={
+                legacy
+                  ? '사업자번호 없이 가입한 기존 계정은 가입할 때 적은 회사명과 담당자 이름으로 찾아요.'
+                  : '가입할 때 적은 사업자등록번호와 담당자 이름으로 찾아요.'
+              }
               label="담당자 이름"
               maxLength={50}
               onChange={(event) => setName(event.target.value)}
               value={name}
             />
+            <button
+              className={styles.linkButton}
+              disabled={search.isPending}
+              onClick={() => {
+                setLegacy(!legacy)
+                setErrors({})
+              }}
+              type="button"
+            >
+              {legacy
+                ? '사업자등록번호로 찾기'
+                : '사업자번호 없이 가입한 계정 찾기'}
+            </button>
           </div>
         )}
       </div>

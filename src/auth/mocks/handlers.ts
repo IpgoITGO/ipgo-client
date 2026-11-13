@@ -37,6 +37,14 @@ const seedUsers: MockUser[] = [
     companyName: '펫스낵랩',
     businessRegNo: '1234567891',
   },
+  {
+    userId: 2,
+    email: 'legacy@a.test',
+    password: 'pass1234',
+    managerName: '이기존',
+    companyName: '(주) 옛입고',
+    businessRegNo: null,
+  },
 ]
 
 let users = seedUsers.map((user) => ({ ...user }))
@@ -407,19 +415,42 @@ export const authHandlers = [
     // server #211과 같게: 번호는 하이픈·공백 빼고 10자리, 이름은 띄어쓰기·대소문자 무시
     const body = (await request.json()) as {
       businessRegNo?: unknown
+      companyName?: unknown
       managerName?: unknown
     }
+    const legacy = body.businessRegNo == null && body.companyName != null
+    const companyKey = (value: string) =>
+      value
+        .toLowerCase()
+        .replaceAll('주식회사', '')
+        .replaceAll('(주)', '')
+        .replaceAll('（주）', '')
+        .replaceAll('㈜', '')
+        .replaceAll(' ', '')
+        .trim()
     const regNo =
       typeof body.businessRegNo === 'string'
         ? body.businessRegNo.replace(/[-\s]/g, '')
         : ''
-    if (!/^\d{10}$/.test(regNo)) return invalidInput('businessRegNo')
+    if (legacy) {
+      if (
+        typeof body.companyName !== 'string' ||
+        !companyKey(body.companyName) ||
+        body.companyName.length > 50
+      )
+        return invalidInput('companyName')
+    } else if (!/^\d{10}$/.test(regNo)) return invalidInput('businessRegNo')
     if (!isName(body.managerName)) return invalidInput('managerName')
-    const name = (value: string) => value.replace(/\s/g, '').toLowerCase()
+    const name = (value: string) =>
+      value.replaceAll(' ', '').trim().toLowerCase()
     const found = users
       .filter(
         (user) =>
-          user.businessRegNo === regNo &&
+          !user.email.endsWith('@withdrawn.invalid') &&
+          (legacy
+            ? companyKey(user.companyName) ===
+              companyKey(body.companyName as string)
+            : user.businessRegNo === regNo) &&
           name(user.managerName) === name(body.managerName as string),
       )
       .reverse()
