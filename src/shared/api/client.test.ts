@@ -12,6 +12,136 @@ import {
   setApiRequestReadinessCheck,
 } from './client'
 
+describe('API 요청 본문의 Content-Type', () => {
+  function echoHeaders() {
+    server.use(
+      http.get('/api/auth/csrf', () =>
+        HttpResponse.json({
+          headerName: 'X-CSRF-TOKEN',
+          token: 'content-type',
+        }),
+      ),
+      http.post('/api/content-type', async ({ request }) =>
+        HttpResponse.json({
+          contentType: request.headers.get('Content-Type'),
+          custom: request.headers.get('X-Custom'),
+          body: await request.text(),
+        }),
+      ),
+    )
+  }
+
+  it.each([
+    undefined,
+    { 'X-Custom': 'kept' },
+    new Headers({ 'X-Custom': 'kept' }),
+    [['X-Custom', 'kept']] as [string, string][],
+  ])(
+    '헤더 형식과 관계없이 JSON 문자열에 기본 형식을 붙인다: %j',
+    async (headers) => {
+      server.use(
+        http.get('/api/auth/csrf', () =>
+          HttpResponse.json({
+            headerName: 'X-CSRF-TOKEN',
+            token: 'content-type',
+          }),
+        ),
+        http.put('/api/content-type', async ({ request }) => {
+          if (request.headers.get('Content-Type') !== 'application/json') {
+            return HttpResponse.json(
+              { code: 'UNSUPPORTED_MEDIA_TYPE' },
+              { status: 415 },
+            )
+          }
+          return HttpResponse.json({
+            body: await request.json(),
+            custom: request.headers.get('X-Custom'),
+            csrf: request.headers.get('X-CSRF-TOKEN'),
+            accept: request.headers.get('Accept'),
+          })
+        }),
+      )
+      await expect(
+        apiRequest('/content-type', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ ratePerCbm: 1200 }),
+        }),
+      ).resolves.toEqual({
+        body: { ratePerCbm: 1200 },
+        custom: headers ? 'kept' : null,
+        csrf: 'content-type',
+        accept: 'application/json',
+      })
+    },
+  )
+
+  it.each([
+    { 'content-type': 'application/x-www-form-urlencoded' },
+    new Headers({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+    [['CONTENT-TYPE', 'application/x-www-form-urlencoded']] as [
+      string,
+      string,
+    ][],
+  ])(
+    '명시한 형식은 대소문자나 헤더 형식과 관계없이 보존한다: %j',
+    async (headers) => {
+      echoHeaders()
+      await expect(
+        apiRequest('/content-type', {
+          method: 'POST',
+          headers,
+          body: 'username=seller',
+        }),
+      ).resolves.toMatchObject({
+        contentType: 'application/x-www-form-urlencoded',
+        body: 'username=seller',
+      })
+    },
+  )
+
+  it('본문이 없으면 Content-Type을 추가하지 않는다', async () => {
+    echoHeaders()
+    await expect(
+      apiRequest('/content-type', { method: 'POST' }),
+    ).resolves.toMatchObject({ contentType: null, body: '' })
+  })
+
+  it('FormData의 multipart 경계는 브라우저가 생성하게 둔다', async () => {
+    echoHeaders()
+    const body = new FormData()
+    body.append('file', 'sample')
+    const result = await apiRequest<{ contentType: string; body: string }>(
+      '/content-type',
+      {
+        method: 'POST',
+        body,
+      },
+    )
+    expect(result.contentType).toMatch(/^multipart\/form-data; boundary=/)
+    expect(result.body).toContain('sample')
+  })
+
+  it('URLSearchParams와 Blob의 형식을 JSON으로 바꾸지 않는다', async () => {
+    echoHeaders()
+    await expect(
+      apiRequest('/content-type', {
+        method: 'POST',
+        body: new URLSearchParams({ key: 'value' }),
+      }),
+    ).resolves.toMatchObject({
+      contentType: 'application/x-www-form-urlencoded;charset=UTF-8',
+      body: 'key=value',
+    })
+    await expect(
+      apiRequest('/content-type', {
+        method: 'POST',
+        body: new Blob(['sample'], { type: 'application/pdf' }),
+      }),
+    ).resolves.toMatchObject({ contentType: 'application/pdf', body: 'sample' })
+  })
+})
+
 describe('API 전송 전 모의 서버 준비 검사', () => {
   let removeCheck = () => {}
   afterEach(() => removeCheck())

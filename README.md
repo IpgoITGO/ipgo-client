@@ -99,6 +99,8 @@ npm run dev
 
 인증은 서버 계약(ipgo-server #28)을 따릅니다. `shared/api/client.ts`가 아래를 자동으로 처리합니다.
 
+- 문자열 본문에 `Content-Type`이 없으면 `application/json`을 붙입니다. 명시한 형식과
+  `FormData`·`URLSearchParams` 같은 문자열 이외 본문은 그대로 보냅니다.
 - Web Locks를 지원하는 HTTPS 브라우저에서는 여러 탭의 리프레시 쿠키 갱신을 한 번에
   하나씩 처리합니다. 액세스 JWT를 탭 사이에 전송하거나 브라우저 저장소에 쓰지 않습니다.
   Web Locks가 없는 환경은 기존 탭 내부 동시 갱신 제어를 유지합니다.
