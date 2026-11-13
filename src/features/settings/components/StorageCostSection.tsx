@@ -271,7 +271,7 @@ function StorageCostForm({
     <details
       className={`${styles.card} ${styles.fold}`}
       id={STORAGE_ANCHOR}
-      onToggle={keepSummaryInPlace}
+      onToggle={(event) => keepSummaryInPlace(event, { pad: false })}
       ref={foldRef}
     >
       <summary

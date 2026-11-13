@@ -9,7 +9,11 @@ export function rememberSummary(event: MouseEvent<HTMLElement>) {
   summaryTop = event.currentTarget.getBoundingClientRect().top
 }
 
-export function keepSummaryInPlace(event: SyntheticEvent<HTMLDetailsElement>) {
+export function keepSummaryInPlace(
+  event: SyntheticEvent<HTMLDetailsElement>,
+  // 맨 아래 칸(보관 비용)은 접은 뒤 빈 자리가 남으면 어색해서 빈 자리를 더하지 않는다(11/13)
+  { pad = true }: { pad?: boolean } = {},
+) {
   const before = summaryTop
   summaryTop = null
   const summary = event.currentTarget.querySelector('summary')
@@ -20,6 +24,10 @@ export function keepSummaryInPlace(event: SyntheticEvent<HTMLDetailsElement>) {
   const shift = () => summary.getBoundingClientRect().top - before
   window.scrollBy(0, shift())
   const left = shift()
+  if (!pad) {
+    root.style.paddingBottom = ''
+    return
+  }
   if (left > 1) {
     root.style.paddingBottom = `${(parseFloat(root.style.paddingBottom) || 0) + left}px`
     window.scrollBy(0, shift())
