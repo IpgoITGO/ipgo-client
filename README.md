@@ -206,6 +206,7 @@ src/
 - 전역 CSS는 `src/styles/tokens.css`와 `src/styles/base.css`만 사용합니다.
 - 컴포넌트 스타일은 같은 위치의 `*.module.css`에 작성합니다.
 - 색, 크기, 간격은 가능한 한 `tokens.css`의 CSS 변수를 사용합니다.
+- 성공·주의·오류 색은 [Design B 의미 색 기준](docs/design/semantic-colors.md)을 따릅니다.
 - 고정 모양은 inline style로 작성하지 않습니다.
 - 공통 UI의 내부 색과 높이를 기능 화면에서 덮어쓰지 않습니다.
 

@@ -11,6 +11,7 @@
 | 자동화 도입 결과와 확인된 예외 | [2026-10-29 자동화 기준 기록](records/2026-10-29-automation-baseline.md) |
 | 요구사항·Jira·GitHub 담당자 정리 결과 | [2026-10-29 담당자 정합성 기록](records/2026-10-29-assignee-reconciliation.md) |
 | 화면 시안 (화면 7 · 팝업 4 등 15장) | [UI 시안](design/ui-screens.pdf) |
+| Design B 성공·주의·오류 색과 대비 기준 | [의미 색 기준](design/semantic-colors.md) |
 | API 명세 (4장/설명 생성 시점은 11/5 공동 검토안, 나머지는 과거 범위 확인 필요) | [API 명세서](design/api-spec.docx) |
 | 4장 변경 내용·실제 구현과 검토 잔여 | [엔진 계약 대조](design/engine-contract-2026-11-05.md) |
 
