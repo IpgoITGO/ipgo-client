@@ -1,12 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  type ClipboardEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { type ClipboardEvent, useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -173,7 +167,6 @@ export function SettingsPage() {
     const timer = window.setTimeout(() => setSavedNotice(''), SAVED_MS)
     return () => window.clearTimeout(timer)
   }, [savedNotice])
-  const productFold = useRef<HTMLDetailsElement>(null)
   const query = useQuery({
     queryKey: ['inbound-settings'],
     queryFn: loadSettings,
@@ -415,8 +408,9 @@ export function SettingsPage() {
         id="inbound-settings-form"
         onSubmit={handleSubmit(save, (formErrors) => {
           // 접힌 상품 칸에 틀린 값이 있으면 펼쳐서 보이게 한다
-          if (formErrors.products && productFold.current)
-            productFold.current.open = true
+          const fold = document.getElementById('product-settings')
+          if (formErrors.products && fold instanceof HTMLDetailsElement)
+            fold.open = true
         })}
       >
         <header className={styles.intro}>
@@ -481,7 +475,10 @@ export function SettingsPage() {
         </section>
 
         {/* 상품이 많으면 길어서 기본은 접어 둔다(11/13). 접혀 있어도 바꾼 상품·원가 빈 상품 수는 한 줄로 보인다 */}
-        <details className={`${styles.card} ${styles.fold}`} ref={productFold}>
+        <details
+          className={`${styles.card} ${styles.fold}`}
+          id="product-settings"
+        >
           <summary aria-describedby="product-settings-summary">
             <span className={styles.foldTitle}>
               <h2>상품별로 다른 조건</h2>
