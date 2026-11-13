@@ -62,6 +62,7 @@ export function AuthShell({ tab, children, welcome = false }: AuthShellProps) {
           <img
             alt=""
             className={styles.previewArt}
+            data-welcome={welcome || undefined}
             src={welcome ? welcomeArt : cornerArt}
           />
         </aside>
