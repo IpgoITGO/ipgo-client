@@ -14,9 +14,10 @@ describe('validateUploadFile', () => {
     expect(validateUploadFile(new File(['data'], '2026-09.xls')).reason).toBe(
       'XLSX 파일만 올릴 수 있어요.',
     )
-    expect(validateUploadFile(new File(['data'], '재고현황.xlsx')).reason).toBe(
-      '파일명을 2026-09.xlsx처럼 연-월 형식으로 바꿔 주세요.',
-    )
+    // 이름은 자유(11/13): 연-월이 아니어도 올릴 수 있고, 기간은 서버가 입고일자로 정한다
+    const free = validateUploadFile(new File(['data'], '재고현황.xlsx'))
+    expect(free.status).toBe('ready')
+    expect(free.periodKey).toBeUndefined()
   })
 })
 
@@ -27,10 +28,10 @@ for (const name of ['2026-09 1.xlsx', '2026-10 1.xlsx', '2026-09 (1).xlsx']) {
     )
   })
 }
-it('서로 다른 월이 섞인 이름은 추측하지 않는다', () => {
-  expect(
-    validateUploadFile(new File(['data'], '2026-09 2026-10.xlsx')).status,
-  ).toBe('error')
+it('서로 다른 월이 섞인 이름은 기간을 추측하지 않고 서버에 맡긴다', () => {
+  const mixed = validateUploadFile(new File(['data'], '2026-09 2026-10.xlsx'))
+  expect(mixed.status).toBe('ready')
+  expect(mixed.periodKey).toBeUndefined()
 })
 
 describe('replacedLabel', () => {

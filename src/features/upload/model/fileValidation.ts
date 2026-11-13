@@ -28,14 +28,11 @@ export function validateUploadFile(file: File): UploadFileState {
     }
   }
 
+  // 파일 이름은 자유(11/13 팀 결정). 이름이 2026-09처럼 연-월이면 미리 기간을 알려 주고,
+  // 아니면 서버가 F열 입고일자의 가장 늦은 날로 기간을 정한다.
   const match = filenamePattern.exec(file.name)
   if (!match) {
-    return {
-      file,
-      id,
-      reason: '파일명을 2026-09.xlsx처럼 연-월 형식으로 바꿔 주세요.',
-      status: 'error',
-    }
+    return { file, id, status: 'ready' }
   }
 
   return {

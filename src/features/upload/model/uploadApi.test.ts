@@ -18,6 +18,13 @@ describe('uploadFile 월별 서버 계약', () => {
     })
     expect(text).toBe('original workbook bytes')
   })
+
+  it('연-월이 아닌 이름은 원래 이름 그대로 보낸다(기간은 서버가 입고일자로, 11/13)', async () => {
+    vi.mocked(apiRequest).mockClear()
+    await uploadFile(new File(['x'], '11월 재고.xlsx'), false)
+    const body = vi.mocked(apiRequest).mock.calls[0][1]?.body as FormData
+    expect((body.get('file') as File).name).toBe('11월 재고.xlsx')
+  })
 })
 
 describe('업로드 실패 안내', () => {
