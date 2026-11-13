@@ -23,6 +23,7 @@ function renderSignUp() {
 
 async function fillCompany(user: UserEvent) {
   await user.type(await screen.findByLabelText('회사명 (상호)'), '다음스낵')
+  await user.type(screen.getByLabelText('사업자등록번호'), '1234567891')
   await user.type(screen.getByLabelText('담당자 이름'), '김담당')
 }
 
@@ -198,6 +199,57 @@ describe('SignUpPage', () => {
     expect(field).toHaveValue('123-45-67890')
   })
 
+  it('사업자번호가 없거나 검증 숫자가 틀리면 이메일 단계로 넘어가지 않는다', async () => {
+    const user = userEvent.setup()
+    renderSignUp()
+    await user.type(await screen.findByLabelText('회사명 (상호)'), '다음스낵')
+    await user.type(screen.getByLabelText('담당자 이름'), '김담당')
+    const field = screen.getByLabelText('사업자등록번호')
+    expect(field).toHaveAttribute('aria-required', 'true')
+    expect(screen.queryByText('(선택)')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '사업자등록번호를 입력해 주세요.',
+    )
+    await user.type(field, '1234567890')
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '사업자등록번호를 다시 확인해 주세요.',
+    )
+    expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument()
+  })
+
+  it('서버 사업자번호 오류는 회사 정보 단계에 표시하고 입력을 보존한다', async () => {
+    let submitted: Record<string, unknown> | undefined
+    server.use(
+      http.post('/api/auth/signup', async ({ request }) => {
+        submitted = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(
+          {
+            code: 'INVALID_INPUT',
+            message: '입력을 확인해 주세요.',
+            details: { field: 'businessRegNo' },
+          },
+          { status: 400 },
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderSignUp()
+    await goToPassword(user)
+    await fillPassword(user)
+    await user.click(screen.getByRole('button', { name: '가입하기' }))
+    const field = await screen.findByLabelText('사업자등록번호')
+    expect(field).toHaveValue('123-45-67891')
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '사업자등록번호를 다시 확인해 주세요.',
+    )
+    expect(screen.getByLabelText('회사명 (상호)')).toHaveValue('다음스낵')
+    expect(submitted).toMatchObject({ businessRegNo: '1234567891' })
+    expect(submitted).not.toHaveProperty('agreements')
+  })
+
   it('회사 정보를 잘못 넣으면 다음 단계로 넘어가지 않고 칸마다 안내한다', async () => {
     const user = userEvent.setup()
     renderSignUp()
@@ -242,10 +294,6 @@ describe('SignUpPage', () => {
     const user = userEvent.setup()
     renderSignUp()
 
-    await user.type(
-      await screen.findByLabelText(/사업자등록번호/),
-      '1234567890',
-    )
     await goToPassword(user)
     await fillPassword(user)
     await user.click(screen.getByRole('button', { name: '가입하기' }))

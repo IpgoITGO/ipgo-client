@@ -15,7 +15,7 @@ const password = 'Abcd123!'
 
 const signUpBody = {
   companyName: '다음스낵',
-  businessRegNo: null,
+  businessRegNo: '1234567891',
   managerName: '김담당',
   email: newEmail,
   password,
@@ -36,6 +36,22 @@ afterEach(() => {
 
 // 오류 code 이름은 ipgo-server 기준입니다 (서버 README의 오류 표).
 describe('auth MSW handler (서버 인증 API 규칙)', () => {
+  it.each(['', '1234567890'])(
+    'A1: 사업자번호 %s는 INVALID_INPUT이며 토큰을 소비하지 않는다',
+    async (businessRegNo) => {
+      const verificationToken = await verify()
+      await expect(
+        signUp({ ...signUpBody, businessRegNo, verificationToken }),
+      ).rejects.toMatchObject({
+        status: 400,
+        code: 'INVALID_INPUT',
+        details: { field: 'businessRegNo' },
+      })
+      expect(await signUp({ ...signUpBody, verificationToken })).toMatchObject({
+        email: newEmail,
+      })
+    },
+  )
   it('A5: 가입한 이메일은 쓸 수 없고(대소문자 무시) 형식이 틀리면 INVALID_INPUT이다', async () => {
     expect(await checkEmailAvailability('SELLER@a.com')).toEqual({
       available: false,
