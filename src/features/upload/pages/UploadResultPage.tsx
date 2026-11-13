@@ -16,7 +16,6 @@ import {
 } from '../model/uploadFormat'
 import { FINISH_MS, UploadProcessing } from './UploadProcessing'
 import styles from './UploadResultPage.module.css'
-import ledgerDone from '../assets/ledger-done.webp'
 
 // 정제·검산이 끝날 때까지 2초마다 다시 확인한다.
 const POLL_INTERVAL_MS = 2000
@@ -154,9 +153,7 @@ export function UploadResultPage() {
 
   return (
     <div className={styles.page}>
-      {/* 다 올린 순간: 선반이 상자로 채워진 그림(11/13, 로그인 그림과 같은 톤) */}
-      <header className={styles.doneHead} data-rise="">
-        <img alt="" height={160} src={ledgerDone} width={214} />
+      <header>
         <h1>수불부를 확인했어요</h1>
       </header>
 

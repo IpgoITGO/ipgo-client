@@ -48,9 +48,31 @@
   height: auto;
 }
 
+/* 플러그와 콘센트 사이(그림 기준 오른쪽 86%·위 46%) */
+.spark {
+  position: absolute;
+  top: 46%;
+  left: 85.5%;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    #fff6c8 0 22%,
+    var(--color-accent) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .art img {
     animation: land 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  }
+
+  .spark {
+    animation: spark 0.5s 0.75s ease-out 2 both;
   }
 
   .card > :not(.art) {
@@ -75,6 +97,23 @@
   }
 }
 
+@keyframes spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -85,9 +124,4 @@
     opacity: 1;
     transform: none;
   }
-}
-
-/* 가게 선반 그림은 가로로 넓어 조금 크게(11/13) */
-.art[data-kind] {
-  width: 260px;
 }
