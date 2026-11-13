@@ -751,7 +751,9 @@ export function SettingsPage() {
                         title="기본값으로"
                         type="button"
                       >
-                        ×
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M7 7l10 10M17 7L7 17" />
+                        </svg>
                       </button>
                     </td>
                   </tr>

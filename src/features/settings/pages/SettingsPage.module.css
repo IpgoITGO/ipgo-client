@@ -767,24 +767,30 @@
 
 /* 줄 끝 ×(이 상품 기본값으로). 자리는 늘 잡아 두고 바꾼 상품에서만 보인다 */
 .tableWrap .resetCell {
-  width: 40px;
+  width: 44px;
   padding-inline: var(--space-1);
   text-align: center;
 }
+/* 아래 발주 표 ×와 같은 모양(테두리·배경 없이 선 아이콘, 11/13) */
 .resetRow {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   padding: 0;
-  color: var(--color-text-2);
-  background: var(--color-border);
+  color: var(--color-text-3);
+  background: transparent;
   border: 0;
-  border-radius: var(--radius-chip);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
+  border-radius: var(--radius-input);
   cursor: pointer;
+}
+.resetRow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
 }
 .resetRow:hover {
   color: var(--color-text);
