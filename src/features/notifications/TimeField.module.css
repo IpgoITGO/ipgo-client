@@ -49,8 +49,11 @@
   stroke-width: 2;
 }
 
+/* 한 자리·두 자리 숫자여도 칸 크기가 안 바뀌게 두 자리 폭으로 고정, 숫자는 시 쪽에 붙인다(11/14) */
 .input {
+  width: 2ch;
   padding: 0;
+  text-align: right;
   color: var(--color-text);
   font: inherit;
   font-size: var(--text-body, 15px);
