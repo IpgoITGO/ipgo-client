@@ -113,6 +113,6 @@
 
 /* 가입 직후 그림은 둘레 여백이 넓어 작아 보여서 로그인 그림과 비슷한 크기로(11/13) */
 .previewArt[data-welcome] {
-  transform: scale(1.35);
+  scale: 1.35;
   transform-origin: 50% 60%;
 }
