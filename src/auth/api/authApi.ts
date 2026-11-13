@@ -25,7 +25,7 @@ export type LoginRequest = {
 
 export type SignUpRequest = {
   companyName: string
-  businessRegNo: string | null
+  businessRegNo: string
   managerName: string
   email: string
   password: string

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { useActionLock } from '../../shared/hooks/useActionLock'
+import { ApiError } from '../../shared/api/client'
 import { Button } from '../../shared/ui/Button/Button'
 import { signUp } from '../api/authApi'
 import { AuthShell } from '../components/AuthShell'
@@ -17,6 +18,11 @@ import {
   messageOf,
 } from '../model/authMessages'
 import { PASSWORD_RULE, PASSWORD_RULE_MESSAGE } from '../model/passwordRule'
+import {
+  BUSINESS_REGISTRATION_INVALID,
+  BUSINESS_REGISTRATION_REQUIRED,
+  isBusinessRegistrationNumber,
+} from '../model/businessRegistration'
 import { SIGNUP_OPEN_KEY } from '../model/signupSession'
 import { useEmailVerification } from '../model/useEmailVerification'
 import styles from './SignUpPage.module.css'
@@ -34,9 +40,16 @@ const signUpSchema = z
     companyName: name('회사명'),
     businessRegNo: z
       .string()
+      .min(1, BUSINESS_REGISTRATION_REQUIRED)
       .refine(
         (value) => value === '' || /^\d{10}$/.test(value.replaceAll('-', '')),
         '숫자 10자리로 입력해 주세요.',
+      )
+      .refine(
+        (value) =>
+          !/^\d{10}$/.test(value.replaceAll('-', '')) ||
+          isBusinessRegistrationNumber(value.replaceAll('-', '')),
+        BUSINESS_REGISTRATION_INVALID,
       ),
     managerName: name('담당자 이름'),
     email: z.email('올바른 이메일 주소를 입력해 주세요.'),
@@ -143,7 +156,7 @@ export function SignUpPage() {
     try {
       await signUp({
         companyName: values.companyName,
-        businessRegNo: values.businessRegNo.replaceAll('-', '') || null,
+        businessRegNo: values.businessRegNo.replaceAll('-', ''),
         managerName: values.managerName,
         email: values.email,
         password: values.password,
@@ -151,6 +164,18 @@ export function SignUpPage() {
       })
       navigate('/login', { replace: true, state: { signedUp: values.email } })
     } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.code === 'INVALID_INPUT' &&
+        error.details?.field === 'businessRegNo'
+      ) {
+        setPage(1)
+        setError('businessRegNo', {
+          type: 'server',
+          message: BUSINESS_REGISTRATION_INVALID,
+        })
+        return
+      }
       setSubmitError(messageOf(error))
     }
   })
@@ -212,11 +237,8 @@ export function SignUpPage() {
             <TextField
               error={errors.businessRegNo?.message}
               inputMode="numeric"
-              label={
-                <>
-                  사업자등록번호 <span className={styles.optional}>(선택)</span>
-                </>
-              }
+              label="사업자등록번호"
+              required
               maxLength={12}
               placeholder="000-00-00000"
               {...bizNo}

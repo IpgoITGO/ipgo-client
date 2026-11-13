@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { withdrawHandlers } from '../../features/account/mocks/withdrawHandlers'
 
 import { PASSWORD_RULE } from '../model/passwordRule'
+import { isBusinessRegistrationNumber } from '../model/businessRegistration'
 
 // ipgo-server의 인증 API 규칙(PR #7·#9·#13의 README)을 따르는 MSW handler입니다.
 // 오류 code 이름과 응답 모양은 서버 기준입니다. API 명세서와 다른 곳은 서버를 따릅니다.
@@ -332,7 +333,7 @@ export const authHandlers = [
     const invalid: string[] = []
     if (!isName(body.companyName)) invalid.push('companyName')
     if (!isName(body.managerName)) invalid.push('managerName')
-    if (body.businessRegNo != null && !/^\d{10}$/.test(body.businessRegNo)) {
+    if (!isBusinessRegistrationNumber(body.businessRegNo)) {
       invalid.push('businessRegNo')
     }
     if (!isEmail(email)) invalid.push('email')
