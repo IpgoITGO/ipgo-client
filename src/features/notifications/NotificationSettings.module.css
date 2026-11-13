@@ -1,73 +1,154 @@
+/* 내 계정 요금제·내 자료 상자와 같은 짜임(11/13): 위 줄 그림 + 제목 + 큰 상태 + 오른쪽 버튼, 아래 3칸 정보 */
 .panel {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-5);
   min-width: 0;
   padding: var(--space-5);
+  background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: var(--color-card);
+  word-break: keep-all;
 }
 
-.panel h2,
 .panel p {
   margin: 0;
 }
 
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.art {
+  flex: none;
+  width: 64px;
+  height: 64px;
+}
+
+.headline {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-width: 220px;
+}
+
 .title {
+  margin: 0;
   color: var(--color-text);
   font-size: var(--text-body, 15px);
   font-weight: 700;
 }
 
-.description,
-.connection,
-.hint,
-.feedback {
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
-  overflow-wrap: anywhere;
-}
-
-.time {
+.state {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
   align-items: center;
-  color: var(--color-text);
+  gap: var(--space-2) var(--space-3);
+}
+
+.state strong {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+/* 요금제 상자의 남은 날 알약과 같은 모양. 연결되면 초록 */
+.pill {
+  padding: 3px 10px;
+  color: var(--color-text-2);
   font-size: var(--text-caption);
   font-weight: 700;
+  background: var(--color-bg);
+  border-radius: 999px;
 }
 
-.time select {
-  min-height: var(--h-input);
-  padding: var(--space-2) var(--space-4);
-  color: var(--color-text);
-  font: inherit;
-  background: var(--color-card);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-input);
-}
-
-.time select:focus-visible {
-  outline: 3px solid var(--color-link);
-  outline-offset: 2px;
-}
-
-.time select:disabled {
-  opacity: 0.5;
+.pill[data-on] {
+  color: var(--color-done);
+  background: var(--color-done-bg);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .actions > button {
   min-width: 0;
   max-width: 100%;
   white-space: normal;
-  overflow-wrap: anywhere;
+}
+
+/* 내 자료 상자와 같은 3칸(이름 · 값 · 한 줄 설명) */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.facts > div {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+}
+
+.facts dt {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.facts small {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.facts select {
+  min-height: 36px;
+  margin-block: 2px;
+  padding: 0 var(--space-3);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-input);
+}
+
+.facts select:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.facts select:disabled {
+  opacity: 0.5;
+}
+
+.note,
+.feedback {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .feedback:empty {

@@ -62,7 +62,7 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
       screen.getByRole('region', { name: '재고 · 유통기한 · 발주 알림' }),
     ).toBeInTheDocument()
     await screen.findByText(
-      'Asia/Seoul 기준 · 정시부터 1시간 안에 발송하며 대상이 없으면 보내지 않아요.',
+      'Asia/Seoul 기준 · 정시부터 1시간 안에 보내요',
     )
     expect(connectBrowser).not.toHaveBeenCalled()
     await user.click(

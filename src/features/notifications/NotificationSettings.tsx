@@ -10,6 +10,7 @@ import {
   saveNotificationSettings,
 } from './pushApi'
 import { Button } from '../../shared/ui/Button/Button'
+import bellBox from './bell-box.webp'
 import styles from './NotificationSettings.module.css'
 
 const KEY = ['notifications', 'settings'] as const
@@ -89,16 +90,59 @@ export function NotificationSettings() {
   })
   const unavailable = !pushSupported()
   return (
+    // 요금제 상자와 같은 짜임(11/13): 그림 + 작은 제목 + 큰 상태 줄 + 오른쪽 버튼, 아래 3칸 정보
     <section className={styles.panel} aria-labelledby="push-title">
-      <h2 className={styles.title} id="push-title">
-        재고 · 유통기한 · 발주 알림
-      </h2>
-      <p className={styles.description}>
-        발주가 필요한 상품이 있으면 하루 한 번 알려드려요. 상품명이나 금액은
-        알림에 표시하지 않아요.
-      </p>
+      <div className={styles.hero}>
+        <img
+          alt=""
+          className={styles.art}
+          height="64"
+          src={bellBox}
+          width="64"
+        />
+        <div className={styles.headline}>
+          <h2 className={styles.title} id="push-title">
+            재고 · 유통기한 · 발주 알림
+          </h2>
+          <p className={styles.state}>
+            <strong>
+              {settings.data?.enabled
+                ? `매일 ${settings.data.sendHour}시에 알려 드려요`
+                : '알림이 꺼져 있어요'}
+            </strong>
+            <span className={styles.pill} data-on={connected || undefined}>
+              {connected ? '이 브라우저 연결됨' : '이 브라우저 연결 안 됨'}
+            </span>
+          </p>
+        </div>
+        <div className={styles.actions}>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={
+              unavailable ||
+              !publicKey.data ||
+              !settings.data ||
+              mutation.isPending
+            }
+            onClick={() => mutation.mutate('enable')}
+          >
+            {settings.data?.enabled && !connected
+              ? '이 브라우저 연결'
+              : '알림 켜고 이 브라우저 연결'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!settings.data?.enabled || mutation.isPending}
+            onClick={() => mutation.mutate('disable')}
+          >
+            알림 끄기
+          </Button>
+        </div>
+      </div>
       {settings.isError ? (
-        <p role="alert">
+        <p className={styles.error} role="alert">
           알림 설정을 불러오지 못했어요.{' '}
           <Button
             type="button"
@@ -109,74 +153,52 @@ export function NotificationSettings() {
           </Button>
         </p>
       ) : (
-        <>
-          <p className={styles.connection}>
-            {settings.data?.enabled
-              ? '하루 1회 알림이 켜져 있어요.'
-              : '하루 1회 알림이 꺼져 있어요.'}{' '}
-            {connected
-              ? '이 브라우저가 연결돼 있어요.'
-              : '이 브라우저는 연결되지 않았어요.'}
-          </p>
-          <label className={styles.time}>
-            받을 시각
-            <select
-              aria-label="알림 받을 시각"
-              aria-describedby="push-time-hint"
-              disabled={!settings.data || mutation.isPending}
-              value={settings.data?.sendHour ?? 9}
-              onChange={(event) => mutation.mutate(Number(event.target.value))}
-            >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <option key={hour} value={hour}>
-                  {hour}시
-                </option>
-              ))}
-            </select>
-          </label>
-          <small className={styles.hint} id="push-time-hint">
-            {settings.data?.timeZone ?? 'Asia/Seoul'} 기준 · 정시부터 1시간 안에
-            발송하며 대상이 없으면 보내지 않아요.
-          </small>
-          <div className={styles.actions}>
-            <Button
-              type="button"
-              variant="primary"
-              disabled={
-                unavailable ||
-                !publicKey.data ||
-                !settings.data ||
-                mutation.isPending
-              }
-              onClick={() => mutation.mutate('enable')}
-            >
-              {settings.data?.enabled && !connected
-                ? '이 브라우저 연결'
-                : '알림 켜고 이 브라우저 연결'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!settings.data?.enabled || mutation.isPending}
-              onClick={() => mutation.mutate('disable')}
-            >
-              알림 끄기
-            </Button>
+        <dl className={styles.facts}>
+          <div>
+            <dt>받을 시각</dt>
+            <dd>
+              <select
+                aria-label="알림 받을 시각"
+                aria-describedby="push-time-hint"
+                disabled={!settings.data || mutation.isPending}
+                value={settings.data?.sendHour ?? 9}
+                onChange={(event) =>
+                  mutation.mutate(Number(event.target.value))
+                }
+              >
+                {Array.from({ length: 24 }, (_, hour) => (
+                  <option key={hour} value={hour}>
+                    {hour}시
+                  </option>
+                ))}
+              </select>
+            </dd>
+            <small id="push-time-hint">
+              {settings.data?.timeZone ?? 'Asia/Seoul'} 기준 · 정시부터 1시간
+              안에 보내요
+            </small>
           </div>
-        </>
+          <div>
+            <dt>알려 주는 것</dt>
+            <dd>발주가 필요한 상품 수</dd>
+            <small>상품명이나 금액은 알림에 안 보여요</small>
+          </div>
+          <div>
+            <dt>보내는 때</dt>
+            <dd>하루 한 번</dd>
+            <small>넣을 상품이 없으면 보내지 않아요</small>
+          </div>
+        </dl>
       )}
-      {publicKey.isError && (
-        <p>
-          {publicKey.error instanceof ApiError &&
-          publicKey.error.code === 'PUSH_UNAVAILABLE'
-            ? '알림 서비스를 준비 중이에요.'
-            : '알림 연결 상태를 불러오지 못했어요.'}
-        </p>
-      )}
-      {unavailable && (
-        <p>
-          실제 사이트의 HTTPS PC 브라우저에서 연결해 주세요. 모의 API에서는 알림
-          연결을 사용하지 않아요.
+      {(publicKey.isError || unavailable) && (
+        <p className={styles.note}>
+          {publicKey.isError &&
+            (publicKey.error instanceof ApiError &&
+            publicKey.error.code === 'PUSH_UNAVAILABLE'
+              ? '알림 서비스를 준비 중이에요. '
+              : '알림 연결 상태를 불러오지 못했어요. ')}
+          {unavailable &&
+            '실제 사이트의 HTTPS PC 브라우저에서 연결해 주세요. 모의 API에서는 알림 연결을 사용하지 않아요.'}
         </p>
       )}
       <p className={styles.feedback} role="status">
