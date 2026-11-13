@@ -10,7 +10,10 @@ import {
   saveNotificationSettings,
 } from './pushApi'
 import { Button } from '../../shared/ui/Button/Button'
-import bellBox from './bell-box.webp'
+import bellOff from './bell-off.webp'
+import bellOn from './bell-on.webp'
+import { HourPicker } from './HourPicker'
+import { hourLabel } from './hourLabel'
 import styles from './NotificationSettings.module.css'
 
 const KEY = ['notifications', 'settings'] as const
@@ -93,11 +96,12 @@ export function NotificationSettings() {
     // 요금제 상자와 같은 짜임(11/13): 그림 + 작은 제목 + 큰 상태 줄 + 오른쪽 버튼, 아래 3칸 정보
     <section className={styles.panel} aria-labelledby="push-title">
       <div className={styles.hero}>
+        {/* 꺼져 있으면 X 붙은 조용한 종, 켜져 있으면 울리는 종(11/13) */}
         <img
           alt=""
           className={styles.art}
           height="80"
-          src={bellBox}
+          src={settings.data?.enabled ? bellOn : bellOff}
           width="80"
         />
         <div className={styles.headline}>
@@ -107,7 +111,7 @@ export function NotificationSettings() {
           <p className={styles.state}>
             <strong>
               {settings.data?.enabled
-                ? `매일 ${settings.data.sendHour}시에 알려 드려요`
+                ? `매일 ${hourLabel(settings.data.sendHour)}에 알려 드려요`
                 : '알림이 꺼져 있어요'}
             </strong>
             <span className={styles.pill} data-on={connected || undefined}>
@@ -155,26 +159,17 @@ export function NotificationSettings() {
       ) : (
         // 아래 한 줄: 받을 시각 고르기 + 짧은 설명 하나(11/13 "글이 너무 많아")
         <div className={styles.timeRow}>
-          <label className={styles.time}>
+          <span className={styles.time}>
             받을 시각
-            <select
-              aria-label="알림 받을 시각"
-              aria-describedby="push-time-hint"
+            <HourPicker
               disabled={!settings.data || mutation.isPending}
+              label="알림 받을 시각"
+              onChange={(hour) => mutation.mutate(hour)}
               value={settings.data?.sendHour ?? 9}
-              onChange={(event) => mutation.mutate(Number(event.target.value))}
-            >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <option key={hour} value={hour}>
-                  {hour}시
-                </option>
-              ))}
-            </select>
-          </label>
-          <small id="push-time-hint">
-            {settings.data?.timeZone ?? 'Asia/Seoul'} 기준 · 넣을 상품이 있을
-            때만 보내요
-          </small>
+            />
+          </span>
+          {/* 시간대(Asia/Seoul) 글자는 뺐다(11/13 "적혀 있어야 해?"). 서버는 그대로 한국 시간 */}
+          <small>넣을 상품이 있을 때만 보내요</small>
         </div>
       )}
       {(publicKey.isError || unavailable) && (

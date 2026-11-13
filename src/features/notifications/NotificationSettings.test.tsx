@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiRequest, ApiError } from '../../shared/api/client'
@@ -61,7 +61,7 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
     expect(
       screen.getByRole('region', { name: '재고 · 유통기한 · 발주 알림' }),
     ).toBeInTheDocument()
-    await screen.findByText('Asia/Seoul 기준 · 넣을 상품이 있을 때만 보내요')
+    await screen.findByText('넣을 상품이 있을 때만 보내요')
     expect(connectBrowser).not.toHaveBeenCalled()
     await user.click(
       screen.getByRole('button', { name: '알림 켜고 이 브라우저 연결' }),
@@ -75,7 +75,7 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
       new Error('알림 권한을 허용해 주세요.'),
     )
     const user = open()
-    await screen.findByText(/Asia\/Seoul 기준/)
+    await screen.findByText('넣을 상품이 있을 때만 보내요')
     await user.click(
       screen.getByRole('button', { name: '알림 켜고 이 브라우저 연결' }),
     )
@@ -89,7 +89,7 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
       timeZone: 'Asia/Seoul',
     })
     const user = open()
-    await screen.findByText(/Asia\/Seoul 기준/)
+    await screen.findByText('넣을 상품이 있을 때만 보내요')
     await user.click(screen.getByRole('button', { name: '알림 끄기' }))
     await screen.findByText('모든 기기의 하루 1회 알림을 껐어요.')
     expect(saveNotificationSettings).toHaveBeenCalledWith({ enabled: false })
@@ -97,11 +97,17 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
   })
   it('정시 선택은 서버에 시간만 변경한다', async () => {
     const user = open()
-    await screen.findByText(/Asia\/Seoul 기준/)
-    await waitFor(() =>
-      expect(screen.getByLabelText('알림 받을 시각')).toBeEnabled(),
+    await screen.findByText('넣을 상품이 있을 때만 보내요')
+    // 우리 시간 고르기: 칸을 누르면 아침·낮·저녁·새벽 칩이 펼쳐진다(11/13)
+    const trigger = screen.getByRole('button', { name: /^알림 받을 시각/ })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
+    await user.click(
+      within(screen.getByRole('listbox', { name: '알림 받을 시각' })).getByRole(
+        'option',
+        { name: '오후 3시' },
+      ),
     )
-    await user.selectOptions(screen.getByLabelText('알림 받을 시각'), '15')
     await waitFor(() =>
       expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 15 }),
     )
