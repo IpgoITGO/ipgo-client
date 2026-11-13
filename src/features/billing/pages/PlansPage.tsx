@@ -140,9 +140,11 @@ export function PlansPage() {
 export function PlanCards({
   subscription,
   onTrial,
+  trialPending = false,
 }: {
   subscription: NonNullable<ReturnType<typeof useSubscription>['data']>
   onTrial?: () => void
+  trialPending?: boolean
 }) {
   const navigate = useNavigate()
   const serverPlans = usePlans().data
@@ -152,7 +154,8 @@ export function PlanCards({
   const failed = !!paymentProblem(subscription)
   const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
-  const ended = trial && (reusedTrial || daysLeft <= 0)
+  const awaitingChoice = subscription.planChosenAt === null && !reusedTrial
+  const ended = trial && (reusedTrial || (!awaitingChoice && daysLeft <= 0))
   const soon = trial && !reusedTrial && daysLeft > 0 && daysLeft <= 3
   return (
     <ul
@@ -250,8 +253,17 @@ export function PlanCards({
                 )
               })}
             </dl>
-            {plan.id === 'trial' && onTrial && current && !ended ? (
-              <Button onClick={onTrial} variant="secondary">
+            {plan.id === 'trial' &&
+            onTrial &&
+            current &&
+            !reusedTrial &&
+            (subscription.planChosenAt === null || !ended) ? (
+              <Button
+                onClick={onTrial}
+                loading={trialPending}
+                loadingLabel="체험 시작 중"
+                variant="secondary"
+              >
                 14일 체험으로 시작
               </Button>
             ) : plan.id === 'trial' ? (
@@ -265,7 +277,10 @@ export function PlanCards({
                     : '체험은 한 번만'}
               </Button>
             ) : current && failed ? (
-              <Button onClick={() => navigate('/account')}>
+              <Button
+                disabled={trialPending}
+                onClick={() => navigate('/account')}
+              >
                 다시 결제하기
               </Button>
             ) : current || (normal && !trial && !paidEnded) ? (
@@ -274,6 +289,7 @@ export function PlanCards({
               </Button>
             ) : (
               <Button
+                disabled={trialPending}
                 onClick={() => navigate(`/checkout?plan=${plan.id}`)}
                 variant={plan.recommended ? 'primary' : 'secondary'}
               >
