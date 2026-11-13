@@ -16,6 +16,7 @@ import { TextField } from '../components/TextField'
 import { messageOf } from '../model/authMessages'
 import { PASSWORD_RULE } from '../model/passwordRule'
 import styles from './FindAccountModal.module.css'
+import keyDone from '../../shared/assets/key-done.webp'
 
 type Props = {
   onClose: () => void
@@ -390,7 +391,15 @@ function ResetPassword({ onDone }: Pick<Props, 'onDone'>) {
           </div>
         )}
         {step === 4 && (
-          <div className={styles.result} role="status">
+          <div className={styles.result} data-rise="" role="status">
+            {/* 열쇠 걸이 그림(11/13, 로그인 그림과 같은 톤) */}
+            <img
+              alt=""
+              className={styles.resultArt}
+              height={96}
+              src={keyDone}
+              width={128}
+            />
             <p className={styles.resultValue}>비밀번호를 바꿨어요</p>
             <p className={styles.resultLabel}>새 비밀번호로 로그인해 주세요.</p>
           </div>

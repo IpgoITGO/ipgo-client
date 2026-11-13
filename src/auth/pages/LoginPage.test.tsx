@@ -51,6 +51,10 @@ describe('LoginPage', () => {
       await screen.findByText('가입을 마쳤어요. 로그인해 주세요.'),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('이메일')).toHaveValue('new@b.com')
+    // 가입 직후에만 오른쪽 그림 문구가 첫 수불부 안내로 바뀐다(11/13)
+    expect(
+      screen.getByText(/로그인하고 첫 수불부를 올려 보세요/),
+    ).toBeInTheDocument()
   })
 
   it('아이디 저장을 켜고 로그인하면 다음에 이메일을 미리 채운다', async () => {

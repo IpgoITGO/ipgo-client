@@ -215,3 +215,19 @@ button.retryButton {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
 }
+
+/* 다 올린 순간 그림 + 제목(11/13). 좁으면 위아래로 */
+.doneHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+}
+.doneHead img {
+  flex: none;
+  width: 214px;
+  height: auto;
+}
+.doneHead h1 {
+  margin: 0;
+}

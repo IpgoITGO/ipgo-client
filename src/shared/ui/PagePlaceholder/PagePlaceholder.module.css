@@ -125,3 +125,8 @@
     transform: none;
   }
 }
+
+/* 가게 선반 그림은 가로로 넓어 조금 크게(11/13) */
+.art[data-kind='empty'] {
+  width: 260px;
+}

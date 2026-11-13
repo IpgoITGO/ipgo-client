@@ -80,7 +80,7 @@ export function LoginPage() {
   })
 
   return (
-    <AuthShell tab="login">
+    <AuthShell tab="login" welcome={Boolean(signedUp)}>
       <form className={styles.form} noValidate onSubmit={handleSubmit(run)}>
         <h1 className={styles.srOnly}>로그인</h1>
         <h2 className={styles.title}>다시 오신 걸 환영해요</h2>
