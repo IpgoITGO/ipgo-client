@@ -153,42 +153,29 @@ export function NotificationSettings() {
           </Button>
         </p>
       ) : (
-        <dl className={styles.facts}>
-          <div>
-            <dt>받을 시각</dt>
-            <dd>
-              <select
-                aria-label="알림 받을 시각"
-                aria-describedby="push-time-hint"
-                disabled={!settings.data || mutation.isPending}
-                value={settings.data?.sendHour ?? 9}
-                onChange={(event) =>
-                  mutation.mutate(Number(event.target.value))
-                }
-              >
-                {Array.from({ length: 24 }, (_, hour) => (
-                  <option key={hour} value={hour}>
-                    {hour}시
-                  </option>
-                ))}
-              </select>
-            </dd>
-            <small id="push-time-hint">
-              {settings.data?.timeZone ?? 'Asia/Seoul'} 기준 · 정시부터 1시간
-              안에 보내요
-            </small>
-          </div>
-          <div>
-            <dt>알려 주는 것</dt>
-            <dd>발주가 필요한 상품 수</dd>
-            <small>상품명이나 금액은 알림에 안 보여요</small>
-          </div>
-          <div>
-            <dt>보내는 때</dt>
-            <dd>하루 한 번</dd>
-            <small>넣을 상품이 없으면 보내지 않아요</small>
-          </div>
-        </dl>
+        // 아래 한 줄: 받을 시각 고르기 + 짧은 설명 하나(11/13 "글이 너무 많아")
+        <div className={styles.timeRow}>
+          <label className={styles.time}>
+            받을 시각
+            <select
+              aria-label="알림 받을 시각"
+              aria-describedby="push-time-hint"
+              disabled={!settings.data || mutation.isPending}
+              value={settings.data?.sendHour ?? 9}
+              onChange={(event) => mutation.mutate(Number(event.target.value))}
+            >
+              {Array.from({ length: 24 }, (_, hour) => (
+                <option key={hour} value={hour}>
+                  {hour}시
+                </option>
+              ))}
+            </select>
+          </label>
+          <small id="push-time-hint">
+            {settings.data?.timeZone ?? 'Asia/Seoul'} 기준 · 넣을 상품이 있을
+            때만 보내요
+          </small>
+        </div>
       )}
       {(publicKey.isError || unavailable) && (
         <p className={styles.note}>
@@ -197,8 +184,7 @@ export function NotificationSettings() {
             publicKey.error.code === 'PUSH_UNAVAILABLE'
               ? '알림 서비스를 준비 중이에요. '
               : '알림 연결 상태를 불러오지 못했어요. ')}
-          {unavailable &&
-            '실제 사이트의 HTTPS PC 브라우저에서 연결해 주세요. 모의 API에서는 알림 연결을 사용하지 않아요.'}
+          {unavailable && '실제 사이트의 HTTPS PC 브라우저에서 켤 수 있어요.'}
         </p>
       )}
       <p className={styles.feedback} role="status">

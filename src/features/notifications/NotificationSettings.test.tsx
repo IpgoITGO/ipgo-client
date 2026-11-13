@@ -61,9 +61,7 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
     expect(
       screen.getByRole('region', { name: '재고 · 유통기한 · 발주 알림' }),
     ).toBeInTheDocument()
-    await screen.findByText(
-      'Asia/Seoul 기준 · 정시부터 1시간 안에 보내요',
-    )
+    await screen.findByText('Asia/Seoul 기준 · 넣을 상품이 있을 때만 보내요')
     expect(connectBrowser).not.toHaveBeenCalled()
     await user.click(
       screen.getByRole('button', { name: '알림 켜고 이 브라우저 연결' }),

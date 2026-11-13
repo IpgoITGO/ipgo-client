@@ -318,14 +318,16 @@ export function AccountPage() {
             </div>
             <div>
               <dt>비밀번호</dt>
-              <dd>
-                <Button
-                  variant="secondary"
+              {/* 이메일 줄과 같은 높이: 가린 점 + 글자 링크(11/13 "저런 버튼으로 맞고 싶냐") */}
+              <dd className={styles.password}>
+                <span aria-hidden="true">••••••••</span>
+                <button
+                  className={styles.textLink}
                   onClick={() => setChangingPassword(true)}
                   type="button"
                 >
                   바꾸기
-                </Button>
+                </button>
               </dd>
             </div>
           </dl>

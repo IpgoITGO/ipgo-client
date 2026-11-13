@@ -650,3 +650,17 @@
     white-space: normal;
   }
 }
+
+/* 비밀번호 줄: 가린 점 + 바꾸기 글자 링크(수불부 올리기 → 와 같은 노란 밑줄) */
+.facts dd.password {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.password .textLink {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
