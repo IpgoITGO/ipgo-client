@@ -921,10 +921,6 @@ tr[data-soon] .weeks i[data-on] {
 .riskCell [data-high] {
   color: var(--color-danger);
 }
-.storageSlot {
-  /* 보관비 칸(36px + 위 여백 12px)과 같은 높이 */
-  min-height: 48px;
-}
 /* 괜찮은 상품 수량 칸: 줄 높이가 안 변하게 위아래로 당겨 넣는다 */
 .safeQty {
   display: inline-flex;
@@ -1056,4 +1052,40 @@ tr[data-soon] .weeks i[data-on] {
 .emptyShift p {
   margin: 0;
   color: var(--color-text-3);
+}
+
+/* 정렬 줄: 왼쪽 정렬 버튼, 오른쪽 이 목록 합계 + 보관비(11/13 "오른쪽 여백 채우기") */
+.listBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  min-height: 46px;
+  margin-bottom: var(--space-3);
+}
+.listBar .sort {
+  margin-bottom: 0;
+}
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.totals > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.totals b {
+  color: var(--color-text);
+  font-size: var(--text-body, 15px);
+  font-variant-numeric: tabular-nums;
+}
+.totals .storageCta,
+.totals .storageLine {
+  margin-top: 0;
 }

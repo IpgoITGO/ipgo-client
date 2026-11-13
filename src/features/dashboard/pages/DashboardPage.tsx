@@ -714,6 +714,10 @@ export function DashboardPage() {
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
     .filter((row) => sort !== 'shift' || shiftOf(row) !== null)
+  // 지금 보이는 줄 중 넣어야 할 상품(합계 칸에 쓴다)
+  const needInView = rows.filter(
+    (row): row is Extract<Row, { kind: 'need' }> => row.kind === 'need',
+  )
   const pickable = rows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
@@ -999,12 +1003,6 @@ export function DashboardPage() {
                   ? '판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'
                   : PANEL_DESCRIPTION[tab]}
               </p>
-              {/* 보관비 줄 자리는 탭마다 잡아 두어 검색칸·표가 위아래로 안 움직인다 */}
-              <div className={styles.storageSlot}>
-                {(tab === 'need' || tab === 'all') && (
-                  <StorageTotal items={items} />
-                )}
-              </div>
             </div>
             <label className={styles.search}>
               <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -1020,18 +1018,52 @@ export function DashboardPage() {
               />
             </label>
           </div>
-          <div aria-label="목록 정렬" className={styles.sort} role="radiogroup">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                aria-checked={sort === option.value}
-                key={option.value}
-                onClick={() => setSort(option.value)}
-                role="radio"
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
+          {/* 정렬은 왼쪽, 오른쪽 빈자리엔 이 목록의 넣을 양·금액 합계와 보관비(11/13 "오른쪽 여백 채우기") */}
+          <div className={styles.listBar}>
+            <div
+              aria-label="목록 정렬"
+              className={styles.sort}
+              role="radiogroup"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  aria-checked={sort === option.value}
+                  key={option.value}
+                  onClick={() => setSort(option.value)}
+                  role="radio"
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.totals}>
+              {needInView.length > 0 && (
+                <>
+                  <span>
+                    넣을 양
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderQtyOf(row.item), 0)
+                        .toLocaleString()}
+                      개
+                    </b>
+                  </span>
+                  <span>
+                    넣을 금액
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderCostOf(row.item), 0)
+                        .toLocaleString()}
+                      원
+                    </b>
+                  </span>
+                </>
+              )}
+              {(tab === 'need' || tab === 'all') && (
+                <StorageTotal items={items} />
+              )}
+            </div>
           </div>
 
           {/* 모든 탭이 같은 칸·같은 폭(11/11). 탭은 줄만 거르고, 계산 못 한 상품은 이유를 줄 아래에 */}
