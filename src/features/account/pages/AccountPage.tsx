@@ -34,6 +34,7 @@ import { useCardRegistration } from '../../billing/model/payment'
 import { PendingPayments } from '../../billing/pages/PendingPayments'
 import { RefundAccountFields } from '../ui/RefundAccountFields'
 import { CancelModal } from '../ui/CancelModal'
+import { PasswordChangeModal } from '../ui/PasswordChangeModal'
 import { WithdrawModal } from '../ui/WithdrawModal'
 import { Toast } from '../../../shared/ui/Toast/Toast'
 import { getProductSettings } from '../../settings/model/inboundSettingsApi'
@@ -199,6 +200,7 @@ export function AccountPage() {
   }
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
   // 해지·해지 취소가 됐는지 바로 알 수 있게 아래에 잠깐 띄운다
   const [notice, setNotice] = useState<string | null>(null)
   // 결제 요청이 막히면(결제 꺼짐 등) 그 말을 알린다
@@ -303,7 +305,15 @@ export function AccountPage() {
             </div>
             <div>
               <dt>비밀번호</dt>
-              <dd className={styles.muted}>바꾸기 준비 중</dd>
+              <dd>
+                <button
+                  className={styles.linkButton}
+                  onClick={() => setChangingPassword(true)}
+                  type="button"
+                >
+                  바꾸기
+                </button>
+              </dd>
             </div>
           </dl>
           <button
@@ -654,6 +664,15 @@ export function AccountPage() {
             </Button>
           </div>
         </Modal>
+      )}
+      {changingPassword && (
+        <PasswordChangeModal
+          onClose={() => setChangingPassword(false)}
+          onDone={() => {
+            setChangingPassword(false)
+            setNotice('비밀번호를 바꿨어요. 다른 기기에서는 로그아웃됐어요')
+          }}
+        />
       )}
       {withdrawing && (
         <WithdrawModal
