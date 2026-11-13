@@ -54,7 +54,7 @@ import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
-import emptyShiftImage from '../assets/steady-sales.webp'
+import emptyShiftImage from '../../../shared/ui/PagePlaceholder/assets/box-empty.webp'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
 // 크기를 안 넣은 상품은 0원으로 더하지 않고 개수만 따로 적는다.
