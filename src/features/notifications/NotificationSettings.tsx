@@ -10,9 +10,8 @@ import {
   saveNotificationSettings,
 } from './pushApi'
 import { Button } from '../../shared/ui/Button/Button'
-import bellOff from './bell-off.webp'
 import bellOn from './bell-on.webp'
-import { HourPicker } from './HourPicker'
+import { HourSlider } from './HourSlider'
 import { hourLabel } from './hourLabel'
 import styles from './NotificationSettings.module.css'
 
@@ -96,14 +95,13 @@ export function NotificationSettings() {
     // 요금제 상자와 같은 짜임(11/13): 그림 + 작은 제목 + 큰 상태 줄 + 오른쪽 버튼, 아래 3칸 정보
     <section className={styles.panel} aria-labelledby="push-title">
       <div className={styles.hero}>
-        {/* 꺼져 있으면 X 붙은 조용한 종, 켜져 있으면 울리는 종(11/13) */}
-        <img
-          alt=""
+        {/* 같은 종 그림, 꺼져 있으면 X 표시만 붙인다(11/13) */}
+        <span
           className={styles.art}
-          height="80"
-          src={settings.data?.enabled ? bellOn : bellOff}
-          width="80"
-        />
+          data-off={!settings.data?.enabled || undefined}
+        >
+          <img alt="" height="80" src={bellOn} width="80" />
+        </span>
         <div className={styles.headline}>
           <h2 className={styles.title} id="push-title">
             재고 · 유통기한 · 발주 알림
@@ -161,7 +159,7 @@ export function NotificationSettings() {
         <div className={styles.timeRow}>
           <span className={styles.time}>
             받을 시각
-            <HourPicker
+            <HourSlider
               disabled={!settings.data || mutation.isPending}
               label="알림 받을 시각"
               onChange={(hour) => mutation.mutate(hour)}
