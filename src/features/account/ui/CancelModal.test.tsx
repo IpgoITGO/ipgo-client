@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 
 import { CancelModal } from './CancelModal'
 
 // 대시보드 결과를 미리 넣어 두고(요청 없이) 해지 팝업 1단계를 그린다
-function renderWith(neededItems: unknown[] | null) {
+function renderWith(neededItems: unknown[] | null, onCancel = vi.fn()) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, enabled: false } },
   })
@@ -17,12 +18,22 @@ function renderWith(neededItems: unknown[] | null) {
   }
   render(
     <QueryClientProvider client={client}>
-      <CancelModal nextOn="2026-12-05" onCancel={() => {}} onClose={() => {}} />
+      <CancelModal nextOn="2026-12-05" onCancel={onCancel} onClose={() => {}} />
     </QueryClientProvider>,
   )
 }
 
 describe('CancelModal 1단계 그림', () => {
+  it('아무 사유도 고르지 않아도 빈 배열로 해지를 요청하고 브라우저 저장을 바꾸지 않는다', async () => {
+    const cancel = vi.fn()
+    renderWith([], cancel)
+    const user = userEvent.setup()
+    const previous = localStorage.getItem('ipgo:cancel-reasons')
+    await user.click(screen.getByRole('button', { name: '그래도 해지할래요' }))
+    await user.click(screen.getByRole('button', { name: '해지하기' }))
+    expect(cancel).toHaveBeenCalledWith({ reasons: [] })
+    expect(localStorage.getItem('ipgo:cancel-reasons')).toBe(previous)
+  })
   it('결과가 없거나 빈 목록이면 예시라고 밝히고 실제 상품처럼 보이지 않게 한다', () => {
     for (const items of [null, []]) {
       renderWith(items)

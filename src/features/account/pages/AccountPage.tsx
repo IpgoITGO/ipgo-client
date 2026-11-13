@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -24,6 +24,7 @@ import {
 } from '../../billing/model/billing'
 import {
   billingErrorText,
+  type CancellationFeedback,
   type Invoice,
   type RefundAccount,
   useBillingMutation,
@@ -116,7 +117,11 @@ export function AccountPage() {
     email: user?.email,
     name: user?.name,
   })
-  const cancel = useBillingMutation('/subscription/cancel')
+  const cancellationFeedback = useRef<CancellationFeedback>({ reasons: [] })
+  const cancel = useBillingMutation(
+    '/subscription/cancel',
+    () => cancellationFeedback.current,
+  )
   const resume = useBillingMutation('/subscription/resume', () => ({
     consentVersion,
   }))
@@ -695,7 +700,8 @@ export function AccountPage() {
       {confirmCancel && periodEnd && (
         <CancelModal
           nextOn={periodEnd}
-          onCancel={() => {
+          onCancel={(feedback) => {
+            cancellationFeedback.current = feedback
             setConfirmCancel(false)
             void attempt(
               () => cancel.mutateAsync(undefined),

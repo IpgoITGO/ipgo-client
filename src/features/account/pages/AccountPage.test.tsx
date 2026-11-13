@@ -89,10 +89,10 @@ describe('내 계정', () => {
       await screen.findByRole('button', { name: '그래도 해지할래요' }),
     )
     await user.click(screen.getByText('생각보다 잘 안 써요'))
+    await user.click(screen.getByText('가격이 부담돼요'))
+    const storedBefore = localStorage.getItem('ipgo:cancel-reasons')
     await user.click(screen.getByRole('button', { name: '해지하기' }))
-    expect(
-      JSON.parse(localStorage.getItem('ipgo:cancel-reasons') ?? '[]'),
-    ).toContain('생각보다 잘 안 써요')
+    expect(localStorage.getItem('ipgo:cancel-reasons')).toBe(storedBefore)
     expect(
       await screen.findByText(`${inDays(25)}에 끝나요`),
     ).toBeInTheDocument()
@@ -100,6 +100,9 @@ describe('내 계정', () => {
       (s) => s.url === '/api/billing/subscription/cancel',
     )
     expect(cancel).toHaveLength(1)
+    expect(JSON.parse(cancel[0].body)).toEqual({
+      reasons: ['NOT_USING', 'PRICE'],
+    })
     expect(cancel[0].key).toMatch(/^[A-Za-z0-9_-]{8,100}$/)
     // 해지가 됐다고 바로 알린다
     expect(
