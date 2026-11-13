@@ -112,6 +112,25 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
     expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 15 })
     expect(connectBrowser).not.toHaveBeenCalled()
   })
+  it('칸을 누르면 시·분 고르기 창이 뜨고, 골라서 닫으면 저장한다(11/14)', async () => {
+    const user = open()
+    await screen.findByText('넣을 상품이 있을 때만 보내요')
+    const time = screen.getByLabelText('알림 받을 시각')
+    await waitFor(() => expect(time).toBeEnabled())
+    await user.click(time)
+    const panel = screen.getByRole('dialog', { name: '알림 받을 시각 고르기' })
+    // 24시간이라 오전·오후 줄은 없다
+    expect(screen.queryByRole('listbox', { name: '오전 오후' })).toBeNull()
+    await user.click(screen.getByRole('option', { name: '18시' }))
+    await user.click(screen.getByRole('option', { name: '20분' }))
+    expect(time).toHaveValue('18:20')
+    expect(saveNotificationSettings).not.toHaveBeenCalled()
+    await user.keyboard('{Escape}')
+    expect(panel).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 18 }),
+    )
+  })
   it('서버에 공개키가 없으면 준비 중으로 안내하고 연결을 막는다', async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(
       new ApiError(503, 'PUSH_UNAVAILABLE', '준비 중'),
