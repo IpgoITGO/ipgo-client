@@ -20,7 +20,8 @@
   --color-text: #141922;
   --color-text-2: #3f4652;
   --color-text-3: #5c6370;
-  --color-success: #04876a;
+  /* Design B: 일반 글자 대비 보정 기준은 docs/design/semantic-colors.md */
+  --color-success: #007a60;
   --color-success-bg: #e2f8f1;
   /* 끝난 단계 표시용 차분한 쑥색 */
   --color-done: #4f8a6e;
