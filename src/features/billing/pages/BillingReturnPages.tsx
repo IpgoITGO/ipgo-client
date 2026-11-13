@@ -8,6 +8,8 @@ import {
   billingPost,
   cancelRegistration,
   getSession,
+  getSessionInvoice,
+  type Invoice,
   newIdempotencyKey,
   type SessionResult,
 } from '../model/billingApi'
@@ -26,13 +28,27 @@ type Phase =
   | { kind: 'checking' }
   | { kind: 'paid' }
   | { kind: 'replaced' }
+  | { kind: 'refunded' }
+  | { kind: 'refunding' }
   | { kind: 'failed'; reason: string; invoiceId?: number | string }
   | { kind: 'unknown' }
 
-// 결제 성공·실패는 카드 등록과 따로 확인한다. 돈이 나갔다고 말하는 건 paymentStatus가 SUCCEEDED일 때뿐이다.
-function verdict(session: SessionResult): Phase | null {
+// 세션은 등록 당시 결과다. 청구가 있으면 현재 청구·환불 상태가 우선한다.
+function verdict(
+  session: SessionResult,
+  invoice?: Invoice | null,
+): Phase | null {
   const { status, paymentStatus, errorCode } = session
-  if (paymentStatus === 'SUCCEEDED') return { kind: 'paid' }
+  if (session.invoiceId != null && paymentStatus === 'SUCCEEDED') {
+    if (!invoice) return { kind: 'unknown' }
+    if (invoice.refundStatus === 'CANCELED' || invoice.status === 'VOID')
+      return { kind: 'refunded' }
+    if (invoice.refundStatus) return { kind: 'refunding' }
+    if (invoice.status === 'PAID' && invoice.paymentStatus === 'SUCCEEDED')
+      return { kind: 'paid' }
+    if (invoice.paymentStatus === 'READY') return null
+    return { kind: 'unknown' }
+  }
   if (paymentStatus === 'DECLINED' || paymentStatus === 'VOID') {
     return {
       kind: 'failed',
@@ -119,7 +135,20 @@ export function BillingAuthSuccessPage() {
       for (let i = 0; i <= POLL_MAX; i++) {
         if (cancelled) return
         try {
-          const done = verdict(await getSession(sessionId))
+          const session = await getSession(sessionId)
+          let invoice: Invoice | null | undefined
+          if (
+            session.invoiceId != null &&
+            session.paymentStatus === 'SUCCEEDED'
+          ) {
+            try {
+              invoice = await getSessionInvoice(session.invoiceId)
+            } catch {
+              if (!cancelled) setPhase({ kind: 'unknown' })
+              return
+            }
+          }
+          const done = verdict(session, invoice)
           if (cancelled) return
           if (done) {
             setPhase(done)
@@ -188,6 +217,21 @@ export function BillingAuthSuccessPage() {
               } as CSSProperties
             }
           >
+            내 계정으로
+          </Button>
+        </>
+      )}
+      {(phase.kind === 'refunded' || phase.kind === 'refunding') && (
+        <>
+          <h1>
+            {phase.kind === 'refunded'
+              ? '결제가 취소됐어요'
+              : '취소·환불 상태를 확인하고 있어요'}
+          </h1>
+          <p className={styles.info}>
+            내 계정의 결제 내역에서 환불 상태를 확인해 주세요.
+          </p>
+          <Button onClick={() => navigate('/account')} variant="secondary">
             내 계정으로
           </Button>
         </>
