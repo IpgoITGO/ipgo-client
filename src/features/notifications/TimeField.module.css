@@ -50,8 +50,6 @@
 }
 
 .input {
-  width: 2.2ch;
-  text-align: right;
   padding: 0;
   color: var(--color-text);
   font: inherit;
@@ -65,7 +63,7 @@
 }
 
 .unit {
-  margin-left: -4px;
+  margin-left: -6px;
   color: var(--color-text);
   font-weight: 800;
 }

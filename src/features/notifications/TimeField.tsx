@@ -106,6 +106,7 @@ export function TimeField({
             if (event.key === 'Enter' && !open) commit()
           }}
           ref={inputRef}
+          style={{ width: `${Math.max(1, text.length)}ch` }}
           type="text"
           value={text}
         />
