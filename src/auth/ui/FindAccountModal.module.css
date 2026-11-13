@@ -131,6 +131,14 @@
   color: var(--color-text-2);
 }
 
+.resultList {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .resultValue {
   margin: 0;
   font-size: var(--text-section);

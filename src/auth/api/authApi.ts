@@ -139,10 +139,15 @@ export function resetPassword(request: {
   return apiRequest<void>('/auth/password-reset', postJson(request))
 }
 
-// ponytail: server API 아직 없음, 생기면 경로만 맞추기
-export function findId(businessNumber: string) {
-  return apiRequest<{ maskedEmail: string }>(
+// server #211: 사업자등록번호(숫자 10자리) + 담당자 이름. 최근 가입 순 최대 5개
+export function findId(
+  request: { managerName: string } & (
+    | { businessRegNo: string; companyName?: never }
+    | { companyName: string; businessRegNo?: never }
+  ),
+) {
+  return apiRequest<{ maskedEmails: string[]; maskedEmail: string }>(
     '/auth/find-id',
-    postJson({ businessNumber }),
+    postJson(request),
   )
 }
