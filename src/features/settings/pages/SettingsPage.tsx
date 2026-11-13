@@ -22,6 +22,10 @@ import {
 } from '../model/inboundSettingsApi'
 import { ExpiryDaysField } from '../components/ExpiryDaysField'
 import styles from './SettingsPage.module.css'
+import {
+  keepSummaryInPlace,
+  rememberSummary,
+} from '../../../shared/ui/Fold/steadyFold'
 
 const positiveInteger = z
   .number({ error: '숫자를 입력해 주세요.' })
@@ -478,8 +482,12 @@ export function SettingsPage() {
         <details
           className={`${styles.card} ${styles.fold}`}
           id="product-settings"
+          onToggle={keepSummaryInPlace}
         >
-          <summary aria-describedby="product-settings-summary">
+          <summary
+            aria-describedby="product-settings-summary"
+            onClick={rememberSummary}
+          >
             <span className={styles.foldTitle}>
               <h2>상품별로 다른 조건</h2>
             </span>

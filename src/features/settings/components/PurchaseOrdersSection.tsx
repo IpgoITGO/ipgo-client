@@ -26,6 +26,10 @@ import {
 } from '../model/plannedReceiptsApi'
 import styles from './PurchaseOrdersSection.module.css'
 import foldStyles from '../pages/SettingsPage.module.css'
+import {
+  keepSummaryInPlace,
+  rememberSummary,
+} from '../../../shared/ui/Fold/steadyFold'
 
 const orderSchema = z.object({
   productId: z.string().min(1, '상품을 골라 주세요.'),
@@ -382,8 +386,14 @@ export function PurchaseOrdersSection() {
 
   return (
     // 상품별 조건처럼 기본은 접어 두고, 접혀 있어도 몇 건인지 한 줄로 보인다(11/13)
-    <details className={`${styles.card} ${foldStyles.fold}`}>
-      <summary aria-describedby="purchase-orders-summary">
+    <details
+      className={`${styles.card} ${foldStyles.fold}`}
+      onToggle={keepSummaryInPlace}
+    >
+      <summary
+        aria-describedby="purchase-orders-summary"
+        onClick={rememberSummary}
+      >
         <span className={foldStyles.foldTitle}>
           <h2>이미 발주한 물량</h2>
         </span>
