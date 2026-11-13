@@ -17,7 +17,9 @@
 .track {
   display: grid;
   gap: 4px;
-  width: min(280px, 100%);
+  flex: none;
+  width: 260px;
+  max-width: 60vw;
 }
 
 .track input {
