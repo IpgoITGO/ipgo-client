@@ -8,6 +8,7 @@ import { getExpiry } from '../../features/expiry/model/expiryApi'
 import { getPlannedReceipts } from '../../features/settings/model/plannedReceiptsApi'
 import { type AlertKind, buildAlerts } from '../model/alerts'
 import styles from './AlertBell.module.css'
+import noAlertsArt from './no-alerts.webp'
 
 // 읽음·지움 기록은 이 브라우저에 사람마다 따로 둔다(알림은 계산 결과에서 만들어지므로 서버에 지울 대상이 없음)
 type Store = 'read' | 'cleared'
@@ -174,7 +175,12 @@ export function AlertBell() {
             </span>
           </div>
           {visible.length === 0 ? (
-            <p className={styles.empty}>새 알림이 없어요</p>
+            // 다 지우거나 없으면 로그인 그림 속 고양이가 잔다(11/13)
+            <div className={styles.empty} data-rise="">
+              <img alt="" height={72} src={noAlertsArt} width={96} />
+              <strong>새 알림이 없어요</strong>
+              <span>넣을 상품이 생기면 여기로 알려 드려요</span>
+            </div>
           ) : (
             // 종류별로 묶고 머리줄에만 아이콘·색(11/13 B안). 안 읽음은 굵은 제목으로만
             <div className={styles.list}>

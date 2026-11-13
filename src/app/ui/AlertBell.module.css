@@ -272,3 +272,16 @@
     max-width: none;
   }
 }
+
+/* 알림 없음: 자는 고양이 + 두 줄(11/13) */
+div.empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+div.empty img {
+  margin-bottom: 6px;
+}
+div.empty strong {
+  color: var(--color-text);
+}
