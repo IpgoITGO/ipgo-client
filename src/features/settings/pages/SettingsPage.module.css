@@ -438,8 +438,10 @@
   align-items: center;
   gap: var(--space-2);
 }
+/* 접힌 칸 제목은 어느 칸이든 같은 크기(11/13 "글 크기 왜 다르냐") */
 .foldTitle h2 {
   margin: 0;
+  font-size: var(--text-section);
 }
 .optional {
   padding: 2px 8px;
