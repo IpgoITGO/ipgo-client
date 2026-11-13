@@ -1,6 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type ClipboardEvent, useEffect, useMemo, useState } from 'react'
+import {
+  type ClipboardEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -232,7 +238,26 @@ export function SettingsPage() {
       return next
     })
   }
-  // 고른 상품에 적은 칸만 넣는다(빈 칸은 그대로). 직접 친 것과 같게 "바꾼 칸"으로 표시
+  // 기본값과 다르면 "바꾼 칸", 같아지면 바꾼 칸에서 뺀다(11/13 "다시 돌리면 바꾼 상품에서 빠지게")
+  function markField(index: number, field: ProductField) {
+    const path = `products.${index}.overridden` as const
+    const others = getValues(path).filter((name) => name !== field)
+    const changed =
+      getValues(`products.${index}.${field}`) !== getValues(`defaults.${field}`)
+    setValue(path, changed ? [...others, field] : others, { shouldDirty: true })
+  }
+  // 칸 옆 ×: 기본값으로 되돌린다. 저장할 때 이 칸은 빼고 보내 서버가 기본값을 따르게 한다(#342)
+  function resetField(index: number, field: ProductField) {
+    setValue(`products.${index}.${field}`, getValues(`defaults.${field}`), {
+      shouldDirty: true,
+    })
+    markField(index, field)
+  }
+  // 칸에는 숫자만 들어가게 한다(11/13 "숫자만 넣게 락")
+  function digitsOnly(event: FormEvent<HTMLInputElement>) {
+    event.currentTarget.value = event.currentTarget.value.replace(/\D/g, '')
+  }
+  // 고른 상품에 적은 칸만 넣는다(빈 칸은 그대로). 기본값과 다른 칸만 "바꾼 칸"으로 표시
   function applyBulk() {
     const values = PRODUCT_FIELDS.flatMap(({ field }) => {
       const text = bulk[field].trim()
@@ -247,15 +272,10 @@ export function SettingsPage() {
     setBulkError('')
     getValues('products').forEach((product, index) => {
       if (!picked.has(product.productId) || !product.isActive) return
-      values.forEach(({ field, value }) =>
-        setValue(`products.${index}.${field}`, value, { shouldDirty: true }),
-      )
-      const overridden = getValues(`products.${index}.overridden`)
-      setValue(
-        `products.${index}.overridden`,
-        [...new Set([...overridden, ...values.map(({ field }) => field)])],
-        { shouldDirty: true },
-      )
+      values.forEach(({ field, value }) => {
+        setValue(`products.${index}.${field}`, value, { shouldDirty: true })
+        markField(index, field)
+      })
     })
     setSavedNotice(`✓ 상품 ${picked.size}개에 넣었어요 · 계산할 때 저장돼요`)
     setPicked(new Set())
@@ -332,12 +352,13 @@ export function SettingsPage() {
               : item[field] !== values.defaults[field]),
         )
         const costChanged = !old || old.cost !== item.cost
-        if (changedFields.length === 0 && !costChanged) continue
-        // S3는 보낸 칸으로 교체한다. 기존 override와 사용자가 직접 바꾼 칸만 보존한다.
-        const explicit = new Set([
-          ...(old?.overridden ?? []),
-          ...changedFields.map(({ field }) => field),
-        ])
+        // 되돌린 칸(전엔 바꾼 칸, 지금은 아님)도 저장해야 서버가 기본값으로 돌아간다
+        const reverted = (old?.overridden ?? []).some(
+          (field) => !item.overridden.includes(field),
+        )
+        if (changedFields.length === 0 && !costChanged && !reverted) continue
+        // S3는 보낸 칸으로 교체한다. 지금 바꾼 칸만 보내고, 빠진 칸은 기본값을 따른다.
+        const explicit = new Set(item.overridden)
         const saved = await saveProductSettings(item.productId, {
           ...(explicit.has('leadTime') ? { leadTimeDays: item.leadTime } : {}),
           ...(explicit.has('orderCycle') && item.orderCycle != null
@@ -423,7 +444,9 @@ export function SettingsPage() {
               <span>리드타임</span>
               <div>
                 <input
-                  type="number"
+                  inputMode="numeric"
+                  onInput={digitsOnly}
+                  type="text"
                   {...register('defaults.leadTime', { valueAsNumber: true })}
                 />
                 <b>일</b>
@@ -436,7 +459,9 @@ export function SettingsPage() {
               <span>입고 주기</span>
               <div>
                 <input
-                  type="number"
+                  inputMode="numeric"
+                  onInput={digitsOnly}
+                  type="text"
                   aria-label="기본 입고 주기"
                   {...register('defaults.orderCycle', { valueAsNumber: true })}
                 />
@@ -455,7 +480,9 @@ export function SettingsPage() {
               <span>입고 단위</span>
               <div>
                 <input
-                  type="number"
+                  inputMode="numeric"
+                  onInput={digitsOnly}
+                  type="text"
                   {...register('defaults.inboundUnit', { valueAsNumber: true })}
                 />
                 <b>개</b>
@@ -637,7 +664,7 @@ export function SettingsPage() {
                       <strong>{product.name}</strong>
                       <span>{product.barcode}</span>
                     </td>
-                    {PRODUCT_FIELDS.map(({ field, unit }) => (
+                    {PRODUCT_FIELDS.map(({ field, unit, label }) => (
                       <td className={styles.numCell} key={field}>
                         <span
                           className={styles.numField}
@@ -646,23 +673,30 @@ export function SettingsPage() {
                           <input
                             aria-label={`${product.name} ${field}`}
                             inputMode="numeric"
+                            onInput={digitsOnly}
                             // 꺼진(단종) 상품은 잠근다. disabled는 react-hook-form이 값을 비워서 readOnly로.
                             readOnly={!product.isActive}
-                            type="number"
+                            type="text"
                             {...register(`products.${index}.${field}`, {
                               valueAsNumber: true,
-                              onChange: () => {
-                                const path =
-                                  `products.${index}.overridden` as const
-                                const explicit = getValues(path)
-                                if (!explicit.includes(field))
-                                  setValue(path, [...explicit, field], {
-                                    shouldDirty: true,
-                                  })
-                              },
+                              onChange: () => markField(index, field),
                             })}
                           />
                           <b>{unit}</b>
+                          {/* 자리는 늘 잡아 두고 바꾼 칸에서만 보인다(칸이 흔들리지 않게) */}
+                          <button
+                            aria-label={`${product.name} ${label} 기본값으로`}
+                            className={styles.resetField}
+                            disabled={
+                              !product.isActive ||
+                              !product.overridden.includes(field)
+                            }
+                            onClick={() => resetField(index, field)}
+                            title="기본값으로"
+                            type="button"
+                          >
+                            ×
+                          </button>
                         </span>
                         {errors.products?.[index]?.[field] && (
                           <small role="alert">

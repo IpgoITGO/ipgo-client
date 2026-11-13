@@ -143,8 +143,8 @@ describe('SettingsPage', () => {
     })
     await user.type(within(bar).getByLabelText('고른 상품 리드타임'), '9')
     await user.click(within(bar).getByRole('button', { name: '넣기' }))
-    expect(screen.getByLabelText('케어트릿 120g leadTime')).toHaveValue(9)
-    expect(screen.getByLabelText('케어트릿 8g 낱개 leadTime')).toHaveValue(9)
+    expect(screen.getByLabelText('케어트릿 120g leadTime')).toHaveValue('9')
+    expect(screen.getByLabelText('케어트릿 8g 낱개 leadTime')).toHaveValue('9')
 
     await user.click(screen.getByLabelText('케어트릿 120g 원가'))
     await user.paste('1,000\n2,000')
@@ -343,7 +343,7 @@ describe('SettingsPage', () => {
     const field = await screen.findByLabelText('덴탈껌 S 10입 inboundUnit')
     await user.clear(field)
     await user.type(field, '6')
-    expect(field).toHaveValue(6)
+    expect(field).toHaveValue('6')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
 
     await waitFor(() => expect(calls).toHaveLength(2))
@@ -495,6 +495,60 @@ describe('SettingsPage 표 모양', () => {
     const lead = screen.getByLabelText('케어트릿 120g leadTime')
     expect(unit.parentElement).toHaveAttribute('data-changed', 'true')
     expect(lead.parentElement).toHaveAttribute('data-changed', 'false')
+  })
+
+  it('기본값과 같은 숫자로 되돌리면 바꾼 칸·바꾼 상품에서 빠지고, 숫자 말고는 안 들어간다', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    const lead = await screen.findByLabelText('덴탈껌 S 10입 leadTime')
+    await user.clear(lead)
+    await user.type(lead, '8')
+    expect(lead.parentElement).toHaveAttribute('data-changed', 'true')
+    await user.clear(lead)
+    await user.type(lead, '5ㄱe-.')
+    expect(lead).toHaveValue('5')
+    expect(lead.parentElement).toHaveAttribute('data-changed', 'false')
+
+    await user.click(screen.getByRole('button', { name: /^바꾼 상품/ }))
+    expect(screen.queryByLabelText('덴탈껌 S 10입 leadTime')).toBeNull()
+  })
+
+  it('× 누르면 기본값으로 돌아가고, 저장할 때 그 칸을 빼고 보낸다', async () => {
+    const user = userEvent.setup()
+    const bodies: Record<string, unknown>[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.url.endsWith('/api/products/1/replenishment-settings'))
+        bodies.push(await request.clone().json())
+    })
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    const unit = await screen.findByLabelText('케어트릿 120g inboundUnit')
+    await user.click(
+      screen.getByRole('button', {
+        name: '케어트릿 120g 입고 단위 기본값으로',
+      }),
+    )
+    expect(unit).toHaveValue('1')
+    expect(unit.parentElement).toHaveAttribute('data-changed', 'false')
+    expect(
+      screen.getByLabelText('케어트릿 120g 입고 단위 기본값으로'),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).not.toHaveProperty('orderUnitQty')
+    server.events.removeAllListeners()
   })
 })
 

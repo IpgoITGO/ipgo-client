@@ -764,3 +764,29 @@
 .tableWrap tr[data-picked] td {
   background: var(--color-accent-soft);
 }
+
+/* 바꾼 칸 옆 ×(기본값으로). 자리는 늘 잡아 두고 바꾼 칸에서만 보인다 */
+.resetField {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-2);
+  background: var(--color-border);
+  border: 0;
+  border-radius: var(--radius-chip);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.resetField:hover {
+  color: var(--color-text);
+}
+.resetField:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+.resetField:disabled {
+  visibility: hidden;
+}
