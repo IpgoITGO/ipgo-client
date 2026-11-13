@@ -411,7 +411,7 @@ describe('DashboardPage', () => {
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('오리 큐브 100g')
 
     // 정렬마다 맨 위가 달라진다
-    await user.click(screen.getByRole('radio', { name: '품절 위험 높은 순' }))
+    await user.click(screen.getByRole('radio', { name: '유통기한 빠른 순' }))
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('연어 져키 80g')
     await user.click(screen.getByRole('radio', { name: '소진일 빠른 순' }))
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('케어트릿 120g')
@@ -767,6 +767,160 @@ describe('주문까지 칸', () => {
     expect(screen.getByRole('region', { name: '발주 목록' })).toHaveTextContent(
       '1개 골랐어요 · 30개',
     )
+  })
+})
+
+describe('유통기한 정렬', () => {
+  const item = (id: number, date: string) => ({
+    productId: id,
+    resultId: id,
+    skuName: `정렬상품-${id}`,
+    skuBarcode: `880000000000${id}`,
+    recommendedQty: 10,
+    recommendedAmount: 1000,
+    expectedShortageOn: date,
+    leadTimeDays: 3,
+    preArrivalRisk: 0.1,
+  })
+  const lot = (
+    id: number,
+    date: string | null,
+    days: number | null,
+    qty = 1,
+  ) => ({
+    productId: id,
+    skuName: `정렬상품-${id}`,
+    skuBarcode: `880000000000${id}`,
+    receivedOn: null,
+    expiryDate: date,
+    daysLeft: days,
+    remainingQty: qty,
+    status: days == null ? 'UNKNOWN' : days < 0 ? 'EXPIRED' : 'OK',
+  })
+  const expiry = {
+    asOfDate: '2026-11-13',
+    imminentDays: 30,
+    summary: { expired: 1, imminent: 0, ok: 4, unknown: 1 },
+    items: [
+      lot(1, '2027-02-01', 80),
+      lot(1, '2026-11-20', 7),
+      lot(1, '2026-01-01', -316, 0),
+      lot(2, '2026-11-10', -3),
+      lot(3, null, null),
+      lot(5, '2026-11-18', 5),
+      lot(7, '2026-11-19', 6),
+    ],
+  }
+  beforeEach(() => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...noResult(null),
+          asOfDate: '2026-11-13',
+          today: '2026-11-13',
+          daysSinceAsOf: 0,
+          resultStatus: 'UP_TO_DATE',
+          summary: {
+            needCount: 4,
+            notNeededCount: 2,
+            notCalculableCount: 2,
+            excludedCount: 0,
+          },
+          items: [
+            item(1, '2026-11-21'),
+            item(2, '2026-11-22'),
+            item(3, '2026-11-16'),
+            item(4, '2026-11-15'),
+          ],
+          notNeededItems: [item(5, '2026-12-02'), item(6, '2026-12-01')],
+          notCalculable: [
+            { productId: 7, skuName: '정렬상품-7', reason: '판매 기록 부족' },
+            { productId: 8, skuName: '정렬상품-8', reason: '판매 기록 부족' },
+          ],
+        }),
+      ),
+      http.get('/api/expiry', () => HttpResponse.json(expiry)),
+    )
+  })
+  const order = () =>
+    screen
+      .getAllByRole('row')
+      .slice(1)
+      .map(
+        (row) =>
+          within(row).getByRole('link', { name: /정렬상품-/ }).textContent,
+      )
+  it('표와 같은 가장 가까운 잔여 LOT로 정렬하고 날짜 없는 상품은 소진일 순으로 뒤에 둔다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('link', { name: '정렬상품-1' })
+    expect(
+      screen.getAllByRole('radio').map((radio) => radio.textContent),
+    ).toEqual(['소진일 빠른 순', '유통기한 빠른 순', '금액 큰 순', '판매 급변'])
+    await user.click(screen.getByRole('radio', { name: '유통기한 빠른 순' }))
+    await waitFor(() =>
+      expect(order()).toEqual([
+        '정렬상품-2',
+        '정렬상품-1',
+        '정렬상품-4',
+        '정렬상품-3',
+      ]),
+    )
+    expect(
+      within(screen.getAllByRole('row')[2]).getByText('11/20'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /^전체/ }))
+    expect(order()).toEqual([
+      '정렬상품-2',
+      '정렬상품-5',
+      '정렬상품-7',
+      '정렬상품-1',
+      '정렬상품-4',
+      '정렬상품-3',
+      '정렬상품-6',
+      '정렬상품-8',
+    ])
+    await user.click(screen.getByRole('tab', { name: /^아직 괜찮아요/ }))
+    expect(order()).toEqual(['정렬상품-5', '정렬상품-6'])
+    await user.click(screen.getByRole('tab', { name: /^계산 못 해요/ }))
+    expect(order()).toEqual(['정렬상품-7', '정렬상품-8'])
+  })
+  it('유통기한이 같으면 소진일 순으로 정렬한다', async () => {
+    server.use(
+      http.get('/api/expiry', () =>
+        HttpResponse.json({
+          ...expiry,
+          items: [lot(1, '2026-11-20', 7), lot(2, '2026-11-20', 7)],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('link', { name: '정렬상품-1' })
+    await user.click(screen.getByRole('radio', { name: '유통기한 빠른 순' }))
+    await waitFor(() =>
+      expect(order()).toEqual([
+        '정렬상품-1',
+        '정렬상품-2',
+        '정렬상품-4',
+        '정렬상품-3',
+      ]),
+    )
+  })
+  it('유통기한 조회가 실패해도 전체 목록을 소진일 순으로 표시한다', async () => {
+    server.use(
+      http.get('/api/expiry', () => new HttpResponse(null, { status: 503 })),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('link', { name: '정렬상품-1' })
+    await user.click(screen.getByRole('radio', { name: '유통기한 빠른 순' }))
+    expect(order()).toEqual([
+      '정렬상품-4',
+      '정렬상품-3',
+      '정렬상품-1',
+      '정렬상품-2',
+    ])
   })
 })
 

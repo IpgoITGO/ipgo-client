@@ -218,7 +218,7 @@ function keepTallest(node: HTMLElement | null) {
   return () => observer.disconnect()
 }
 
-type SortKey = 'stockout' | 'risk' | 'cost' | 'shift'
+type SortKey = 'stockout' | 'expiry' | 'cost' | 'shift'
 
 // 판매 급변 순: 급증(배수 큰 순) → 다시 줄어듦 → 나머지. 나머지는 소진일 순으로 이어진다
 function shiftScore(shift?: DemandShift | null) {
@@ -298,7 +298,7 @@ function ExpiryCell({ expiry }: { expiry?: ProductExpiry }) {
 // 브라우저 기본 드롭다운 대신 한눈에 보이는 버튼형 정렬
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'stockout', label: '소진일 빠른 순' },
-  { value: 'risk', label: '품절 위험 높은 순' },
+  { value: 'expiry', label: '유통기한 빠른 순' },
   { value: 'cost', label: '금액 큰 순' },
   // 정렬이 아니라 거르기: 판매 급변 상품만(급증 배수 큰 순 → 다시 줄어듦)
   { value: 'shift', label: '판매 급변' },
@@ -461,14 +461,18 @@ export function DashboardPage() {
     const source = [...(query.data?.neededItems ?? [])]
     return source.sort((a, b) => {
       if (sort === 'cost') return b.cost - a.cost
-      // 위험을 모르는 상품은 맨 뒤로
-      if (sort === 'risk') return (b.risk ?? -1) - (a.risk ?? -1)
       return (
-        (sort === 'shift' ? shiftScore(b.shift) - shiftScore(a.shift) : 0) ||
+        (sort === 'expiry'
+          ? (expiryOf.get(a.id)?.expiryDate ?? '9999-12-31').localeCompare(
+              expiryOf.get(b.id)?.expiryDate ?? '9999-12-31',
+            )
+          : sort === 'shift'
+            ? shiftScore(b.shift) - shiftScore(a.shift)
+            : 0) ||
         dateKey(a.stockoutDate).localeCompare(dateKey(b.stockoutDate))
       )
     })
-  }, [query.data?.neededItems, sort])
+  }, [query.data?.neededItems, sort, expiryOf])
 
   if (query.isPending)
     return (
@@ -679,8 +683,8 @@ export function DashboardPage() {
     row.kind === 'na' || row.item.stockoutDate === '—'
       ? '99999999'
       : dateKey(row.item.stockoutDate)
-  const rowRisk = (row: Row) =>
-    row.kind === 'need' ? (row.item.risk ?? -1) : -1
+  const rowExpiry = (row: Row) =>
+    expiryOf.get(row.id ?? '')?.expiryDate ?? '9999-12-31'
   // 괜찮은 상품을 상품 목록으로 채운 경우(서버 #103 전)엔 판매 급변 칸이 없다
   const shiftOf = (row: Row) =>
     row.kind !== 'na' && 'shift' in row.item ? row.item.shift : null
@@ -701,10 +705,11 @@ export function DashboardPage() {
       (a, b) =>
         (sort === 'cost'
           ? rowCost(b) - rowCost(a)
-          : sort === 'risk'
-            ? rowRisk(b) - rowRisk(a)
-            : (sort === 'shift' ? rowShift(b) - rowShift(a) : 0) ||
-              rowDate(a).localeCompare(rowDate(b))) ||
+          : (sort === 'expiry'
+              ? rowExpiry(a).localeCompare(rowExpiry(b))
+              : sort === 'shift'
+                ? rowShift(b) - rowShift(a)
+                : 0) || rowDate(a).localeCompare(rowDate(b))) ||
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
     .filter((row) => sort !== 'shift' || shiftOf(row) !== null)
