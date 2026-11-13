@@ -193,6 +193,13 @@ export function patchMockSubscription(patch: Partial<Sub>) {
   Object.assign(state.sub, patch)
 }
 
+// 만료 경로를 시험할 때만 사용한다.
+export function expireMockRegistrationSession(id: string) {
+  const session = state.sessions.get(id)
+  if (!session) throw new Error('세션을 찾을 수 없어요.')
+  session.status = 'EXPIRED'
+}
+
 export function resetBillingMock() {
   state = fresh()
 }
@@ -320,10 +327,16 @@ export const billingHandlers = [
       return fail(409, 'BILLING_SESSION_CANCELED', '닫힌 결제 시도예요.')
     if (byKey && byKey.status === 'EXPIRED')
       return fail(409, 'BILLING_SESSION_EXPIRED', '시간이 지난 결제 시도예요.')
+    if (byKey && byKey.status !== 'OPEN')
+      return fail(
+        409,
+        'BILLING_IN_PROGRESS',
+        '이전 결제 시도가 아직 끝나지 않았어요.',
+      )
     const open = [...state.sessions.values()].find(
       (item) => item.status === 'OPEN',
     )
-    // 같은 키는 처음 결과를 그대로 돌려준다(server 0012: 끝난 시도여도). 그래서 화면은 누를 때마다 새 키를 쓴다
+    // 같은 키는 열린 세션만 이어받는다.
     const target = byKey ?? open
     if (
       !byKey &&
