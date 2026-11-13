@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import cornerArt from '../assets/login-corner.webp'
+import cornerArt from '../../shared/assets/shop-shelf.webp'
 import welcomeArt from '../assets/signup-welcome.webp'
 import styles from './AuthShell.module.css'
 
