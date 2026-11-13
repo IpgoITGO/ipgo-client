@@ -96,9 +96,9 @@ export function NotificationSettings() {
         <img
           alt=""
           className={styles.art}
-          height="64"
+          height="80"
           src={bellBox}
-          width="64"
+          width="80"
         />
         <div className={styles.headline}>
           <h2 className={styles.title} id="push-title">
