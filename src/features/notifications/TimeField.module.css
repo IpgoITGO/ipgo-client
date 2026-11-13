@@ -1,4 +1,4 @@
-/* 시·분 칸: 다른 입력 칸과 같은 테두리·둥글기·굵은 숫자, 누르면 노란 테두리 */
+/* 받을 시각: 알약 모양 칸 + 왼쪽 시계. 누르거나 고르는 중엔 연한 노랑(11/14) */
 .box {
   display: inline-flex;
   flex-wrap: wrap;
@@ -6,43 +6,77 @@
   gap: var(--space-2) var(--space-3);
 }
 
-.input {
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   min-height: 40px;
-  padding: 0 var(--space-3);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-body, 15px);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  padding: 0 var(--space-4) 0 var(--space-3);
   background: var(--color-card);
   border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-input);
+  border-radius: 999px;
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
-.input:hover:not(:disabled) {
-  border-color: var(--color-text-3);
-}
-
-.input:focus,
-.input:focus-visible {
+.field:hover:not([data-disabled]) {
   border-color: var(--color-accent);
-  outline: none;
+}
+
+.field:focus-within,
+.field:active:not([data-disabled]) {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 
-.input:disabled {
+.field[data-disabled] {
   opacity: 0.5;
   cursor: default;
 }
 
-/* 시계 아이콘을 우리 글자색으로(크롬) */
-.input::-webkit-calendar-picker-indicator {
-  opacity: 0.6;
+.field svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-accent-text);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.input {
+  padding: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-body, 15px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 0;
+  outline: none;
   cursor: pointer;
+}
+
+/* 브라우저 시계 단추는 숨기고 왼쪽 우리 시계와 칸 전체 누르기로 연다 */
+.input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.input:disabled {
+  cursor: default;
 }
 
 .note {
   color: var(--color-text-3);
   font-size: var(--text-caption);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+  }
 }
