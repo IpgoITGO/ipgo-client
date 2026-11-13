@@ -66,15 +66,6 @@
   display: none;
 }
 
-/* 고르는 칸(오전·시·분) 선택 색도 파랑 대신 우리 노랑 */
-.input::-webkit-datetime-edit-ampm-field:focus,
-.input::-webkit-datetime-edit-hour-field:focus,
-.input::-webkit-datetime-edit-minute-field:focus {
-  color: var(--color-text);
-  background: var(--color-accent);
-  border-radius: 6px;
-}
-
 .input:disabled {
   cursor: default;
 }
