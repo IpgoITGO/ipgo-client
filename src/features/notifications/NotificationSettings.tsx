@@ -71,13 +71,16 @@ export function NotificationSettings() {
       }
       return saveNotificationSettings({ sendHour: action })
     },
-    onSuccess: async (value) => {
+    onSuccess: async (value, action) => {
       client.setQueryData(KEY, value)
       setConnected(await browserConnected())
+      // 시각만 바꾼 저장은 켜고 끄기 문구 대신 바꾼 시각을 알린다(11/14 — 꺼진 채 시각을 바꾸면 "껐어요"가 떴음)
       setMessage(
-        value.enabled
-          ? '알림 설정을 저장했어요.'
-          : '모든 기기의 하루 1회 알림을 껐어요.',
+        typeof action === 'number'
+          ? `받을 시각을 ${action}시로 바꿨어요.`
+          : value.enabled
+            ? '알림 설정을 저장했어요.'
+            : '모든 기기의 하루 1회 알림을 껐어요.',
       )
     },
     onError: (error) => {

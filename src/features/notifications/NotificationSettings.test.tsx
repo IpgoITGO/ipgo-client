@@ -130,6 +130,11 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
     await waitFor(() =>
       expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 18 }),
     )
+    // 저장해도 적어 둔 분은 안 지워지고, 안내는 바꾼 시각으로
+    expect(
+      await screen.findByText('받을 시각을 18시로 바꿨어요.'),
+    ).toBeInTheDocument()
+    expect(time).toHaveValue('18:20')
   })
   it('서버에 공개키가 없으면 준비 중으로 안내하고 연결을 막는다', async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(

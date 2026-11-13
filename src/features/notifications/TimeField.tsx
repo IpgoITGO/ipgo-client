@@ -27,9 +27,10 @@ export function TimeField({
   const inputRef = useRef<HTMLInputElement>(null)
   const hourListRef = useRef<HTMLSpanElement>(null)
   const panelId = useId()
+  // 서버 값이 바뀌면 칸도 맞춘다. 방금 고른 시와 같으면 적어 둔 분은 그대로 둔다(18:20 → 18:00으로 안 지워지게)
   if (saved !== value) {
     setSaved(value)
-    setText(`${pad(value)}:00`)
+    if (parseTime(text)[0] !== value) setText(`${pad(value)}:00`)
   }
   const [hour, minute] = parseTime(text)
 
