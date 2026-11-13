@@ -1,4 +1,4 @@
-/* 받을 시각: 알약 칸 + 누르면 아래로 우리 고르기 창(시 / 분). 고른 칸은 둥근 노랑(11/14) */
+/* 받을 시각: 알약 칸 + 누르면 아래로 우리 고르기 창(시 0~23). 고른 칸은 둥근 노랑(11/14) */
 .box {
   position: relative;
   display: inline-flex;
@@ -50,7 +50,8 @@
 }
 
 .input {
-  width: 5ch;
+  width: 2.2ch;
+  text-align: right;
   padding: 0;
   color: var(--color-text);
   font: inherit;
@@ -63,18 +64,23 @@
   cursor: pointer;
 }
 
+.unit {
+  margin-left: -4px;
+  color: var(--color-text);
+  font-weight: 800;
+}
+
 .input:disabled {
   cursor: default;
 }
 
-/* 고르기 창: 둥근 카드, 두 줄(시 / 분) */
+/* 고르기 창: 둥근 카드, 시 한 줄 */
 .panel {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto auto;
   gap: var(--space-2);
   padding: var(--space-2);
   background: var(--color-card);
@@ -95,11 +101,6 @@
 
 .col::-webkit-scrollbar {
   display: none;
-}
-
-.col + .col {
-  padding-left: var(--space-2);
-  border-left: 1px solid var(--color-border);
 }
 
 .cell {
@@ -130,11 +131,6 @@
 
 .cell:focus-visible {
   outline: 3px solid var(--color-primary-soft);
-}
-
-.note {
-  color: var(--color-text-3);
-  font-size: var(--text-caption);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,14 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-import { pad, parseTime, roundTo10 } from './hourLabel'
 import styles from './TimeField.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
-const MINUTES = [0, 10, 20, 30, 40, 50]
 
-// 받을 시각(11/14): 칸에 직접 적거나, 누르면 뜨는 우리 고르기 창(시 0~23 / 분 10분 단위)에서 고른다.
+// 받을 시각(11/14): 시(0~23)만. 칸에 직접 적거나, 누르면 뜨는 우리 고르기 창에서 고른다.
 // 브라우저 기본 고르기 창은 파란 네모라 우리 톤과 안 맞아서 직접 그린다. 고른 칸은 둥근 노랑.
-// 서버는 아직 '시'만 받아서(sendHour) 분은 화면에만 두고 정시로 보낸다.
+// 서버가 시만 받아서(sendHour) 분은 두지 않는다.
 export function TimeField({
   disabled,
   label,
@@ -20,31 +18,31 @@ export function TimeField({
   onChange: (hour: number) => void
   value: number
 }) {
-  const [text, setText] = useState(`${pad(value)}:00`)
+  const [text, setText] = useState(String(value))
   const [saved, setSaved] = useState(value)
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLSpanElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const hourListRef = useRef<HTMLSpanElement>(null)
+  const listRef = useRef<HTMLSpanElement>(null)
   const panelId = useId()
-  // 서버 값이 바뀌면 칸도 맞춘다. 방금 고른 시와 같으면 적어 둔 분은 그대로 둔다(18:20 → 18:00으로 안 지워지게)
   if (saved !== value) {
     setSaved(value)
-    if (parseTime(text)[0] !== value) setText(`${pad(value)}:00`)
+    setText(String(value))
   }
-  const [hour, minute] = parseTime(text)
+  const typed = Number(text)
+  const hour =
+    text !== '' && Number.isInteger(typed) && typed >= 0 && typed <= 23
+      ? typed
+      : null
 
-  // 적은 글자를 HH:MM(10분 단위)으로 맞추고, 시가 바뀌었으면 저장
+  // 적은 시가 0~23이면 저장, 아니면 원래 값으로
   const commit = () => {
-    const [h, m] = parseTime(text)
-    if (h === null) {
-      setText(`${pad(value)}:00`)
+    if (hour === null) {
+      setText(String(value))
       return
     }
-    const next = roundTo10(`${pad(h)}:${pad(m ?? 0)}`)
-    setText(next)
-    const nextHour = Number(next.slice(0, 2))
-    if (nextHour !== value) onChange(nextHour)
+    setText(String(hour))
+    if (hour !== value) onChange(hour)
   }
   const commitRef = useRef(commit)
   useEffect(() => {
@@ -53,8 +51,8 @@ export function TimeField({
 
   useEffect(() => {
     if (!open) return
-    // 열면 고른 시가 보이게 시 줄을 굴려 둔다
-    hourListRef.current
+    // 열면 고른 시가 보이게 줄을 굴려 둔다
+    listRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView?.({ block: 'center' })
     function close() {
@@ -78,9 +76,6 @@ export function TimeField({
     }
   }, [open])
 
-  const pick = (h: number | null, m: number | null) =>
-    setText(`${pad(h ?? hour ?? value)}:${pad(m ?? minute ?? 0)}`)
-
   return (
     <span className={styles.box} ref={boxRef}>
       <span
@@ -102,21 +97,21 @@ export function TimeField({
           className={styles.input}
           disabled={disabled}
           inputMode="numeric"
-          maxLength={5}
+          maxLength={2}
           onBlur={() => {
             if (!open) commit()
           }}
-          onChange={(event) =>
-            setText(event.target.value.replace(/[^\d:]/g, ''))
-          }
+          onChange={(event) => setText(event.target.value.replace(/\D/g, ''))}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !open) commit()
           }}
-          placeholder="09:00"
           ref={inputRef}
           type="text"
           value={text}
         />
+        <span aria-hidden="true" className={styles.unit}>
+          시
+        </span>
       </span>
       {open && (
         <span
@@ -128,7 +123,7 @@ export function TimeField({
           <span
             aria-label="시"
             className={styles.col}
-            ref={hourListRef}
+            ref={listRef}
             role="listbox"
           >
             {HOURS.map((h) => (
@@ -137,35 +132,15 @@ export function TimeField({
                 aria-selected={hour === h}
                 className={styles.cell}
                 key={h}
-                onClick={() => pick(h, null)}
+                onClick={() => setText(String(h))}
                 role="option"
                 type="button"
               >
-                {pad(h)}
-              </button>
-            ))}
-          </span>
-          <span aria-label="분" className={styles.col} role="listbox">
-            {MINUTES.map((m) => (
-              <button
-                aria-label={`${m}분`}
-                aria-selected={minute === m}
-                className={styles.cell}
-                key={m}
-                onClick={() => pick(null, m)}
-                role="option"
-                type="button"
-              >
-                {pad(m)}
+                {h}시
               </button>
             ))}
           </span>
         </span>
-      )}
-      {minute !== null && minute > 0 && (
-        <small className={styles.note}>
-          지금은 {hour}시 정각에 보내요 · 분은 준비 중
-        </small>
       )}
     </span>
   )

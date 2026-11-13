@@ -98,13 +98,11 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
   it('정시 선택은 서버에 시간만 변경한다', async () => {
     open()
     await screen.findByText('넣을 상품이 있을 때만 보내요')
-    // 받을 시각(11/14): 시·분 칸에 고르거나 적고, 칸을 벗어나면 한 번 저장한다
-    const time = screen.getByLabelText('알림 받을 시각')
+    // 받을 시각(11/14): 시(0~23)만 적거나 고르고, 칸을 벗어나면 한 번 저장한다
+    const time = screen.getByRole('textbox', { name: '알림 받을 시각' })
     await waitFor(() => expect(time).toBeEnabled())
-    fireEvent.change(time, { target: { value: '15:30' } })
+    fireEvent.change(time, { target: { value: '15' } })
     expect(saveNotificationSettings).not.toHaveBeenCalled()
-    // 서버가 아직 시만 받으므로 분은 안내만
-    expect(screen.getByText(/15시 정각에 보내요/)).toBeInTheDocument()
     fireEvent.blur(time)
     await waitFor(() =>
       expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 15 }),
@@ -112,29 +110,26 @@ describe('재고 · 유통기한 · 발주 알림 설정', () => {
     expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 15 })
     expect(connectBrowser).not.toHaveBeenCalled()
   })
-  it('칸을 누르면 시·분 고르기 창이 뜨고, 골라서 닫으면 저장한다(11/14)', async () => {
+  it('칸을 누르면 시 고르기 창이 뜨고, 골라서 닫으면 저장한다(11/14)', async () => {
     const user = open()
     await screen.findByText('넣을 상품이 있을 때만 보내요')
-    const time = screen.getByLabelText('알림 받을 시각')
+    const time = screen.getByRole('textbox', { name: '알림 받을 시각' })
     await waitFor(() => expect(time).toBeEnabled())
     await user.click(time)
     const panel = screen.getByRole('dialog', { name: '알림 받을 시각 고르기' })
-    // 24시간이라 오전·오후 줄은 없다
-    expect(screen.queryByRole('listbox', { name: '오전 오후' })).toBeNull()
+    // 시만 고른다(분·오전 오후 줄 없음)
+    expect(screen.getAllByRole('listbox')).toHaveLength(1)
     await user.click(screen.getByRole('option', { name: '18시' }))
-    await user.click(screen.getByRole('option', { name: '20분' }))
-    expect(time).toHaveValue('18:20')
+    expect(time).toHaveValue('18')
     expect(saveNotificationSettings).not.toHaveBeenCalled()
     await user.keyboard('{Escape}')
     expect(panel).not.toBeInTheDocument()
     await waitFor(() =>
       expect(saveNotificationSettings).toHaveBeenCalledWith({ sendHour: 18 }),
     )
-    // 저장해도 적어 둔 분은 안 지워지고, 안내는 바꾼 시각으로
     expect(
       await screen.findByText('받을 시각을 18시로 바꿨어요.'),
     ).toBeInTheDocument()
-    expect(time).toHaveValue('18:20')
   })
   it('서버에 공개키가 없으면 준비 중으로 안내하고 연결을 막는다', async () => {
     vi.mocked(apiRequest).mockRejectedValueOnce(
