@@ -54,6 +54,7 @@ import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
+import emptyShiftImage from '../assets/steady-sales.webp'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
 // 크기를 안 넣은 상품은 0원으로 더하지 않고 개수만 따로 적는다.
@@ -1057,6 +1058,16 @@ export function DashboardPage() {
             />
           ) : tab === 'safe' && !data.safeItems && products.isPending ? (
             <p className={styles.none}>상품을 불러오고 있어요.</p>
+          ) : rows.length === 0 && sort === 'shift' && !search ? (
+            // 판매 급변이 없으면 글만 두지 않고 그림으로(11/13)
+            <div className={styles.emptyShift} role="status">
+              <img alt="" height="112" src={emptyShiftImage} width="112" />
+              <strong>판매가 갑자기 바뀐 상품이 없어요</strong>
+              <p>
+                최근 판매가 평소와 비슷해요. 크게 늘거나 줄면 여기에 모아 보여
+                드려요.
+              </p>
+            </div>
           ) : rows.length === 0 ? (
             search ? (
               <NoMatch search={search} />

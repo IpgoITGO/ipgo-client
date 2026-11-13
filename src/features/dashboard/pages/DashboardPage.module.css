@@ -234,7 +234,6 @@
   width: max-content;
   max-width: 100%;
   margin-bottom: var(--space-3);
-  margin-left: auto;
   padding: var(--space-1);
   background: var(--color-bg);
   border-radius: 14px;
@@ -1037,4 +1036,24 @@ tr[data-soon] .weeks i[data-on] {
   to {
     transform: none;
   }
+}
+
+/* 판매 급변이 없을 때: 그림 + 한 줄 + 설명(11/13 "이미지 넣어서 없다고") */
+.emptyShift {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8, 48px) var(--space-4);
+  text-align: center;
+  word-break: keep-all;
+}
+.emptyShift img {
+  margin-bottom: var(--space-2);
+}
+.emptyShift strong {
+  font-size: var(--text-section, 18px);
+}
+.emptyShift p {
+  margin: 0;
+  color: var(--color-text-3);
 }
