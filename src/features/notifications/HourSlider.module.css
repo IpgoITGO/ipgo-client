@@ -93,3 +93,16 @@
 .ticks i {
   font-style: normal;
 }
+
+/* 휴대폰: 시각 글자 아래로 막대가 내려가 칸 폭을 다 쓴다 */
+@media (max-width: 480px) {
+  .box {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .track {
+    width: 100%;
+    max-width: none;
+  }
+}
