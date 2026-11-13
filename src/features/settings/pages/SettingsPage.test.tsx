@@ -99,7 +99,7 @@ describe('SettingsPage', () => {
     await user.type(screen.getByLabelText('상품명 또는 바코드 검색'), '덴탈껌')
     const productSection = screen
       .getByRole('heading', { name: '상품별로 다른 조건' })
-      .closest('section')
+      .closest('details')
     expect(productSection).not.toBeNull()
     expect(
       within(productSection!).getByText('덴탈껌 S 10입'),
@@ -112,6 +112,8 @@ describe('SettingsPage', () => {
     await user.type(screen.getByLabelText('덴탈껌 S 10입 inboundUnit'), '0')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('1 이상의 정수')
+    // 접혀 있던 상품 칸에 틀린 값이 있으면 펼친다
+    expect(productSection).toHaveAttribute('open')
   })
 
   function renderSettings() {

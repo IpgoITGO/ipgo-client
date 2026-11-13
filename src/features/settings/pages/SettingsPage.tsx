@@ -1,6 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type ClipboardEvent, useEffect, useMemo, useState } from 'react'
+import {
+  type ClipboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -167,6 +173,7 @@ export function SettingsPage() {
     const timer = window.setTimeout(() => setSavedNotice(''), SAVED_MS)
     return () => window.clearTimeout(timer)
   }, [savedNotice])
+  const productFold = useRef<HTMLDetailsElement>(null)
   const query = useQuery({
     queryKey: ['inbound-settings'],
     queryFn: loadSettings,
@@ -406,7 +413,11 @@ export function SettingsPage() {
       <form
         className={styles.page}
         id="inbound-settings-form"
-        onSubmit={handleSubmit(save)}
+        onSubmit={handleSubmit(save, (formErrors) => {
+          // 접힌 상품 칸에 틀린 값이 있으면 펼쳐서 보이게 한다
+          if (formErrors.products && productFold.current)
+            productFold.current.open = true
+        })}
       >
         <header className={styles.intro}>
           <h1>입고 조건을 확인해 주세요</h1>
@@ -469,10 +480,31 @@ export function SettingsPage() {
           </div>
         </section>
 
-        <section className={styles.card}>
+        {/* 상품이 많으면 길어서 기본은 접어 둔다(11/13). 접혀 있어도 바꾼 상품·원가 빈 상품 수는 한 줄로 보인다 */}
+        <details className={`${styles.card} ${styles.fold}`} ref={productFold}>
+          <summary aria-describedby="product-settings-summary">
+            <span className={styles.foldTitle}>
+              <h2>상품별로 다른 조건</h2>
+            </span>
+            <span className={styles.foldSummary} id="product-settings-summary">
+              상품 {products.length.toLocaleString()}개 · 바꾼 상품{' '}
+              {products
+                .filter(ROW_FILTERS.changed.test)
+                .length.toLocaleString()}
+              개 · 원가 빈 상품{' '}
+              {products.filter(ROW_FILTERS.noCost.test).length.toLocaleString()}
+              개
+            </span>
+            <svg
+              aria-hidden="true"
+              className={styles.foldIcon}
+              viewBox="0 0 24 24"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </summary>
           <div className={styles.sectionHeader}>
             <div>
-              <h2>상품별로 다른 조건</h2>
               <p>
                 진한 칸은 기본값과 다르게 바꾼 칸이에요. 바꾸면 바로 저장돼요.
               </p>
@@ -740,7 +772,7 @@ export function SettingsPage() {
               수불부 올리기 →
             </Button>
           )}
-        </section>
+        </details>
       </form>
 
       {/* 발주 팝업에도 form이 있어서, 입고 조건 form 밖에 둔다. form 안에 form이 있으면 저장이 페이지 새로고침이 된다. */}
