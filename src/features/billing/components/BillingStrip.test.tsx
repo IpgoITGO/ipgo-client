@@ -16,6 +16,38 @@ const show = (
   )
 
 describe('결제 띠', () => {
+  it.each([false, true])(
+    '체험 재사용 사유가 있어도 서버 계산 권한 허용=%s를 따른다',
+    (canCalculate) => {
+      const subscription = demoSubscription('trial-ended')
+      const { container } = render(
+        <MemoryRouter>
+          <BillingStrip
+            subscription={{
+              ...subscription,
+              entitlements: {
+                ...subscription.entitlements,
+                reason: 'TRIAL_ALREADY_USED',
+                canCalculate,
+              },
+            }}
+          />
+        </MemoryRouter>,
+      )
+      if (canCalculate) {
+        expect(container).toBeEmptyDOMElement()
+      } else {
+        expect(screen.getByRole('status')).toHaveTextContent(
+          '이전에 무료 체험을 쓴 이메일이에요. 결제 후 이용할 수 있어요.',
+        )
+        expect(
+          screen.getByRole('link', { name: '요금제 고르기' }),
+        ).toHaveAttribute('href', '/plans')
+        expect(screen.queryByText('체험이 끝났어요.')).not.toBeInTheDocument()
+      }
+    },
+  )
+
   it('체험 끝·결제 실패·마감 지남마다 한 줄과 링크 하나', () => {
     show('trial-ended')
     expect(screen.getByRole('link', { name: '요금제 고르기' })).toHaveAttribute(

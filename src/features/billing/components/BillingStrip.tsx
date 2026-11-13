@@ -5,6 +5,8 @@ import {
   dayOf,
   monthDayKo,
   paymentProblem,
+  TRIAL_ALREADY_USED_MESSAGE,
+  trialAlreadyUsed,
   type Subscription,
 } from '../model/billing'
 import styles from './BillingStrip.module.css'
@@ -19,7 +21,10 @@ export function BillingStrip({ subscription }: { subscription: Subscription }) {
 
   let text: React.ReactNode
   let action: { to: string; label: string }
-  if (lock?.reason === 'TRIAL_ENDED') {
+  if (trialAlreadyUsed(subscription)) {
+    text = TRIAL_ALREADY_USED_MESSAGE
+    action = { to: '/plans', label: '요금제 고르기' }
+  } else if (lock?.reason === 'TRIAL_ENDED') {
     text = (
       <>
         <b>체험이 끝났어요.</b> 자료는 그대로 볼 수 있어요. 새로 계산하려면

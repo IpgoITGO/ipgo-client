@@ -42,7 +42,12 @@ export type ServerSubscription = {
     canGenerateInsight: boolean
     productLimit: number | null
     monthlyInsightLimit: number | null
-    reason: null | 'TRIAL_ENDED' | 'SUBSCRIPTION_ENDED' | 'PAYMENT_FAILED'
+    reason:
+      | null
+      | 'TRIAL_ENDED'
+      | 'TRIAL_ALREADY_USED'
+      | 'SUBSCRIPTION_ENDED'
+      | 'PAYMENT_FAILED'
   }
 }
 
