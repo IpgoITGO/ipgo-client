@@ -106,9 +106,8 @@ describe('ScenarioInsight', () => {
     expect(screen.getByText('최근 판매 속도라면')).toBeInTheDocument()
     expect(screen.getByText('판매 급증 10배')).toBeInTheDocument()
 
-    await user.click(
-      screen.getByRole('button', { name: '이 수량으로 비교하기' }),
-    )
+    // 단추가 아니라 카드 글자를 눌러도 비교한다(11/13)
+    await user.click(screen.getByText('최근 판매 속도라면'))
     // 비교 뒤: 같은 이름·테이프의 일반 카드(남는 재고 줄이 있음)로 바뀌고 비교 단추는 사라진다
     const card = await screen.findByRole('radio', {
       name: /최근 판매 속도라면/,
@@ -118,6 +117,14 @@ describe('ScenarioInsight', () => {
     expect(
       screen.queryByRole('button', { name: '이 수량으로 비교하기' }),
     ).not.toBeInTheDocument()
+    // 그 카드가 골라지고 노랑 대신 판매 급증 색(파랑)으로, 권장 카드는 고른 표시가 빠진다
+    expect(card).toHaveAttribute('aria-checked', 'true')
+    expect(card).toHaveAttribute('data-surge', 'UP')
+    expect(
+      screen
+        .getAllByRole('radio')
+        .filter((item) => item.getAttribute('aria-checked') === 'true'),
+    ).toHaveLength(1)
   })
 
   it('판매가 다시 줄었으면 권장보다 적은 "평소 속도로 돌아왔다면" 카드를 두고, 많으면 두지 않는다', async () => {
