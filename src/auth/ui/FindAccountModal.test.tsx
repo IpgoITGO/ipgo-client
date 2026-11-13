@@ -51,11 +51,13 @@ describe('FindAccountModal', () => {
     expect(await screen.findByText('비밀번호가 서로 달라요.')).toBeVisible()
   })
 
-  it('사업자등록번호로 가린 이메일을 찾는다', async () => {
+  it('사업자등록번호와 담당자 이름으로 가린 이메일을 찾는다', async () => {
     const { user, onDone } = setup()
 
-    await user.type(screen.getByLabelText('사업자등록번호'), '1234567890')
-    expect(screen.getByLabelText('사업자등록번호')).toHaveValue('123-45-67890')
+    await user.type(screen.getByLabelText('사업자등록번호'), '1234567891')
+    expect(screen.getByLabelText('사업자등록번호')).toHaveValue('123-45-67891')
+    // 서버처럼 띄어쓰기는 무시한다
+    await user.type(screen.getByLabelText('담당자 이름'), '박 셀러')
     await user.click(screen.getByRole('button', { name: '아이디 찾기' }))
 
     expect(await screen.findByText('se***@a.com 이에요')).toBeInTheDocument()
@@ -63,14 +65,28 @@ describe('FindAccountModal', () => {
     expect(onDone).toHaveBeenCalledWith()
   })
 
-  it('없는 번호면 계정이 없다고 알려 준다', async () => {
+  it('담당자 이름이 비면 보내지 않고 칸에 알려 준다', async () => {
     const { user } = setup()
 
-    await user.type(screen.getByLabelText('사업자등록번호'), '9999999999')
+    await user.type(screen.getByLabelText('사업자등록번호'), '1234567891')
     await user.click(screen.getByRole('button', { name: '아이디 찾기' }))
 
     expect(
-      await screen.findByText('이 번호로 가입한 계정이 없어요.'),
+      await screen.findByText('담당자 이름을 입력해 주세요.'),
+    ).toBeInTheDocument()
+  })
+
+  it('번호와 이름이 맞는 계정이 없으면 알려 준다', async () => {
+    const { user } = setup()
+
+    await user.type(screen.getByLabelText('사업자등록번호'), '1234567891')
+    await user.type(screen.getByLabelText('담당자 이름'), '김셀러')
+    await user.click(screen.getByRole('button', { name: '아이디 찾기' }))
+
+    expect(
+      await screen.findByText(
+        '사업자등록번호와 담당자 이름이 맞는 계정이 없어요.',
+      ),
     ).toBeInTheDocument()
   })
 

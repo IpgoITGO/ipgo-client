@@ -35,7 +35,7 @@ const seedUsers: MockUser[] = [
     password: 'pass1234',
     managerName: '박셀러',
     companyName: '펫스낵랩',
-    businessRegNo: null,
+    businessRegNo: '1234567891',
   },
 ]
 
@@ -404,11 +404,31 @@ export const authHandlers = [
 
   // 아이디 찾기: 아이디는 가입 이메일이라 가린 이메일을 돌려준다.
   http.post('/api/auth/find-id', async ({ request }) => {
-    const body = (await request.json()) as { businessNumber?: string }
-    if (body.businessNumber !== '123-45-67890') {
+    // server #211과 같게: 번호는 하이픈·공백 빼고 10자리, 이름은 띄어쓰기·대소문자 무시
+    const body = (await request.json()) as {
+      businessRegNo?: unknown
+      managerName?: unknown
+    }
+    const regNo =
+      typeof body.businessRegNo === 'string'
+        ? body.businessRegNo.replace(/[-\s]/g, '')
+        : ''
+    if (!/^\d{10}$/.test(regNo)) return invalidInput('businessRegNo')
+    if (!isName(body.managerName)) return invalidInput('managerName')
+    const name = (value: string) => value.replace(/\s/g, '').toLowerCase()
+    const found = users
+      .filter(
+        (user) =>
+          user.businessRegNo === regNo &&
+          name(user.managerName) === name(body.managerName as string),
+      )
+      .reverse()
+      .slice(0, 5)
+      .map((user) => `${user.email.slice(0, 2)}***@${user.email.split('@')[1]}`)
+    if (found.length === 0) {
       return error(404, 'NOT_FOUND', '가입한 계정이 없어요.')
     }
-    return HttpResponse.json({ maskedEmail: 'se***@a.com' })
+    return HttpResponse.json({ maskedEmails: found, maskedEmail: found[0] })
   }),
 ]
 

@@ -74,26 +74,38 @@ export function FindAccountModal({ onClose, onDone }: Props) {
   )
 }
 
+type FindIdErrors = { number?: string; name?: string; form?: string }
+
 function FindId({ onDone }: Pick<Props, 'onDone'>) {
   const [number, setNumber] = useState('')
-  const [error, setError] = useState<string>()
-  const [masked, setMasked] = useState<string>()
+  const [name, setName] = useState('')
+  const [errors, setErrors] = useState<FindIdErrors>({})
+  const [masked, setMasked] = useState<string[]>()
 
   const search = useActionLock(async () => {
-    setError(undefined)
-    if (number.replaceAll('-', '').length !== 10) {
-      setError('숫자 10자리로 입력해 주세요.')
-      return
-    }
+    const next: FindIdErrors = {}
+    if (number.replaceAll('-', '').length !== 10)
+      next.number = '숫자 10자리로 입력해 주세요.'
+    if (!name.trim()) next.name = '담당자 이름을 입력해 주세요.'
+    setErrors(next)
+    if (next.number || next.name) return
     try {
-      const result = await findId(number)
-      setMasked(result.maskedEmail)
+      const result = await findId({
+        businessRegNo: number.replaceAll('-', ''),
+        managerName: name.trim(),
+      })
+      setMasked(result.maskedEmails)
     } catch (e) {
-      setError(
-        e instanceof ApiError && e.code === 'NOT_FOUND'
-          ? '이 번호로 가입한 계정이 없어요.'
-          : messageOf(e),
-      )
+      const field = e instanceof ApiError ? e.details?.field : undefined
+      if (e instanceof ApiError && e.code === 'NOT_FOUND')
+        setErrors({
+          form: '사업자등록번호와 담당자 이름이 맞는 계정이 없어요.',
+        })
+      else if (field === 'businessRegNo')
+        setErrors({ number: '숫자 10자리로 입력해 주세요.' })
+      else if (field === 'managerName')
+        setErrors({ name: '담당자 이름을 확인해 주세요.' })
+      else setErrors({ form: messageOf(e) })
     }
   })
 
@@ -108,23 +120,49 @@ function FindId({ onDone }: Pick<Props, 'onDone'>) {
       <div className={styles.content}>
         {masked ? (
           <div className={styles.result} role="status">
-            <p className={styles.resultLabel}>가입한 이메일은</p>
-            <p className={styles.resultValue}>{masked} 이에요</p>
+            {masked.length === 1 ? (
+              <>
+                <p className={styles.resultLabel}>가입한 이메일은</p>
+                <p className={styles.resultValue}>{masked[0]} 이에요</p>
+              </>
+            ) : (
+              <>
+                <p className={styles.resultLabel}>
+                  가입한 이메일이 {masked.length}개 있어요
+                </p>
+                <ul className={styles.resultList}>
+                  {masked.map((email) => (
+                    <li className={styles.resultValue} key={email}>
+                      {email}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         ) : (
-          <TextField
-            autoFocus
-            error={error}
-            hint="가입할 때 적은 사업자등록번호로 찾아요."
-            inputMode="numeric"
-            label="사업자등록번호"
-            maxLength={12}
-            onChange={(event) =>
-              setNumber(formatBusinessNumber(event.target.value))
-            }
-            placeholder="000-00-00000"
-            value={number}
-          />
+          <div className={styles.stack}>
+            <TextField
+              autoFocus
+              error={errors.number}
+              inputMode="numeric"
+              label="사업자등록번호"
+              maxLength={12}
+              onChange={(event) =>
+                setNumber(formatBusinessNumber(event.target.value))
+              }
+              placeholder="000-00-00000"
+              value={number}
+            />
+            <TextField
+              error={errors.name ?? errors.form}
+              hint="가입할 때 적은 사업자등록번호와 담당자 이름으로 찾아요."
+              label="담당자 이름"
+              maxLength={50}
+              onChange={(event) => setName(event.target.value)}
+              value={name}
+            />
+          </div>
         )}
       </div>
       {masked ? (
