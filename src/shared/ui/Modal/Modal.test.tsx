@@ -136,6 +136,19 @@ it('중첩 모달의 Escape은 안쪽만 닫고 안쪽 열기 버튼에 복원�
   expect(outer).toHaveFocus()
 })
 
+it('Tab으로 모달 밖에 초점이 가도 Escape으로 최상위 창을 닫는다', async () => {
+  const user = userEvent.setup()
+  render(<FocusExample />)
+  await user.click(screen.getByRole('button', { name: '열기' }))
+  const dialog = screen.getByRole('dialog')
+  for (let i = 0; i < 3 && dialog.contains(document.activeElement); i++) {
+    await user.tab()
+  }
+  expect(dialog.contains(document.activeElement)).toBe(false)
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
 it('부모의 직접 언마운트 뒤에도 남아 있는 열기 버튼으로 복원한다', () => {
   const opener = document.createElement('button')
   document.body.append(opener)

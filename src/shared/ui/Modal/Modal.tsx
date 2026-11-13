@@ -69,7 +69,10 @@ export function Modal({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (!dialogRef.current?.contains(document.activeElement)) return
+      const dialogs = document.querySelectorAll(
+        '[role="dialog"][aria-modal="true"]',
+      )
+      if (dialogs[dialogs.length - 1] !== dialogRef.current) return
       if (event.key === 'Escape' && dismissible) closeRef.current?.()
       // 못 닫는 창은 Tab 초점이 창 안에서만 돈다(뒤 화면은 inert라 못 감)
       const dialog = dialogRef.current

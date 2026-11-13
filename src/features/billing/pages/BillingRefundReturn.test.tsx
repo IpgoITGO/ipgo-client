@@ -104,6 +104,25 @@ describe('과거 성공 세션의 현재 청구·환불 상태', () => {
     expect(read).toHaveBeenCalledTimes(2)
   })
 
+  it('서로 다른 다음 cursor도 20페이지에서 멈추고 미확인으로 남긴다', async () => {
+    const complete = arrange([])
+    let pages = 0
+    const read = vi.fn(() => {
+      pages += 1
+      return HttpResponse.json({
+        items: [],
+        nextCursor: pages < 21 ? `older-${pages}` : null,
+      })
+    })
+    server.use(http.get('/api/billing/invoices', read))
+    await openApp('/billing/auth/success?sessionId=past')
+    expect(
+      await screen.findByText(/결제를 아직 확인하고 있어요/),
+    ).toBeInTheDocument()
+    expect(read).toHaveBeenCalledTimes(20)
+    expect(complete).not.toHaveBeenCalled()
+  })
+
   it.each(['missing', 'network', 'cursor-cycle'])(
     '청구 조회 %s는 승인으로 단정하지 않는다',
     async (kind) => {

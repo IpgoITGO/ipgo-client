@@ -154,7 +154,8 @@ export const getSession = (id: string) =>
 export async function getSessionInvoice(id: number | string) {
   let cursor: string | null = null
   const seen = new Set<string>()
-  do {
+  // 오래된 청구가 없거나 cursor가 계속 달라도 복귀 화면의 조회는 제한한다.
+  for (let pages = 0; pages < 20; pages += 1) {
     const query: string = cursor ? `?${new URLSearchParams({ cursor })}` : ''
     const page: { items: Invoice[]; nextCursor: string | null } =
       await apiRequest<{
@@ -166,9 +167,10 @@ export async function getSessionInvoice(id: number | string) {
     )
     if (invoice) return invoice
     cursor = page.nextCursor
+    if (!cursor) return null
     if (cursor && seen.has(cursor)) return null
     if (cursor) seen.add(cursor)
-  } while (cursor)
+  }
   return null
 }
 
