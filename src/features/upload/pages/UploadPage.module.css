@@ -248,3 +248,42 @@
     width: 100%;
   }
 }
+
+/* 제목 줄 오른쪽 위 "예시 파일 받기"(11/13) */
+.introRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sample {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+.sample:hover {
+  border-color: var(--color-text-3);
+}
+.sample:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+.sample svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
