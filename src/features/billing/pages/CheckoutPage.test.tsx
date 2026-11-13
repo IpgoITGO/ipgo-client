@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { openApp } from '../../../test/openApp'
 import { openCardWindow } from '../model/cardWindow'
+import { applyMockDemo } from '../mocks/billingHandlers'
+import { getSession } from '../model/billingApi'
 
 vi.mock('../model/cardWindow', () => ({ openCardWindow: vi.fn() }))
 
@@ -278,40 +280,44 @@ describe('결제', () => {
     expect(keys[1]).not.toBe(keys[0])
   })
 
-  it('결제가 끝난 뒤 같은 결제를 또 해도 끝난 시도 대신 새 시도로 연다(11/12 검수)', async () => {
-    // 가짜 서버는 서버 계약(0012)대로 같은 키면 처음 시도를 그대로 돌려준다
+  it('카드 교체 완료 후 새 시도는 새 키와 새 세션을 사용한다', async () => {
+    applyMockDemo('seller')
     const keys: string[] = []
+    const posts: string[] = []
     server.events.on('request:start', ({ request }) => {
-      if (
-        request.method === 'POST' &&
-        new URL(request.url).pathname === '/api/billing/registration-sessions'
-      )
-        keys.push(request.headers.get('Idempotency-Key') ?? '')
+      const path = new URL(request.url).pathname
+      if (request.method === 'POST') {
+        posts.push(path)
+        if (path === '/api/billing/registration-sessions')
+          keys.push(request.headers.get('Idempotency-Key') ?? '')
+      }
     })
-    vi.mocked(openCardWindow).mockResolvedValue(undefined)
-    const { user } = await openApp('/checkout?plan=seller')
-    await user.click(
-      await screen.findByLabelText(/자동으로 결제되는 것에 동의해요/),
+    const { user, router } = await openApp('/account')
+    const change = await screen.findByRole('button', {
+      name: '카드 바꾸기',
+    })
+    await user.click(change)
+    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(1))
+    const first = vi.mocked(openCardWindow).mock.calls[0][0]
+    const back = new URL(first.successUrl)
+    await act(() =>
+      router.navigate(
+        `${back.pathname}${back.search}&authKey=mock_auth&customerKey=${first.customerKey}`,
+      ),
     )
-    const pay = await screen.findByRole('button', {
-      name: '49,000원 결제하기',
-    })
-    await user.click(pay)
-    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(1), {
-      timeout: 5000,
-    })
-    await vi.waitFor(() => expect(pay).toBeEnabled(), { timeout: 5000 })
-    await user.click(pay)
-    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(2), {
-      timeout: 5000,
-    })
+    expect(
+      await screen.findByRole('heading', { name: '카드를 바꿨어요' }),
+    ).toBeInTheDocument()
+    expect((await getSession(first.sessionId)).status).toBe('COMPLETED')
+    expect(posts.filter((path) => path.endsWith('/complete'))).toHaveLength(1)
+    await act(() => router.navigate('/account'))
+    await user.click(await screen.findByRole('button', { name: '카드 바꾸기' }))
+    await vi.waitFor(() => expect(openCardWindow).toHaveBeenCalledTimes(2))
+    const second = vi.mocked(openCardWindow).mock.calls[1][0]
     expect(keys).toHaveLength(2)
     expect(keys[1]).not.toBe(keys[0])
-    expect(sessionStorage.length).toBe(
-      Object.keys(sessionStorage).filter(
-        (k) => !k.startsWith('ipgo:billing-key'),
-      ).length,
-    )
+    expect(second.sessionId).not.toBe(first.sessionId)
+    expect((await getSession(second.sessionId)).status).toBe('OPEN')
   })
 
   it('주소의 요금제가 틀리면 요금제 화면으로', async () => {

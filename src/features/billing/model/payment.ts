@@ -44,7 +44,7 @@ export function returnPath() {
 }
 
 // 카드 등록 시작(처음 결제 = START_SUBSCRIPTION, 카드 바꾸기 = REPLACE_METHOD). 누를 때마다 새 키를 쓴다.
-// 열린 같은 시도는 서버가 새 키여도 이어받고(server #189), 같은 키는 처음 결과를 돌려주므로 키를 저장하지 않는다(11/12 검수).
+// 열린 같은 시도는 서버가 새 키여도 이어받고(server #189), 같은 키는 열린 세션만 이어받으므로 키를 저장하지 않는다.
 export function useCardRegistration(who: { email?: string; name?: string }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
