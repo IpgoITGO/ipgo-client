@@ -177,7 +177,7 @@ export function AlertBell() {
           {visible.length === 0 ? (
             // 다 지우거나 없으면 로그인 그림 속 고양이가 잔다(11/13)
             <div className={styles.empty} data-rise="">
-              <img alt="" height={72} src={noAlertsArt} width={96} />
+              <img alt="" height={96} src={noAlertsArt} width={128} />
               <strong>새 알림이 없어요</strong>
               <span>넣을 상품이 생기면 여기로 알려 드려요</span>
             </div>
