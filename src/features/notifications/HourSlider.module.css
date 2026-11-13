@@ -1,7 +1,7 @@
 /* 받을 시각 막대: 지나온 길은 노랑, 남은 길은 베이지, 손잡이는 흰 동그라미 + 노란 테두리 */
 .box {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2) var(--space-4);
 }
@@ -17,7 +17,7 @@
 .track {
   display: grid;
   gap: 4px;
-  width: min(320px, 100%);
+  width: min(280px, 100%);
 }
 
 .track input {

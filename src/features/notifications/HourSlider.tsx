@@ -49,7 +49,7 @@ export function HourSlider({
           <i>6</i>
           <i>낮 12</i>
           <i>6</i>
-          <i>11시</i>
+          <i>밤 11</i>
         </span>
       </div>
     </div>
