@@ -8,6 +8,8 @@ import {
   paymentProblem,
   PLANS,
   TRIAL_DAYS,
+  TRIAL_ALREADY_USED_MESSAGE,
+  trialAlreadyUsed,
   trialDaysLeft,
 } from '../model/billing'
 import { usePlans, useSubscription } from '../model/billingApi'
@@ -33,10 +35,11 @@ export function PlansPage() {
     )
   }
   const daysLeft = trialDaysLeft(subscription)
+  const reusedTrial = trialAlreadyUsed(subscription)
   const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
-  const ended = trial && daysLeft <= 0
-  const soon = trial && daysLeft > 0 && daysLeft <= 3
+  const ended = trial && (reusedTrial || daysLeft <= 0)
+  const soon = trial && !reusedTrial && daysLeft > 0 && daysLeft <= 3
   const endsOn = subscription.trialEnd ? md(dayOf(subscription.trialEnd)) : ''
   const billingOn = subscription.nextChargeAt
     ? dayOf(subscription.nextChargeAt)
@@ -55,7 +58,7 @@ export function PlansPage() {
         className={styles.status}
         data-state={ended ? 'ended' : soon ? 'soon' : undefined}
       >
-        {trial && (
+        {trial && !reusedTrial && (
           <svg aria-hidden="true" className={styles.ring} viewBox="0 0 54 54">
             <circle className={styles.ringTrack} cx="27" cy="27" r="22" />
             {!ended && (
@@ -75,7 +78,9 @@ export function PlansPage() {
           </svg>
         )}
         <p>
-          {ended ? (
+          {reusedTrial ? (
+            <b>{TRIAL_ALREADY_USED_MESSAGE}</b>
+          ) : ended ? (
             <>
               <b>체험이 끝났어요</b>
               <span>자료는 그대로 볼 수 있어요</span>
@@ -143,11 +148,12 @@ export function PlanCards({
   const serverPlans = usePlans().data
   const normal = serverPlans?.some((p) => p.interval === 'ONE_TIME') ?? false
   const daysLeft = trialDaysLeft(subscription)
+  const reusedTrial = trialAlreadyUsed(subscription)
   const failed = !!paymentProblem(subscription)
   const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
-  const ended = trial && daysLeft <= 0
-  const soon = trial && daysLeft > 0 && daysLeft <= 3
+  const ended = trial && (reusedTrial || daysLeft <= 0)
+  const soon = trial && !reusedTrial && daysLeft > 0 && daysLeft <= 3
   return (
     <ul
       aria-label="요금제"
@@ -174,7 +180,9 @@ export function PlanCards({
               <span className={styles.ribbon}>지금 쓰는 중</span>
             )}
             {current && ended && (
-              <span className={styles.endStamp}>체험 끝</span>
+              <span className={styles.endStamp}>
+                {reusedTrial ? '체험 재사용 불가' : '체험 끝'}
+              </span>
             )}
             <h2>
               {plan.name}
@@ -248,11 +256,13 @@ export function PlanCards({
               </Button>
             ) : plan.id === 'trial' ? (
               <Button disabled variant="secondary">
-                {current
-                  ? daysLeft > 0
-                    ? `체험 중 · ${daysLeft}일 남음`
-                    : '체험 끝남'
-                  : '체험은 한 번만'}
+                {reusedTrial
+                  ? '체험 재사용 불가'
+                  : current
+                    ? daysLeft > 0
+                      ? `체험 중 · ${daysLeft}일 남음`
+                      : '체험 끝남'
+                    : '체험은 한 번만'}
               </Button>
             ) : current && failed ? (
               <Button onClick={() => navigate('/account')}>

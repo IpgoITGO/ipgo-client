@@ -115,6 +115,14 @@ export function calcLock(subscription: Subscription) {
   return canCalculate ? null : { reason: reason ?? 'TRIAL_ENDED' }
 }
 
+export const TRIAL_ALREADY_USED_MESSAGE =
+  '이전에 무료 체험을 쓴 이메일이에요. 결제 후 이용할 수 있어요.'
+
+// 신규 사유를 보내는 서버에만 반응한다. 권한이 허용된 계정은 사유만으로 막지 않는다.
+export function trialAlreadyUsed(subscription: Subscription) {
+  return calcLock(subscription)?.reason === 'TRIAL_ALREADY_USED'
+}
+
 // 결제가 안 돼 유예 중이거나 멈춘 상태. 모르는 상태값은 정상으로 본다.
 export function paymentProblem(subscription: Subscription) {
   return subscription.status === 'PAST_DUE' ||

@@ -18,6 +18,8 @@ import {
   planOf,
   type Subscription,
   TRIAL_DAYS,
+  TRIAL_ALREADY_USED_MESSAGE,
+  trialAlreadyUsed,
   trialDaysLeft,
 } from '../../billing/model/billing'
 import {
@@ -242,12 +244,18 @@ export function AccountPage() {
   const daysUsed = trial ? TRIAL_DAYS - trialLeft : 0
   // 체험 끝·매달 결제 실패는 따로 띠를 두지 않고 요금제 칸의 "상태" 줄로(#214, Google Workspace 식)
   const lock = calcLock(subscription)
+  const reusedTrial = trialAlreadyUsed(subscription)
   const failed = paymentProblem(subscription)
   const declined = invoices?.find(
     (item) => item.paymentStatus === 'DECLINED' && item.status === 'OPEN',
   )
-  const status =
-    normal && lock
+  const status = reusedTrial
+    ? {
+        text: TRIAL_ALREADY_USED_MESSAGE,
+        to: '/plans',
+        label: '요금제 고르기',
+      }
+    : normal && lock
       ? { text: '이용 기간이 끝났어요', to: '/plans', label: '이용권 결제하기' }
       : !declined && lock?.reason === 'TRIAL_ENDED'
         ? { text: '체험 끝남', to: '/plans', label: '요금제 고르기' }
@@ -359,6 +367,7 @@ export function AccountPage() {
                     <p className={styles.planLine}>
                       <strong>{plan.name}</strong>
                       {trial ? (
+                        !reusedTrial &&
                         trialEnd && (
                           <span className={styles.pill}>
                             {trialLeft}일 남음 · {monthDayKo(trialEnd)}까지
@@ -443,7 +452,7 @@ export function AccountPage() {
                   </p>
                 )}
                 <div className={styles.meters}>
-                  {trial && (
+                  {trial && !reusedTrial && (
                     <div>
                       <p className={styles.row}>
                         <span>체험</span>
