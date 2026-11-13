@@ -179,17 +179,22 @@ async function send(
   needsCsrf: boolean,
 ) {
   const csrf = needsCsrf ? await getCsrfToken() : null
+  const headers = new Headers(init?.headers)
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json')
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`)
+  }
+  // JSON 문자열의 기본 형식만 채우고 폼·파일의 형식은 fetch에 맡긴다.
+  if (typeof init?.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (csrf) headers.set(csrf.headerName, csrf.token)
 
   // 리프레시·CSRF 쿠키가 로그인·갱신·로그아웃에 함께 가야 하므로 쿠키를 항상 보냅니다.
   return request(createApiUrl(path), {
     credentials: 'include',
     ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...init?.headers,
-      ...(csrf ? { [csrf.headerName]: csrf.token } : {}),
-    },
+    headers,
   })
 }
 
