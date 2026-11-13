@@ -1,6 +1,7 @@
 .panel {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
   padding: var(--space-5);
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -11,18 +12,64 @@
 .panel p {
   margin: 0;
 }
-.panel label {
+
+.title {
+  color: var(--color-text);
+  font-size: var(--text-body, 15px);
+  font-weight: 700;
+}
+
+.description,
+.connection,
+.hint,
+.feedback {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.time {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
+  color: var(--color-text);
+  font-size: var(--text-caption);
+  font-weight: 700;
 }
-.panel select,
-.panel button {
-  min-height: 40px;
-  padding: var(--space-2) var(--space-3);
+
+.time select {
+  min-height: var(--h-input);
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text);
+  font: inherit;
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-input);
 }
+
+.time select:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.time select:disabled {
+  opacity: 0.5;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+.actions > button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.feedback:empty {
+  display: none;
 }
