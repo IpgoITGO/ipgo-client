@@ -324,10 +324,26 @@ function isoFromToday(n: number) {
 // C2 mock이 번호마다 몇 번 불렸는지
 const runPolls = new Map<number, number>()
 
+// 알림 설정(받을 시각 등). 저장(PATCH)이 없어서 로컬에선 늘 "서버에 연결하지 못했어요"가 떴다(11/14)
+const defaultNotificationSettings = {
+  enabled: false,
+  sendHour: 9,
+  timeZone: 'Asia/Seoul',
+}
+let notificationSettings = { ...defaultNotificationSettings }
+export function resetNotificationSettingsMock() {
+  notificationSettings = { ...defaultNotificationSettings }
+}
+
 export const handlers = [
   http.get('/api/notifications/settings', () =>
-    HttpResponse.json({ enabled: false, sendHour: 9, timeZone: 'Asia/Seoul' }),
+    HttpResponse.json(notificationSettings),
   ),
+  http.patch('/api/notifications/settings', async ({ request }) => {
+    const body = (await request.json()) as Partial<typeof notificationSettings>
+    notificationSettings = { ...notificationSettings, ...body }
+    return HttpResponse.json(notificationSettings)
+  }),
   http.get('/api/push/public-key', () =>
     HttpResponse.json(
       { code: 'PUSH_UNAVAILABLE', message: '알림 서비스를 준비 중이에요.' },
