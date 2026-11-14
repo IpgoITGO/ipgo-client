@@ -53,6 +53,65 @@ async function failure(options) {
   return report
 }
 
+test('게시 단계의 예상 밖 선할당은 게시 전 원본으로 복구한다', async () => {
+  const f = fixture()
+  f.options.previousAliases = Object.fromEntries(
+    aliases.map((alias, index) => [alias, old[index]]),
+  )
+  f.state.set(aliases[1], { id: 'dpl_new', url: candidate })
+  const report = await failure(f.options)
+  assert.equal(report.phase, 'published_alias_check')
+  assert.deepEqual([...f.state.values()], old)
+  assert.deepEqual(report.restored, [aliases[1]])
+  assert.ok(!f.events.some(([k, url]) => k === 'smoke' && url === candidate))
+})
+
+test('게시 전 백업이 있으면 원본을 다시 덮어쓰지 않고 정상 전환한다', async () => {
+  const f = fixture()
+  f.options.previousAliases = Object.fromEntries(
+    aliases.map((alias, index) => [alias, old[index]]),
+  )
+  assert.equal((await switchDevAliases(f.options)).passed, true)
+  assert.ok([...f.state.values()].every((value) => value.id === 'dpl_new'))
+  assert.ok(!f.events.some(([kind]) => kind === 'backup'))
+})
+
+test('선할당과 다른 작업의 변경이 함께 있으면 다른 작업은 보존한다', async () => {
+  const f = fixture()
+  f.options.previousAliases = Object.fromEntries(
+    aliases.map((alias, index) => [alias, old[index]]),
+  )
+  const foreign = { id: 'dpl_other', url: 'https://other.vercel.app' }
+  f.state.set(aliases[0], foreign)
+  f.state.set(aliases[1], { id: 'dpl_new', url: candidate })
+  await failure(f.options)
+  assert.deepEqual(f.state.get(aliases[0]), foreign)
+  assert.deepEqual(f.state.get(aliases[1]), old[1])
+})
+
+test('사전 읽기 실패나 취소에도 이미 확인된 선할당은 복구한다', async () => {
+  for (const cancel of [true, false]) {
+    const f = fixture()
+    f.options.previousAliases = Object.fromEntries(
+      aliases.map((alias, index) => [alias, old[index]]),
+    )
+    f.state.set(aliases[1], { id: 'dpl_new', url: candidate })
+    if (cancel) f.options.cancelled = () => true
+    else {
+      const read = f.options.readAlias
+      f.options.readAlias = (alias) => {
+        if (alias === aliases[0])
+          throw Object.assign(new Error('PRIVATE'), { status: 403 })
+        return read(alias)
+      }
+    }
+    const report = await failure(f.options)
+    assert.deepEqual(f.state.get(aliases[1]), old[1])
+    assert.deepEqual(report.restored, [aliases[1]])
+    assert.deepEqual(report.rollbackFailed, [])
+  }
+})
+
 test('후보 검사·각 주소 백업 뒤 전환하고 두 API 연결/HTTP를 후검증한다', async () => {
   const f = fixture()
   assert.equal((await switchDevAliases(f.options)).passed, true)

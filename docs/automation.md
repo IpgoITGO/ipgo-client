@@ -221,17 +221,28 @@ Vercel CLI는 검토한 정확 `x.y.z` 버전만 허용하고, OS/아키텍처/�
 다음 실제 승인 배포에서 앱 설치·CLI 캐시 hit/miss·CLI 설치·빌드 job/step 시간을 비교합니다.
 로컬 통과와 실제 Actions 캐시 적중/단축 효과는 구분하며, 측정용 배포를 추가 실행하지 않습니다.
 
-- 개발: `vercel deploy --prebuilt`로 Preview 후보를 만들고 `switch-dev-aliases.mjs`로 후보의
-  네 smoke 경로를 먼저 검사합니다. 기존 승인 SHA·dev 수동 실행 gate를 다시 확인하며, 이후 두 고정 alias의
-  현재 project/deployment ID·URL을 읽어 로그에 복구 기준으로 기록합니다. 읽기·범위 확인 실패 시 전환하지 않습니다.
+- 개발: 승인 SHA·dev 수동 실행 gate를 확인하고 `preview-alias-preflight.mjs`로 두 고정 주소의
+  게시 전 ID/URL을 SHA·project·org에 묶어 runner의 `0600` 백업 파일에 저장합니다. 모든 프로젝트 도메인에
+  `gitBranch=dev` 연결이 없어야 합니다. API 실패·잘린 목록(100개를 넘는 경우 포함)·잘못된 응답이면 게시를 차단합니다.
+  `vercel deploy --prebuilt`로 Preview 후보를 만든 뒤 백업과 현재 주소를 대조하고 네 smoke 경로를 검사합니다.
+  예상 밖 선할당이 후보를 가리키면 해당 주소만 게시 전 원본으로 복구하며, 다른 작업의 연결은 보존합니다.
+  백업 SHA·project·org 불일치나 누락은 전환 전에 거부합니다.
+- CLI 65.1.0의 `--skip-domain`은 Production 전용이므로 Preview에 추가하지 않습니다.
+  실제 관측한 `ipgo-dev.iwhya.kr`의 `gitBranch=dev` 설정은 **다음 배포 전 별도 승인·정리가 필요한 선행 조건**입니다.
+  이번 코드 변경은 Vercel 설정이나 실제 주소를 바꾸지 않으며, 설정을 유지하면 새 가드가 게시 전에 실패합니다.
+  도메인 설정 정리 시 운영 주소 자동 할당에 미치는 영향도 검토하며 단순히 branch를 지워 해결했다고 간주하지 않습니다.
+  공식 근거: [CLI deploy](https://vercel.com/docs/cli/deploy#skip-domain),
+  [Project domains API](https://vercel.com/docs/rest-api/projects/retrieve-project-domains).
 - 각 전환 직전 기존 연결이 그대로인지 확인하고 두 alias를 후보로 연결한 뒤 API 연결과 두 주소의
   동일 smoke 경로를 확인합니다. 부분 전환이나 후검증 실패 시 시도한 주소를 각각의 이전 deployment로
   복구하고 API/HTTP를 다시 확인합니다. 복구 중 한 주소가 실패해도 다른 주소의 복구는 계속하며 workflow는 실패로 남깁니다.
 - 복구 때 다른 작업의 새 연결을 발견하면 덮어쓰지 않고 복구 실패로 보고합니다. CLI stderr/API 본문은
   인증정보 보호를 위해 출력하지 않으며 단계·CLI 종료 코드·복구 성공/실패 주소를 남깁니다.
 - 수동 개발 배포는 같은 dev ref에서 직렬 실행해 새 dispatch가 진행 중인 전환을 자동 취소하지 않도록 합니다.
+  `development` 환경에는 현재 별도 reviewer 대기가 없으므로 서버 검증을 끝내기 전에 Client를 미리 dispatch하지 않습니다.
   PR/push의 오래된 CI 취소는 유지합니다. SIGINT/SIGTERM 감지는 가능한 경우 복구를 시도하지만, 러너 유실·SIGKILL·
   강제 종료 및 복구 API 장애에는 자동 복구를 보장하지 않습니다. 그때는 기록된 이전 URL로 아래 수동 복구를 수행합니다.
+  게시 명령이 후보 URL을 반환하기 전에 실패한 경우도 게시 전 백업으로 상태를 확인하고 수동 복구합니다.
 - 운영: `vercel deploy --prebuilt --prod --skip-domain`으로 Production 후보를 만듭니다.
 - 운영 후보의 `/`, `/login`, `/dashboard`, `/mockServiceWorker.js`가 정상일 때만
   `vercel promote`로 승격합니다.

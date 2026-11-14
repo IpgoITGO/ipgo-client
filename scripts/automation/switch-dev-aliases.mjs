@@ -1,9 +1,41 @@
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { validateDeployment } from './validate-dev-deployment.mjs'
 
 export const aliases = ['ipgo-client-dev.vercel.app', 'ipgo-dev.iwhya.kr']
+
+export function validateAliasSnapshot(value) {
+  if (
+    !value ||
+    Object.keys(value).length !== aliases.length ||
+    aliases.some(
+      (alias) =>
+        !/^dpl_[A-Za-z0-9]+$/.test(value[alias]?.id ?? '') ||
+        typeof value[alias]?.url !== 'string',
+    )
+  )
+    throw new Error('INVALID_ALIAS_SNAPSHOT')
+  for (const alias of aliases) deploymentUrl(value[alias].url)
+  return value
+}
+
+export function validatePreparedBackup(value, env) {
+  if (
+    value?.version !== 1 ||
+    !/^[0-9a-f]{40}$/.test(value.sha ?? '') ||
+    typeof value.projectId !== 'string' ||
+    !value.projectId ||
+    typeof value.orgId !== 'string' ||
+    !value.orgId ||
+    value.sha !== env.EXPECTED_SHA ||
+    value.projectId !== env.VERCEL_PROJECT_ID ||
+    value.orgId !== env.VERCEL_ORG_ID
+  )
+    throw new Error('BACKUP_CONTEXT_MISMATCH')
+  return validateAliasSnapshot(value.aliases)
+}
 
 function deploymentUrl(value) {
   const url = new URL(value)
@@ -53,22 +85,53 @@ export async function switchDevAliases({
   smoke,
   cancelled = () => false,
   recordBackup = () => {},
+  previousAliases,
 }) {
   deploymentUrl(candidate)
-  const before = new Map()
+  const before = new Map(
+    previousAliases
+      ? Object.entries(validateAliasSnapshot(previousAliases))
+      : [],
+  )
   const touched = []
   let phase = 'candidate_smoke'
   const checkCancellation = () => {
     if (cancelled()) throw new Error('CANCELLED')
   }
   try {
+    if (previousAliases) {
+      phase = 'published_alias_check'
+      const observed = await Promise.allSettled(
+        aliases.map((alias) => Promise.resolve().then(() => readAlias(alias))),
+      )
+      let changed
+      observed.forEach((result, index) => {
+        const alias = aliases[index]
+        if (result.status === 'rejected') {
+          changed ??=
+            result.reason instanceof Error
+              ? result.reason
+              : new Error('ALIAS_READ_FAILED')
+        } else if (
+          result.value.id !== before.get(alias).id ||
+          result.value.url !== before.get(alias).url
+        ) {
+          if (result.value.url === candidate) touched.push(alias)
+          changed ??= new Error('ALIAS_CHANGED_DURING_PUBLISH')
+        }
+      })
+      if (changed) throw changed
+    }
     checkCancellation()
+    phase = 'candidate_smoke'
     await smoke(candidate)
     checkCancellation()
-    phase = 'snapshot'
-    const previous = await Promise.all(aliases.map(readAlias))
-    aliases.forEach((alias, index) => before.set(alias, previous[index]))
-    recordBackup(Object.fromEntries(before))
+    if (!previousAliases) {
+      phase = 'snapshot'
+      const previous = await Promise.all(aliases.map(readAlias))
+      aliases.forEach((alias, index) => before.set(alias, previous[index]))
+      recordBackup(Object.fromEntries(before))
+    }
     for (const alias of aliases) {
       phase = 'assign'
       checkCancellation()
@@ -132,6 +195,11 @@ export async function switchDevAliases({
 
 async function main() {
   validateDeployment(process.env)
+  if (!process.env.ALIAS_BACKUP_FILE) throw new Error('MISSING_ALIAS_BACKUP')
+  const previousAliases = validatePreparedBackup(
+    JSON.parse(readFileSync(process.env.ALIAS_BACKUP_FILE, 'utf8')),
+    process.env,
+  )
   let stopped = false
   const stop = () => {
     stopped = true
@@ -141,6 +209,7 @@ async function main() {
   const execute = promisify(execFile)
   try {
     const result = await switchDevAliases({
+      previousAliases,
       candidate: process.env.DEPLOYMENT_URL,
       readAlias: aliasReader(process.env),
       setAlias: (url, alias) =>
