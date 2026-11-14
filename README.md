@@ -160,22 +160,25 @@ MSW는 이 흐름을 모의 처리합니다. 실제 토스 테스트 결제에�
 
 ## 명령
 
-| 명령                        | 설명                                                                |
-| --------------------------- | ------------------------------------------------------------------- |
-| `npm run dev`               | 개발 서버 실행                                                      |
-| `npm run build`             | TypeScript 검사 후 production build                                 |
-| `npm run typecheck`         | TypeScript 검사                                                     |
-| `npm run lint`              | ESLint 검사                                                         |
-| `npm run format:check`      | Prettier 형식 검사                                                  |
-| `npm test`                  | Vitest 테스트 1회 실행                                              |
-| `npm run test:watch`        | Vitest watch 실행                                                   |
-| `npm run ci:check`          | CI에서 사용하는 전체 코드 검사                                      |
-| `npm run automation:test`   | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사                 |
-| `npm run verification:test` | 로컬 검증 도구의 중단·요청 차단 규칙 검사                           |
-| `npm run verify:browser`    | 로컬 합성 응답으로 PC·모바일 화면 검사·캡처                         |
-| `npm run verify:local`      | 포맷 확인 → 검증 도구 검사 → 기존 전체 검사 → 빌드 → PC·모바일 검증 |
+| 명령                        | 설명                                                |
+| --------------------------- | --------------------------------------------------- |
+| `npm run dev`               | 개발 서버 실행                                      |
+| `npm run build`             | TypeScript 검사 후 production build                 |
+| `npm run typecheck`         | TypeScript 검사                                     |
+| `npm run lint`              | ESLint 검사                                         |
+| `npm run format:check`      | Prettier 형식 검사                                  |
+| `npm test`                  | Vitest 테스트 1회 실행                              |
+| `npm run test:watch`        | Vitest watch 실행                                   |
+| `npm run ci:check`          | CI에서 사용하는 전체 코드 검사                      |
+| `npm run automation:test`   | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사 |
+| `npm run verification:test` | 로컬 검증 도구의 중단·요청 차단 규칙 검사           |
+| `npm run verify:browser`    | 로컬 합성 응답으로 PC·모바일 화면 검사·캡처         |
+| `npm run verify:local`      | 전체 코드 검사 → 번들 빌드 → PC·모바일 검증         |
 
 `ci:check`는 기존 앱·자동화 검사에 검증 도구 단위 검사도 추가로 실행합니다.
+`verify:local`은 `ci:check`에 포함된 포맷·검증 도구·타입 검사를 한 번씩 실행하고,
+통과한 뒤 `build:ci`로 번들을 만듭니다. 검사나 빌드가 실패하면 다음 단계로 진행하지 않습니다.
+직접 실행하는 `npm run build`의 타입 검사는 유지합니다.
 브라우저 검사는 화면 연결 IPGO-196 선행 병합 후 사용합니다.
 
 화면 수정의 반복 탐색·모의 응답 준비·결과 기록은 [구현·검증 절차](docs/rules/workflow.md#구현검증-절차)를
@@ -353,7 +356,7 @@ flowchart LR
   생성 한도를 넘으면 신규 생성만 보류하고 기존 연결 작업은 계속 갱신합니다.
 - Issue 제목에 Jira 키를 명시합니다. 본문에 적힌 참고 키만으로 작업을 연결하지 않습니다.
 - GitHub Issue의 기간은 조직 Project `IpgoITGO 작업 일정`의 `시작일`·`마감일` 필드에 표시합니다.
-- 승인된 PR을 사람이 병합하면 `dev`는 개발 주소, `main`은 운영 주소로 Vercel 배포를 시작합니다.
+- `dev` 병합은 CI만 실행하고 개발 배포는 승인 SHA로 수동 실행합니다. `main` 병합은 운영 후보 검증·승격을 시작합니다.
 - `dev → main` PR 제목에는 운영 배포 후 완료할 Jira 키를 모두 포함합니다.
 - PR 자동 승인·자동 병합과 Jira 스프린트 자동 배정은 하지 않습니다.
 
@@ -414,6 +417,9 @@ AI의 CALCULATE `accuracyEvaluation`은 선택적 확장 필드입니다. 원본
 PR/dev push는 코드 검사·테스트·build만 수행합니다. 실제 개발 배포는 정확한 전체 commit SHA를
 승인받은 뒤 `Vercel 개발 배포`를 dev에서 수동 실행하고 `expected_sha`로 전달합니다.
 Git 연동 자동 배포도 꺼져 있으며 자세한 승인·복구 절차는 [자동화 운영](docs/automation.md)을 따릅니다.
+개발 배포는 후보 URL을 먼저 검사하고 두 고정 주소의 기존 연결을 기록한 뒤 전환·후검증합니다.
+전환/검증 실패 시 각 이전 연결로 복구하고 복구 결과도 확인합니다. 러너 강제 종료·복구 API 실패는
+자동 복구를 보장할 수 없으므로 기록된 이전 URL로 수동 복구합니다.
 
 ## 내 입고량 저장
 

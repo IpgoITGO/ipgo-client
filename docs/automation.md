@@ -101,7 +101,7 @@ PR은 제목·branch의 Jira 키만 읽으며 본문의 참고 키는 상태를 
 첫 보호 코드 반영은 동기화 workflow의 상태·실행 중인 run을 보관한 뒤 승인 범위에서 잠시 비활성화하고,
 옛 run이 끝났는지 확인한 후 진행합니다. dev 반영 SHA·정본/제외 설정을 확인하고 workflow를 재개한 뒤
 보호된 버전으로만 정리를 수행합니다. 그동안 Jira·GitHub의 수동 변경을 함께 관측합니다.
-dev 병합은 기존 Vercel 개발 배포도 자동으로 시작할 수 있습니다. 앱 코드·main 운영 배포 변경은 이 정리에 포함하지 않습니다.
+dev 병합은 CI만 실행하며 실제 개발 배포는 승인 SHA의 별도 수동 실행입니다. 앱 코드·main 운영 배포 변경은 이 정리에 포함하지 않습니다.
 Client #85/#101/#102/#103/#107은 기존 Server 원본을 연결하고, Client #59~67과 AI #42는
 Jira에서 계속 추적한다는 근거를 남긴 뒤 `not_planned`로 종료합니다. Jira를 완료로 바꾸지 않습니다.
 실제 이관·종료는 대상·원문·댓글·담당을 보관하고 승인한 범위에서만 수행합니다.
@@ -177,9 +177,19 @@ workflow를 실행하거나 Jira를 완료로 바꾼 뒤 정기 동기화가 Iss
 origin/dev와의 공통 기준점 대비 커밋/미커밋 변경 및 package 내용을 검사해 앱·의존성·빌드 설정·기존 검사 명령 변경을 거부하고, lint/format/
 typecheck/자동화 테스트/검증 도구 테스트/CI 번들을 한 번씩 수행합니다. 변경 중 소스가 달라져도 실패합니다.
 기본 verify:local과 PR의 전체 ci:check는 유지하며, 앱 소스가 바뀌면 전체 검사·필요한 브라우저 검증을 수행합니다.
-보고서는 보호된 외부 디렉터리의 summary.json 하나이며 생략한 로컬 UI 검사를 성공한 검사로 표시하지 않습니다.
+`verify:local`은 `ci:check` → `build:ci` → `verify:browser` 순서로 실행합니다.
+포맷·타입·앱·자동화·검증 도구 검사는 `ci:check` 안에서 각각 한 번 수행하고, 성공한 뒤
+타입 검사 재호출 없이 번들을 만듭니다. 검사·번들·브라우저 중 하나라도 실패하거나 실행 중
+소스가 바뀌면 전체 결과는 실패입니다. 직접 `npm run build`와 PR·배포 검사는 유지합니다.
+브라우저 합성 fixture는 업로드 기간 목록의 빈 응답과 TEST 요금제 응답도 제공하며 알 수 없는 API와 쓰기 요청은
+계속 차단합니다. 계정 테스트의 초점은 대상 요소가 실제 초점을 받을 때까지 기다려 검사합니다.
+CSRF 검사는 서버 응답의 headerName을 따르는 두 헤더 이름과 403 뒤 갱신·재사용을 확인합니다.
+아이디 찾기의 정상 404는 기존 NOT_FOUND 계약 검사를 유지하며 임의의 오류 코드로 바꾸지 않습니다.
+검사 결과 정본은 보호된 외부 디렉터리의 `summary.json`입니다. 브라우저 원본 결과·로그·캡처는
+증거로 보존하며, 작업 원장의 시간 `summary.json`과 구분합니다. 생략한 로컬 UI 검사를 성공한 검사로 표시하지 않습니다.
 동일 근거는 이 원문을 재사용하고, 소스·검사 범위·환경이 달라지거나 실패/누락이면 재검사합니다.
-상태 문서는 결과·한계·보고서 링크만 남깁니다. 자동 보고서는 전체 PR CI 통과나 실제 업무 성공을 뜻하지 않습니다.
+작업 준비·완료 설명의 위치와 도구 제약 재사용은 [실행 환경과 기록 준비](rules/workflow.md#실행-환경과-기록-준비)를 따릅니다.
+자동 보고서는 전체 PR CI 통과나 실제 업무 성공을 뜻하지 않습니다.
 
 | branch | Vercel 환경 | 고정 주소 |
 |---|---|---|
@@ -199,7 +209,8 @@ PR·dev push는 `npm ci --prefer-offline --no-fund`와 전체 `ci:check`를 실�
 개발·운영 deploy job에서는 Vercel 빌드 밖의 앱 `npm ci`를 실행하지 않습니다.
 `prepare-vercel-build.mjs`가 두 환경 모두 `installCommand`를 `npm ci --prefer-offline --no-fund`로
 고정해 Vercel 빌드 안에서 한 번 설치합니다. Preview는 기존 `VITE_ENABLE_MSW=false npm run build`,
-Production은 `npm run ci:check && npm run build` 순서로 실행합니다. 운영의 전체 검사를 생략하거나
+Production은 `npm run ci:check && npm run build:ci` 순서로 실행합니다. 전체 검사에 포함된 타입 검사를
+다시 호출하지 않고 최종 번들을 만듭니다. 직접 `npm run build`와 Preview의 타입 검사는 유지합니다. 운영의 전체 검사를 생략하거나
 게시 뒤로 옮기지 않습니다. 설치·검사·타입 검사·빌드 중 하나라도 실패하면 후보 게시/alias/승격으로
 진행하지 않습니다. PR/dev push의 설치·전체 CI·빌드와 정확 SHA 증거 검사는 유지합니다.
 Vercel CLI는 검토한 정확 `x.y.z` 버전만 허용하고, OS/아키텍처/실제 Node 버전/CLI 버전별로
@@ -210,7 +221,17 @@ Vercel CLI는 검토한 정확 `x.y.z` 버전만 허용하고, OS/아키텍처/�
 다음 실제 승인 배포에서 앱 설치·CLI 캐시 hit/miss·CLI 설치·빌드 job/step 시간을 비교합니다.
 로컬 통과와 실제 Actions 캐시 적중/단축 효과는 구분하며, 측정용 배포를 추가 실행하지 않습니다.
 
-- 개발: `vercel deploy --prebuilt`로 Preview를 만든 뒤 개발 고정 alias를 연결합니다.
+- 개발: `vercel deploy --prebuilt`로 Preview 후보를 만들고 `switch-dev-aliases.mjs`로 후보의
+  네 smoke 경로를 먼저 검사합니다. 기존 승인 SHA·dev 수동 실행 gate를 다시 확인하며, 이후 두 고정 alias의
+  현재 project/deployment ID·URL을 읽어 로그에 복구 기준으로 기록합니다. 읽기·범위 확인 실패 시 전환하지 않습니다.
+- 각 전환 직전 기존 연결이 그대로인지 확인하고 두 alias를 후보로 연결한 뒤 API 연결과 두 주소의
+  동일 smoke 경로를 확인합니다. 부분 전환이나 후검증 실패 시 시도한 주소를 각각의 이전 deployment로
+  복구하고 API/HTTP를 다시 확인합니다. 복구 중 한 주소가 실패해도 다른 주소의 복구는 계속하며 workflow는 실패로 남깁니다.
+- 복구 때 다른 작업의 새 연결을 발견하면 덮어쓰지 않고 복구 실패로 보고합니다. CLI stderr/API 본문은
+  인증정보 보호를 위해 출력하지 않으며 단계·CLI 종료 코드·복구 성공/실패 주소를 남깁니다.
+- 수동 개발 배포는 같은 dev ref에서 직렬 실행해 새 dispatch가 진행 중인 전환을 자동 취소하지 않도록 합니다.
+  PR/push의 오래된 CI 취소는 유지합니다. SIGINT/SIGTERM 감지는 가능한 경우 복구를 시도하지만, 러너 유실·SIGKILL·
+  강제 종료 및 복구 API 장애에는 자동 복구를 보장하지 않습니다. 그때는 기록된 이전 URL로 아래 수동 복구를 수행합니다.
 - 운영: `vercel deploy --prebuilt --prod --skip-domain`으로 Production 후보를 만듭니다.
 - 운영 후보의 `/`, `/login`, `/dashboard`, `/mockServiceWorker.js`가 정상일 때만
   `vercel promote`로 승격합니다.
@@ -275,17 +296,18 @@ VITE_ENABLE_MSW=true npm run build
 
 1. `Jira GitHub 동기화`를 수동 실행하고 신규 생성 수·중복·실패를 확인합니다.
 2. Jira 댓글 하나와 GitHub 댓글 하나가 각각 반대쪽에 한 번만 생기는지 확인합니다.
-3. `dev` 병합 후 개발 workflow, Vercel 상태와 네 smoke 경로를 확인합니다.
+3. `dev` PR·병합 후 전체 CI를 확인합니다. 실제 개발 배포는 별도로 전체 SHA를 승인받아 dev에서
+   workflow를 수동 실행하고 `expected_sha`를 전달한 뒤 후보·두 alias와 네 smoke 경로를 확인합니다.
 4. 승인된 `dev → main` PR 병합 후 운영 후보 검증과 승격을 확인합니다.
 5. PR 제목의 Jira 작업과 GitHub Issue가 완료됐는지 확인합니다.
 
-배포 workflow는 branch 병합으로만 실행합니다.
+개발 배포는 승인 SHA의 수동 실행만 허용합니다. `main` 병합은 기존 운영 승인 환경을 거쳐 후보 검증·승격을 수행합니다.
 
 ## 장애와 복구
 
 | 상황 | 조치 |
 |---|---|
-| 개발 alias 오류 | 마지막 정상 Preview에 `ipgo-client-dev.vercel.app` alias를 다시 연결 |
+| 개발 alias 오류·자동 복구 실패 | 전환 로그의 각 이전 URL에 `ipgo-client-dev.vercel.app`·`ipgo-dev.iwhya.kr`를 각각 다시 연결하고 API/네 smoke 경로 확인. 서로 다른 이전 연결을 한 배포로 합치지 않음 |
 | 운영 오류 | 정상 Production deployment를 `vercel rollback` 또는 다시 promote |
 | 신규 생성 한도 초과 경고     | 기존 연결 갱신 결과와 보류 키 확인 → 저장소 분류·기존 Issue 연결 대조 → 승인 후 신규 생성 재개 |
 | 잘못된 대상 쓰기·동기화 오류 | workflow 비활성화 → 양쪽 기록 대조 → 설정·코드 수정과 로컬 검증 → 승인 후 수동 실행            |
