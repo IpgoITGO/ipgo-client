@@ -186,19 +186,19 @@ describe('API 전송 전 모의 서버 준비 검사', () => {
 })
 
 // 서버처럼 변경 요청에는 CSRF 토큰을 헤더에 넣어야 합니다. (GET /api/auth/csrf → 토큰)
-function useCsrfServer(tokens: string[]) {
+function useCsrfServer(tokens: string[], headerName = 'X-CSRF-TOKEN') {
   const calls = { csrf: 0, echo: 0 }
 
   server.use(
     http.get('/api/auth/csrf', () => {
       const token = tokens[Math.min(calls.csrf, tokens.length - 1)]
       calls.csrf += 1
-      return HttpResponse.json({ headerName: 'X-CSRF-TOKEN', token })
+      return HttpResponse.json({ headerName, token })
     }),
     http.get('/api/echo', () => HttpResponse.json({ ok: true })),
     http.post('/api/echo', ({ request }) => {
       calls.echo += 1
-      const sent = request.headers.get('X-CSRF-TOKEN')
+      const sent = request.headers.get(headerName)
       // 마지막 토큰만 유효하다고 보고, 다른 토큰이면 403으로 거절합니다.
       return sent === tokens[tokens.length - 1]
         ? HttpResponse.json({ sent })
@@ -213,6 +213,21 @@ function useCsrfServer(tokens: string[]) {
 }
 
 describe('apiRequest의 CSRF 처리', () => {
+  it.each(['X-CSRF-TOKEN', 'X-XSRF-TOKEN'])(
+    '서버가 지정한 %s 헤더로 토큰을 보내고 403 뒤 갱신한다',
+    async (headerName) => {
+      const calls = useCsrfServer(['old', 'new'], headerName)
+
+      expect(await apiRequest('/echo', { method: 'POST' })).toEqual({
+        sent: 'new',
+      })
+      expect(await apiRequest('/echo', { method: 'POST' })).toEqual({
+        sent: 'new',
+      })
+      expect(calls).toEqual({ csrf: 2, echo: 3 })
+    },
+  )
+
   it('GET 요청은 CSRF 토큰을 받지 않는다', async () => {
     const calls = useCsrfServer(['t1'])
 

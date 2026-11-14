@@ -25,6 +25,11 @@ import {
   updatePlannedReceipt,
 } from '../model/plannedReceiptsApi'
 import styles from './PurchaseOrdersSection.module.css'
+import foldStyles from '../pages/SettingsPage.module.css'
+import {
+  keepSummaryInPlace,
+  rememberSummary,
+} from '../../../shared/ui/Fold/steadyFold'
 
 const orderSchema = z.object({
   productId: z.string().min(1, '상품을 골라 주세요.'),
@@ -380,10 +385,33 @@ export function PurchaseOrdersSection() {
   }
 
   return (
-    <section className={styles.card}>
+    // 상품별 조건처럼 기본은 접어 두고, 접혀 있어도 몇 건인지 한 줄로 보인다(11/13)
+    <details
+      className={`${styles.card} ${foldStyles.fold}`}
+      onToggle={keepSummaryInPlace}
+    >
+      <summary
+        aria-describedby="purchase-orders-summary"
+        onClick={rememberSummary}
+      >
+        <span className={foldStyles.foldTitle}>
+          <h2>이미 발주한 물량</h2>
+        </span>
+        <span className={foldStyles.foldSummary} id="purchase-orders-summary">
+          {allOrders.length === 0
+            ? '등록한 발주가 없어요'
+            : `발주 ${allOrders.length}건 · 아직 안 온 것 ${allOrders.filter((order) => order.status !== 'RECEIVED').length}건`}
+        </span>
+        <svg
+          aria-hidden="true"
+          className={foldStyles.foldIcon}
+          viewBox="0 0 24 24"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
       <div className={styles.header}>
         <div>
-          <h2>이미 발주한 물량</h2>
           <p>발주했지만 아직 안 온 물량은 그만큼 빼고 계산해요.</p>
         </div>
         {/* 검색칸을 맨 오른쪽에 두어 위 입고 조건 표 검색칸과 끝을 맞춘다 */}
@@ -648,6 +676,6 @@ export function PurchaseOrdersSection() {
       {notice && (
         <Toast duration={4000} message={notice} onClose={() => setNotice('')} />
       )}
-    </section>
+    </details>
   )
 }

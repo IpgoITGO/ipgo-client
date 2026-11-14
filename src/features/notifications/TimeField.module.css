@@ -1,0 +1,141 @@
+/* 받을 시각: 알약 칸 + 누르면 아래로 우리 고르기 창(시 0~23). 고른 칸은 둥근 노랑(11/14) */
+.box {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.field:hover:not([data-disabled]) {
+  border-color: var(--color-accent);
+}
+
+.field:focus-within,
+.field[data-open] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.field[data-disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.field svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-accent-text);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+/* 한 자리·두 자리 숫자여도 칸 크기가 안 바뀌게 두 자리 폭으로 고정, 숫자는 시 쪽에 붙인다(11/14) */
+.input {
+  width: 2ch;
+  padding: 0;
+  text-align: right;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-body, 15px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+.unit {
+  margin-left: -6px;
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.input:disabled {
+  cursor: default;
+}
+
+/* 고르기 창: 둥근 카드, 시 한 줄 */
+.panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgb(25 31 40 / 10%);
+}
+
+.col {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  max-height: 228px;
+  padding: 2px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.col::-webkit-scrollbar {
+  display: none;
+}
+
+.cell {
+  min-width: 56px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  color: var(--color-text-2);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cell:hover {
+  background: var(--color-accent-soft);
+}
+
+/* 고른 칸: 파란 네모 대신 둥근 노랑 */
+.cell[aria-selected='true'] {
+  color: var(--color-text);
+  font-weight: 800;
+  background: var(--color-accent);
+}
+
+.cell:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+  }
+}

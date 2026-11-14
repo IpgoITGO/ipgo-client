@@ -18,7 +18,7 @@ export function prepareBuildConfig(config, target) {
     installCommand: 'npm ci --prefer-offline --no-fund',
     buildCommand:
       target === 'production'
-        ? 'npm run ci:check && npm run build'
+        ? 'npm run ci:check && npm run build:ci'
         : 'VITE_ENABLE_MSW=false npm run build',
   }
 }

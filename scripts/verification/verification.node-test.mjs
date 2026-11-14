@@ -195,7 +195,36 @@ test('자동화 검사 실패나 실행 중 소스 변경은 재사용 가능한
   assert.equal(changed.passed, false)
 })
 
-test('기존 전체 검사·빌드와 브라우저를 순서대로 보존하고 결과를 모은다', async () => {
+test('필수 로컬 검사는 전체 실행 경로에 한 번씩 포함된다', () => {
+  const { scripts } = JSON.parse(
+    fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+  )
+  const calls = []
+  const expand = (name) => {
+    calls.push(name)
+    for (const match of scripts[name].matchAll(
+      /npm run ([\w:-]+)|npm (test)\b/g,
+    ))
+      expand(match[1] ?? match[2])
+  }
+  stages.forEach(expand)
+  for (const name of [
+    'lint',
+    'format:check',
+    'typecheck',
+    'test',
+    'automation:test',
+    'verification:test',
+    'build:ci',
+    'verify:browser',
+  ])
+    assert.equal(calls.filter((call) => call === name).length, 1, name)
+  assert.equal(scripts['build:ci'], 'vite build')
+  assert.match(scripts.typecheck, /^tsc -b\b/)
+  assert.equal(scripts.build, 'tsc -b && vite build')
+})
+
+test('전체 검사·번들과 브라우저를 순서대로 보존하고 결과를 모은다', async () => {
   const seen = [],
     saved = []
   const result = await runChecks({
@@ -206,13 +235,7 @@ test('기존 전체 검사·빌드와 브라우저를 순서대로 보존하고 
     fingerprint: () => 'same',
     save: (r) => saved.push(structuredClone(r)),
   })
-  assert.deepEqual(seen, [
-    'format:check',
-    'verification:test',
-    'ci:check',
-    'build',
-    'verify:browser',
-  ])
+  assert.deepEqual(seen, ['ci:check', 'build:ci', 'verify:browser'])
   assert.equal(result.passed, true)
   assert.equal(saved[0].stages[0].status, 'running')
   assert.equal(saved.at(-1).passed, true)
@@ -220,7 +243,7 @@ test('기존 전체 검사·빌드와 브라우저를 순서대로 보존하고 
   assert.equal(result.deployment, false)
 })
 
-test('포맷 실패는 전체 검사 전에 중단하고 성공으로 기록하지 않는다', async () => {
+test('전체 검사 실패 종료 코드를 보존하고 다음 단계로 진행하지 않는다', async () => {
   const seen = []
   const result = await runChecks({
     runStage: async (name) => {
@@ -230,23 +253,23 @@ test('포맷 실패는 전체 검사 전에 중단하고 성공으로 기록하�
     fingerprint: () => 'same',
     save: () => {},
   })
-  assert.deepEqual(seen, ['format:check'])
+  assert.deepEqual(seen, ['ci:check'])
   assert.equal(result.passed, false)
   assert.equal(result.stages[0].exit_code, 2)
 })
 
-test('전체 검사 실패 뒤 빌드·브라우저를 실행하지 않는다', async () => {
+test('번들 실패 뒤 브라우저를 실행하지 않는다', async () => {
   const seen = []
   const result = await runChecks({
     runStage: async (name) => {
       seen.push(name)
-      return name === 'ci:check' ? 1 : 0
+      return name === 'build:ci' ? 1 : 0
     },
     fingerprint: () => 'same',
     save: () => {},
   })
   assert.equal(result.passed, false)
-  assert.deepEqual(seen, stages.slice(0, 3))
+  assert.deepEqual(seen, ['ci:check', 'build:ci'])
 })
 
 test('브라우저 실패도 전체 검증 실패로 남긴다', async () => {
@@ -305,12 +328,14 @@ test('합성 인증·주변 API와 작년0/기록없음·실패 이유를 반복
   for (const route of [
     '/api/auth/me',
     '/api/billing/subscription',
+    '/api/billing/plans',
     '/api/dashboard/replenishment-needs',
     '/api/expiry',
     '/api/planned-receipts',
     '/api/auth/csrf',
     '/api/settings/storage-cost',
     '/api/planned-quantities',
+    '/api/uploads/periods',
     '/api/results/17/scenarios',
     '/api/results/17/insight',
   ])
@@ -326,5 +351,18 @@ test('합성 인증·주변 API와 작년0/기록없음·실패 이유를 반복
   )
   assert.ok(
     JSON.parse(response('/api/uploads/15').body).error.reason.includes('(3개)'),
+  )
+  assert.deepEqual(JSON.parse(response('/api/uploads/periods').body), {
+    items: [],
+    latestUploadId: null,
+  })
+  const [plan] = JSON.parse(response('/api/billing/plans').body)
+  assert.equal(plan.planId, 'seller')
+  assert.equal(plan.interval, 'MONTH')
+  assert.equal(plan.amount, 49000)
+  assert.equal(plan.testMode, true)
+  assert.equal(
+    response('/api/billing/plans', 'POST').blocked,
+    'UNEXPECTED_API_WRITE',
   )
 })

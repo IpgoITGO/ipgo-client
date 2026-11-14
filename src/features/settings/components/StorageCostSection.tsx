@@ -15,6 +15,10 @@ import {
   withCommas,
 } from '../model/storageCost'
 import styles from '../pages/SettingsPage.module.css'
+import {
+  keepSummaryInPlace,
+  rememberSummary,
+} from '../../../shared/ui/Fold/steadyFold'
 
 type Product = { productId: number; name: string; barcode: string }
 
@@ -267,9 +271,13 @@ function StorageCostForm({
     <details
       className={`${styles.card} ${styles.fold}`}
       id={STORAGE_ANCHOR}
+      onToggle={(event) => keepSummaryInPlace(event, { pad: false })}
       ref={foldRef}
     >
-      <summary aria-describedby="storage-cost-summary">
+      <summary
+        aria-describedby="storage-cost-summary"
+        onClick={rememberSummary}
+      >
         <span className={styles.foldTitle}>
           <h2 id="storage-cost-title">보관 비용</h2>
           <span className={styles.optional}>선택</span>

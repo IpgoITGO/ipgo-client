@@ -54,14 +54,20 @@ export function ShiftChart({
 }) {
   const w = mini ? 150 : 480
   const h = mini ? 40 : 170
+  // mini는 작년 점선을 안 그리므로 높이 기준도 이번 판매로만 잡는다(11/13 "그래프가 맞아?")
   const max =
     Math.max(
-      ...weeks.map((week) => Math.max(week.avg, week.lastYear ?? 0)),
-      1,
+      ...weeks.map((week) =>
+        mini ? week.avg : Math.max(week.avg, week.lastYear ?? 0),
+      ),
+      mini ? 0.1 : 1,
     ) * 1.08
   const pad = mini ? 2 : 26
   const bw = (w - pad) / Math.max(weeks.length, 1)
-  const y = (value: number) => h - 18 - (value / max) * (h - 30)
+  // 아래 18px은 날짜 글자 자리. mini는 글자가 없으니 높이를 다 쓴다(전엔 막대가 10px 안에 눌려 다 같아 보였음)
+  const base = mini ? h : h - 18
+  const span = mini ? h - 2 : h - 30
+  const y = (value: number) => base - (value / max) * span
   const line = weeks
     .map((week, i) =>
       week.lastYear == null
@@ -97,7 +103,7 @@ export function ShiftChart({
           </g>
         ))}
       {weeks.map((week, i) => {
-        const bh = Math.max(mini ? 4 : 2, h - 18 - y(week.avg))
+        const bh = Math.max(2, base - y(week.avg))
         return (
           <rect
             className={i === weeks.length - 1 ? styles.now : styles.bar}
@@ -106,7 +112,7 @@ export function ShiftChart({
             rx={2}
             width={bw * 0.64}
             x={pad + i * bw + bw * 0.18}
-            y={h - 18 - bh}
+            y={base - bh}
           />
         )
       })}

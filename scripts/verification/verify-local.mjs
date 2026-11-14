@@ -6,13 +6,8 @@ import { isDeepStrictEqual } from 'node:util'
 import { spawn, execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-export const stages = [
-  'format:check',
-  'verification:test',
-  'ci:check',
-  'build',
-  'verify:browser',
-]
+// ci:check가 포맷·검증 도구·타입 검사를 포함하므로 통과한 뒤 번들만 만든다.
+export const stages = ['ci:check', 'build:ci', 'verify:browser']
 export const automationStages = [
   'lint',
   'format:check',

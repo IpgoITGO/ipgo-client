@@ -115,7 +115,7 @@ test('CI 번들은 같은 job의 타입 검사 성공 뒤에만 실행하고 기
   )
   assert.equal(
     prepareBuildConfig({}, 'production').buildCommand,
-    'npm run ci:check && npm run build',
+    'npm run ci:check && npm run build:ci',
   )
   assert.match(workflows[1], /vercel build --prod/)
 })

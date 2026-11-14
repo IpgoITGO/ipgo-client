@@ -151,6 +151,8 @@ export function ScenarioInsight({
   const [adding, setAdding] = useState(false)
   // 눌러서 고른 카드(처음엔 권장량)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // 판매 급증 카드를 눌러 비교를 시작했으면, 그 카드가 생기는 대로 고른다(11/13)
+  const [pickSurge, setPickSurge] = useState(false)
   const plannedQuery = usePlannedQuery()
   const plan = plannedQuery.data?.[productId]
   const plannedMutation = usePlannedMutation(productId, resultId)
@@ -301,6 +303,7 @@ export function ScenarioInsight({
   )
   const selected =
     scenarios.find((item) => item.id === selectedId) ??
+    (pickSurge ? scenarios.find(isSurge) : undefined) ??
     scenarios.find(
       (item) => !isCustom(item) && item.quantity === data?.recommendedQuantity,
     ) ??
@@ -497,6 +500,10 @@ export function ScenarioInsight({
                     data-decided={decided || undefined}
                     data-recommended={recommended}
                     data-selected={selected?.id === scenario.id}
+                    // 판매 급증 카드는 골라도 노랑 대신 제 색(늘면 파랑, 줄면 초록)
+                    data-surge={
+                      isSurge(scenario) ? surge?.direction : undefined
+                    }
                     key={scenario.id}
                     onClick={() => setSelectedId(scenario.id)}
                     onKeyDown={(event) => {
@@ -634,9 +641,16 @@ export function ScenarioInsight({
 
               {surgeCard && surge && (
                 // 옆 카드와 같은 틀·같은 줄: 이름·수량은 같은 자리, 손글씨 비교가 남는 높이를 채워 단추가 옆 카드 단추와 같은 줄에
+                // 단추만이 아니라 카드 어디를 눌러도 비교한다(11/13). 단추 클릭도 여기로 올라온다
                 <div
                   className={`${styles.scenario} ${styles.surgeCard}`}
                   data-dir={surge.direction}
+                  onClick={() => {
+                    if (action.isPending || tooOld) return
+                    setSelectedId(null)
+                    setPickSurge(true)
+                    void action.run(surge.quantity)
+                  }}
                 >
                   <span className={styles.surgeTape} data-dir={surge.direction}>
                     {surgeTape}
@@ -674,7 +688,6 @@ export function ScenarioInsight({
                   <Button
                     className={styles.decideButton}
                     disabled={action.isPending || tooOld}
-                    onClick={() => void action.run(surge.quantity)}
                     title={tooOld ? STALE_TEXT : undefined}
                     type="button"
                     variant="secondary"

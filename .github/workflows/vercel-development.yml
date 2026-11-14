@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: vercel-development-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   verify:
@@ -108,11 +108,10 @@ jobs:
           set -euo pipefail
           deployment_url="$(vercel deploy --prebuilt --yes | tail -n 1)"
           DEPLOYMENT_URL="$deployment_url" node scripts/automation/validate-vercel-url.mjs
-          vercel alias set "$deployment_url" ipgo-client-dev.vercel.app
-          vercel alias set "$deployment_url" ipgo-dev.iwhya.kr
           printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
 
-      - name: 개발 주소 확인
+      - name: 개발 후보 확인·주소 전환·후검증
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
-        run: node scripts/automation/smoke-test.mjs
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: node scripts/automation/switch-dev-aliases.mjs

@@ -109,47 +109,120 @@
   list-style: none;
 }
 
+/* 종류별 묶음(11/13 B안): 머리줄에만 아이콘·색, 줄은 담백하게 */
+.group + .group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border);
+}
+.group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px 2px;
+  font-size: var(--text-caption);
+  font-weight: 800;
+}
+.groupHead svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+.groupHead span {
+  padding: 0 7px;
+  border-radius: 999px;
+}
+.group[data-kind='stockout'] .groupHead {
+  color: var(--color-danger);
+}
+.group[data-kind='stockout'] .groupHead span {
+  background: var(--color-danger-bg);
+}
+.group[data-kind='expiry'] .groupHead {
+  color: var(--color-warning);
+}
+.group[data-kind='expiry'] .groupHead span {
+  background: var(--color-warning-bg);
+}
+/* 입고는 노랑 대신 파랑(노랑은 버튼·강조색이라 겹쳤음) */
+.group[data-kind='receipt'] .groupHead {
+  color: var(--color-info);
+}
+.group[data-kind='receipt'] .groupHead span {
+  background: var(--color-info-bg);
+}
+
+/* 줄 + 오른쪽 지우기 ×(발주 표 ×와 같은 선 아이콘) */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
 .row {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 10px 12px;
+  min-width: 0;
+  padding: 10px 8px 10px 28px;
   color: var(--color-text);
   text-decoration: none;
   border-radius: 10px;
 }
-
-/* 안 읽은 줄: 아주 옅은 노랑만(줄마다 진한 상자는 무거워서, 11/11) */
-.row[data-unread] {
-  background: color-mix(in srgb, var(--color-accent-soft) 45%, transparent);
-}
-
-.row + .row {
-  margin-top: 2px;
-}
-
 .row:hover {
   background: var(--color-primary-soft);
 }
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+/* 안 읽음은 굵은 제목으로만(점·노란 바탕 없음) */
+.row .text strong {
+  font-weight: 500;
 }
-
-.stockout {
-  background: var(--color-danger);
+.row[data-unread] .text strong {
+  font-weight: 800;
 }
-
-/* 토큰에 점토색이 없어 가까운 주황 계열(경고색)을 쓴다 */
-.expiry {
-  background: var(--color-warning);
+/* 위쪽 .account button 규칙(테두리·여백)을 이기도록 이름을 겹쳐 쓴다 */
+.panel .item .clear {
+  display: grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-3);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: none;
 }
-
-.receipt {
-  background: var(--color-accent);
+.panel .item .clear:hover,
+.panel .item .clear:focus-visible {
+  color: var(--color-text);
+  background: var(--color-primary-soft);
+}
+.clear svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.headActions {
+  display: flex;
+  gap: 2px;
 }
 
 .text {
@@ -198,4 +271,39 @@
     width: auto;
     max-width: none;
   }
+}
+
+/* 스크롤 막대 대신 위·아래 그림자로 "더 있어요"를 보인다(11/13). 끝에 닿으면 그림자가 사라진다 */
+.list {
+  scrollbar-width: none;
+  background:
+    linear-gradient(var(--color-card) 30%, transparent) center top,
+    linear-gradient(transparent, var(--color-card) 70%) center bottom,
+    radial-gradient(farthest-side at 50% 0, rgb(25 31 40 / 12%), transparent)
+      center top,
+    radial-gradient(farthest-side at 50% 100%, rgb(25 31 40 / 12%), transparent)
+      center bottom;
+  background-repeat: no-repeat;
+  background-size:
+    100% 32px,
+    100% 32px,
+    100% 10px,
+    100% 10px;
+  background-attachment: local, local, scroll, scroll;
+}
+.list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 알림 없음: 자는 고양이 + 두 줄(11/13) */
+div.empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+div.empty img {
+  margin-bottom: 6px;
+}
+div.empty strong {
+  color: var(--color-text);
 }

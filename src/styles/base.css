@@ -111,3 +111,9 @@ a {
 [data-calc-locked] {
   pointer-events: none;
 }
+
+/* 페이지 스크롤 막대는 얇고 연하게(11/13 "드래그바 맘에 안 들어"). 쓰는 사람은 그대로 끌 수 있다 */
+html {
+  scrollbar-color: var(--color-border) transparent;
+  scrollbar-width: thin;
+}

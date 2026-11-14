@@ -431,6 +431,12 @@ describe('DashboardPage', () => {
     expect(
       screen.getByText('판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'),
     ).toBeInTheDocument()
+
+    // 급변 상품이 없는 탭은 글만 두지 않고 그림과 함께 알린다(11/13)
+    await user.click(screen.getByRole('tab', { name: /계산 못 해요/ }))
+    expect(
+      await screen.findByText('판매가 갑자기 바뀐 상품이 없어요'),
+    ).toBeInTheDocument()
   })
 
   it('예상 소진일이 지난 상품은 이미 소진으로 표시하고 요약 카드에 몇 개인지 알린다', async () => {
