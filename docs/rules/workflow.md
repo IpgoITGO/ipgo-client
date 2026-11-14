@@ -62,7 +62,8 @@ README 변경이 없으면 PR에 이유를 한 줄로 남깁니다. 최초 빈 `
    기존 GET 누락도 실패로 처리하며, 실제 서버 호출이나 무조건 빈 성공 응답으로 숨기지 않는다.
 4. 편집이 끝나면 수정 파일만 명시해 Prettier를 실행하고 관련 테스트의 실패를 해결한다.
    저장소 전체 자동 포맷으로 다른 변경을 섞지 않는다. 이후 `npm run verify:local` 한 번으로
-   format:check → verification:test → **기존 ci:check 전체** → build → verify:browser를 실행한다.
+   **기존 ci:check 전체** → build:ci → verify:browser를 실행한다. 포맷·검증 도구·타입 검사는
+   ci:check 안에서 각각 한 번 실행하고 통과한 뒤 번들을 만든다.
    CI의 기존 전체 앱·자동화 검사를 줄이거나 skip하지 않고 검증 도구 검사도 포함한다.
    브라우저 검사는 화면 연결 IPGO-196의 선행 병합 후 사용한다.
 5. 검사 실행 중 코드/fixture/README를 바꾸지 않는다. 문서 초안은 저장소 밖 보호 메모에서

@@ -160,22 +160,25 @@ MSW는 이 흐름을 모의 처리합니다. 실제 토스 테스트 결제에�
 
 ## 명령
 
-| 명령                        | 설명                                                                |
-| --------------------------- | ------------------------------------------------------------------- |
-| `npm run dev`               | 개발 서버 실행                                                      |
-| `npm run build`             | TypeScript 검사 후 production build                                 |
-| `npm run typecheck`         | TypeScript 검사                                                     |
-| `npm run lint`              | ESLint 검사                                                         |
-| `npm run format:check`      | Prettier 형식 검사                                                  |
-| `npm test`                  | Vitest 테스트 1회 실행                                              |
-| `npm run test:watch`        | Vitest watch 실행                                                   |
-| `npm run ci:check`          | CI에서 사용하는 전체 코드 검사                                      |
-| `npm run automation:test`   | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사                 |
-| `npm run verification:test` | 로컬 검증 도구의 중단·요청 차단 규칙 검사                           |
-| `npm run verify:browser`    | 로컬 합성 응답으로 PC·모바일 화면 검사·캡처                         |
-| `npm run verify:local`      | 포맷 확인 → 검증 도구 검사 → 기존 전체 검사 → 빌드 → PC·모바일 검증 |
+| 명령                        | 설명                                                |
+| --------------------------- | --------------------------------------------------- |
+| `npm run dev`               | 개발 서버 실행                                      |
+| `npm run build`             | TypeScript 검사 후 production build                 |
+| `npm run typecheck`         | TypeScript 검사                                     |
+| `npm run lint`              | ESLint 검사                                         |
+| `npm run format:check`      | Prettier 형식 검사                                  |
+| `npm test`                  | Vitest 테스트 1회 실행                              |
+| `npm run test:watch`        | Vitest watch 실행                                   |
+| `npm run ci:check`          | CI에서 사용하는 전체 코드 검사                      |
+| `npm run automation:test`   | 자동화 단위 검사와 API 통신을 차단한 모의 통합 검사 |
+| `npm run verification:test` | 로컬 검증 도구의 중단·요청 차단 규칙 검사           |
+| `npm run verify:browser`    | 로컬 합성 응답으로 PC·모바일 화면 검사·캡처         |
+| `npm run verify:local`      | 전체 코드 검사 → 번들 빌드 → PC·모바일 검증         |
 
 `ci:check`는 기존 앱·자동화 검사에 검증 도구 단위 검사도 추가로 실행합니다.
+`verify:local`은 `ci:check`에 포함된 포맷·검증 도구·타입 검사를 한 번씩 실행하고,
+통과한 뒤 `build:ci`로 번들을 만듭니다. 검사나 빌드가 실패하면 다음 단계로 진행하지 않습니다.
+직접 실행하는 `npm run build`의 타입 검사는 유지합니다.
 브라우저 검사는 화면 연결 IPGO-196 선행 병합 후 사용합니다.
 
 화면 수정의 반복 탐색·모의 응답 준비·결과 기록은 [구현·검증 절차](docs/rules/workflow.md#구현검증-절차)를
