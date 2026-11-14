@@ -177,7 +177,7 @@ export function SettingsPage() {
   // 상품이 수백 개라(실데이터 289개) 거르기 + 골라서 같은 조건 한 번에 넣기(11/11)
   const filterParam = params.get('filter')
   const filter: RowFilter =
-    filterParam && filterParam in ROW_FILTERS
+    filterParam && Object.hasOwn(ROW_FILTERS, filterParam)
       ? (filterParam as RowFilter)
       : 'all'
   const setFilter = (value: RowFilter) =>
