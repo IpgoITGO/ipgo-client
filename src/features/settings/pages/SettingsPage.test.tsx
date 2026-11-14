@@ -13,6 +13,22 @@ import { SettingsPage } from './SettingsPage'
 import { CalculationStatus } from '../../../shared/ui/CalculationStatus/CalculationStatus'
 
 describe('SettingsPage', () => {
+  it.each(['all', 'unknown', '__proto__', 'constructor', 'toString'])(
+    'URL 필터 %s를 안전하게 읽고 상품 목록을 표시한다',
+    async (filter) => {
+      render(
+        <AppProviders>
+          <MemoryRouter initialEntries={[`/settings?filter=${filter}`]}>
+            <SettingsPage />
+          </MemoryRouter>
+        </AppProviders>,
+      )
+      expect(
+        await screen.findByRole('switch', { name: '케어트릿 120g 사용' }),
+      ).toBeInTheDocument()
+    },
+  )
+
   it('저장 응답 runId를 화면 이동 후에도 조회하고 실제 DONE을 알린다', async () => {
     let status = 'RUNNING'
     let reads = 0
