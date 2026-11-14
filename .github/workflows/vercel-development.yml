@@ -62,7 +62,6 @@ jobs:
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_CLI_VERSION: ${{ vars.VERCEL_CLI_VERSION }}
-      ALIAS_BACKUP_FILE: ${{ runner.temp }}/dev-alias-backup.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -104,6 +103,7 @@ jobs:
 
       - name: 개발 주소 자동 할당 검사·게시 전 백업
         env:
+          ALIAS_BACKUP_FILE: ${{ runner.temp }}/dev-alias-backup.json
           EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: node scripts/automation/preview-alias-preflight.mjs
 
@@ -118,6 +118,7 @@ jobs:
 
       - name: 개발 후보 확인·주소 전환·후검증
         env:
+          ALIAS_BACKUP_FILE: ${{ runner.temp }}/dev-alias-backup.json
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: node scripts/automation/switch-dev-aliases.mjs

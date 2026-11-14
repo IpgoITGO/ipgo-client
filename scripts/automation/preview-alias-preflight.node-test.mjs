@@ -148,9 +148,11 @@ test('workflow는 동일 백업을 게시 전에 준비하고 성공한 후보�
     'run: node scripts/automation/switch-dev-aliases.mjs',
   )
   assert.ok(preflight >= 0 && preflight < publish && publish < switchStep)
-  assert.match(
-    workflow,
-    /ALIAS_BACKUP_FILE: \$\{\{ runner.temp \}\}\/dev-alias-backup.json/,
+  assert.equal(
+    workflow.match(
+      / {10}ALIAS_BACKUP_FILE: \$\{\{ runner.temp \}\}\/dev-alias-backup.json/g,
+    )?.length,
+    2,
   )
   assert.doesNotMatch(workflow, /continue-on-error:|if: always\(\)/)
   assert.doesNotMatch(workflow, /vercel deploy[^\n]*(?:--skip-domain|--prod)/)
