@@ -85,11 +85,15 @@ export function getUploadPeriods() {
 export function uploadFile(file: File, overwrite: boolean) {
   const formData = new FormData()
   const validated = validateUploadFile(file)
-  if (validated.status !== 'ready' || !validated.periodKey) {
+  if (validated.status !== 'ready') {
     throw new Error(validated.reason ?? '올릴 수 없는 파일이에요.')
   }
-  // 서버의 월별 원본 이름 계약에 맞추되 파일 내용은 그대로 보낸다.
-  formData.append('file', file, `${validated.periodKey}.xlsx`)
+  // 이름에서 연-월을 읽었으면 그 이름으로, 아니면 원래 이름 그대로 보낸다(서버가 F열 입고일자로 기간을 정함, 11/13).
+  formData.append(
+    'file',
+    file,
+    validated.periodKey ? `${validated.periodKey}.xlsx` : file.name,
+  )
   formData.append('overwrite', String(overwrite))
 
   return apiRequest<{ uploadId: number; status: UploadResult['status'] }>(

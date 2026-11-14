@@ -35,45 +35,45 @@ function renderPage() {
 
 describe('UploadPage', () => {
   it('형식이 틀린 파일은 고른 파일 목록에 넣지 않고 이유만 알려준다', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ applyAccept: false })
     renderPage()
 
     const input = screen.getByLabelText('수불부 파일 선택')
     await user.upload(input, [
       new File(['ok'], '2026-10.xlsx'),
-      new File(['bad'], '재고현황.xlsx'),
+      new File(['bad'], '재고현황.xls'),
     ])
 
     expect(
       await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
-    ).toHaveTextContent('재고현황.xlsx')
+    ).toHaveTextContent('재고현황.xls')
     await user.click(screen.getByRole('button', { name: '확인' }))
 
     expect(screen.getByText('올릴 수 있어요')).toBeInTheDocument()
-    expect(screen.queryByText('재고현황.xlsx')).not.toBeInTheDocument()
+    expect(screen.queryByText('재고현황.xls')).not.toBeInTheDocument()
     expect(screen.getByText('고른 파일 1개')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
   })
 
   it('오류 파일이 여러 개면 팝업을 하나씩 차례로 보여준다', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ applyAccept: false })
     renderPage()
 
     await user.upload(screen.getByLabelText('수불부 파일 선택'), [
-      new File(['bad'], '재고현황.xlsx'),
-      new File(['bad'], '2026-13.xlsx'),
+      new File(['bad'], '재고현황.xls'),
+      new File(['bad'], '메모.csv'),
     ])
 
     const dialog = await screen.findByRole('dialog', {
       name: '이 파일은 올릴 수 없어요',
     })
-    expect(dialog).toHaveTextContent('재고현황.xlsx')
+    expect(dialog).toHaveTextContent('재고현황.xls')
 
     await user.click(screen.getByRole('button', { name: '확인' }))
 
     expect(
       await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
-    ).toHaveTextContent('2026-13.xlsx')
+    ).toHaveTextContent('메모.csv')
 
     await user.click(screen.getByRole('button', { name: '확인' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

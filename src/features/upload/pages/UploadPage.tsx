@@ -236,8 +236,23 @@ export function UploadPage() {
         <Link className={styles.back} to="/dashboard">
           ← 대시보드로
         </Link>
-        <h1>올릴 수불부를 확인해 주세요</h1>
-        <p>월별 XLSX 파일을 여러 개 한 번에 선택할 수 있어요.</p>
+        {/* 오른쪽 위 예시 파일(11/13): 처음 올리는 셀러가 칸 모양을 보고 맞출 수 있게 */}
+        <div className={styles.introRow}>
+          <h1>올릴 수불부를 확인해 주세요</h1>
+          <a
+            className={styles.sample}
+            download="수불부 예시.xlsx"
+            href="/samples/ledger-sample.xlsx"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+            </svg>
+            예시 파일 받기
+          </a>
+        </div>
+        <p>
+          XLSX 파일을 여러 개 한 번에 선택할 수 있어요. 파일 이름은 자유예요.
+        </p>
       </header>
 
       <div
@@ -251,7 +266,7 @@ export function UploadPage() {
         {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
         <img alt="" className={styles.boxArt} src={boxOpen} />
         <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
-        <span>XLSX · 파일명 예시 2026-09.xlsx · 여러 파일 가능</span>
+        <span>XLSX · 이름 자유 · 여러 파일 가능</span>
         <Button onClick={() => inputRef.current?.click()} variant="secondary">
           파일 고르기
         </Button>
@@ -278,7 +293,7 @@ export function UploadPage() {
                 <div className={styles.fileName}>
                   <strong>{item.file.name}</strong>
                   <span>
-                    {item.period ?? '기간 확인 필요'} ·{' '}
+                    {item.period ?? '입고일자로 기간을 정해요'} ·{' '}
                     {formatFileSize(item.file.size)}
                   </span>
                 </div>

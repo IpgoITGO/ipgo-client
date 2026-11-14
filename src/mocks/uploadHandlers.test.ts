@@ -67,8 +67,14 @@ describe('upload mock handlers', () => {
     }
   })
 
-  it('형식이 맞지 않으면 400 UPLOAD_INVALID_FORMAT', async () => {
-    const response = await upload('재고현황.xlsx', false)
+  it('이름이 자유로운 XLSX도 받는다', async () => {
+    const response = await upload('재고현황.xlsx', true)
+
+    expect(response.status).toBe(202)
+  })
+
+  it('XLSX가 아니면 400 UPLOAD_INVALID_FORMAT', async () => {
+    const response = await upload('재고현황.csv', false)
 
     expect(response.status).toBe(400)
     expect((await response.json()).code).toBe('UPLOAD_INVALID_FORMAT')
