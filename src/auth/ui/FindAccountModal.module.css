@@ -144,3 +144,9 @@
   font-size: var(--text-section);
   font-weight: 800;
 }
+
+.resultArt {
+  justify-self: center;
+  width: 128px;
+  height: auto;
+}
