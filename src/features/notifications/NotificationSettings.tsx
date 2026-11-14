@@ -158,7 +158,7 @@ export function NotificationSettings() {
           </Button>
         </p>
       ) : (
-        // 아래 한 줄: 받을 시각 고르기 + 짧은 설명 하나(11/13 "글이 너무 많아")
+        // 아래 한 줄: 받을 시각 고르기 + 짧은 설명 하나(11/13 시안 검토)
         <div className={styles.timeRow}>
           <span className={styles.time}>
             받을 시각
@@ -169,7 +169,7 @@ export function NotificationSettings() {
               value={settings.data?.sendHour ?? 9}
             />
           </span>
-          {/* 시간대(Asia/Seoul) 글자는 뺐다(11/13 "적혀 있어야 해?"). 서버는 그대로 한국 시간 */}
+          {/* 시간대(Asia/Seoul) 글자는 뺐다(11/13 시안 검토). 서버는 그대로 한국 시간 */}
           <small>넣을 상품이 있을 때만 보내요</small>
         </div>
       )}

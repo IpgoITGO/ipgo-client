@@ -318,7 +318,7 @@ export function AccountPage() {
             </div>
             <div>
               <dt>비밀번호</dt>
-              {/* 이메일 줄과 같은 높이: 가린 점 + 글자 링크(11/13 "저런 버튼으로 맞고 싶냐") */}
+              {/* 이메일 줄과 같은 높이: 가린 점 + 글자 링크(11/13 시안 검토) */}
               <dd className={styles.password}>
                 <span aria-hidden="true">••••••••</span>
                 <button
