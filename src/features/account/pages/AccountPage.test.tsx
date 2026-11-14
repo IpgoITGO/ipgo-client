@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
@@ -33,7 +33,7 @@ describe('내 계정', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await user.keyboard('{Escape}')
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
-    expect(trigger).toHaveFocus()
+    await waitFor(() => expect(trigger).toHaveFocus())
 
     await user.click(trigger)
     await user.click(screen.getByRole('link', { name: '내 계정' }))
@@ -78,7 +78,11 @@ describe('내 계정', () => {
     // 팝업 1단계: 놓치는 것, 초점은 "그대로 쓸게요"
     await user.click(screen.getByRole('button', { name: '구독 해지' }))
     expect(await screen.findByText(/이걸 놓쳐요/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '그대로 쓸게요' })).toHaveFocus()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '그대로 쓸게요' }),
+      ).toHaveFocus(),
+    )
     // "그대로 쓸게요"는 해지하지 않고 닫는다
     await user.click(screen.getByRole('button', { name: '그대로 쓸게요' }))
     expect(screen.queryByText(/이걸 놓쳐요/)).not.toBeInTheDocument()

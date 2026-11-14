@@ -69,6 +69,22 @@ export function fixtureResponse(url, method, origin) {
         },
       }
       break
+    case '/api/billing/plans':
+      body = [
+        {
+          planId: 'seller',
+          priceVersion: 'seller-v1',
+          amount: 49000,
+          currency: 'KRW',
+          interval: 'MONTH',
+          products: 300,
+          monthlyInsights: 100,
+          testMode: true,
+          trialDays: 14,
+          consentVersion: 'monthly-2026-11-v1',
+        },
+      ]
+      break
     case '/api/expiry':
       body = {
         asOfDate: null,
@@ -126,6 +142,9 @@ export function fixtureResponse(url, method, origin) {
         isValidObservation: true,
         lastYearOutboundQty,
       }))
+      break
+    case '/api/uploads/periods':
+      body = { items: [], latestUploadId: null }
       break
     case '/api/uploads/15':
       body = {
