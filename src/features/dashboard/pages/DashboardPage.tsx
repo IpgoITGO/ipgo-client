@@ -54,6 +54,7 @@ import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
+import emptyShiftImage from '../../../shared/ui/PagePlaceholder/assets/box-empty.webp'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
 // 크기를 안 넣은 상품은 0원으로 더하지 않고 개수만 따로 적는다.
@@ -713,6 +714,10 @@ export function DashboardPage() {
         KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
     )
     .filter((row) => sort !== 'shift' || shiftOf(row) !== null)
+  // 지금 보이는 줄 중 넣어야 할 상품(합계 칸에 쓴다)
+  const needInView = rows.filter(
+    (row): row is Extract<Row, { kind: 'need' }> => row.kind === 'need',
+  )
   const pickable = rows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
@@ -998,12 +1003,6 @@ export function DashboardPage() {
                   ? '판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'
                   : PANEL_DESCRIPTION[tab]}
               </p>
-              {/* 보관비 줄 자리는 탭마다 잡아 두어 검색칸·표가 위아래로 안 움직인다 */}
-              <div className={styles.storageSlot}>
-                {(tab === 'need' || tab === 'all') && (
-                  <StorageTotal items={items} />
-                )}
-              </div>
             </div>
             <label className={styles.search}>
               <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -1019,18 +1018,52 @@ export function DashboardPage() {
               />
             </label>
           </div>
-          <div aria-label="목록 정렬" className={styles.sort} role="radiogroup">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                aria-checked={sort === option.value}
-                key={option.value}
-                onClick={() => setSort(option.value)}
-                role="radio"
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
+          {/* 정렬은 왼쪽, 오른쪽 빈자리엔 이 목록의 넣을 양·금액 합계와 보관비(11/13 "오른쪽 여백 채우기") */}
+          <div className={styles.listBar}>
+            <div
+              aria-label="목록 정렬"
+              className={styles.sort}
+              role="radiogroup"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  aria-checked={sort === option.value}
+                  key={option.value}
+                  onClick={() => setSort(option.value)}
+                  role="radio"
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.totals}>
+              {needInView.length > 0 && (
+                <>
+                  <span>
+                    넣을 양
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderQtyOf(row.item), 0)
+                        .toLocaleString()}
+                      개
+                    </b>
+                  </span>
+                  <span>
+                    넣을 금액
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderCostOf(row.item), 0)
+                        .toLocaleString()}
+                      원
+                    </b>
+                  </span>
+                </>
+              )}
+              {(tab === 'need' || tab === 'all') && (
+                <StorageTotal items={items} />
+              )}
+            </div>
           </div>
 
           {/* 모든 탭이 같은 칸·같은 폭(11/11). 탭은 줄만 거르고, 계산 못 한 상품은 이유를 줄 아래에 */}
@@ -1057,6 +1090,16 @@ export function DashboardPage() {
             />
           ) : tab === 'safe' && !data.safeItems && products.isPending ? (
             <p className={styles.none}>상품을 불러오고 있어요.</p>
+          ) : rows.length === 0 && sort === 'shift' && !search ? (
+            // 판매 급변이 없으면 글만 두지 않고 그림으로(11/13)
+            <div className={styles.emptyShift} role="status">
+              <img alt="" height="112" src={emptyShiftImage} width="112" />
+              <strong>판매가 갑자기 바뀐 상품이 없어요</strong>
+              <p>
+                최근 판매가 평소와 비슷해요. 크게 늘거나 줄면 여기에 모아 보여
+                드려요.
+              </p>
+            </div>
           ) : rows.length === 0 ? (
             search ? (
               <NoMatch search={search} />
