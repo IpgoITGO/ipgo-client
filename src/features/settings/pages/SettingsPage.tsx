@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import { ApiError } from '../../../shared/api/client'
@@ -32,6 +32,9 @@ import {
   keepSummaryInPlace,
   rememberSummary,
 } from '../../../shared/ui/Fold/steadyFold'
+import { Pager } from '../../../shared/ui/Pager/Pager'
+import { readPage } from '../../../shared/ui/Pager/pageParams'
+import { useSteadyHeight } from '../../../shared/ui/Pager/useSteadyHeight'
 
 const positiveInteger = z
   .number({ error: '숫자를 입력해 주세요.' })
@@ -155,9 +158,30 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const lock = useCalcLock()
   const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
+  // 검색·거르기·쪽·보기 개수는 주소에 둔다(11/13 "라우터 관리"). 바꾸면 1쪽으로
+  const [params, setParams] = useSearchParams()
+  const updateParams = (changes: Record<string, string | null>) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        Object.entries(changes).forEach(([key, value]) =>
+          value === null ? next.delete(key) : next.set(key, value),
+        )
+        return next
+      },
+      { replace: true },
+    )
+  const search = params.get('q') ?? ''
+  const setSearch = (value: string) =>
+    updateParams({ q: value === '' ? null : value, page: null })
   // 상품이 수백 개라(실데이터 289개) 거르기 + 골라서 같은 조건 한 번에 넣기(11/11)
-  const [filter, setFilter] = useState<RowFilter>('all')
+  const filterParam = params.get('filter')
+  const filter: RowFilter =
+    filterParam && filterParam in ROW_FILTERS
+      ? (filterParam as RowFilter)
+      : 'all'
+  const setFilter = (value: RowFilter) =>
+    updateParams({ filter: value === 'all' ? null : value, page: null })
   const [picked, setPicked] = useState<Set<number>>(() => new Set())
   const [bulk, setBulk] = useState<Record<ProductField, string>>({
     leadTime: '',
@@ -228,7 +252,13 @@ export function SettingsPage() {
         ),
     [products, search, filter],
   )
-  const shownIds = filteredProducts
+  // 한 쪽에 보이는 줄(10·20·30개씩, 11/13). 고르기·붙여 넣기도 보이는 줄 기준
+  const { page, size } = readPage(params, filteredProducts.length)
+  const tableRef = useSteadyHeight<HTMLDivElement>(
+    `${filter}|${search}|${size}`,
+  )
+  const pageProducts = filteredProducts.slice((page - 1) * size, page * size)
+  const shownIds = pageProducts
     .filter(({ product }) => product.isActive)
     .map(({ product }) => product.productId)
   const allShownPicked =
@@ -295,9 +325,9 @@ export function SettingsPage() {
     while (lines.length > 0 && lines.at(-1) === '') lines.pop()
     if (lines.length < 2) return
     event.preventDefault()
-    const start = filteredProducts.findIndex(({ index }) => index === from)
+    const start = pageProducts.findIndex(({ index }) => index === from)
     lines.forEach((digits, offset) => {
-      const row = filteredProducts[start + offset]
+      const row = pageProducts[start + offset]
       if (!row || !row.product.isActive || digits === '') return
       setValue(`products.${row.index}.cost`, Number(digits), {
         shouldDirty: true,
@@ -631,7 +661,7 @@ export function SettingsPage() {
               {savedNotice}
             </span>
           </div>
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} ref={tableRef}>
             <table>
               <thead>
                 <tr>
@@ -669,7 +699,7 @@ export function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map(({ index, product }) => (
+                {pageProducts.map(({ index, product }) => (
                   <tr
                     data-inactive={!product.isActive}
                     data-picked={picked.has(product.productId) || undefined}
@@ -798,6 +828,23 @@ export function SettingsPage() {
               </tbody>
             </table>
           </div>
+          {filteredProducts.length > 0 && (
+            <Pager
+              label="상품"
+              onPage={(next) =>
+                updateParams({ page: next === 1 ? null : String(next) })
+              }
+              onSize={(next) =>
+                updateParams({
+                  size: next === 10 ? null : String(next),
+                  page: null,
+                })
+              }
+              page={page}
+              size={size}
+              total={filteredProducts.length}
+            />
+          )}
           {formError && (
             <p className={styles.formError} role="alert">
               {formError}

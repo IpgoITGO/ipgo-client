@@ -55,6 +55,9 @@ import { DashboardSkeleton } from './DashboardSkeleton'
 import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
 import emptyShiftImage from '../../../shared/ui/PagePlaceholder/assets/box-empty.webp'
+import { Pager } from '../../../shared/ui/Pager/Pager'
+import { readPage } from '../../../shared/ui/Pager/pageParams'
+import { useSteadyHeight } from '../../../shared/ui/Pager/useSteadyHeight'
 
 // 보관 비용(#185): 입고 필요 상품을 권장 수량대로 넣으면 한 달 보관비가 얼마인지 한 줄로.
 // 크기를 안 넣은 상품은 0원으로 더하지 않고 개수만 따로 적는다.
@@ -399,8 +402,29 @@ export function DashboardPage() {
       { replace: true },
     )
   }, [routeRunId, trackRun, setParams])
-  const [sort, setSort] = useState<SortKey>('stockout')
-  const [search, setSearch] = useState('')
+  // 정렬·검색·쪽·보기 개수는 주소에 둔다(11/13 "라우터 관리"). 새로고침·뒤로 가기·주소 공유에도 그대로
+  const sortParam = params.get('sort')
+  const sort: SortKey = SORT_OPTIONS.some(
+    (option) => option.value === sortParam,
+  )
+    ? (sortParam as SortKey)
+    : 'stockout'
+  const search = params.get('q') ?? ''
+  const updateParams = (changes: Record<string, string | null>) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        Object.entries(changes).forEach(([key, value]) =>
+          value === null ? next.delete(key) : next.set(key, value),
+        )
+        return next
+      },
+      { replace: true },
+    )
+  const setSort = (value: SortKey) =>
+    updateParams({ sort: value === 'stockout' ? null : value, page: null })
+  const setSearch = (value: string) =>
+    updateParams({ q: value === '' ? null : value, page: null })
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
   // 전체 탭에서 고른 "괜찮아요" 상품의 수량(친 글자 그대로). 안 쳤으면 내 입고량, 그것도 없으면 빈칸
   const [safeQty, setSafeQty] = useState<Record<string, string>>({})
@@ -436,10 +460,12 @@ export function DashboardPage() {
   )
 
   function selectTab(next: Tab) {
-    setSearch('')
     setParams(
       (previous) => {
         const nextParams = new URLSearchParams(previous)
+        // 탭을 바꾸면 검색·쪽은 처음으로(정렬·보기 개수는 그대로)
+        nextParams.delete('q')
+        nextParams.delete('page')
         if (next === 'need') nextParams.delete('tab')
         else nextParams.set('tab', next)
         return nextParams
@@ -474,6 +500,10 @@ export function DashboardPage() {
       )
     })
   }, [query.data?.neededItems, sort, expiryOf])
+  // 마지막 쪽처럼 줄이 적어도 쪽 넘기기 자리가 그대로(11/14). 탭·정렬·검색·개수가 바뀌면 다시 잰다
+  const tableRef = useSteadyHeight<HTMLDivElement>(
+    [params.get('tab'), sortParam, search, params.get('size')].join('|'),
+  )
 
   if (query.isPending)
     return (
@@ -718,7 +748,19 @@ export function DashboardPage() {
   const needInView = rows.filter(
     (row): row is Extract<Row, { kind: 'need' }> => row.kind === 'need',
   )
-  const pickable = rows.filter(
+  // 쪽을 넘기면 표 머리줄이 화면 맨 위에 오게 올린다: 그 쪽 상품과 아래 넘기기가 한눈에(11/13)
+  const showTableTop = () =>
+    requestAnimationFrame(() => {
+      const table = document.getElementById('dashboard-table')
+      if (!table) return
+      window.scrollTo({
+        top: table.getBoundingClientRect().top + window.scrollY - 12,
+      })
+    })
+  // 한 쪽에 보이는 줄(10·20·30개씩, 11/13)
+  const { page, size } = readPage(params, rows.length)
+  const pageRows = rows.slice((page - 1) * size, page * size)
+  const pickable = pageRows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
   function pickRows(checked: boolean) {
@@ -1113,7 +1155,11 @@ export function DashboardPage() {
               </p>
             )
           ) : (
-            <div className={styles.tableWrap}>
+            <div
+              className={styles.tableWrap}
+              id="dashboard-table"
+              ref={tableRef}
+            >
               <table className={styles.unified}>
                 <colgroup>
                   <col className={styles.cPick} />
@@ -1155,7 +1201,7 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => {
+                  {pageRows.map((row) => {
                     const passed =
                       row.kind === 'need' && daysPast(row.item.stockoutDate) > 0
                     const room = row.kind === 'safe' ? slack(row.item) : null
@@ -1350,6 +1396,26 @@ export function DashboardPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          {/* 쪽 넘기기는 표 아래 오른쪽(표가 옆으로 밀려도 같이 안 밀리게 표 칸 밖에) */}
+          {rows.length > 0 && (
+            <Pager
+              label="상품"
+              onPage={(next) => {
+                updateParams({ page: next === 1 ? null : String(next) })
+                showTableTop()
+              }}
+              onSize={(next) => {
+                updateParams({
+                  size: next === 10 ? null : String(next),
+                  page: null,
+                })
+                showTableTop()
+              }}
+              page={page}
+              size={size}
+              total={rows.length}
+            />
           )}
 
           {tab !== 'na' && pickedCount > 0 && (
