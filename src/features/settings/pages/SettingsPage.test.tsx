@@ -132,6 +132,60 @@ describe('SettingsPage', () => {
     expect(productSection).toHaveAttribute('open')
   })
 
+  it('검색 뒤 접힌 상품 칸의 오류가 나면 오류 상품을 다시 보여 준다', async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    await screen.findByLabelText('케어트릿 120g inboundUnit')
+    await user.clear(screen.getByLabelText('케어트릿 120g inboundUnit'))
+    await user.type(screen.getByLabelText('케어트릿 120g inboundUnit'), '0')
+    await user.type(screen.getByLabelText('상품명 또는 바코드 검색'), '덴탈껌')
+    expect(screen.queryByLabelText('케어트릿 120g inboundUnit')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    expect(
+      await screen.findByLabelText('케어트릿 120g inboundUnit'),
+    ).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 이상의 정수')
+    expect(document.getElementById('product-settings')).toHaveAttribute('open')
+  })
+
+  it('다른 쪽으로 이동한 뒤 계산해도 첫 오류 상품의 쪽을 펼친다', async () => {
+    server.use(
+      http.get('/api/products', () =>
+        HttpResponse.json({
+          items: Array.from({ length: 12 }, (_, index) => ({
+            productId: index + 1,
+            skuName: `검증 상품 ${index + 1}`,
+            skuBarcode: String(index + 1),
+            unitCost: 1000,
+            isActive: true,
+            settings: { leadTimeDays: 5, reviewCycleDays: 7, orderUnitQty: 1 },
+            overridden: [],
+          })),
+          total: 12,
+          page: 0,
+          size: 1000,
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSettings()
+    await screen.findByLabelText('검증 상품 1 inboundUnit')
+    await user.click(screen.getByRole('button', { name: '2쪽' }))
+    await user.clear(screen.getByLabelText('검증 상품 11 inboundUnit'))
+    await user.type(screen.getByLabelText('검증 상품 11 inboundUnit'), '0')
+    await user.click(screen.getByRole('button', { name: '1쪽' }))
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    expect(
+      await screen.findByLabelText('검증 상품 11 inboundUnit'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '2쪽' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 이상의 정수')
+    expect(document.getElementById('product-settings')).toHaveAttribute('open')
+  })
+
   function renderSettings() {
     return render(
       <AppProviders>

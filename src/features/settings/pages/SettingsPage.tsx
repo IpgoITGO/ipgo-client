@@ -464,7 +464,17 @@ export function SettingsPage() {
         className={styles.page}
         id="inbound-settings-form"
         onSubmit={handleSubmit(save, (formErrors) => {
-          // 접힌 상품 칸에 틀린 값이 있으면 펼쳐서 보이게 한다
+          // 검색·필터·다른 쪽에 가린 오류도 첫 오류 상품으로 돌아가 보여 준다.
+          const errorIndex = products.findIndex((_, index) =>
+            Boolean(formErrors.products?.[index]),
+          )
+          if (errorIndex >= 0) {
+            updateParams({
+              q: null,
+              filter: null,
+              page: String(Math.floor(errorIndex / size) + 1),
+            })
+          }
           const fold = document.getElementById('product-settings')
           if (formErrors.products && fold instanceof HTMLDetailsElement)
             fold.open = true
