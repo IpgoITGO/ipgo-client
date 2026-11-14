@@ -106,8 +106,8 @@ describe('입고 주기 제안과 상속', () => {
     const f = fixture(7)
     const user = userEvent.setup()
     renderSettings()
-    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(7)
-    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue(7)
+    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue('7')
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('7')
     expect(
       screen.getByText('수불부 입고 간격으로 추정했어요'),
     ).toBeInTheDocument()
@@ -128,13 +128,15 @@ describe('입고 주기 제안과 상속', () => {
     const f = fixture(null)
     const user = userEvent.setup()
     renderSettings()
-    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(14)
-    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue(14)
+    expect(await screen.findByLabelText('시험상품 orderCycle')).toHaveValue(
+      '14',
+    )
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('14')
     expect(screen.getByText(/처음 값 14일이에요/)).toBeInTheDocument()
     await user.clear(screen.getByLabelText('기본 입고 주기'))
     await user.type(screen.getByLabelText('기본 입고 주기'), '10')
     await waitFor(() =>
-      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(10),
+      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('10'),
     )
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))
@@ -147,7 +149,7 @@ describe('입고 주기 제안과 상속', () => {
     await screen.findByLabelText('시험상품 orderCycle')
     await user.clear(screen.getByLabelText('기본 입고 주기'))
     await user.type(screen.getByLabelText('기본 입고 주기'), '10')
-    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(19)
+    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('19')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))
     expect(f.savedProducts).toEqual([])
@@ -180,8 +182,8 @@ describe('입고 주기 제안과 상속', () => {
     await user.click(screen.getByRole('button', { name: '재조회' }))
     await waitFor(() => expect(f.reads()).toBeGreaterThan(1))
     await screen.findByRole('button', { name: '재조회 완료' })
-    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue(10)
-    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(12)
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('10')
+    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('12')
   })
   it('기본값을 바꾼 뒤 상품을 원래 수치로 직접 입력해도 새 override를 저장한다', async () => {
     const f = fixture(7)
@@ -191,7 +193,7 @@ describe('입고 주기 제안과 상속', () => {
     await user.clear(screen.getByLabelText('기본 입고 주기'))
     await user.type(screen.getByLabelText('기본 입고 주기'), '10')
     await waitFor(() =>
-      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(10),
+      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('10'),
     )
     await user.clear(screen.getByLabelText('시험상품 orderCycle'))
     await user.type(screen.getByLabelText('시험상품 orderCycle'), '7')
