@@ -357,25 +357,21 @@ export const handlers = [
         { status: 400 },
       )
     }
-    const names = [file.name]
-    const periods = names.map((name) => ({
-      match: /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i.exec(name),
-      name,
-    }))
-
-    const invalid = periods.find((item) => !item.match)
-    if (invalid) {
+    if (!/\.xlsx$/i.test(file.name)) {
       return HttpResponse.json(
         {
           code: 'UPLOAD_INVALID_FORMAT',
-          message: 'XLSX 파일이 아니거나 파일명에서 연·월을 읽을 수 없어요.',
-          details: { fileName: invalid.name },
+          message: 'XLSX 파일만 올릴 수 있어요.',
+          details: { fileName: file.name },
         },
         { status: 400 },
       )
     }
 
-    const period = `${periods[0].match?.[1]}-${periods[0].match?.[2]}`
+    // 파일 이름은 자유(server #217). 이름이 연-월이면 그 기간, 아니면 입고일자(F열) 최신 날짜의 달로 정한다.
+    // ponytail: 가짜 서버는 파일을 읽지 않고 시험 수불부의 마지막 달(2026-10)로 둔다.
+    const match = /^(\d{4})-(0[1-9]|1[0-2])\.xlsx$/i.exec(file.name)
+    const period = match ? `${match[1]}-${match[2]}` : '2026-10'
     // 서버처럼 내용이 똑같은 파일을 다른 기간 이름으로 올리면 덮어쓰기여도 막는다(server PR #30).
     const content = await file.text()
     const sameFile = uploadedContents.get(content)
