@@ -173,11 +173,16 @@ export function BillingAuthSuccessPage() {
     <div className={styles.column}>
       <Steps at={phase.kind === 'paid' ? 2 : 1} />
       {(phase.kind === 'registering' || phase.kind === 'checking') && (
-        <p className={styles.info} role="status">
-          {phase.kind === 'registering'
-            ? '카드를 등록하고 있어요'
-            : '카드 등록과 결제 결과를 확인하고 있어요'}
-        </p>
+        // 기다리는 동안 글만 두지 않고 흔한 도는 고리로(11/13 "그냥 돌아가는 일반적인 로딩")
+        <div className={styles.waiting} role="status">
+          <span aria-hidden="true" className={styles.waitSpinner} />
+          <p className={styles.waitTitle}>
+            {phase.kind === 'registering'
+              ? '카드를 등록하고 있어요'
+              : '카드 등록과 결제 결과를 확인하고 있어요'}
+          </p>
+          <small>창을 닫지 말고 잠시만 기다려 주세요</small>
+        </div>
       )}
       {(phase.kind === 'paid' || phase.kind === 'replaced') && (
         <>
