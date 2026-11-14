@@ -62,7 +62,8 @@ test('운영 검사 실패는 앱 빌드를 실행하지 않고 성공하면 검
         JSON.stringify({
           scripts: {
             'ci:check': `node -e "require('fs').writeFileSync('checked', 'yes');process.exit(${fail ? 1 : 0})"`,
-            build:
+            build: 'node -e "process.exit(99)"',
+            'build:ci':
               "node -e \"require('fs').writeFileSync('built', require('fs').readFileSync('checked'))\"",
           },
         }),
