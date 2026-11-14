@@ -62,6 +62,7 @@ jobs:
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_CLI_VERSION: ${{ vars.VERCEL_CLI_VERSION }}
+      ALIAS_BACKUP_FILE: ${{ runner.temp }}/dev-alias-backup.json
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -100,6 +101,11 @@ jobs:
         run: |
           node scripts/automation/prepare-vercel-build.mjs preview
           vercel build
+
+      - name: 개발 주소 자동 할당 검사·게시 전 백업
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: node scripts/automation/preview-alias-preflight.mjs
 
       - id: deploy
         name: 개발 배포
