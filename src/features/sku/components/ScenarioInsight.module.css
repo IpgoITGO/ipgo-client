@@ -200,6 +200,21 @@
   border-radius: 50%;
 }
 
+/* 카드 넷이 한 줄을 채웠을 때: 혼자 한 줄을 차지하는 큰 카드 대신 얇은 한 줄(11/15) */
+.addCard[data-slim] {
+  grid-column: 1 / -1;
+  grid-auto-flow: column;
+  min-height: 52px;
+  justify-content: center;
+  border-style: dashed;
+}
+
+.addCard[data-slim] span {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+}
+
 .addCard:focus-visible {
   color: var(--color-text);
   border-color: var(--color-accent);

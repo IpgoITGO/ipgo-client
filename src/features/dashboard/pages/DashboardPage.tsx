@@ -49,6 +49,7 @@ import {
   shiftTimes,
 } from '../model/dashboardApi'
 import { checkFirst } from '../model/checkFirst'
+import { RememberDashboardList } from '../../sku/components/SkuNav'
 import { CheckFirst } from '../ui/CheckFirst'
 import { type OrderLine, RegisterOrders } from '../ui/RegisterOrders'
 import { ShiftSummary } from '../ui/DemandShift'
@@ -1507,6 +1508,14 @@ export function DashboardPage() {
           )}
         </section>
       )}
+      {/* 상품 상세의 "대시보드로 · 이전 · 다음"이 지금 보이는 순서를 따르게 */}
+      <RememberDashboardList
+        items={rows.flatMap((row) =>
+          row.id ? [[row.id, row.name] as [string, string]] : [],
+        )}
+        label={PANEL_TITLE[tab]}
+        search={params.size > 0 ? `?${params.toString()}` : ''}
+      />
       {registering && (
         <RegisterOrders
           lines={orderLines}

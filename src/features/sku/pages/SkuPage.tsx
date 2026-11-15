@@ -25,7 +25,9 @@ import {
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
+import { DecideRecommended, RecoMemo } from '../components/RecoSide'
 import { ScenarioInsight } from '../components/ScenarioInsight'
+import { SkuNav } from '../components/SkuNav'
 import {
   getSkuDetail,
   type SettingSource,
@@ -377,16 +379,24 @@ function TrendChart({
 
   function flowView(): View {
     const hasLastYear = history.some((h) => h.lastYearOutbound != null)
-    const max = Math.max(
-      ...history.map((h) =>
-        Math.max(h.inventory, h.outbound, h.lastYearOutbound ?? 0),
-      ),
+    // 재고가 출고보다 훨씬 크면(4배 넘게) 같은 눈금에서 출고 막대가 바닥에 붙어 안 보인다(11/15).
+    // 그때는 출고(하루 출고·예상 출고·작년 출고)를 아래 30% 띠에 따로 그리고, 띠 위 점선에 그 눈금을 적는다.
+    const outPeak = Math.max(
+      ...history.map((h) => Math.max(h.outbound, h.lastYearOutbound ?? 0)),
       daily,
-      1,
+      0,
     )
+    const stockPeak = Math.max(...history.map((h) => h.inventory), 1)
+    const split = outPeak > 0 && stockPeak > outPeak * 4
+    const max = split ? stockPeak : Math.max(stockPeak, outPeak)
     const step = niceStep(max)
     const top = Math.ceil(max / step) * step
     const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
+    const outStep = niceStep(outPeak || 1)
+    const outTop = Math.ceil((outPeak || 1) / outStep) * outStep
+    const yo = split
+      ? (v: number) => box.bottom - (v / outTop) * (box.bottom - box.top) * 0.3
+      : y
     const span = lastDay + future
     const perDay = span > 0 ? (box.right - box.left) / span : 0
     const xd = (d: number) => box.left + d * perDay
@@ -403,7 +413,7 @@ function TrendChart({
       .map((h, i) =>
         h.lastYearOutbound == null
           ? ''
-          : `${i === 0 || history[i - 1].lastYearOutbound == null ? 'M' : 'L'}${x(i)},${y(h.lastYearOutbound)}`,
+          : `${i === 0 || history[i - 1].lastYearOutbound == null ? 'M' : 'L'}${x(i)},${yo(h.lastYearOutbound)}`,
       )
       .join(' ')
     const stockouts = history
@@ -436,11 +446,29 @@ function TrendChart({
           />
         )}
         {axis(top, step, y)}
+        {split && (
+          <g className={styles.later}>
+            <line
+              className={styles.outGuide}
+              x1={box.left}
+              x2={box.right}
+              y1={yo(outTop)}
+              y2={yo(outTop)}
+            />
+            <text
+              className={styles.outGuideText}
+              x={box.left + 6}
+              y={yo(outTop) - 5}
+            >
+              출고 {tickText(outTop)}개
+            </text>
+          </g>
+        )}
         {history.map((h, i) =>
           h.outbound > 0 ? (
             <path
               className={`${styles.bar} ${styles.grow}`}
-              d={barPath(x(i) - bw / 2, bw, y(h.outbound), box.bottom)}
+              d={barPath(x(i) - bw / 2, bw, yo(h.outbound), box.bottom)}
               key={h.day}
               style={{ ['--i' as string]: i }}
             />
@@ -453,7 +481,7 @@ function TrendChart({
               d={barPath(
                 xd(lastDay + k + 1) - fw / 2,
                 fw,
-                y(daily),
+                yo(daily),
                 box.bottom,
               )}
               key={k}
@@ -480,11 +508,12 @@ function TrendChart({
               strokeDasharray="4 3"
               strokeWidth="2"
             />
+            {/* 날마다 점을 찍으면 기록이 촘촘할 때 점이 줄처럼 뭉친다: 간격이 넉넉할 때만 찍는다 */}
             {history.map((h, i) =>
-              h.lastYearOutbound == null ? null : (
+              h.lastYearOutbound == null || gap < 10 ? null : (
                 <circle
                   cx={x(i)}
-                  cy={y(h.lastYearOutbound)}
+                  cy={yo(h.lastYearOutbound)}
                   fill={LAST_YEAR}
                   key={h.day}
                   r="3"
@@ -600,7 +629,7 @@ function TrendChart({
           nx - 12,
           box.top + 36 + small.length * 14 + 8,
           outX,
-          Math.min(y(daily) - 7, y(0) - 9),
+          Math.min(yo(daily) - 7, y(0) - 9),
         ],
       }
     }
@@ -1616,6 +1645,7 @@ export function SkuPage() {
 
   return (
     <div className={styles.page}>
+      <SkuNav productId={skuId} />
       <header className={styles.header}>
         <div>
           {/* 출고지는 없으면 줄째 뺀다 */}
@@ -1761,7 +1791,20 @@ export function SkuPage() {
                   )}
                 </p>
               )}
+              {/* 결정은 숫자 바로 아래에서(11/15: 전엔 화면 중간 비교 카드 안에만 있었다) */}
+              {data.resultId != null && (
+                <DecideRecommended
+                  className={styles.recoDecide}
+                  productId={skuId}
+                  quantity={data.recommendation.quantity}
+                  resultId={data.resultId}
+                />
+              )}
             </div>
+            {/* 왜 이 수량인지 손글씨 메모(전엔 맨 아래 AI 인사이트 옆). 있으면 오른쪽 숫자 셋이 세로로 선다 */}
+            {data.resultId != null && (
+              <RecoMemo className={styles.recoMemo} resultId={data.resultId} />
+            )}
             <dl>
               <div>
                 <dt>예상 사입비</dt>

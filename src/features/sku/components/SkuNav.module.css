@@ -1,0 +1,122 @@
+/* 상품 이름 위 한 줄: 왼쪽 돌아가기, 오른쪽 몇 번째 · 이전 · 다음(쪽 넘기기와 같은 네모 버튼) */
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+}
+
+.back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 40px;
+  padding-right: var(--space-3);
+  color: var(--color-text-2);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
+}
+
+.back:hover {
+  color: var(--color-text);
+}
+
+.back:hover span {
+  transform: translateX(-2px);
+}
+
+.back span {
+  transition: transform 160ms ease;
+}
+
+.step {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.step > span:first-child {
+  margin-right: 6px;
+}
+
+.step > span b {
+  color: var(--color-text);
+}
+
+.arrow,
+.next {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  color: var(--color-text);
+  font-size: 18px;
+  text-decoration: none;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.arrow[data-off] {
+  color: var(--color-text-3);
+  background: transparent;
+  opacity: 0.45;
+}
+
+/* 다음 상품은 이름까지 보여 준다: 누르기 전에 어디로 가는지 안다 */
+.next {
+  display: inline-flex;
+  gap: 8px;
+  max-width: 260px;
+  padding: 0 12px 0 14px;
+  font-size: 14px;
+}
+
+.next span {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+
+.next b {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.next i {
+  font-size: 18px;
+  font-style: normal;
+}
+
+a.arrow:hover,
+.next:hover {
+  background: var(--color-bg);
+  border-color: var(--color-input-border);
+}
+
+.back:focus-visible,
+.arrow:focus-visible,
+.next:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back span {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .next b {
+    display: none;
+  }
+}
