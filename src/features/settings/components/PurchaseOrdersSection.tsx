@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { ApiError, apiRequest } from '../../../shared/api/client'
+import { ApiError, apiRequest, errorText } from '../../../shared/api/client'
 import type { ReplenishmentNeeds } from '../../dashboard/model/dashboardApi'
 import { Button } from '../../../shared/ui/Button/Button'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -439,7 +439,7 @@ export function PurchaseOrdersSection() {
         <p className={styles.empty}>발주 물량을 불러오고 있어요.</p>
       ) : receipts.isError ? (
         <p className={styles.empty} role="alert">
-          발주 물량을 불러오지 못했어요. {receipts.error.message}
+          발주 물량을 불러오지 못했어요. {errorText(receipts.error)}
         </p>
       ) : orders.length === 0 ? (
         <p className={styles.empty}>

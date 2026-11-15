@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
+import { getDashboard } from '../../features/dashboard/model/dashboardApi'
 import {
   calcLock,
   planOf,
@@ -24,10 +26,28 @@ const navigation = [
   { to: '/settings', label: '입고 조건' },
 ]
 
+const NO_UPLOAD_TOAST = '수불부를 먼저 올려 주세요'
+
 export function AppLayout() {
-  const { signOut, signOutLocally, user } = useAuth()
+  const { signOut, signOutLocally, status, user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // 수불부를 올리기 전에는 입고 조건에 맞출 상품이 없어 메뉴를 잠근다(자리는 그대로, 흐리게 + 자물쇠).
+  // 알림 종과 같은 대시보드 요청을 같이 쓴다. 받기 전에는 잠그지 않는다.
+  const dashboard = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: getDashboard,
+    enabled: status === 'authenticated',
+  })
+  const noUpload = dashboard.data ? !dashboard.data.hasUpload : false
+  // 주소로 바로 들어와도 대시보드로 돌려보낸다
+  useEffect(() => {
+    if (noUpload && pathname === '/settings')
+      navigate('/dashboard', {
+        replace: true,
+        state: { toast: NO_UPLOAD_TOAST },
+      })
+  }, [noUpload, pathname, navigate])
   // 화면을 옮기면 앞 화면 스크롤이 남지 않게 맨 위로(#주소로 온 건 그 자리로 간다)
   useEffect(() => {
     if (!window.location.hash) window.scrollTo(0, 0)
@@ -76,17 +96,53 @@ export function AppLayout() {
           <small>입고 예측</small>
         </NavLink>
         <nav aria-label="주요 메뉴" className={styles.navigation}>
-          {navigation.map((item) => (
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? `${styles.link} ${styles.active}` : styles.link
-              }
-              key={item.to}
-              to={item.to}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navigation.map((item) =>
+            noUpload && item.to === '/settings' ? (
+              <button
+                aria-disabled="true"
+                className={`${styles.link} ${styles.locked}`}
+                key={item.to}
+                onClick={() =>
+                  navigate('/dashboard', { state: { toast: NO_UPLOAD_TOAST } })
+                }
+                title={NO_UPLOAD_TOAST}
+                type="button"
+              >
+                {item.label}
+                <svg
+                  aria-hidden="true"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  width="12"
+                >
+                  <rect
+                    fill="currentColor"
+                    height="8"
+                    rx="2"
+                    width="10"
+                    x="3"
+                    y="7"
+                  />
+                  <path
+                    d="M5 7V5a3 3 0 0 1 6 0v2"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+              </button>
+            ) : (
+              <NavLink
+                className={({ isActive }) =>
+                  isActive ? `${styles.link} ${styles.active}` : styles.link
+                }
+                key={item.to}
+                to={item.to}
+              >
+                {item.label}
+              </NavLink>
+            ),
+          )}
         </nav>
         <div className={styles.account}>
           {subscription && (

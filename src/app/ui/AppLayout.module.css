@@ -58,6 +58,25 @@
   color: var(--color-primary);
 }
 
+/* 수불부 올리기 전 입고 조건: 자리는 그대로 두고 흐리게 + 자물쇠 */
+.locked {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--color-text-3);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.locked:hover {
+  color: var(--color-text-3);
+  background: none;
+}
+
 .active::after {
   position: absolute;
   right: var(--space-4);

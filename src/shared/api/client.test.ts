@@ -7,6 +7,7 @@ import {
   apiRequest,
   AUTH_EXPIRED_EVENT,
   CONNECTION_FAILED,
+  errorText,
   hasAccessToken,
   setAccessToken,
   setApiRequestReadinessCheck,
@@ -489,5 +490,18 @@ describe('apiRequest의 오류 details 전달', () => {
       code: 'UNKNOWN_ERROR',
       details: undefined,
     })
+  })
+})
+
+describe('errorText', () => {
+  it('서버 안내만 그대로 쓰고 화면 코드 오류는 한글 안내로 바꾼다', () => {
+    expect(errorText(new ApiError(400, 'BAD', '파일을 확인해 주세요'))).toBe(
+      '파일을 확인해 주세요',
+    )
+    expect(
+      errorText(
+        new TypeError("Cannot read properties of undefined (reading 'map')"),
+      ),
+    ).toBe('잠시 뒤 다시 시도해 주세요. 계속되면 알려 주세요.')
   })
 })

@@ -500,7 +500,7 @@ describe('DashboardPage', () => {
     expect(
       await screen.findByRole('heading', { name: '아직 계산한 결과가 없어요' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('기준일 없음')).toBeInTheDocument()
+    expect(screen.queryByText('기준일 없음')).not.toBeInTheDocument()
     expect(screen.getByText('아직 계산 전이에요')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: '입고 조건 확인하기' }),

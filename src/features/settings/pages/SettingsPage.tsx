@@ -11,7 +11,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -450,7 +450,7 @@ export function SettingsPage() {
   if (query.isError) {
     return (
       <AsyncState
-        description={query.error.message}
+        description={errorText(query.error)}
         onRetry={() => void query.refetch()}
         status="error"
         title="입고 조건을 불러오지 못했어요"

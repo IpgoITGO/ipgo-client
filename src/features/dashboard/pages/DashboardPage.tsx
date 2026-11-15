@@ -1,3 +1,4 @@
+import { errorText } from '../../../shared/api/client'
 import { useQuery } from '@tanstack/react-query'
 import {
   Fragment,
@@ -516,7 +517,7 @@ export function DashboardPage() {
   if (query.isError)
     return (
       <AsyncState
-        description={query.error.message}
+        description={errorText(query.error)}
         onRetry={() => void query.refetch()}
         status="error"
         title="대시보드를 불러오지 못했어요"
@@ -876,9 +877,10 @@ export function DashboardPage() {
                   : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
             </h1>
           </div>
-          <div className={styles.meta}>
-            <span>{noResult ? '기준일 없음' : `기준일 ${data.baseDate}`}</span>
-            {!noResult && (
+          {/* 계산 전엔 기준일이 없는 게 당연해서 칩을 띄우지 않는다(11/15) */}
+          {!noResult && (
+            <div className={styles.meta}>
+              <span>{`기준일 ${data.baseDate}`}</span>
               <b data-state={data.freshness}>
                 {refreshRequired
                   ? '재업로드 필요'
@@ -886,8 +888,8 @@ export function DashboardPage() {
                     ? '갱신 전'
                     : '오늘까지 예상 출고 반영'}
               </b>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         {/* 계산 전·재업로드 필요엔 아래 안내 카드가 버튼을 하나만 갖는다(버튼 두 번 → 한 번) */}
         {!(noResult || refreshRequired) &&

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -101,7 +101,7 @@ export function UploadResultPage() {
       />
     ) : (
       <AsyncState
-        description={result.error.message}
+        description={errorText(result.error)}
         onRetry={() => void result.refetch()}
         status="error"
         title="업로드 결과를 불러오지 못했어요"

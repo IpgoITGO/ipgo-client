@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, useCallback, useMemo, useState } from 'react'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { SurgeCardChart } from '../../dashboard/ui/DemandShift'
 import { shiftTimes } from '../../dashboard/model/dashboardApi'
@@ -421,7 +421,7 @@ export function ScenarioInsight({
           />
         ) : scenariosQuery.isError ? (
           <AsyncState
-            description={scenariosQuery.error.message}
+            description={errorText(scenariosQuery.error)}
             onRetry={() => void scenariosQuery.refetch()}
             status="error"
             title="시나리오를 불러오지 못했어요"
