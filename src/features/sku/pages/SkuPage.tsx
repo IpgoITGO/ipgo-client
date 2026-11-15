@@ -749,7 +749,9 @@ function TrendChart({
     const step = niceStep(peak * 1.45)
     const top = Math.ceil((peak * 1.45) / step) * step
     const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
-    const slot = (box.right - box.left) / weeks.length
+    // 점선 오른쪽 끝에 "평균 N개"를 붙일 자리만큼 막대를 비켜 그린다(11/15 "점선이 뭔지 모름")
+    const plotRight = avg != null ? box.right - 62 : box.right
+    const slot = (plotRight - box.left) / weeks.length
     const bw = Math.min(24, slot * 0.5)
     const cx = (i: number) => box.left + slot * (i + 0.5)
     const every = Math.max(1, Math.ceil(46 / slot))
@@ -793,10 +795,17 @@ function TrendChart({
             <line
               className={`${styles.avgLine} ${styles.later}`}
               x1={box.left}
-              x2={box.right}
+              x2={plotRight + 4}
               y1={y(avg)}
               y2={y(avg)}
             />
+            <text
+              className={`${styles.avgLabel} ${styles.later}`}
+              x={plotRight + 8}
+              y={y(avg) + 4}
+            >
+              평균 {avg.toLocaleString()}개
+            </text>
           </>
         )}
       </>
@@ -845,11 +854,7 @@ function TrendChart({
           color: 'var(--chart-part)',
           text: '재고 없던 날이 있는 주·7일이 안 된 주',
         },
-        {
-          kind: 'dash',
-          color: INK,
-          text: avg != null ? `평균 ${avg.toLocaleString()}개` : '평균',
-        },
+        { kind: 'dash', color: INK, text: '평균' },
       ],
       // 평균 메모와 화살표는 뺐다: 막대 사이 빈 곳을 가리켜 무엇을 짚는지 안 보였다(11/15). 숫자는 제목·범례에
       note: null,
