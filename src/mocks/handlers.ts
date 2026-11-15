@@ -335,6 +335,15 @@ export function resetNotificationSettingsMock() {
   notificationSettings = { ...defaultNotificationSettings }
 }
 
+// 로컬 미리보기 장면(탭마다 따로). 평소엔 null
+function previewScene() {
+  try {
+    return globalThis.sessionStorage?.getItem('ipgo:preview-scene') ?? null
+  } catch {
+    return null
+  }
+}
+
 export const handlers = [
   http.get('/api/notifications/settings', () =>
     HttpResponse.json(notificationSettings),
@@ -664,19 +673,49 @@ export const handlers = [
   // D1 입고 필요 목록 (서버 ReplenishmentNeeds 모양). 날짜는 오늘 기준으로 움직이고, 두 상품은 소진일이 이미 지났다.
   // 서버처럼 사용을 끈(단종) 상품은 목록과 개수에서 뺀다(server #27 혜윤 답).
   http.get('/api/dashboard/replenishment-needs', () => {
-    const items = NEEDED_ITEMS.filter(
-      (item) =>
-        mockProducts.find((product) => product.productId === item.productId)
-          ?.isActive ?? true,
-    ).map(({ shortage, ...item }) => ({
-      ...item,
-      resultId: item.productId,
-      expectedShortageOn: isoFromToday(shortage),
-    }))
+    // 로컬 미리보기 장면(src/dev/preview.ts가 고른다): 올리기 전·올린 뒤 계산 전·기준일 지남·넣을 상품 없음·오류
+    const scene = previewScene()
+    if (scene === 'error')
+      return HttpResponse.json(
+        { code: 'INTERNAL_ERROR', message: '서버에 문제가 생겼어요.' },
+        { status: 500 },
+      )
+    if (scene === 'pre' || scene === 'uploaded')
+      return HttpResponse.json({
+        asOfDate: null,
+        today: isoFromToday(0),
+        daysSinceAsOf: null,
+        resultStatus: null,
+        runId: null,
+        resultComputedAt: null,
+        lastFailedRunAt: null,
+        latestUploadId: scene === 'uploaded' ? 12 : null,
+        summary: {
+          needCount: 0,
+          notNeededCount: 0,
+          notCalculableCount: 0,
+          excludedCount: 0,
+        },
+        items: [],
+        notNeededItems: [],
+        notCalculable: [],
+        excluded: [],
+      })
+    const items = (scene === 'none' ? [] : NEEDED_ITEMS)
+      .filter(
+        (item) =>
+          mockProducts.find((product) => product.productId === item.productId)
+            ?.isActive ?? true,
+      )
+      .map(({ shortage, ...item }) => ({
+        ...item,
+        resultId: item.productId,
+        expectedShortageOn: isoFromToday(shortage),
+      }))
     return HttpResponse.json({
-      asOfDate: isoFromToday(-1),
+      asOfDate: isoFromToday(scene === 'stale' ? -9 : -1),
       today: isoFromToday(0),
-      daysSinceAsOf: 1,
+      daysSinceAsOf: scene === 'stale' ? 9 : 1,
       resultStatus: 'UP_TO_DATE',
       runId: 31,
       resultComputedAt: '2026-10-18T09:00:00+09:00',
@@ -996,7 +1035,7 @@ export const handlers = [
     const asked = (runPolls.get(runId) ?? 0) + 1
     runPolls.set(runId, asked)
     const runningPolls = import.meta.env.MODE === 'test' ? 1 : 6
-    if (asked <= runningPolls && runId !== 999) {
+    if ((asked <= runningPolls || previewScene() === 'calc') && runId !== 999) {
       return HttpResponse.json({ runId, status: 'RUNNING' })
     }
     if (runId === 999) {

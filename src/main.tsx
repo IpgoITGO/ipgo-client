@@ -38,6 +38,10 @@ function restartSignupOnReload() {
   }
 }
 
+// 로컬 미리보기 도구(개발 서버에서만): 장면은 앱이 뜨기 전에 정해야 첫 요청부터 그 장면이 온다
+const preview = import.meta.env.DEV ? await import('./dev/preview') : null
+preview?.applyPreviewScene()
+
 restartSignupOnReload()
 await enableApiMocking()
 
@@ -52,3 +56,5 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 )
+
+preview?.startPreview()
