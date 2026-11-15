@@ -55,6 +55,30 @@ describe('SkuPage', () => {
     expect(screen.getByText('5,000')).toBeInTheDocument()
   })
 
+  it('주별 출고: 7일이 안 된 마지막 주는 며칠치인지 쓰고 평균은 범례에 숫자로', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...detailFixture,
+          // 11/1~11/10: 다 찬 한 주(하루 1개씩 7개) + 3일치
+          trend: Array.from({ length: 10 }, (_, i) => ({
+            date: `2026-11-${String(i + 1).padStart(2, '0')}`,
+            closingQty: 10,
+            outboundQty: 1,
+            isValidObservation: true,
+          })),
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    await screen.findByRole('img', { name: '재고·출고 그래프' })
+    await user.click(screen.getByRole('tab', { name: '주별 출고' }))
+    expect(await screen.findByText('3일치')).toBeInTheDocument()
+    expect(screen.getByText('평균 7개')).toBeInTheDocument()
+    expect(screen.queryByText('덜 찬 주')).toBeNull()
+  })
+
   it('작년 필드가 없는 기존 응답은 비교 출고를 만들어 표시하지 않는다', async () => {
     renderSku('/sku/1')
     await screen.findByRole('img', { name: '재고·출고 그래프' })
@@ -118,6 +142,23 @@ describe('SkuPage', () => {
           /^오늘 남았을 재고 9개/.test(el.textContent ?? ''),
       ),
     ).toBeInTheDocument()
+  })
+
+  it('소진일이 이미 지났으면 "→ 소진" 대신 이미 바닥났다고 쓴다', async () => {
+    // 고정 자료: 시작 재고 5개(기록 8개와 다름) · 소진일 2026-11-07(지난 날)
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json(detailFixture),
+      ),
+    )
+    renderSku('/sku/27')
+    const chip = await screen.findByText(
+      (_, el) =>
+        el?.tagName === 'SPAN' &&
+        /^오늘 남았을 재고 5개/.test(el.textContent ?? ''),
+    )
+    expect(chip).toHaveTextContent('11/7에 이미 바닥났을 거예요')
+    expect(chip).not.toHaveTextContent('소진')
   })
 
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {

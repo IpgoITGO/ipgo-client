@@ -920,6 +920,13 @@
   stroke-width: 1.5;
 }
 
+/* 점선 끝에 붙는 "평균 N개" */
+.avgLabel {
+  fill: var(--color-primary);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
 .area {
   fill: var(--chart-wash);
 }

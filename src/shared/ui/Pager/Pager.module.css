@@ -1,9 +1,8 @@
-/* 목록 아래 한 줄: 왼쪽 보기 개수, 오른쪽 쪽 번호. 고른 쪽은 노란 바탕(탭·정렬과 같은 노랑) */
+/* 목록 아래 한 줄: 왼쪽 보기 개수, 가운데 쪽 번호(11/15). 고른 쪽은 노란 바탕(탭·정렬과 같은 노랑) */
 .pager {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
@@ -32,9 +31,24 @@
 }
 
 .pages {
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+/* 좁은 화면: 보기 개수 위, 쪽 번호 아래 가운데. 10개가 안 들어가면 옆으로 밀어 본다 */
+@media (max-width: 720px) {
+  .pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pages {
+    grid-column: auto;
+    justify-self: center;
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 .pages button {
@@ -68,10 +82,4 @@
 .pages button:focus-visible,
 .size select:focus-visible {
   outline: 3px solid var(--color-primary-soft);
-}
-
-.gap {
-  min-width: 24px;
-  color: var(--color-text-3);
-  text-align: center;
 }

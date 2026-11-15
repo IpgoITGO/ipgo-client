@@ -47,23 +47,17 @@ export function Pager({
         >
           ‹
         </button>
-        {pageList(page, pages).map((item, index) =>
-          item === null ? (
-            <span aria-hidden="true" className={styles.gap} key={`gap${index}`}>
-              …
-            </span>
-          ) : (
-            <button
-              aria-current={item === page ? 'page' : undefined}
-              aria-label={`${item}쪽`}
-              key={item}
-              onClick={() => onPage(item)}
-              type="button"
-            >
-              {item}
-            </button>
-          ),
-        )}
+        {pageList(page, pages).map((item) => (
+          <button
+            aria-current={item === page ? 'page' : undefined}
+            aria-label={`${item}쪽`}
+            key={item}
+            onClick={() => onPage(item)}
+            type="button"
+          >
+            {item}
+          </button>
+        ))}
         <button
           aria-label="다음 쪽"
           disabled={page >= pages}
