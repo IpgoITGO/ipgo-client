@@ -357,11 +357,20 @@ function TrendChart({
     startStock != null && startStock !== stock ? (
       <span className={styles.trendChip}>
         오늘 남았을 재고 <b>{startStock.toLocaleString()}개</b>
+        {/* 소진일이 오늘 이전이면 "→ 11/14 소진"이 앞날처럼 읽혀 재고 0개와 어긋났다(11/15 dev 실데이터) */}
         {shortageOn ? (
-          <>
-            {' '}
-            → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
-          </>
+          shortageOn.slice(0, 10) < new Date().toLocaleDateString('sv') ? (
+            <>
+              {' '}
+              · <b>{slashDate(shortageOn, shortageOn)}</b>에 이미 바닥났을
+              거예요
+            </>
+          ) : (
+            <>
+              {' '}
+              → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
+            </>
+          )
         ) : null}
       </span>
     ) : null

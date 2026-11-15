@@ -144,6 +144,23 @@ describe('SkuPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('소진일이 이미 지났으면 "→ 소진" 대신 이미 바닥났다고 쓴다', async () => {
+    // 고정 자료: 시작 재고 5개(기록 8개와 다름) · 소진일 2026-11-07(지난 날)
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json(detailFixture),
+      ),
+    )
+    renderSku('/sku/27')
+    const chip = await screen.findByText(
+      (_, el) =>
+        el?.tagName === 'SPAN' &&
+        /^오늘 남았을 재고 5개/.test(el.textContent ?? ''),
+    )
+    expect(chip).toHaveTextContent('11/7에 이미 바닥났을 거예요')
+    expect(chip).not.toHaveTextContent('소진')
+  })
+
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {
     renderSku('/sku/fallback-product')
 
