@@ -725,6 +725,8 @@ function TrendChart({
         ...w,
         label: Number.isNaN(startMs) ? `${b + 1}주` : mdOf(startMs),
         end: Number.isNaN(endMs) ? '' : mdOf(endMs),
+        // 마지막 주가 7일이 안 되면 며칠치인지(11/15 "덜 찬 주가 뭐야" → "3일치")
+        days: Math.round(lastDay - b * 7 + 1),
         part: b === keys[keys.length - 1] && lastDay - b * 7 + 1 < 7,
       }
     })
@@ -742,7 +744,6 @@ function TrendChart({
     const bw = Math.min(24, slot * 0.5)
     const cx = (i: number) => box.left + slot * (i + 0.5)
     const every = Math.max(1, Math.ceil(46 / slot))
-    const tipX = box.left + slot * (weeks.length - 1)
 
     const g = (
       <>
@@ -771,7 +772,7 @@ function TrendChart({
                     x={cx(i)}
                     y={box.bottom + 48}
                   >
-                    {w.out ? `품절 ${w.out}일` : '덜 찬 주'}
+                    {w.out ? `품절 ${w.out}일` : `${w.days}일치`}
                   </text>
                 )}
               </>
@@ -787,7 +788,6 @@ function TrendChart({
               y1={y(avg)}
               y2={y(avg)}
             />
-            {ripple(tipX, y(avg), 'ink')}
           </>
         )}
       </>
@@ -824,30 +824,26 @@ function TrendChart({
         ) : (
           <>아직 한 주를 다 채운 기록이 없어요</>
         ),
-      sub: '재고가 없던 날이 있는 주와 덜 찬 주는 옅게 그리고 평균에서 빼요.',
+      // 재고가 다 있던 주가 하나도 없으면 품절 있던 주까지 평균에 넣는다. 그때는 글도 그렇게 말한다
+      sub:
+        full.length > 0
+          ? '재고가 없던 날이 있는 주와 7일이 안 된 주는 옅게 그리고 평균에서 빼요.'
+          : '재고가 다 있던 주가 없어서, 재고 없던 날이 있는 주도 평균에 넣었어요. 7일이 안 된 주만 빼요.',
       legend: [
         { kind: 'bar', color: BAR, text: '주별 출고' },
         {
           kind: 'bar',
           color: 'var(--chart-part)',
-          text: '재고 없던 날이 있는 주·덜 찬 주',
+          text: '재고 없던 날이 있는 주·7일이 안 된 주',
         },
-        { kind: 'dash', color: INK, text: '평균' },
+        {
+          kind: 'dash',
+          color: INK,
+          text: avg != null ? `평균 ${avg.toLocaleString()}개` : '평균',
+        },
       ],
-      note:
-        avg != null
-          ? {
-              tone: 'ink',
-              x: box.right - 2,
-              y: box.top + 6,
-              main: `한 주 평균 ${avg.toLocaleString()}개`,
-              small: ['다 판 주만 셌어요'],
-              arrow:
-                weeks.length > 1
-                  ? [tipX + 14, box.top + 40, tipX, y(avg) - 7]
-                  : null,
-            }
-          : null,
+      // 평균 메모와 화살표는 뺐다: 막대 사이 빈 곳을 가리켜 무엇을 짚는지 안 보였다(11/15). 숫자는 제목·범례에
+      note: null,
     }
   }
 

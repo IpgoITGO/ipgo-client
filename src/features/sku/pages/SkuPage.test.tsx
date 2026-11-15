@@ -55,6 +55,30 @@ describe('SkuPage', () => {
     expect(screen.getByText('5,000')).toBeInTheDocument()
   })
 
+  it('주별 출고: 7일이 안 된 마지막 주는 며칠치인지 쓰고 평균은 범례에 숫자로', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...detailFixture,
+          // 11/1~11/10: 다 찬 한 주(하루 1개씩 7개) + 3일치
+          trend: Array.from({ length: 10 }, (_, i) => ({
+            date: `2026-11-${String(i + 1).padStart(2, '0')}`,
+            closingQty: 10,
+            outboundQty: 1,
+            isValidObservation: true,
+          })),
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    await screen.findByRole('img', { name: '재고·출고 그래프' })
+    await user.click(screen.getByRole('tab', { name: '주별 출고' }))
+    expect(await screen.findByText('3일치')).toBeInTheDocument()
+    expect(screen.getByText('평균 7개')).toBeInTheDocument()
+    expect(screen.queryByText('덜 찬 주')).toBeNull()
+  })
+
   it('작년 필드가 없는 기존 응답은 비교 출고를 만들어 표시하지 않는다', async () => {
     renderSku('/sku/1')
     await screen.findByRole('img', { name: '재고·출고 그래프' })
