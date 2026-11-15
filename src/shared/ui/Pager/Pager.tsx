@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { PAGE_SIZES, pageList } from './pageParams'
 import styles from './Pager.module.css'
 
@@ -9,6 +11,7 @@ export function Pager({
   total,
   onPage,
   onSize,
+  aside,
 }: {
   label: string
   page: number
@@ -16,6 +19,8 @@ export function Pager({
   total: number
   onPage: (page: number) => void
   onSize: (size: number) => void
+  /** 오른쪽 끝 빈 칸에 둘 것(예: 대시보드의 "고르면 엑셀로" 안내) */
+  aside?: ReactNode
 }) {
   const pages = Math.max(1, Math.ceil(total / size))
   const from = total === 0 ? 0 : (page - 1) * size + 1
@@ -67,6 +72,7 @@ export function Pager({
           ›
         </button>
       </div>
+      {aside && <div className={styles.aside}>{aside}</div>}
     </nav>
   )
 }

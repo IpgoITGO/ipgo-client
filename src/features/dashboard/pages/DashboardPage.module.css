@@ -513,6 +513,26 @@ tr[data-soon] .weeks i[data-on] {
   margin-left: auto;
   color: #fff;
 }
+.orderBar .registerButton {
+  color: #fff;
+}
+.orderBar .registerButton:disabled {
+  opacity: 0.5;
+}
+.orderBar .registerButton:hover:not(:disabled) {
+  color: #fff;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+}
+/* 쪽 넘기기 줄 오른쪽: 고르기 전 안내 */
+.pickHint {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.pickHint b {
+  color: var(--color-text-2);
+  font-weight: 700;
+}
 .orderBar > :nth-child(3):hover:not(:disabled) {
   color: #fff;
   text-decoration-color: var(--color-accent);

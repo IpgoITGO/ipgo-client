@@ -37,10 +37,22 @@
   gap: 2px;
 }
 
+/* 오른쪽 끝 칸: 화면이 넣는 안내(없으면 빈 칸) */
+.aside {
+  grid-column: 3;
+  justify-self: end;
+  min-width: 0;
+}
+
 /* 좁은 화면: 보기 개수 위, 쪽 번호 아래 가운데. 10개가 안 들어가면 옆으로 밀어 본다 */
 @media (max-width: 720px) {
   .pager {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    grid-column: auto;
+    justify-self: start;
   }
 
   .pages {

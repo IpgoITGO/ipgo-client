@@ -50,6 +50,7 @@ import {
 } from '../model/dashboardApi'
 import { checkFirst } from '../model/checkFirst'
 import { CheckFirst } from '../ui/CheckFirst'
+import { type OrderLine, RegisterOrders } from '../ui/RegisterOrders'
 import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
@@ -429,6 +430,8 @@ export function DashboardPage() {
   const setSearch = (value: string) =>
     updateParams({ q: value === '' ? null : value, page: null })
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  // 고른 상품을 "이미 발주한 물량"으로 등록하는 창
+  const [registering, setRegistering] = useState(false)
   // 전체 탭에서 고른 "괜찮아요" 상품의 수량(친 글자 그대로). 안 쳤으면 내 입고량, 그것도 없으면 빈칸
   const [safeQty, setSafeQty] = useState<Record<string, string>>({})
   const tabParam = params.get('tab')
@@ -663,6 +666,21 @@ export function DashboardPage() {
     (sum, item) => sum + orderCostOf(item),
     0,
   )
+  // 발주로 등록할 줄: 수량이 있는 것만(괜찮은 상품은 수량을 넣은 것만)
+  const orderLines: OrderLine[] = [
+    ...pickedItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: orderQtyOf(item),
+      leadTime: item.leadTime,
+    })),
+    ...pickedSafe.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: safeQtyOf(item.id) ?? 0,
+      leadTime: item.leadTime,
+    })),
+  ].filter((line) => line.quantity > 0)
   function togglePick(id: string) {
     setPicked((previous) => {
       const next = new Set(previous)
@@ -1433,6 +1451,14 @@ export function DashboardPage() {
                 })
                 showTableTop()
               }}
+              aside={
+                // 고르기 전에는 엑셀 버튼이 안 보여 체크 칸의 쓸모를 알 수 없었다(11/15)
+                tab !== 'na' && pickedCount === 0 ? (
+                  <span className={styles.pickHint}>
+                    상품을 고르면 <b>엑셀로 받기 · 발주 등록</b>을 할 수 있어요
+                  </span>
+                ) : undefined
+              }
               page={page}
               size={size}
               total={rows.length}
@@ -1455,6 +1481,20 @@ export function DashboardPage() {
               <Button onClick={() => setPicked(new Set())} variant="text">
                 선택 해제
               </Button>
+              {/* 엑셀로 주문한 뒤 입고 조건 화면에서 같은 수량을 다시 넣지 않도록(11/15) */}
+              <Button
+                className={styles.registerButton}
+                disabled={busy || orderLines.length === 0}
+                onClick={() => setRegistering(true)}
+                title={
+                  busy
+                    ? '계산이 끝나면 등록할 수 있어요'
+                    : '주문한 수량을 다음 계산에서 빼요'
+                }
+                variant="text"
+              >
+                발주로 등록
+              </Button>
               <Button
                 className={styles.exportButton}
                 data-done={exported || undefined}
@@ -1466,6 +1506,25 @@ export function DashboardPage() {
             </div>
           )}
         </section>
+      )}
+      {registering && (
+        <RegisterOrders
+          lines={orderLines}
+          onClose={() => setRegistering(false)}
+          onDone={(count) => {
+            setRegistering(false)
+            setPicked(new Set())
+            navigate(
+              { search: params.toString() },
+              {
+                replace: true,
+                state: {
+                  toast: `${count}건을 발주한 물량에 등록했어요 · 다시 계산해요`,
+                },
+              },
+            )
+          }}
+        />
       )}
     </div>
   )
