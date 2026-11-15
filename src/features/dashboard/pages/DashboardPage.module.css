@@ -556,6 +556,17 @@ tr[data-soon] .weeks i[data-on] {
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 560px) {
+  .sort {
+    flex-wrap: nowrap;
+    width: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .sort button {
+    flex: none;
+  }
+}
 /* 휴대폰: 표 대신 상품마다 카드(가로 막대 없음). 권장 입고량은 오른쪽 위에 크게 */
 @media (max-width: 720px) {
   .tableWrap thead {

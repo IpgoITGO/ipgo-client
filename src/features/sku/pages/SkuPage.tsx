@@ -25,7 +25,7 @@ import {
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
-import { DecideRecommended, RecoMemo } from '../components/RecoSide'
+import { DecideRecommended } from '../components/DecideRecommended'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import { SkuNav } from '../components/SkuNav'
 import {
@@ -1670,12 +1670,24 @@ export function SkuPage() {
           </div>
           <p>바코드 {data.barcode}</p>
         </div>
-        {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
-        {data.status !== 'reference' && (
-          <span className={styles.status} data-status={data.status}>
-            {statusLabel}
-          </span>
-        )}
+        <div className={styles.headerSide}>
+          {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
+          {data.status !== 'reference' && (
+            <span className={styles.status} data-status={data.status}>
+              {statusLabel}
+            </span>
+          )}
+          {/* 권장량이 나온 상품만: 권장량으로 정하기(11/16, 전엔 화면 중간 비교 카드 안에만 있었다) */}
+          {data.status !== 'pending' &&
+            data.status !== 'unavailable' &&
+            data.resultId != null && (
+              <DecideRecommended
+                productId={skuId}
+                quantity={data.recommendation.quantity}
+                resultId={data.resultId}
+              />
+            )}
+        </div>
       </header>
 
       {data.status === 'pending' ? (
@@ -1791,20 +1803,7 @@ export function SkuPage() {
                   )}
                 </p>
               )}
-              {/* 결정은 숫자 바로 아래에서(11/15: 전엔 화면 중간 비교 카드 안에만 있었다) */}
-              {data.resultId != null && (
-                <DecideRecommended
-                  className={styles.recoDecide}
-                  productId={skuId}
-                  quantity={data.recommendation.quantity}
-                  resultId={data.resultId}
-                />
-              )}
             </div>
-            {/* 왜 이 수량인지 손글씨 메모(전엔 맨 아래 AI 인사이트 옆). 있으면 오른쪽 숫자 셋이 세로로 선다 */}
-            {data.resultId != null && (
-              <RecoMemo className={styles.recoMemo} resultId={data.resultId} />
-            )}
             <dl>
               <div>
                 <dt>예상 사입비</dt>

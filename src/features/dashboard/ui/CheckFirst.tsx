@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import type { CheckReason } from '../model/checkFirst'
 import styles from './CheckFirst.module.css'
 
-const SHOWN = 3
+// 확인할 상품은 두 줄까지만 보여 준다: 자료가 늦게 와도(유통기한) 카드 높이가 그대로라 아래 카드·표가 안 밀린다
+const SHOWN = 2
 
 // 대시보드 맨 위 한 줄(11/15 "가"): 넣어야 할 상품 중 권장대로 넣으면 되는 것과 먼저 볼 것을 가른다.
 // 모양은 계산 중 안내 카드(지난 결과 메모)와 같은 결: 흰 카드 · 점선 · 마름모 점 · 형광펜.
@@ -19,11 +20,7 @@ export function CheckFirst({
   const fine = total - reasons.length
   if (reasons.length === 0)
     return (
-      <section
-        aria-label="먼저 확인할 상품"
-        className={styles.card}
-        data-rise-self
-      >
+      <section aria-label="먼저 확인할 상품" className={styles.card}>
         <p className={styles.say}>
           <strong>
             <i aria-hidden="true">✦</i>
@@ -33,12 +30,7 @@ export function CheckFirst({
       </section>
     )
   return (
-    <section
-      aria-label="먼저 확인할 상품"
-      className={styles.card}
-      data-rise-self
-      data-rows
-    >
+    <section aria-label="먼저 확인할 상품" className={styles.card} data-rows>
       <p className={styles.say}>
         <strong>
           <i aria-hidden="true">✦</i>

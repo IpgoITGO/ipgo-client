@@ -1454,7 +1454,7 @@ export function DashboardPage() {
               }}
               aside={
                 // 고르기 전에는 엑셀 버튼이 안 보여 체크 칸의 쓸모를 알 수 없었다(11/15)
-                tab !== 'na' && pickedCount === 0 ? (
+                tab !== 'na' ? (
                   <span className={styles.pickHint}>
                     상품을 고르면 <b>엑셀로 받기 · 발주 등록</b>을 할 수 있어요
                   </span>

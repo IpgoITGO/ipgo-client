@@ -6,7 +6,7 @@
   min-height: 100dvh;
   align-items: start;
   justify-items: center;
-  padding: max(var(--space-6), calc(50vh - 330px)) var(--space-6) var(--space-6);
+  padding: max(var(--space-6), calc(50vh - 342px)) var(--space-6) var(--space-6);
 }
 
 /* 흰 카드 하나를 반으로: 왼쪽 입력, 오른쪽 상자빛 바탕의 미리보기. 큰 남색 면은 쓰지 않는다. */
@@ -14,7 +14,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: min(100%, 980px);
-  min-height: 660px;
+  /* 회원가입 1단계(가장 긴 내용)가 들어가는 높이. 탭을 바꿔도 카드 키가 같다(11/16) */
+  min-height: 684px;
   overflow: hidden;
   background: var(--color-card);
   border-radius: var(--radius-card);

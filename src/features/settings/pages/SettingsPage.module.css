@@ -803,3 +803,26 @@
 .resetRow:disabled {
   visibility: hidden;
 }
+
+/* 저장 없이 나가려 할 때 묻는 창(업로드 확인 화면과 같은 모양) */
+.leave {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave h2,
+.leave p {
+  margin: 0;
+}
+
+.leave p {
+  color: var(--color-text-3);
+  line-height: 1.7;
+}
+
+.leaveActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}

@@ -39,12 +39,12 @@ export function SkuNav({ productId }: { productId: string }) {
   return (
     <nav aria-label="상품 이동" className={styles.nav}>
       <Link className={styles.back} to={`/dashboard${saved?.search ?? ''}`}>
-        <span aria-hidden="true">←</span> 대시보드로
+        ← 대시보드로
       </Link>
       {index >= 0 && items.length > 1 && (
         <div className={styles.step}>
           <span>
-            {saved?.label} <b>{index + 1}</b> / {items.length}
+            {saved?.label} {index + 1} / {items.length}
           </span>
           {prev ? (
             <Link
@@ -63,12 +63,11 @@ export function SkuNav({ productId }: { productId: string }) {
           {next ? (
             <Link
               aria-label={`다음 상품: ${next[1]}`}
-              className={styles.next}
+              className={styles.arrow}
+              title={next[1]}
               to={`/sku/${next[0]}`}
             >
-              <span>다음</span>
-              <b>{next[1]}</b>
-              <i aria-hidden="true">›</i>
+              ›
             </Link>
           ) : (
             <span aria-hidden="true" className={styles.arrow} data-off>

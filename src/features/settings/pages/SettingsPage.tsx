@@ -3,18 +3,25 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type ClipboardEvent,
   type FormEvent,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  UNSAFE_DataRouterContext,
+  useBlocker,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 import { z } from 'zod'
 
 import { ApiError, errorText } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { Modal } from '../../../shared/ui/Modal/Modal'
 import { LockedButton } from '../../billing/components/LockedButton'
 import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
@@ -224,6 +231,11 @@ export function SettingsPage() {
   useEffect(() => {
     if (query.data) reset(query.data.values, { keepDirtyValues: true })
   }, [query.data, reset])
+
+  // 고친 값이 있는데 저장(확인하고 계산하기) 없이 나가려 하면 한 번 묻는다(11/16) → 아래 UnsavedGuard
+  const hasEdits = Object.keys(dirtyFields).length > 0
+  // 나가기를 막는 장치는 앱의 라우터(data router)에서만 돈다. 화면만 따로 띄우는 곳(테스트의 MemoryRouter)에서는 건너뛴다
+  const canGuard = useContext(UNSAFE_DataRouterContext) != null
 
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
@@ -923,6 +935,7 @@ export function SettingsPage() {
           </Button>
         )}
       </footer>
+      {canGuard && <UnsavedGuard hasEdits={hasEdits} />}
       {shipping && (
         <div aria-live="polite" className={styles.ship} role="status">
           <img alt="" height="88" src="/logo.png" width="88" />
@@ -930,5 +943,32 @@ export function SettingsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// 업로드 확인 화면의 "나가기 전 확인"과 같은 장치·같은 모양.
+// 저장을 마치고 대시보드로 갈 때(안내 토스트를 들고 감)는 묻지 않는다.
+function UnsavedGuard({ hasEdits }: { hasEdits: boolean }) {
+  const blocker = useBlocker(
+    ({ nextLocation }) =>
+      hasEdits && !(nextLocation.state as { toast?: string } | null)?.toast,
+  )
+  if (blocker.state !== 'blocked') return null
+  return (
+    <Modal labelledBy="settings-leave-title" onClose={() => blocker.reset()}>
+      <div className={styles.leave}>
+        <h2 id="settings-leave-title">고친 입고 조건을 저장하지 않았어요</h2>
+        <p>
+          지금 나가면 고친 값이 사라져요. 남기려면 맨 아래 "확인하고 계산하기"를
+          눌러 주세요.
+        </p>
+        <div className={styles.leaveActions}>
+          <Button onClick={() => blocker.proceed()} variant="secondary">
+            나가기
+          </Button>
+          <Button onClick={() => blocker.reset()}>계속 고치기</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }

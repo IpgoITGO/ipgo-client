@@ -33,6 +33,7 @@ import {
   toScenario,
   toScenarios,
 } from '../model/resultApi'
+import { InsightSketch, type SketchValues } from './InsightSketch'
 import styles from './ScenarioInsight.module.css'
 
 // 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
@@ -350,6 +351,26 @@ export function ScenarioInsight({
     1,
   )
 
+  // AI 인사이트 옆 손그림: 권장량(P100)과 80%(P80) 시나리오 값으로 그린다. 권장량이 0이면 그림 없이 문장만.
+  const p100 = data?.scenarios.find((item) => item.id === 'P100')
+  const p80 = data?.scenarios.find((item) => item.id === 'P80')
+  const sketch: SketchValues | null =
+    p100 && p100.quantity > 0
+      ? {
+          recommended: p100.quantity,
+          preRisk: p100.preArrivalRisk,
+          postRisk: p100.postArrivalRisk,
+          endRecommended: p100.remainingAtNextInbound,
+          lower: p80
+            ? {
+                quantity: p80.quantity,
+                end: p80.remainingAtNextInbound,
+                risk: p80.postArrivalRisk,
+              }
+            : null,
+        }
+      : null
+
   return (
     <div className={styles.wrapper}>
       <section className={styles.card}>
@@ -610,9 +631,7 @@ export function ScenarioInsight({
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
                       type="button"
-                      variant={
-                        recommended && !decided ? 'primary' : 'secondary'
-                      }
+                      variant="secondary"
                     >
                       {decided ? '되돌리기' : '이 수량으로 정하기'}
                     </Button>
@@ -681,10 +700,6 @@ export function ScenarioInsight({
               {!showInput && (
                 <button
                   className={styles.addCard}
-                  data-slim={
-                    (visible.length + (surgeCard && surge ? 1 : 0)) % 4 === 0 ||
-                    undefined
-                  }
                   onClick={() => setAdding(true)}
                   type="button"
                 >
@@ -779,7 +794,11 @@ export function ScenarioInsight({
       </section>
 
       {/* AI 인사이트: 테이프와 ✦ 색으로 어디서 온 문장인지(AI·기본 문장·비교표만) 먼저 보이고, 맨 아래 한 줄이 이유를 말한다. */}
-      <section className={styles.insight} data-tone={insightTone}>
+      <section
+        className={styles.insight}
+        data-sketch={sketch ? '' : undefined}
+        data-tone={insightTone}
+      >
         <Tape className={styles.insightTape} />
         <div className={styles.insightMain}>
           <div className={styles.insightHead}>
@@ -867,6 +886,7 @@ export function ScenarioInsight({
             </>
           )}
         </div>
+        {sketch && <InsightSketch values={sketch} />}
       </section>
     </div>
   )

@@ -6,6 +6,7 @@ import { errorText } from '../../../shared/api/client'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import { createPlannedReceipt } from '../../settings/model/plannedReceiptsApi'
+import { arrivalOn } from '../model/arrivalOn'
 import styles from './RegisterOrders.module.css'
 
 export type OrderLine = {
@@ -13,14 +14,6 @@ export type OrderLine = {
   name: string
   quantity: number
   leadTime: number | null
-}
-
-/** 오늘 + 리드타임(일) → "2026-11-21". 리드타임을 모르면 도착일 미정(null) */
-export function arrivalOn(leadTime: number | null, now = new Date()) {
-  if (leadTime == null) return null
-  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  day.setDate(day.getDate() + leadTime)
-  return day.toLocaleDateString('sv')
 }
 
 const monthDay = (iso: string) => {
