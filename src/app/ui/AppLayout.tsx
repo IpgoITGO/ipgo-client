@@ -167,7 +167,7 @@ export function AppLayout() {
       </header>
       {subscription && <BillingStrip subscription={subscription} />}
       <main className={styles.main}>
-        <CalculationStatus />
+        <CalculationStatus quiet={pathname === '/dashboard'} />
         <CalcLockHint />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
         <div className={styles.page} key={pathname}>

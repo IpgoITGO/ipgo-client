@@ -13,7 +13,12 @@ export const DONE_MS = 5000
 // 상태가 바뀌면 펼쳐서 5초 보여 주고 작은 알약으로 접는다(11/12 — 확대한 화면에서 아래 버튼을 가려서).
 // 마친·실패 알약은 저절로 사라지지 않고 "확인"을 눌러야 닫힌다. 알약을 누르면 다시 펼친다.
 // 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
-export function CalculationStatus() {
+export function CalculationStatus({
+  quiet = false,
+}: {
+  /** 그 화면이 이미 계산 중을 크게 알리고 있으면(대시보드) 처음부터 작은 알약으로 둔다 */
+  quiet?: boolean
+}) {
   const { phase, runId, run, message, retry, dismiss, stop, checkingSince } =
     useCalculation()
   const minutes = useMinutes(checkingSince)
@@ -22,9 +27,11 @@ export function CalculationStatus() {
   const hold = hovered || focused
   // 같은 단계로 돌아와도 이전 계산의 접힘 상태를 재사용하지 않는다.
   const scope = `${runId}:${checkingSince}:${phase}:${run?.status}`
-  const [view, setView] = useState({ scope, compact: false })
+  const startCompact =
+    quiet && ['checking', 'pending', 'updating'].includes(phase)
+  const [view, setView] = useState({ scope, compact: startCompact })
   if (view.scope !== scope) {
-    setView({ scope, compact: false })
+    setView({ scope, compact: startCompact })
     if (phase === 'idle') {
       setHovered(false)
       setFocused(false)

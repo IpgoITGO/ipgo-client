@@ -48,6 +48,8 @@ import {
   getDashboard,
   shiftTimes,
 } from '../model/dashboardApi'
+import { checkFirst } from '../model/checkFirst'
+import { CheckFirst } from '../ui/CheckFirst'
 import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
@@ -527,6 +529,9 @@ export function DashboardPage() {
   const data = query.data
   const refreshRequired = data.freshness === 'refresh-required'
   const noResult = data.freshness === 'no-result'
+  // 권장량을 그대로 믿기 어려운 상품(판매 급변·유통기한 지난 재고): 맨 위 한 줄과 표의 "확인 필요"가 같이 쓴다
+  const checkReasons = checkFirst(data.neededItems, expiryOf)
+  const checkIds = new Set(checkReasons.map((reason) => reason.id))
   // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
   const today = dayNumber(data.today ?? localToday())
   const daysPast = (date: string) => today - dayNumber(date)
@@ -900,6 +905,10 @@ export function DashboardPage() {
           ))}
       </header>
 
+      {!(noResult || refreshRequired) && (
+        <CheckFirst reasons={checkReasons} total={data.neededItems.length} />
+      )}
+
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
       {!(noResult || refreshRequired) && (
         <div
@@ -1261,9 +1270,19 @@ export function DashboardPage() {
                             {row.kind === 'na' && <NaReason item={row.item} />}
                           </td>
                           <td data-label="상태">
-                            <span className={styles.kind} data-kind={row.kind}>
-                              {KIND_LABEL[row.kind]}
-                            </span>
+                            {/* 넣어야 할 상품 중 권장량을 한 번 봐야 하는 줄만 "확인 필요"(11/15: 모든 줄이 "지금 넣기"라 정보가 없었다) */}
+                            {row.kind === 'need' && checkIds.has(row.id) ? (
+                              <span className={styles.kind} data-kind="check">
+                                확인 필요
+                              </span>
+                            ) : (
+                              <span
+                                className={styles.kind}
+                                data-kind={row.kind}
+                              >
+                                {KIND_LABEL[row.kind]}
+                              </span>
+                            )}
                           </td>
                           <td data-label="예상 소진일">
                             {row.kind === 'na' ||

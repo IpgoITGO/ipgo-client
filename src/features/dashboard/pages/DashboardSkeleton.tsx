@@ -19,11 +19,9 @@ export function DashboardSkeleton({ note }: { note?: WaitNote }) {
       <section aria-label="계산 중" className={styles.wait}>
         <div className={styles.talk}>
           <div className={styles.say}>
-            <strong>새 수불부로 입고량을 계산하고 있어요</strong>
-            <span>
-              창을 닫거나 다른 화면을 봐도 계산은 계속돼요. 끝나면 오른쪽
-              아래에서 알려 드려요.
-            </span>
+            {/* 바로 위 노란 띠가 "계산하고 있어요"를 말하니 여기선 되풀이하지 않는다(11/15: 같은 말이 세 곳) */}
+            <strong>끝나면 이 화면이 새 결과로 바뀌어요</strong>
+            <span>창을 닫거나 다른 화면을 봐도 계산은 계속돼요.</span>
           </div>
           {note && (
             <div className={styles.memo}>
