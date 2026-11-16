@@ -127,3 +127,74 @@ it('서버 K1의 이력과 평가 구간을 정수 표시값 그대로 변환한
   expect(detail.accuracy?.coverTrials).toBe(12)
   expect(detail.accuracy?.errorRate).toBe(0)
 })
+
+it.each(['EMPTY', 'UNAVAILABLE'] as const)(
+  '명시적 %s 평가의 남은 수치를 실제 성과로 표시하지 않는다',
+  (status) => {
+    const input = structuredClone(accuracyHistoryK1) as ProductDetail
+    input.accuracy!.evaluation!.status = status
+    const view = toSkuDetail(input)
+    expect(view.accuracy).toMatchObject({
+      grade: null,
+      coverSuccess: null,
+      coverTrials: null,
+      errorRate: null,
+      range: null,
+      history: [],
+    })
+  },
+)
+
+it('미확정 method는 식별자를 보존하고 기존 A/B 평가를 섞지 않는다', () => {
+  const input = structuredClone(accuracyHistoryK1) as ProductDetail
+  input.result!.method = 'UNAGREED_METHOD_FIXTURE'
+  input.result!.methodReason = 'internal/code/model/path 대체'
+  input.result!.horizonDays = 19
+  const view = toSkuDetail(input)
+  expect(view.method).toMatchObject({
+    applied: 'UNAGREED_METHOD_FIXTURE',
+    fallback: false,
+  })
+  expect(view.calculation.coverDays).toBe(19)
+  expect(view.accuracy).toMatchObject({
+    grade: null,
+    coverTrials: null,
+    errorRate: null,
+    range: null,
+    history: [],
+  })
+})
+
+it('평가된 기존 B의 실제 0은 미산출 null로 바꾸지 않는다', () => {
+  const input = structuredClone(accuracyHistoryK1) as ProductDetail
+  input.result!.method = 'B'
+  Object.assign(input.accuracy!, {
+    coverSuccessCount: 0,
+    coverTrialCount: 3,
+    forecastErrorRate: 0,
+    range: { low: 0, high: 0 },
+  })
+  expect(toSkuDetail(input).accuracy).toMatchObject({
+    coverSuccess: 0,
+    coverTrials: 3,
+    errorRate: 0,
+    range: { low: 0, high: 0 },
+  })
+})
+
+it('미확정 방식의 계산 불가·평가 null은 정상 권장 결과로 바꾸지 않는다', () => {
+  const input = structuredClone(accuracyHistoryK1) as ProductDetail
+  input.needStatus = 'NOT_CALCULABLE'
+  Object.assign(input.result!, {
+    method: 'UNAGREED_METHOD_FIXTURE',
+    status: 'NOT_CALCULABLE',
+    recommendedQty: null,
+    forecastOutboundQty: null,
+  })
+  input.accuracy = null
+  expect(toSkuDetail(input)).toMatchObject({
+    status: 'unavailable',
+    accuracy: null,
+    calculation: { forecastQty: null },
+  })
+})

@@ -263,3 +263,37 @@ describe('재고 세 칸 · 이미 바닥났을 수 있어요 (#234)', () => {
     expect(screen.queryByText('이미 바닥')).not.toBeInTheDocument()
   })
 })
+
+it('미확정 방식은 B 설명·계산식·성과·내부 정보를 노출하지 않는다 (#391)', async () => {
+  server.use(
+    http.get('/api/products/:productId/detail', () =>
+      HttpResponse.json({
+        ...detailFixture,
+        result: {
+          ...detailFixture.result,
+          method: 'UNAGREED_METHOD_FIXTURE',
+          methodReason: '/private/model-path product-code=secret 대체',
+          horizonDays: 19,
+        },
+      }),
+    ),
+  )
+  renderSku('/sku/27')
+  expect(
+    await screen.findByText('이 계산 방식의 설명은 아직 제공되지 않았어요'),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByText(/최근 28일 평균|기본 계산 방식을 적용|여유 배수/),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByText(
+      /UNAGREED_METHOD_FIXTURE|private\/model-path|product-code/,
+    ),
+  ).not.toBeInTheDocument()
+  expect(screen.getByText('실제 정확도 미평가')).toBeInTheDocument()
+  expect(screen.queryByText('정확도 높음')).not.toBeInTheDocument()
+  expect(screen.queryByText(/예측 범위/)).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('img', { name: /버틴 비율|빗나간/ }),
+  ).not.toBeInTheDocument()
+})

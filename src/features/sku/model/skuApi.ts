@@ -38,7 +38,7 @@ export type ProductDetail = {
     status:
       'OK' | 'NOT_NEEDED' | 'NOT_CALCULABLE' | 'EXCLUDED' | 'REUPLOAD_REQUIRED'
     reason: string | null
-    method: 'A' | 'B' | null
+    method: string | null
     // AI 엔진이 쓴 문장: "평가 결과 기본 방식", "작년 자료 없어 B로 대체"
     methodReason: string | null
     multiplier: number
@@ -111,7 +111,7 @@ export type SkuDetail = {
     lastYearOutbound: number | null
   }>
   // 기획서: 평가로 정한 기본 방식을 쓰고, 그 방식을 못 쓰는 상품만 다른 방식으로 대체한다.
-  method: { applied: 'A' | 'B'; fallback: boolean; reason: string } | null
+  method: { applied: string; fallback: boolean; reason: string } | null
   calculation: {
     forecastQty: number | null
     multiplier: number
@@ -146,6 +146,11 @@ const UNAVAILABLE = ['NOT_CALCULABLE', 'EXCLUDED', 'REUPLOAD_REQUIRED']
 
 export function toSkuDetail(raw: ProductDetail): SkuDetail {
   const { result, accuracy } = raw
+  // 아직 합의하지 않은 방식과 명시적 미산출 평가를 기존 A/B 성과로 설명하지 않는다.
+  const knownMethod = !result?.method || ['A', 'B'].includes(result.method)
+  const evaluated =
+    knownMethod &&
+    (!accuracy?.evaluation || accuracy.evaluation.status === 'AVAILABLE')
   const status: SkuDetail['status'] = !result
     ? 'pending'
     : UNAVAILABLE.includes(raw.needStatus ?? '') ||
@@ -187,7 +192,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     method: result?.method
       ? {
           applied: result.method,
-          fallback: (result.methodReason ?? '').includes('대체'),
+          fallback: knownMethod && (result.methodReason ?? '').includes('대체'),
           reason: result.methodReason ?? '',
         }
       : null,
@@ -204,18 +209,19 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     },
     settings: raw.settings,
     accuracy: accuracy && {
-      grade: accuracy.grade
-        ? (accuracy.grade.toLowerCase() as 'high' | 'medium' | 'low')
-        : null,
-      coverSuccess: accuracy.coverSuccessCount,
-      coverTrials: accuracy.coverTrialCount,
+      grade:
+        evaluated && accuracy.grade
+          ? (accuracy.grade.toLowerCase() as 'high' | 'medium' | 'low')
+          : null,
+      coverSuccess: evaluated ? accuracy.coverSuccessCount : null,
+      coverTrials: evaluated ? accuracy.coverTrialCount : null,
       errorRate:
-        accuracy.forecastErrorRate == null
+        !evaluated || accuracy.forecastErrorRate == null
           ? null
           : Math.round(accuracy.forecastErrorRate * 100),
-      range: accuracy.range,
+      range: evaluated ? accuracy.range : null,
       evaluation: accuracy.evaluation ?? null,
-      history: (accuracy.history ?? []).map((item) => ({
+      history: (evaluated ? (accuracy.history ?? []) : []).map((item) => ({
         date: item.originDate,
         outbound: item.actualQty,
         predictedOutbound: item.forecastQty,
