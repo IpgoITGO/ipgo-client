@@ -55,11 +55,14 @@ export function AppLayout() {
     : false
   const planLabel = !subscription
     ? ''
-    : subscription.planId === 'trial'
-      ? trialEnded
-        ? '체험 끝남'
-        : `체험 ${trialDaysLeft(subscription)}일 남음`
-      : planOf(subscription.planId).name
+    : subscription.status === 'NOT_SELECTED' ||
+        subscription.entitlements.reason === 'PLAN_NOT_SELECTED'
+      ? '요금제 고르기'
+      : subscription.planId === 'trial'
+        ? trialEnded
+          ? '체험 끝남'
+          : `체험 ${trialDaysLeft(subscription)}일 남음`
+        : planOf(subscription.planId).name
 
   function leaveAnyway() {
     setLogoutFailed(false)
