@@ -83,6 +83,7 @@ export function toScenario(
     ScenariosResponse,
     'isEstimate' | 'preArrivalRisk' | 'riskSampleSize'
   >,
+  method?: string | null,
 ): Scenario {
   return {
     id: item.type === 'CUSTOM' ? `custom-${item.qty}` : item.type,
@@ -91,22 +92,23 @@ export function toScenario(
     expectedStockoutDate: dotDate(item.expectedDepletionOn),
     remainingAtNextInbound: item.expectedEndingStock,
     postArrivalUnmet: item.postArrivalUnmetQty ?? null,
-    preArrivalRisk: percent(shared.preArrivalRisk),
-    postArrivalRisk: percent(item.postArrivalRisk),
+    // LGBM19는 A/B 위험도 평가 대상이 아니다. 남은 기존 숫자도 표시하지 않는다.
+    preArrivalRisk: method === 'LGBM19' ? null : percent(shared.preArrivalRisk),
+    postArrivalRisk: method === 'LGBM19' ? null : percent(item.postArrivalRisk),
     estimated: shared.isEstimate,
-    sampleSize: shared.riskSampleSize ?? 0,
+    sampleSize: method === 'LGBM19' ? 0 : (shared.riskSampleSize ?? 0),
   }
 }
 
 // 권장량(P100)과 같은 수량으로 겹친 80%·120% 카드는 빼고, 권장량이 0개면 비교표가 비어 있다(K3만 씀).
-export function toScenarios(raw: ScenariosResponse) {
+export function toScenarios(raw: ScenariosResponse, method?: string | null) {
   return {
     preArrivalUnmet: raw.preArrivalUnmetQty ?? 0,
     recommendedQuantity:
       raw.scenarios.find((item) => item.type === 'P100')?.qty ?? 0,
     scenarios: raw.scenarios
       .filter((item) => !item.isDuplicate || item.type === 'P100')
-      .map((item) => toScenario(item, raw)),
+      .map((item) => toScenario(item, raw, method)),
   }
 }
 

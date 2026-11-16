@@ -59,6 +59,8 @@ function methodSentence(method: NonNullable<SkuDetail['method']>) {
     return method.fallback
       ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
       : '최근 28일 평균으로 계산했어요'
+  if (method.applied === 'LGBM19')
+    return 'LightGBM 모델로 고정 19일의 수요를 예측했어요'
   return '이 계산 방식의 설명은 아직 제공되지 않았어요'
 }
 
@@ -1507,6 +1509,7 @@ export function SkuPage() {
   }
 
   const data = query.data
+  const model19 = data.method?.applied === 'LGBM19'
   // 판매 급증이면 시나리오 카드 줄에 "최근 판매 속도라면" 카드(11/12)
   const surgeQty = shift
     ? surgeQuantity(
@@ -1739,12 +1742,18 @@ export function SkuPage() {
                   </span>
                   {showGap && (
                     <>
-                      <span aria-hidden="true">−</span>
-                      <span>
-                        {gapDays}일 예상 출고{' '}
-                        <b>{Math.max(0, gapOut).toLocaleString()}개</b>
-                      </span>
-                      <span aria-hidden="true">=</span>
+                      {model19 ? (
+                        <span aria-hidden="true">→</span>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">−</span>
+                          <span>
+                            {gapDays}일 예상 출고{' '}
+                            <b>{Math.max(0, gapOut).toLocaleString()}개</b>
+                          </span>
+                          <span aria-hidden="true">=</span>
+                        </>
+                      )}
                       <span>
                         오늘 <b>{startInv.toLocaleString()}개</b>{' '}
                         <em className={styles.recoEst}>추정</em>
@@ -1788,9 +1797,8 @@ export function SkuPage() {
               <div>
                 <dt>현재 예상 소진일</dt>
                 <dd>
-                  {data.recommendation.expectedStockoutDate ?? (
-                    <EmptyValue kind="short" />
-                  )}
+                  {data.recommendation.expectedStockoutDate ??
+                    (model19 ? '미제공' : <EmptyValue kind="short" />)}
                   {daysPast > 0 && (
                     <small className={styles.daysPast}>{daysPast}일 지남</small>
                   )}
@@ -1832,10 +1840,19 @@ export function SkuPage() {
               {data.method && (
                 <p className={styles.methodSentence}>
                   {methodSentence(data.method)}
+                  {data.method.applied === 'LGBM19' && (
+                    <small>배송 5일 + 입고 주기 14일 기준이에요</small>
+                  )}
                   {['A', 'B'].includes(data.method.applied) &&
                     !data.method.fallback && (
                       <small>기본 계산 방식을 적용했어요</small>
                     )}
+                </p>
+              )}
+              {data.method?.applied === 'LGBM19' && (
+                <p>
+                  보정한 목표 재고를 기준으로 권장 입고량을 계산해요. 정확도는
+                  아직 평가하지 않았어요.
                 </p>
               )}
               {(!data.method || ['A', 'B'].includes(data.method.applied)) && (
@@ -1958,6 +1975,7 @@ export function SkuPage() {
               baseDate={data.baseDate}
               inboundUnit={data.calculation.inboundUnit ?? 1}
               leadTime={data.settings.leadTimeDays}
+              method={data.method?.applied}
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
@@ -1966,7 +1984,12 @@ export function SkuPage() {
             />
           )}
 
-          {data.accuracy && <AccuracyCard accuracy={data.accuracy} />}
+          {data.accuracy && (
+            <AccuracyCard
+              accuracy={data.accuracy}
+              method={data.method?.applied}
+            />
+          )}
         </>
       )}
     </div>
@@ -1976,10 +1999,15 @@ export function SkuPage() {
 // 기획서 말 그대로: 커버 성공률(권장량대로 넣었으면 품절을 피했는지)과 예측 오차
 export function AccuracyCard({
   accuracy,
+  method,
 }: {
   accuracy: NonNullable<SkuDetail['accuracy']>
+  method?: string | null
 }) {
   const { coverSuccess, coverTrials, errorRate, history, evaluation } = accuracy
+  const unevaluated =
+    (!!method && !['A', 'B'].includes(method)) ||
+    evaluation?.status === 'UNAVAILABLE'
   const evaluated = (coverTrials ?? 0) > 0 && coverSuccess != null
   const coverRate =
     coverSuccess != null && coverTrials
@@ -2015,11 +2043,17 @@ export function AccuracyCard({
         <div>
           <span>권장량으로 버틴 비율</span>
           <strong>
-            {coverRate == null ? <EmptyValue kind="short" /> : `${coverRate}%`}
+            {coverRate == null ? (
+              <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+            ) : (
+              `${coverRate}%`
+            )}
           </strong>
           <p>
             {coverRate == null
-              ? '비교할 지난 예측이 아직 없어요.'
+              ? unevaluated
+                ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                : '비교할 지난 예측이 아직 없어요.'
               : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
                   outDays.length > 0
                     ? ` · ${outDays
@@ -2047,14 +2081,20 @@ export function AccuracyCard({
         <div>
           <span>예측이 빗나간 정도</span>
           <strong>
-            {errorRate == null ? <EmptyValue kind="short" /> : `±${errorRate}%`}
+            {errorRate == null ? (
+              <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+            ) : (
+              `±${errorRate}%`
+            )}
           </strong>
           <p>
             {errorRate == null
-              ? history.length > 0 &&
-                history.every((item) => item.outbound === 0)
-                ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
-                : '비교할 지난 예측이 쌓이면 보여요.'
+              ? unevaluated
+                ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                : history.length > 0 &&
+                    history.every((item) => item.outbound === 0)
+                  ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
+                  : '비교할 지난 예측이 쌓이면 보여요.'
               : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
           </p>
           {history.length > 0 && (
@@ -2083,11 +2123,13 @@ export function AccuracyCard({
       )}
       {history.length === 0 && (
         <p className={styles.accNote}>
-          {evaluation?.status === 'EMPTY'
-            ? '맞춰 볼 수 있는 지난 자료가 없어 그래프를 그리지 않아요.'
-            : evaluation?.status === 'UNAVAILABLE'
-              ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'
-              : '지난 예측 맞춰 보기 자료가 아직 없어요.'}
+          {evaluation?.status === 'UNAVAILABLE'
+            ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'
+            : unevaluated
+              ? '이 계산의 평가는 아직 제공되지 않아요.'
+              : evaluation?.status === 'EMPTY'
+                ? '맞춰 볼 수 있는 지난 자료가 없어 그래프를 그리지 않아요.'
+                : '지난 예측 맞춰 보기 자료가 아직 없어요.'}
         </p>
       )}
     </section>

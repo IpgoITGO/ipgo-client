@@ -5,8 +5,48 @@ import {
   type InsightRaw,
   type ScenariosResponse,
   toInsight,
+  toScenario,
   toScenarios,
 } from './resultApi'
+import model19K2 from './fixtures/model19-k2.json'
+
+it('LGBM19 K2·CUSTOM에 남은 A/B 위험값과 표본을 노출하지 않는다', () => {
+  const raw = structuredClone(model19K2) as ScenariosResponse
+  raw.preArrivalRisk = 0.98
+  raw.riskSampleSize = 42
+  raw.scenarios.forEach((item) => {
+    item.postArrivalRisk = 0.87
+  })
+  const result = toScenarios(raw, 'LGBM19')
+  expect(result.scenarios.map((item) => item.label)).toEqual([
+    '권장량의 80%',
+    '권장량 100%',
+    '권장량의 120%',
+  ])
+  for (const scenario of result.scenarios) {
+    expect(scenario).toMatchObject({
+      preArrivalRisk: null,
+      postArrivalRisk: null,
+      sampleSize: 0,
+    })
+  }
+  expect(
+    toScenario({ ...raw.scenarios[0], type: 'CUSTOM', qty: 84 }, raw, 'LGBM19'),
+  ).toMatchObject({
+    id: 'custom-84',
+    quantity: 84,
+    preArrivalRisk: null,
+    postArrivalRisk: null,
+    sampleSize: 0,
+  })
+  raw.preArrivalRisk = 0
+  raw.scenarios[0].postArrivalRisk = 0
+  expect(toScenarios(raw, 'B').scenarios[0]).toMatchObject({
+    preArrivalRisk: 0,
+    postArrivalRisk: 0,
+    sampleSize: 42,
+  })
+})
 
 const base: ScenariosResponse = {
   resultId: 9001,

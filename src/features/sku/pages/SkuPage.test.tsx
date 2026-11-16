@@ -8,6 +8,8 @@ import { AppProviders } from '../../../app/providers/AppProviders'
 import { SkuPage } from './SkuPage'
 import { server } from '../../../mocks/server'
 import detailFixture from '../model/fixtures/accuracy-history-k1.json'
+import model19Detail from '../model/fixtures/model19-k1.json'
+import model19Scenarios from '../model/fixtures/model19-k2.json'
 
 function renderSku(path: string) {
   return render(
@@ -24,6 +26,105 @@ function renderSku(path: string) {
 }
 
 describe('SkuPage', () => {
+  it('모델의 소진일 없음과 입고를 포함한 재고 변동을 자료 부족·예상 출고로 단정하지 않는다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          expectedShortageOn: null,
+          result: {
+            ...model19Detail.result,
+            startStockEstimated: true,
+            startStockQty: 20,
+          },
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(await screen.findByText('미제공')).toBeInTheDocument()
+    expect(screen.queryByText(/^\d+일 예상 출고/)).not.toBeInTheDocument()
+    expect(screen.queryAllByText('자료 부족')).toHaveLength(0)
+    expect(
+      screen.queryByText('비교할 지난 예측이 쌓이면 보여요.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('비교할 지난 예측이 아직 없어요.'),
+    ).not.toBeInTheDocument()
+  })
+  it('LGBM19 계산 불가는 정상 권장 0개로 표시하지 않는다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          needStatus: 'NOT_CALCULABLE',
+          result: {
+            ...model19Detail.result,
+            status: 'NOT_CALCULABLE',
+            reason: '배송 5일과 입고 주기 14일 조건이 필요해요.',
+            recommendedQty: null,
+            forecastOutboundQty: null,
+          },
+          accuracy: null,
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(
+      await screen.findByText('배송 5일과 입고 주기 14일 조건이 필요해요.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('권장 입고량 0개')).not.toBeInTheDocument()
+  })
+  it('LGBM19의 고정19일 설명과 시나리오를 표시하고 A/B 평가·미산출 원인을 꾸미지 않는다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json(model19Detail),
+      ),
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(model19Scenarios),
+      ),
+      http.get('/api/results/:resultId/insight', () =>
+        HttpResponse.json({
+          mode: 'TABLE_ONLY',
+          isFallback: true,
+          text: null,
+          failReason: 'INPUT_UNAVAILABLE',
+          state: 'NORMAL',
+          stateReason: null,
+          stale: false,
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(
+      await screen.findByText('LightGBM 모델로 고정 19일의 수요를 예측했어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('배송 5일 + 입고 주기 14일 기준이에요'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('권장 입고량 72개')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/최근 28일 평균|여유 배수|기본 계산 방식을 적용/),
+    ).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('이 모델의 품절 위험은 아직 산출하지 않아요.'),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText('이 모델의 AI 설명은 아직 제공되지 않아요.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        /표본 0일|표본 부족으로 미산출|설명 문장을 만들지 못했어요/,
+      ),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('실제 정확도 미평가')).toBeInTheDocument()
+    expect(screen.getByText('권장량의 80%')).toBeInTheDocument()
+    expect(screen.getByText('권장량 100%')).toBeInTheDocument()
+    expect(screen.getByText('권장량의 120%')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/다음 입고까지 버텨요|재고가 많이 남아요/),
+    ).not.toBeInTheDocument()
+    expect(screen.queryAllByText('자료 부족')).toHaveLength(0)
+  })
   it('작년 같은 날 출고를 점선·값으로 표시하고 기록 없는 날은 선을 끊는다', async () => {
     server.use(
       http.get('/api/products/:productId/detail', () =>
