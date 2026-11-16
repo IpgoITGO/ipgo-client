@@ -18,8 +18,6 @@ export function Pager({
   onSize: (size: number) => void
 }) {
   const pages = Math.max(1, Math.ceil(total / size))
-  const from = total === 0 ? 0 : (page - 1) * size + 1
-  const to = Math.min(total, page * size)
   return (
     <nav aria-label={`${label} 쪽`} className={styles.pager}>
       <label className={styles.size}>
@@ -34,9 +32,6 @@ export function Pager({
             </option>
           ))}
         </select>
-        <span>
-          {total.toLocaleString()}개 중 {from}–{to}
-        </span>
       </label>
       <div className={styles.pages}>
         <button

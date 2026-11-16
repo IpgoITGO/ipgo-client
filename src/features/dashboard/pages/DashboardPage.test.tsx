@@ -118,7 +118,7 @@ describe('아직 괜찮은 상품 목록', () => {
     const user = userEvent.setup()
     renderSafe()
     // 101개를 다 받았고(10개씩 보기라 첫 쪽엔 1–10), 검색하면 101번째도 찾는다
-    await screen.findByText('101개 중 1–10')
+    await screen.findByText('안전상품-1')
     expect(pages).toEqual([0, 1])
     await user.type(
       screen.getByLabelText('목록에서 상품 찾기'),
@@ -167,7 +167,7 @@ describe('아직 괜찮은 상품 목록', () => {
       expect(screen.queryByText('안전상품-1')).not.toBeInTheDocument()
       recovered = true
       await user.click(screen.getByRole('button', { name: '다시 시도' }))
-      await screen.findByText('101개 중 1–10')
+      await screen.findByText('안전상품-1')
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
@@ -411,12 +411,20 @@ describe('DashboardPage', () => {
       await screen.findByRole('radio', { name: '금액 큰 순' }),
     ).toHaveAttribute('aria-checked', 'true')
     // 전체 11개 → 10개씩이면 2쪽엔 1줄
-    expect(await screen.findByText('11개 중 11–11')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '2쪽' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getAllByRole('row')).toHaveLength(2)
     await user.selectOptions(
       screen.getByLabelText('상품 한 번에 볼 개수'),
       '20',
     )
-    expect(await screen.findByText('11개 중 1–11')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(12))
+    expect(screen.getByRole('button', { name: '1쪽' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('상태별 요약과 입고 필요 상품을 정렬한다', async () => {
