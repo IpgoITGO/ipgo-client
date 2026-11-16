@@ -1,7 +1,13 @@
+import { UploadBatchResult } from './UploadBatchResult'
 import { UploadReceiptSnapshot } from '../../receipts/components/UploadReceiptSnapshot'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -24,7 +30,7 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export function UploadResultPage() {
+function SingleUploadResultPage() {
   const { trackRun, trackUpload } = useCalculation()
   const { uploadId } = useParams()
   const navigate = useNavigate()
@@ -307,5 +313,22 @@ export function UploadResultPage() {
         </Button>
       </footer>
     </div>
+  )
+}
+
+export function UploadResultPage() {
+  const [params] = useSearchParams()
+  const { uploadId } = useParams()
+  const uploadIds = [
+    ...new Set(
+      (params.get('uploads') ?? '')
+        .split(',')
+        .filter((id) => /^[1-9]\d*$/.test(id)),
+    ),
+  ]
+  return uploadIds.length > 1 && uploadIds.includes(uploadId ?? '') ? (
+    <UploadBatchResult key={uploadIds.join(',')} uploadIds={uploadIds} />
+  ) : (
+    <SingleUploadResultPage key={uploadId} />
   )
 }

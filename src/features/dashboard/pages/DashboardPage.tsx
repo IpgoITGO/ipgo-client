@@ -1,3 +1,4 @@
+import { FailedUploadsNotice } from '../../upload/components/UploadHistory'
 import { useQuery } from '@tanstack/react-query'
 import {
   Fragment,
@@ -802,6 +803,7 @@ export function DashboardPage() {
   if (busy && !showPast)
     return (
       <div className={styles.page}>
+        <FailedUploadsNotice />
         <BusyStrip
           baseDate={noResult ? undefined : data.baseDate}
           onShowPast={() => setShowPast(true)}
@@ -826,6 +828,7 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
+      <FailedUploadsNotice />
       {!noResult && (
         <ShiftSummary
           items={[...data.neededItems, ...(data.safeItems ?? [])]}

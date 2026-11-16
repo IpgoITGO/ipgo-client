@@ -5,8 +5,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -20,12 +20,10 @@ import {
   type UploadFileState,
   validateUploadFile,
 } from '../model/fileValidation'
-import {
-  getUploadPeriods,
-  type UploadPeriods,
-  uploadFile,
-} from '../model/uploadApi'
-import { formatUploadedAt } from '../model/uploadFormat'
+import { type UploadPeriods, uploadFile } from '../model/uploadApi'
+import { useUploadPeriods } from '../model/useUploadPeriods'
+import { UploadHistory } from '../components/UploadHistory'
+import { formatUploadedAt, monthLabel } from '../model/uploadFormat'
 import boxOpen from '../../billing/assets/box-open.webp'
 import styles from './UploadPage.module.css'
 
@@ -53,6 +51,8 @@ export function UploadPage() {
   const { busy: calculationBusy, dismiss } = useCalculation()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const retryPeriod = params.get('retry')
   const lock = useCalcLock()
   const [files, setFiles] = useState<UploadFileState[]>([])
   // 형식이 틀린 파일은 목록에 넣지 않고 이유 팝업으로만 알린다.
@@ -63,10 +63,8 @@ export function UploadPage() {
   const [modalQueue, setModalQueue] = useState<string[]>([])
 
   const queryClient = useQueryClient()
-  const periods = useQuery({
-    queryKey: ['upload-periods'],
-    queryFn: getUploadPeriods,
-  })
+  const periods = useUploadPeriods()
+  const [acceptedIds, setAcceptedIds] = useState<number[]>([])
 
   const readyFiles = useMemo(
     () => files.filter((item) => item.status === 'ready'),
@@ -144,6 +142,7 @@ export function UploadPage() {
     // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
     const uploaded = new Set<string>()
     let lastUploadId: number | null = null
+    const uploadIds: number[] = [...acceptedIds]
     // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
     const replaced: string[] = []
 
@@ -156,15 +155,22 @@ export function UploadPage() {
         const result = await uploadFile(item.file, Boolean(item.overwrite))
         uploaded.add(item.id)
         lastUploadId = result.uploadId
+        uploadIds.push(result.uploadId)
+        setAcceptedIds([...uploadIds])
         if (item.overwrite && item.period) replaced.push(item.period)
         setFiles((current) => current.filter((file) => file.id !== item.id))
       }
       // 올린 기간과 대시보드가 바뀌었으니 저장해 둔 목록을 버린다
       void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      // ponytail: 여러 파일이면 마지막 파일의 결과만 보여 준다. 파일별 결과 목록은 U2가 여러 건을 줄 때.
-      navigate(`/upload/${lastUploadId}/result`, { state: { replaced } })
+      const search =
+        uploadIds.length > 1 ? `?uploads=${uploadIds.join(',')}` : ''
+      navigate(`/upload/${lastUploadId}/result${search}`, {
+        state: { replaced },
+      })
     } catch (cause) {
+      void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       const remaining = files.filter((item) => !uploaded.has(item.id))
       const duplicate =
         cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE'
@@ -293,24 +299,23 @@ export function UploadPage() {
         />
       </div>
 
-      {periods.data && periods.data.items.length > 0 && (
-        <section aria-label="업로드 내역" className={styles.fileSection}>
-          <h2>업로드 내역</h2>
-          <ul className={styles.fileList}>
-            {periods.data.items.map((item) => (
-              <li key={item.uploadId} className={styles.fileRow}>
-                <div className={styles.fileName}>
-                  <strong>
-                    {Number(item.period.split('-')[0])}년{' '}
-                    {Number(item.period.split('-')[1])}월
-                  </strong>
-                  <span>{item.fileName}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {retryPeriod && (
+        <p role="status">
+          {monthLabel(retryPeriod)} 파일을 골라 다시 올려 주세요. 다른 달은 다시
+          올리지 않아도 돼요.
+        </p>
       )}
+      {acceptedIds.length > 0 && (
+        <p role="status">
+          {acceptedIds.length}개 파일을 올렸어요.{' '}
+          <Link
+            to={`/upload/${acceptedIds.at(-1)}/result?uploads=${acceptedIds.join(',')}`}
+          >
+            올린 파일 결과 보기
+          </Link>
+        </p>
+      )}
+      <UploadHistory />
 
       {files.length > 0 && (
         <section className={styles.fileSection}>
