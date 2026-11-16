@@ -310,7 +310,34 @@ describe('UploadPage', () => {
 
       await user.click(screen.getByRole('button', { name: '목록에서 빼기' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.queryByText(name)).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: `${name} 제거` }),
+      ).not.toBeInTheDocument()
     },
   )
+})
+
+it('긴 파일명의 연월도 기존 업로드와 비교한다', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.upload(
+    screen.getByLabelText('수불부 파일 선택'),
+    new File(['x'], '2026-09_수불부.xlsx'),
+  )
+  expect(
+    await screen.findByRole('dialog', { name: '이미 올린 기간이에요' }),
+  ).toHaveTextContent('2026년 9월')
+})
+it('고른 파일끼리 같은 달이면 두 번째 파일은 올리지 않는다', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+    new File(['x'], '202604_수불부.xlsx'),
+    new File(['y'], '2026년 4월.xlsx'),
+  ])
+  expect(
+    await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
+  ).toHaveTextContent('같은 달은 한 개씩')
+  await user.click(screen.getByRole('button', { name: '확인' }))
+  expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
 })
