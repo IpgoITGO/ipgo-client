@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
@@ -105,5 +105,101 @@ describe('요금제 상태 줄', () => {
     expect(
       screen.queryByRole('button', { name: '쓰는 중' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('미선택 계정의 체험 시작 (#393)', () => {
+  function setup() {
+    let subscription = {
+      planId: 'trial',
+      status: 'NOT_SELECTED',
+      planChosenAt: null as string | null,
+      trialEnd: null as string | null,
+      periodStart: null,
+      periodEnd: null,
+      nextChargeAt: null,
+      cancelAtPeriodEnd: false,
+      graceUntil: null,
+      amount: 0,
+      priceVersion: 'fixture',
+      entitlements: {
+        canCalculate: false,
+        canUpload: false,
+        canGenerateInsight: false,
+        productLimit: 300,
+        monthlyInsightLimit: 100,
+        reason: 'PLAN_NOT_SELECTED' as string | null,
+      },
+    }
+    const keys: (string | null)[] = []
+    server.use(
+      http.get('/api/billing/subscription', () =>
+        HttpResponse.json(subscription),
+      ),
+      http.post('/api/billing/trial/start', ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key'))
+        subscription = {
+          ...subscription,
+          status: 'TRIALING',
+          planChosenAt: new Date().toISOString(),
+          trialEnd: trialEndsIn(14),
+          entitlements: {
+            ...subscription.entitlements,
+            canCalculate: true,
+            canUpload: true,
+            canGenerateInsight: true,
+            reason: null,
+          },
+        }
+        return HttpResponse.json(subscription)
+      }),
+    )
+    return keys
+  }
+
+  it('미선택은 종료로 표시하지 않고 서버 성공 후 14일 체험 상태를 보여 준다', async () => {
+    const keys = setup()
+    const { user } = await openApp('/plans')
+    const bar = await screen.findByRole('region', { name: '지금 상태' })
+    expect(bar).toHaveTextContent('요금제를 골라 주세요')
+    expect(bar).not.toHaveTextContent('끝')
+    expect(bar).not.toHaveTextContent('D-')
+    expect(screen.queryByText('지금 쓰는 중')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '14일 체험으로 시작' }))
+    await waitFor(() => expect(bar).toHaveTextContent('D-14'))
+    expect(keys).toHaveLength(1)
+    expect(keys[0]).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: '14일 체험으로 시작' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('실패하면 오류를 표시하고 같은 키로 재시도하며 선택 전 상태를 유지한다', async () => {
+    setup()
+    const keys: (string | null)[] = []
+    server.use(
+      http.post('/api/billing/trial/start', ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key'))
+        return HttpResponse.json(
+          { code: 'BILLING_DISABLED', message: '결제가 아직 켜지지 않았어요' },
+          { status: 503 },
+        )
+      }),
+    )
+    const { user } = await openApp('/plans')
+    const button = await screen.findByRole('button', {
+      name: '14일 체험으로 시작',
+    })
+    await user.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '결제가 아직 켜지지 않았어요',
+    )
+    expect(screen.getByRole('region', { name: '지금 상태' })).toHaveTextContent(
+      '요금제를 골라 주세요',
+    )
+    await user.click(button)
+    await waitFor(() => expect(keys).toHaveLength(2))
+    expect(keys[0]).toBeTruthy()
+    expect(keys[1]).toBe(keys[0])
   })
 })
