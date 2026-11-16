@@ -1,0 +1,43 @@
+{
+  "resultId": 17,
+  "isEstimate": true,
+  "preArrivalRisk": null,
+  "riskSampleSize": null,
+  "riskStatus": "INSUFFICIENT_SAMPLE",
+  "preArrivalUnmetQty": 0,
+  "scenarios": [
+    {
+      "scenarioId": 1,
+      "type": "P80",
+      "qty": 60,
+      "isDuplicate": false,
+      "expectedDepletionOn": null,
+      "expectedEndingStock": 25,
+      "unmetDemandQty": 0,
+      "postArrivalUnmetQty": 0,
+      "postArrivalRisk": null
+    },
+    {
+      "scenarioId": 2,
+      "type": "P100",
+      "qty": 72,
+      "isDuplicate": false,
+      "expectedDepletionOn": null,
+      "expectedEndingStock": 37,
+      "unmetDemandQty": 0,
+      "postArrivalUnmetQty": 0,
+      "postArrivalRisk": null
+    },
+    {
+      "scenarioId": 3,
+      "type": "P120",
+      "qty": 96,
+      "isDuplicate": false,
+      "expectedDepletionOn": null,
+      "expectedEndingStock": 61,
+      "unmetDemandQty": 0,
+      "postArrivalUnmetQty": 0,
+      "postArrivalRisk": null
+    }
+  ]
+}

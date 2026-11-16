@@ -146,7 +146,8 @@ const UNAVAILABLE = ['NOT_CALCULABLE', 'EXCLUDED', 'REUPLOAD_REQUIRED']
 
 export function toSkuDetail(raw: ProductDetail): SkuDetail {
   const { result, accuracy } = raw
-  // 아직 합의하지 않은 방식과 명시적 미산출 평가를 기존 A/B 성과로 설명하지 않는다.
+  // LGBM19와 미확정 방식에는 기존 A/B 평가·대체 사유를 섞지 않는다.
+  // method는 이후 식별자에도 안전하게 대응하도록 wire의 문자열을 그대로 받는다.
   const knownMethod = !result?.method || ['A', 'B'].includes(result.method)
   const evaluated =
     knownMethod &&
@@ -156,7 +157,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
     : UNAVAILABLE.includes(raw.needStatus ?? '') ||
         UNAVAILABLE.includes(result.status)
       ? 'unavailable'
-      : accuracy?.isReference
+      : evaluated && accuracy?.isReference
         ? 'reference'
         : 'ready'
   return {
