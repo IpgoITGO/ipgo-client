@@ -27,10 +27,6 @@
   border-radius: var(--radius-input);
 }
 
-.size span {
-  font-variant-numeric: tabular-nums;
-}
-
 .pages {
   display: flex;
   align-items: center;
