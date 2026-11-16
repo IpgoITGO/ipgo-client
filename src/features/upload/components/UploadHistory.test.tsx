@@ -25,6 +25,37 @@ function show(element = <UploadHistory />) {
 }
 
 describe('월별 업로드 내역', () => {
+  it('전체 요약과 실패 우선 순서를 보여 주고 확인한 달은 접을 수 있다', async () => {
+    server.use(
+      http.get('/api/uploads/periods', () =>
+        HttpResponse.json({
+          items: [
+            item(2, 'DONE'),
+            {
+              ...item(1, 'FAILED'),
+              error: { code: 'INVALID_SOURCE', message: '실패 원인' },
+            },
+            item(3, 'PROCESSING'),
+          ],
+          latestUploadId: 3,
+        }),
+      ),
+    )
+    show()
+    expect(
+      await screen.findByText('3개 중 1개 확인 · 1개 실패 · 1개 확인 중'),
+    ).toBeVisible()
+    const history = screen.getByRole('region', { name: '업로드 내역' })
+    const rows = within(history).getAllByRole('listitem')
+    expect(
+      rows.map((row) => within(row).getByText(/2026년/).textContent),
+    ).toEqual(['2026년 1월', '2026년 3월', '2026년 2월'])
+    const completed = screen.getByText('확인한 달 1개').closest('details')!
+    expect(completed).toHaveAttribute('open')
+    completed.open = false
+    expect(completed).not.toHaveAttribute('open')
+  })
+
   it('새 U3 실패 문장을 바로 표시하고 실패한 월만 재업로드를 제공한다', async () => {
     const detail = vi.fn()
     server.use(

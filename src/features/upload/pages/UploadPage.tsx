@@ -1,12 +1,18 @@
 import {
   type ChangeEvent,
   type DragEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -53,6 +59,13 @@ export function UploadPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const retryPeriod = params.get('retry')
+  const location = useLocation()
+  const retryRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!retryPeriod) return
+    retryRef.current?.scrollIntoView?.({ block: 'start' })
+    retryRef.current?.querySelector('button')?.focus({ preventScroll: true })
+  }, [retryPeriod, location.key])
   const lock = useCalcLock()
   const [files, setFiles] = useState<UploadFileState[]>([])
   // 형식이 틀린 파일은 목록에 넣지 않고 이유 팝업으로만 알린다.
@@ -273,38 +286,39 @@ export function UploadPage() {
         </p>
       </header>
 
-      <div
-        className={styles.dropzone}
-        data-dragging={isDragging}
-        onDragEnter={() => setIsDragging(true)}
-        onDragLeave={() => setIsDragging(false)}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={handleDrop}
-      >
-        {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
-        <img alt="" className={styles.boxArt} src={boxOpen} />
-        <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
-        <span>XLSX · 이름 자유 · 여러 파일 가능</span>
-        <Button onClick={() => inputRef.current?.click()} variant="secondary">
-          파일 고르기
-        </Button>
-        <input
-          ref={inputRef}
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          aria-label="수불부 파일 선택"
-          className={styles.fileInput}
-          multiple
-          onChange={handleChange}
-          type="file"
-        />
+      <div ref={retryRef} className={styles.retryTarget}>
+        {retryPeriod && (
+          <p role="status">
+            {monthLabel(retryPeriod)} 파일을 골라 다시 올려 주세요. 다른 달은
+            다시 올리지 않아도 돼요.
+          </p>
+        )}
+        <div
+          className={styles.dropzone}
+          data-dragging={isDragging}
+          onDragEnter={() => setIsDragging(true)}
+          onDragLeave={() => setIsDragging(false)}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleDrop}
+        >
+          {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
+          <img alt="" className={styles.boxArt} src={boxOpen} />
+          <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
+          <span>XLSX · 이름 자유 · 여러 파일 가능</span>
+          <Button onClick={() => inputRef.current?.click()} variant="secondary">
+            파일 고르기
+          </Button>
+          <input
+            ref={inputRef}
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            aria-label="수불부 파일 선택"
+            className={styles.fileInput}
+            multiple
+            onChange={handleChange}
+            type="file"
+          />
+        </div>
       </div>
-
-      {retryPeriod && (
-        <p role="status">
-          {monthLabel(retryPeriod)} 파일을 골라 다시 올려 주세요. 다른 달은 다시
-          올리지 않아도 돼요.
-        </p>
-      )}
       {acceptedIds.length > 0 && (
         <p role="status">
           {acceptedIds.length}개 파일을 올렸어요.{' '}
