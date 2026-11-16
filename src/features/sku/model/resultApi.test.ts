@@ -148,3 +148,28 @@ it('실제 서버의 TABLE_ONLY 비활성과 실패를 구분한다', () => {
       .explanationDisabled,
   ).toBe(true)
 })
+
+it('주문량 P80/P100/P120은 분위수가 아닌 권장량 비율이며 미산출 위험을 0으로 만들지 않는다', () => {
+  const raw: ScenariosResponse = {
+    ...base,
+    preArrivalRisk: null,
+    riskSampleSize: null,
+    riskStatus: 'INSUFFICIENT_SAMPLE',
+    scenarios: base.scenarios.map((s) => ({
+      ...s,
+      isDuplicate: false,
+      postArrivalRisk: null,
+    })),
+  }
+  const view = toScenarios(raw)
+  expect(view.scenarios.map((s) => s.label)).toEqual([
+    '권장량의 80%',
+    '권장량 100%',
+    '권장량의 120%',
+  ])
+  expect(
+    view.scenarios.every(
+      (s) => s.preArrivalRisk === null && s.postArrivalRisk === null,
+    ),
+  ).toBe(true)
+})

@@ -55,9 +55,11 @@ const sourceLabels: Record<SettingSource, string> = {
 // 기획서 계산식: A = 작년 같은 시기 × 올해 최근 흐름, B = 최근 28일 평균. 화면에는 A·B 글자 대신 말로 쓴다.
 function methodSentence(method: NonNullable<SkuDetail['method']>) {
   if (method.applied === 'A') return '작년 같은 시기와 최근 흐름으로 계산했어요'
-  return method.fallback
-    ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
-    : '최근 28일 평균으로 계산했어요'
+  if (method.applied === 'B')
+    return method.fallback
+      ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
+      : '최근 28일 평균으로 계산했어요'
+  return '이 계산 방식의 설명은 아직 제공되지 않았어요'
 }
 
 const count = (value: number | null) =>
@@ -1830,108 +1832,114 @@ export function SkuPage() {
               {data.method && (
                 <p className={styles.methodSentence}>
                   {methodSentence(data.method)}
-                  {!data.method.fallback && (
-                    <small>기본 계산 방식을 적용했어요</small>
-                  )}
+                  {['A', 'B'].includes(data.method.applied) &&
+                    !data.method.fallback && (
+                      <small>기본 계산 방식을 적용했어요</small>
+                    )}
                 </p>
               )}
-              <ol className={styles.steps}>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp} />
-                  <span>앞으로 {data.calculation.coverDays}일 예상 출고</span>
-                  <strong>{count(data.calculation.forecastQty)}</strong>
-                </li>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    ×
-                  </span>
-                  <span>여유 배수</span>
-                  <strong>{data.calculation.multiplier}배</strong>
-                </li>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    −
-                  </span>
-                  <span>
-                    오늘 남았을 재고
-                    {showGap && lastRec && startInv != null && (
-                      <small>
-                        {slashDate(lastRec.day, lastRec.date)} 기록{' '}
-                        {lastRec.inventory.toLocaleString()}개 − 예상 출고{' '}
-                        {Math.max(0, gapOut).toLocaleString()}개
-                      </small>
-                    )}
-                  </span>
-                  <strong>
-                    {data.calculation.startingInventory == null ? (
-                      <EmptyValue kind="short" />
-                    ) : (
-                      count(data.calculation.startingInventory)
-                    )}
-                  </strong>
-                </li>
-                {Boolean(data.calculation.existingOrders) && (
+              {(!data.method || ['A', 'B'].includes(data.method.applied)) && (
+                <ol className={styles.steps}>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp} />
+                    <span>앞으로 {data.calculation.coverDays}일 예상 출고</span>
+                    <strong>{count(data.calculation.forecastQty)}</strong>
+                  </li>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      ×
+                    </span>
+                    <span>여유 배수</span>
+                    <strong>{data.calculation.multiplier}배</strong>
+                  </li>
                   <li>
                     <span aria-hidden="true" className={styles.stepOp}>
                       −
                     </span>
-                    <span>기존 발주</span>
-                    <strong>{count(data.calculation.existingOrders)}</strong>
-                  </li>
-                )}
-                {/* 셀러가 꼭 봐야 하는 줄: 입고가 오기 전에 이미 놓치는 주문. 노란 느낌표로 강조 */}
-                {Boolean(data.calculation.preArrivalUnmet) && (
-                  <li className={styles.stepWarn}>
-                    <span aria-hidden="true" className={styles.stepOp}>
-                      −
-                    </span>
                     <span>
-                      <b className={styles.warnLabel}>
-                        <span aria-hidden="true" className={styles.warnMark}>
-                          !
-                        </span>
-                        도착 전에 못 파는 양
-                      </b>
-                      <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                      오늘 남았을 재고
+                      {showGap && lastRec && startInv != null && (
+                        <small>
+                          {slashDate(lastRec.day, lastRec.date)} 기록{' '}
+                          {lastRec.inventory.toLocaleString()}개 − 예상 출고{' '}
+                          {Math.max(0, gapOut).toLocaleString()}개
+                        </small>
+                      )}
                     </span>
-                    <strong>{count(data.calculation.preArrivalUnmet)}</strong>
-                  </li>
-                )}
-                {data.calculation.rawQuantity != null && (
-                  <li className={styles.stepSum}>
-                    <span aria-hidden="true" className={styles.stepOp}>
-                      =
-                    </span>
-                    <span>필요한 양</span>
                     <strong>
-                      {data.calculation.rawQuantity.toLocaleString(undefined, {
-                        maximumFractionDigits: 1,
-                      })}
-                      개
+                      {data.calculation.startingInventory == null ? (
+                        <EmptyValue kind="short" />
+                      ) : (
+                        count(data.calculation.startingInventory)
+                      )}
                     </strong>
                   </li>
-                )}
-                <li className={styles.stepFinal}>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    ↑
-                  </span>
-                  <span>
-                    {data.calculation.inboundUnit == null
-                      ? '입고 단위로 올림'
-                      : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
-                    <small>
-                      권장 입고량
-                      {data.calculation.inboundUnit == null && (
-                        <>
-                          {' '}
-                          · 입고 단위 <EmptyValue kind="unset" />
-                        </>
-                      )}
-                    </small>
-                  </span>
-                  <strong>{count(data.recommendation.quantity)}</strong>
-                </li>
-              </ol>
+                  {Boolean(data.calculation.existingOrders) && (
+                    <li>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        −
+                      </span>
+                      <span>기존 발주</span>
+                      <strong>{count(data.calculation.existingOrders)}</strong>
+                    </li>
+                  )}
+                  {/* 셀러가 꼭 봐야 하는 줄: 입고가 오기 전에 이미 놓치는 주문. 노란 느낌표로 강조 */}
+                  {Boolean(data.calculation.preArrivalUnmet) && (
+                    <li className={styles.stepWarn}>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        −
+                      </span>
+                      <span>
+                        <b className={styles.warnLabel}>
+                          <span aria-hidden="true" className={styles.warnMark}>
+                            !
+                          </span>
+                          도착 전에 못 파는 양
+                        </b>
+                        <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                      </span>
+                      <strong>{count(data.calculation.preArrivalUnmet)}</strong>
+                    </li>
+                  )}
+                  {data.calculation.rawQuantity != null && (
+                    <li className={styles.stepSum}>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        =
+                      </span>
+                      <span>필요한 양</span>
+                      <strong>
+                        {data.calculation.rawQuantity.toLocaleString(
+                          undefined,
+                          {
+                            maximumFractionDigits: 1,
+                          },
+                        )}
+                        개
+                      </strong>
+                    </li>
+                  )}
+                  <li className={styles.stepFinal}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      ↑
+                    </span>
+                    <span>
+                      {data.calculation.inboundUnit == null
+                        ? '입고 단위로 올림'
+                        : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
+                      <small>
+                        권장 입고량
+                        {data.calculation.inboundUnit == null && (
+                          <>
+                            {' '}
+                            · 입고 단위 <EmptyValue kind="unset" />
+                          </>
+                        )}
+                      </small>
+                    </span>
+                    <strong>{count(data.recommendation.quantity)}</strong>
+                  </li>
+                </ol>
+              )}
               <p className={styles.leadTime}>
                 리드타임 {setting(data.settings.leadTimeDays, '일')}
                 {data.settings.leadTimeDays != null && (
