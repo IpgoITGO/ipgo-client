@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
@@ -20,13 +20,26 @@ beforeEach(() => {
   uploadFileMock.mockReset()
 })
 
+function ResultLocation() {
+  const location = useLocation()
+  return (
+    <>
+      <p>결과 화면</p>
+      <output aria-label="결과 주소">
+        {location.pathname}
+        {location.search}
+      </output>
+    </>
+  )
+}
+
 function renderPage() {
   return render(
     <AppProviders>
       <MemoryRouter initialEntries={['/upload']}>
         <Routes>
           <Route element={<UploadPage />} path="/upload" />
-          <Route element={<p>결과 화면</p>} path="/upload/:uploadId/result" />
+          <Route element={<ResultLocation />} path="/upload/:uploadId/result" />
         </Routes>
       </MemoryRouter>
     </AppProviders>,
@@ -133,6 +146,9 @@ describe('UploadPage', () => {
     await user.click(await screen.findByRole('button', { name: '2개 올리기' }))
 
     expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+      '/upload/22/result?uploads=21,22',
+    )
     expect(uploadFileMock).toHaveBeenCalledTimes(2)
     expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
       '2026-10.xlsx',
@@ -340,4 +356,31 @@ it('고른 파일끼리 같은 달이면 두 번째 파일은 올리지 않는�
   ).toHaveTextContent('같은 달은 한 개씩')
   await user.click(screen.getByRole('button', { name: '확인' }))
   expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
+})
+
+it('중간 전송 실패 후 남은 파일만 올려도 앞서 올린 파일을 묶음 결과에 포함한다', async () => {
+  const user = userEvent.setup()
+  uploadFileMock
+    .mockResolvedValueOnce({ uploadId: 21, status: 'PROCESSING' })
+    .mockRejectedValueOnce(new Error('연결 실패'))
+    .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+  renderPage()
+  await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+    new File(['a'], '2026-10.xlsx'),
+    new File(['b'], '2026-11.xlsx'),
+  ])
+  await user.click(await screen.findByRole('button', { name: '2개 올리기' }))
+  expect(
+    await screen.findByRole('link', { name: '올린 파일 결과 보기' }),
+  ).toHaveAttribute('href', '/upload/21/result?uploads=21')
+  await user.click(screen.getByRole('button', { name: '1개 올리기' }))
+  expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+  expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+    '/upload/22/result?uploads=21,22',
+  )
+  expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
+    '2026-10.xlsx',
+    '2026-11.xlsx',
+    '2026-11.xlsx',
+  ])
 })

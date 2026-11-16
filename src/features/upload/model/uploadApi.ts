@@ -4,6 +4,7 @@ import { validateUploadFile } from './fileValidation'
 // 연동 명세 3.2절 (U1·U2·U3)
 
 export type UploadedPeriod = {
+  error?: UploadResult['error']
   fileName: string
   period: string
   periodEnd: string

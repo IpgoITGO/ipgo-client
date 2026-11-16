@@ -697,7 +697,7 @@ describe('DashboardPage', () => {
       http.get('/api/dashboard/replenishment-needs', () =>
         HttpResponse.json(noResult(15)),
       ),
-      http.get('/api/uploads/:uploadId', () =>
+      http.get('/api/uploads/15', () =>
         HttpResponse.json({ uploadId: 15, status, runId: null }),
       ),
     )
@@ -1032,4 +1032,29 @@ describe('내 입고량 칸', () => {
     expect(bar).toHaveTextContent('2개 골랐어요 · 90개')
     expect(bar).toHaveTextContent('사입비 90,000원')
   })
+})
+
+it('마지막 업로드 성공과 관계없이 이전 실패 월의 안내를 보인다', async () => {
+  server.use(
+    http.get('/api/dashboard/replenishment-needs', () =>
+      HttpResponse.json(safeDashboard),
+    ),
+    http.get('/api/uploads/periods', () =>
+      HttpResponse.json({
+        latestUploadId: 2,
+        items: [
+          {
+            uploadId: 1,
+            period: '2026-04',
+            status: 'FAILED',
+            error: { code: 'INVALID_SOURCE', message: '재고를 확인해 주세요.' },
+          },
+          { uploadId: 2, period: '2026-09', status: 'DONE', error: null },
+        ],
+      }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('확인 못 한 달이 있어요')).toBeVisible()
+  expect(screen.getByText(/2026년 4월/)).toBeVisible()
 })
