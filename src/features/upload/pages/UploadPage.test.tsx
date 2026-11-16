@@ -47,6 +47,39 @@ function renderPage(entry = '/upload') {
 }
 
 describe('UploadPage', () => {
+  it('고른 파일과 올리기를 긴 업로드 내역보다 먼저 표시하고 선택을 비우면 숨긴다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const history = await screen.findByRole('heading', { name: '업로드 내역' })
+    expect(
+      screen.queryByRole('heading', { name: '고른 파일' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '0개 올리기' }),
+    ).not.toBeInTheDocument()
+    await user.upload(
+      screen.getByLabelText('수불부 파일 선택'),
+      new File(['ok'], '2027-03.xlsx'),
+    )
+    const selected = await screen.findByRole('heading', { name: '고른 파일' })
+    const upload = screen.getByRole('button', { name: '1개 올리기' })
+    expect(
+      selected.compareDocumentPosition(history) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      upload.compareDocumentPosition(history) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '2027-03.xlsx 제거' }))
+    expect(
+      screen.queryByRole('heading', { name: '고른 파일' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /개 올리기/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('내역의 다시 올리기는 안내와 파일 고르기 영역으로 이동하고 같은 달을 다시 눌러도 동작한다', async () => {
     const scroll = vi.fn()
     const originalScroll = HTMLElement.prototype.scrollIntoView
