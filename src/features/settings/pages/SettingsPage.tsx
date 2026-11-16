@@ -21,6 +21,7 @@ import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
 import { StorageCostSection } from '../components/StorageCostSection'
 import {
+  type DefaultSettings,
   getDefaultSettings,
   getProductSettings,
   saveDefaultSettings,
@@ -122,6 +123,7 @@ async function loadSettings(): Promise<{
   values: SettingsValues
   sourceIsEstimated: boolean
   cycleIsFallback: boolean
+  cycleSuggestion: DefaultSettings['reviewCycleSuggestion']
 }> {
   const [defaults, products] = await Promise.all([
     getDefaultSettings(),
@@ -130,6 +132,7 @@ async function loadSettings(): Promise<{
   return {
     sourceIsEstimated: defaults.reviewCycleSource === 'ESTIMATED',
     cycleIsFallback: defaults.reviewCycleDays == null,
+    cycleSuggestion: defaults.reviewCycleSuggestion ?? null,
     values: {
       defaults: {
         leadTime: defaults.leadTimeDays,
@@ -213,6 +216,7 @@ export function SettingsPage() {
     control,
     getValues,
     setValue,
+    setFocus,
     formState: { errors, isSubmitting, dirtyFields },
   } = useForm<SettingsValues, unknown, ConfirmedSettings>({
     resolver: zodResolver(settingsSchema),
@@ -228,6 +232,7 @@ export function SettingsPage() {
 
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
+  const cycleSuggestion = query.data?.cycleSuggestion
   useEffect(() => {
     getValues('products').forEach((product, index) => {
       PRODUCT_FIELDS.forEach(({ field }) => {
@@ -507,27 +512,60 @@ export function SettingsPage() {
                 {errors.defaults?.leadTime?.message ?? '발주부터 입고 도착까지'}
               </small>
             </label>
-            <label>
-              <span>입고 주기</span>
-              <div>
-                <input
-                  inputMode="numeric"
-                  onInput={digitsOnly}
-                  type="text"
-                  aria-label="기본 입고 주기"
-                  {...register('defaults.orderCycle', { valueAsNumber: true })}
-                />
-                <b>일</b>
-              </div>
-              <small>
-                {errors.defaults?.orderCycle?.message ??
-                  (query.data?.cycleIsFallback
-                    ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
-                    : query.data.sourceIsEstimated
-                      ? '수불부 입고 간격으로 추정했어요'
-                      : '직접 정해 저장한 값이에요')}
-              </small>
-            </label>
+            <div className={styles.cycleControl}>
+              <label>
+                <span>입고 주기</span>
+                <div>
+                  <input
+                    inputMode="numeric"
+                    onInput={digitsOnly}
+                    type="text"
+                    aria-label="기본 입고 주기"
+                    {...register('defaults.orderCycle', {
+                      valueAsNumber: true,
+                    })}
+                  />
+                  <b>일</b>
+                </div>
+                <small>
+                  {errors.defaults?.orderCycle?.message ??
+                    (query.data?.cycleIsFallback
+                      ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
+                      : query.data.sourceIsEstimated
+                        ? '수불부 입고 간격으로 추정했어요'
+                        : '직접 정해 저장한 값이에요')}
+                  {cycleSuggestion && (
+                    <span className={styles.cycleSuggestion}>
+                      추천 {cycleSuggestion.reviewCycleDays}일 ·{' '}
+                      {cycleSuggestion.from.slice(0, 7)} ~{' '}
+                      {cycleSuggestion.to.slice(0, 7)} · 상품{' '}
+                      {cycleSuggestion.productCount}개 기준
+                    </span>
+                  )}
+                </small>
+              </label>
+              {cycleSuggestion &&
+                defaults?.orderCycle !== cycleSuggestion.reviewCycleDays && (
+                  <Button
+                    type="button"
+                    variant="text"
+                    disabled={isSubmitting || calculationBusy || shipping}
+                    onClick={() => {
+                      setValue(
+                        'defaults.orderCycle',
+                        cycleSuggestion.reviewCycleDays,
+                        {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        },
+                      )
+                      setFocus('defaults.orderCycle')
+                    }}
+                  >
+                    추천값으로 되돌리기
+                  </Button>
+                )}
+            </div>
             <label>
               <span>입고 단위</span>
               <div>

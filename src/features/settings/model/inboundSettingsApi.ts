@@ -8,6 +8,12 @@ export type DefaultSettings = {
   reviewCycleDays: number | null
   orderUnitQty: number
   reviewCycleSource: 'ESTIMATED' | 'DEFAULT'
+  reviewCycleSuggestion?: {
+    reviewCycleDays: number
+    from: string
+    to: string
+    productCount: number
+  } | null
 }
 
 export type ProductSettings = {
