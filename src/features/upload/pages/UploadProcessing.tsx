@@ -18,9 +18,11 @@ export const FINISH_MS = 1750
 export function UploadProcessing({
   done = false,
   onGoDashboard,
+  progress,
 }: {
   done?: boolean
   onGoDashboard: () => void
+  progress?: { completed: number; total: number }
 }) {
   const [seconds, setSeconds] = useState(0)
   // 안내 띠의 "대시보드로" 버튼은 스스로 나가는 거라 확인 없이 보낸다.
@@ -55,21 +57,45 @@ export function UploadProcessing({
           ? '결과를 정리했어요.'
           : '수불부 형식과 재고 숫자를 확인하고 있어요.'}
       </p>
+      {progress && (
+        <>
+          <p>
+            {progress.total}개 중 {progress.completed}개 확인을 마쳤어요
+          </p>
+          <progress
+            aria-label="수불부 확인 진행률"
+            value={progress.completed}
+            max={progress.total}
+            className={styles.progress}
+          />
+          <Button
+            onClick={() => {
+              leavingOnPurpose.current = true
+              onGoDashboard()
+            }}
+            variant="secondary"
+          >
+            대시보드로 가기
+          </Button>
+        </>
+      )}
       {isLong && (
         <div className={styles.band}>
           <span aria-hidden="true" className={styles.bandDot} />
           <strong>생각보다 오래 걸려요</strong>
           <div className={styles.bandRow}>
             <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
-            <Button
-              onClick={() => {
-                leavingOnPurpose.current = true
-                onGoDashboard()
-              }}
-              variant="secondary"
-            >
-              대시보드로
-            </Button>
+            {!progress && (
+              <Button
+                onClick={() => {
+                  leavingOnPurpose.current = true
+                  onGoDashboard()
+                }}
+                variant="secondary"
+              >
+                대시보드로
+              </Button>
+            )}
           </div>
         </div>
       )}

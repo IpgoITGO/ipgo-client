@@ -121,3 +121,9 @@
   justify-content: flex-end;
   margin-top: var(--space-2);
 }
+
+.progress {
+  width: min(100%, 400px);
+  height: 12px;
+  accent-color: var(--color-accent);
+}

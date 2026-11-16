@@ -13,6 +13,7 @@ function show(ids: number[]) {
     [
       { path: '/upload/:uploadId/result', element: <UploadResultPage /> },
       { path: '/upload', element: <h1>다시 올릴 파일 선택</h1> },
+      { path: '/dashboard', element: <h1>테스트 대시보드</h1> },
     ],
     {
       initialEntries: [`/upload/${ids.at(-1)}/result?uploads=${ids.join(',')}`],
@@ -41,6 +42,55 @@ const resultFor = (id: number, status: string) => ({
 })
 
 describe('묶음 업로드 결과', () => {
+  it.each(['DONE', 'FAILED'])(
+    '모두 %s여도 완료 개수와 대시보드 이동을 보여 준다',
+    async (status) => {
+      server.use(
+        http.get('/api/uploads/periods', () =>
+          HttpResponse.json({ items: [], latestUploadId: 2 }),
+        ),
+        http.get('/api/uploads/:uploadId', ({ params }) =>
+          HttpResponse.json(resultFor(Number(params.uploadId), status)),
+        ),
+      )
+      show([1, 2])
+      expect(
+        await screen.findByRole('heading', { name: '수불부 확인을 마쳤어요' }),
+      ).toBeVisible()
+      expect(
+        screen.getByText(
+          status === 'DONE'
+            ? '2개 중 2개 확인 · 0개 실패'
+            : '2개 중 0개 확인 · 2개 실패',
+        ),
+      ).toBeVisible()
+      if (status === 'DONE')
+        expect(screen.getByText('모두 확인했어요')).toBeVisible()
+      else expect(screen.queryByText('모두 확인했어요')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: '대시보드로 가기' }),
+      ).toBeVisible()
+    },
+  )
+
+  it('처리 중에도 대시보드 버튼으로 확인창 없이 이동한다', async () => {
+    server.use(
+      http.get('/api/uploads/periods', () =>
+        HttpResponse.json({ items: [], latestUploadId: 2 }),
+      ),
+      http.get('/api/uploads/:uploadId', ({ params }) =>
+        HttpResponse.json(resultFor(Number(params.uploadId), 'PROCESSING')),
+      ),
+    )
+    const router = show([1, 2])
+    await screen.findByRole('progressbar', { name: '수불부 확인 진행률' })
+    await userEvent.click(
+      screen.getByRole('button', { name: '대시보드로 가기' }),
+    )
+    expect(router.state.location.pathname).toBe('/dashboard')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('마지막 파일이 성공해도 23개 중 20개 확인·3개 실패와 해당 월 재업로드를 표시한다', async () => {
     const ids = Array.from({ length: 23 }, (_, i) => i + 1)
     server.use(
@@ -59,6 +109,15 @@ describe('묶음 업로드 결과', () => {
       await screen.findByText('23개 중 20개 확인 · 3개 실패'),
     ).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(23)
+    expect(
+      screen
+        .getAllByRole('listitem')
+        .slice(0, 3)
+        .every((row) => row.textContent?.includes('확인 실패')),
+    ).toBe(true)
+    expect(
+      screen.getByRole('link', { name: '대시보드로 가기' }),
+    ).toHaveAttribute('href', '/dashboard')
     expect(
       screen.getByText('4월 파일의 재고를 확인해 주세요.'),
     ).toBeInTheDocument()
@@ -88,6 +147,19 @@ describe('묶음 업로드 결과', () => {
     expect(
       await screen.findByText('2개 중 1개 확인 · 0개 실패 · 1개 확인 중'),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: '수불부를 확인하고 있어요' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('progressbar', { name: '수불부 확인 진행률' }),
+    ).toHaveAttribute('value', '1')
+    expect(
+      screen.getByRole('progressbar', { name: '수불부 확인 진행률' }),
+    ).toHaveAttribute('max', '2')
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '대시보드로 가기' }),
+    ).toBeVisible()
     complete = true
     await waitFor(
       () =>
@@ -96,6 +168,10 @@ describe('묶음 업로드 결과', () => {
         ).toBeInTheDocument(),
       { timeout: 6000 },
     )
+    expect(
+      screen.getByRole('heading', { name: '수불부 확인을 마쳤어요' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
   it('조회 실패는 정제 실패나 성공으로 세지 않고 다시 조회할 수 있다', async () => {
@@ -117,6 +193,10 @@ describe('묶음 업로드 결과', () => {
     expect(
       await screen.findByText('2개 중 1개 확인 · 0개 실패 · 1개 조회 실패'),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '수불부 확인을 마쳤어요' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '대시보드로 가기' })).toBeVisible()
     unavailable = false
     await userEvent.click(
       screen.getByRole('button', { name: '결과 다시 확인' }),
