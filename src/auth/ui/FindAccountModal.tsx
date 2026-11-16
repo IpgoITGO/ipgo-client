@@ -213,7 +213,7 @@ function FindId({ onDone }: Pick<Props, 'onDone'>) {
       </div>
       {masked ? (
         <Button autoFocus className={styles.primary} type="submit">
-          이 이메일로 로그인
+          로그인하러 가기
         </Button>
       ) : (
         <Button
