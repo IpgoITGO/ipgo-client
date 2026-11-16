@@ -20,3 +20,12 @@
 > 구현 계약을 먼저 확인합니다. 과거의 세션 로그인204 안내를 현재 JWT 계약으로 사용하지 않습니다.
 
 애플리케이션 실행 방법과 주요 구조는 루트 [README](../README.md)에 유지합니다.
+
+## 수불부 지원 범위
+
+수불부 업로드는 **XLSX(.xlsx)만 받습니다**. PDF·이미지·HWP 추가 지원은 진행하지 않습니다.
+2026-11-16 팀 합의로 [서버 #229 / IPGO-100](https://github.com/IpgoITGO/ipgo-server/issues/229)과
+[화면 #89 / IPGO-38](https://github.com/IpgoITGO/ipgo-client/issues/89)은 범위 제외로 종료했습니다.
+과거 PDF 우선 검토·비XLSX 보류 계획은 남은 작업에 포함하지 않습니다.
+
+위 표의 시안·명세서 검토용 PDF는 참고 자료이며 업로드 지원 형식을 뜻하지 않습니다.
