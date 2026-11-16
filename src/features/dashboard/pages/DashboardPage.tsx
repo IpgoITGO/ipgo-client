@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
 
@@ -1054,11 +1055,10 @@ export function DashboardPage() {
                 <circle cx="11" cy="11" r="7" />
                 <path d="M20 20l-4-4" />
               </svg>
-              <input
+              <SearchInput
                 aria-label="목록에서 상품 찾기"
-                onChange={(event) => setSearch(event.target.value)}
+                onValueChange={setSearch}
                 placeholder="상품명·바코드"
-                type="search"
                 value={search}
               />
             </label>

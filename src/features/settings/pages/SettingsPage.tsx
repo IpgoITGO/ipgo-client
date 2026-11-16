@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 import { z } from 'zod'
 
 import { ApiError } from '../../../shared/api/client'
@@ -583,11 +584,10 @@ export function SettingsPage() {
                 진한 칸은 기본값과 다르게 바꾼 칸이에요. 바꾸면 바로 저장돼요.
               </p>
             </div>
-            <input
+            <SearchInput
               aria-label="상품명 또는 바코드 검색"
-              onChange={(event) => setSearch(event.target.value)}
+              onValueChange={setSearch}
               placeholder="상품명 · 바코드 검색"
-              type="search"
               value={search}
             />
           </div>
