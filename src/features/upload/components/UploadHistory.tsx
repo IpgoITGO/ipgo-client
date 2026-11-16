@@ -50,6 +50,13 @@ export function UploadHistory() {
     (item) => item.status !== 'FAILED' && item.status !== 'DONE',
   )
   const done = items.filter((item) => item.status === 'DONE')
+  const doneByYear = new Map<string, UploadedPeriod[]>()
+  for (const item of done) {
+    const year = item.period.slice(0, 4)
+    const group = doneByYear.get(year) ?? []
+    group.push(item)
+    doneByYear.set(year, group)
+  }
   const rows = (group: UploadedPeriod[]) => (
     <ul className={styles.list}>
       {group.map((item) => (
@@ -77,12 +84,16 @@ export function UploadHistory() {
           {rows(processing)}
         </section>
       )}
-      {done.length > 0 && (
-        <details open>
-          <summary>확인한 달 {done.length}개</summary>
-          {rows(done)}
-        </details>
-      )}
+      {[...doneByYear]
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([year, group]) => (
+          <details key={year}>
+            <summary>
+              {year}년 확인한 달 {group.length}개
+            </summary>
+            {rows(group)}
+          </details>
+        ))}
     </section>
   )
 }

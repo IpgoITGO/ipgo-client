@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -25,7 +26,34 @@ function show(element = <UploadHistory />) {
 }
 
 describe('월별 업로드 내역', () => {
-  it('전체 요약과 실패 우선 순서를 보여 주고 확인한 달은 접을 수 있다', async () => {
+  it('확인한 달을 최신 연도부터 묶고 각 연도는 따로 펼친다', async () => {
+    server.use(
+      http.get('/api/uploads/periods', () =>
+        HttpResponse.json({
+          items: [
+            { ...item(1, 'DONE'), period: '2025-12' },
+            { ...item(2, 'DONE'), period: '2026-01' },
+            { ...item(3, 'DONE'), period: '2026-02' },
+          ],
+          latestUploadId: 3,
+        }),
+      ),
+    )
+    show()
+    const latest = await screen.findByText('2026년 확인한 달 2개')
+    const previous = screen.getByText('2025년 확인한 달 1개')
+    expect(
+      latest.compareDocumentPosition(previous) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(latest.closest('details')).not.toHaveAttribute('open')
+    expect(previous.closest('details')).not.toHaveAttribute('open')
+    await userEvent.click(latest)
+    expect(latest.closest('details')).toHaveAttribute('open')
+    expect(previous.closest('details')).not.toHaveAttribute('open')
+  })
+
+  it('실패와 확인 중인 달은 펼치고 확인한 달은 처음에 접어 둔다', async () => {
     server.use(
       http.get('/api/uploads/periods', () =>
         HttpResponse.json({
@@ -46,14 +74,16 @@ describe('월별 업로드 내역', () => {
       await screen.findByText('3개 중 1개 확인 · 1개 실패 · 1개 확인 중'),
     ).toBeVisible()
     const history = screen.getByRole('region', { name: '업로드 내역' })
-    const rows = within(history).getAllByRole('listitem')
+    const rows = within(history).getAllByRole('listitem', { hidden: true })
     expect(
       rows.map((row) => within(row).getByText(/2026년/).textContent),
     ).toEqual(['2026년 1월', '2026년 3월', '2026년 2월'])
-    const completed = screen.getByText('확인한 달 1개').closest('details')!
-    expect(completed).toHaveAttribute('open')
-    completed.open = false
+    const completed = screen
+      .getByText('2026년 확인한 달 1개')
+      .closest('details')!
     expect(completed).not.toHaveAttribute('open')
+    await userEvent.click(completed.querySelector('summary')!)
+    expect(completed).toHaveAttribute('open')
   })
 
   it('새 U3 실패 문장을 바로 표시하고 실패한 월만 재업로드를 제공한다', async () => {

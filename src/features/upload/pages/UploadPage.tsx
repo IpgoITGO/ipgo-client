@@ -329,7 +329,6 @@ export function UploadPage() {
           </Link>
         </p>
       )}
-      <UploadHistory />
 
       {files.length > 0 && (
         <section className={styles.fileSection}>
@@ -388,27 +387,31 @@ export function UploadPage() {
         </p>
       )}
 
-      <footer className={styles.actions}>
-        <div>
-          <strong>고른 파일 {files.length}개</strong>
-          <span>올릴 수 있는 파일 {readyFiles.length}개</span>
-        </div>
-        <Button onClick={() => navigate('/dashboard')} variant="secondary">
-          취소
-        </Button>
-        {lock ? (
-          <LockedButton>{`${readyFiles.length}개 올리기`}</LockedButton>
-        ) : (
-          <Button
-            disabled={readyFiles.length === 0 || calculationBusy}
-            loading={uploadAction.isPending}
-            loadingLabel="올리는 중"
-            onClick={() => void uploadAction.run()}
-          >
-            {readyFiles.length}개 올리기
+      {files.length > 0 && (
+        <footer className={styles.actions}>
+          <div>
+            <strong>고른 파일 {files.length}개</strong>
+            <span>올릴 수 있는 파일 {readyFiles.length}개</span>
+          </div>
+          <Button onClick={() => navigate('/dashboard')} variant="secondary">
+            취소
           </Button>
-        )}
-      </footer>
+          {lock ? (
+            <LockedButton>{`${readyFiles.length}개 올리기`}</LockedButton>
+          ) : (
+            <Button
+              disabled={readyFiles.length === 0 || calculationBusy}
+              loading={uploadAction.isPending}
+              loadingLabel="올리는 중"
+              onClick={() => void uploadAction.run()}
+            >
+              {readyFiles.length}개 올리기
+            </Button>
+          )}
+        </footer>
+      )}
+
+      <UploadHistory />
 
       {modalFile && (
         <Modal labelledBy="upload-modal-title" onClose={closeModal}>
