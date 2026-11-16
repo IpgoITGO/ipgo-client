@@ -33,10 +33,10 @@ function ResultLocation() {
   )
 }
 
-function renderPage() {
+function renderPage(entry = '/upload') {
   return render(
     <AppProviders>
-      <MemoryRouter initialEntries={['/upload']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route element={<UploadPage />} path="/upload" />
           <Route element={<ResultLocation />} path="/upload/:uploadId/result" />
@@ -47,6 +47,50 @@ function renderPage() {
 }
 
 describe('UploadPage', () => {
+  it('내역의 다시 올리기는 안내와 파일 고르기 영역으로 이동하고 같은 달을 다시 눌러도 동작한다', async () => {
+    const scroll = vi.fn()
+    const originalScroll = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    try {
+      server.use(
+        http.get('/api/uploads/periods', () =>
+          HttpResponse.json({
+            items: [
+              {
+                uploadId: 91,
+                status: 'FAILED',
+                period: '2026-01',
+                fileName: '실패.xlsx',
+                uploadedAt: '2026-11-16T00:00:00Z',
+                periodStart: '2026-01-01',
+                periodEnd: '2026-01-31',
+                error: { code: 'INVALID_SOURCE', message: '재고 확인' },
+              },
+            ],
+            latestUploadId: 91,
+          }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderPage()
+      const retry = await screen.findByRole('link', {
+        name: '2026년 1월 다시 올리기',
+      })
+      await user.click(retry)
+      expect(
+        screen.getByText(/2026년 1월 파일을 골라 다시 올려 주세요/),
+      ).toBeVisible()
+      expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+      expect(screen.getByRole('button', { name: '파일 고르기' })).toHaveFocus()
+      const calls = scroll.mock.calls.length
+      await user.click(retry)
+      expect(scroll.mock.calls.length).toBeGreaterThan(calls)
+      expect(screen.getByRole('button', { name: '파일 고르기' })).toHaveFocus()
+    } finally {
+      HTMLElement.prototype.scrollIntoView = originalScroll
+    }
+  })
+
   it('형식이 틀린 파일은 고른 파일 목록에 넣지 않고 이유만 알려준다', async () => {
     const user = userEvent.setup({ applyAccept: false })
     renderPage()

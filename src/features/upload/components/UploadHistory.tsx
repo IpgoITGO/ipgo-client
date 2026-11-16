@@ -38,25 +38,51 @@ export function UploadHistory() {
     )
   if (periods.data.items.length === 0) return null
 
+  const items = periods.data.items.map((item) => {
+    const detail =
+      details[
+        failures.findIndex((failure) => failure.uploadId === item.uploadId)
+      ]
+    return { ...item, error: item.error ?? detail?.data?.error }
+  })
+  const failed = items.filter((item) => item.status === 'FAILED')
+  const processing = items.filter(
+    (item) => item.status !== 'FAILED' && item.status !== 'DONE',
+  )
+  const done = items.filter((item) => item.status === 'DONE')
+  const rows = (group: UploadedPeriod[]) => (
+    <ul className={styles.list}>
+      {group.map((item) => (
+        <UploadHistoryRow key={item.uploadId} item={item} />
+      ))}
+    </ul>
+  )
+
   return (
     <section aria-label="업로드 내역" className={styles.history}>
       <h2>업로드 내역</h2>
-      <ul className={styles.list}>
-        {periods.data.items.map((item) => {
-          const detail =
-            details[
-              failures.findIndex(
-                (failure) => failure.uploadId === item.uploadId,
-              )
-            ]
-          return (
-            <UploadHistoryRow
-              key={item.uploadId}
-              item={{ ...item, error: item.error ?? detail?.data?.error }}
-            />
-          )
-        })}
-      </ul>
+      <p role="status">
+        {items.length}개 중 {done.length}개 확인 · {failed.length}개 실패
+        {processing.length > 0 && ` · ${processing.length}개 확인 중`}
+      </p>
+      {failed.length > 0 && (
+        <section aria-label="실패한 달">
+          <h3>실패한 달</h3>
+          {rows(failed)}
+        </section>
+      )}
+      {processing.length > 0 && (
+        <section aria-label="확인 중인 달">
+          <h3>확인 중인 달</h3>
+          {rows(processing)}
+        </section>
+      )}
+      {done.length > 0 && (
+        <details open>
+          <summary>확인한 달 {done.length}개</summary>
+          {rows(done)}
+        </details>
+      )}
     </section>
   )
 }
