@@ -12,10 +12,6 @@ export const LONG_WAIT_SECONDS = 120
 // 끝난 순간 연출 길이. CSS 애니메이션(1.4s)이 끝난 뒤 다 그려진 초록 고리를 0.35초 더 보여 준다.
 export const FINISH_MS = 1750
 
-function formatElapsed(seconds: number) {
-  return `${Math.floor(seconds / 60)}분 ${seconds % 60}초째`
-}
-
 // 한 장면으로 이어진다.
 // 확인 중: 수불부 조각이 상자로 떨어지고 문서의 줄이 하나씩 채워진다.
 // 끝나면(done): 같은 자리에서 문서가 상자로 들어가고, 상자가 가운데로 오고, 초록 고리와 체크가 그려진다.
@@ -63,8 +59,6 @@ export function UploadProcessing({
         <div className={styles.band}>
           <span aria-hidden="true" className={styles.bandDot} />
           <strong>생각보다 오래 걸려요</strong>
-          {/* 1초마다 바뀌는 시간은 화면 읽기에서 뺀다. 안내는 한 번만 읽힌다. */}
-          <time aria-hidden="true">{formatElapsed(seconds)}</time>
           <div className={styles.bandRow}>
             <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
             <Button
