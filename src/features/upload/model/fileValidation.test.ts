@@ -28,9 +28,9 @@ for (const name of ['2026-09 1.xlsx', '2026-10 1.xlsx', '2026-09 (1).xlsx']) {
     )
   })
 }
-it('서로 다른 월이 섞인 이름은 기간을 추측하지 않고 서버에 맡긴다', () => {
+it('서로 다른 월이 섞인 이름은 서버와 같이 거절한다', () => {
   const mixed = validateUploadFile(new File(['data'], '2026-09 2026-10.xlsx'))
-  expect(mixed.status).toBe('ready')
+  expect(mixed.status).toBe('error')
   expect(mixed.periodKey).toBeUndefined()
 })
 
@@ -50,4 +50,20 @@ describe('replacedLabel', () => {
       ]),
     ).toEqual({ count: 4, months: '2025년 9월 ~ 2026년 1월' })
   })
+})
+
+it.each([
+  ['2026-04_재고변동_일별_재고관리단위.xlsx', '2026-04'],
+  ['드림플로우_재고_202610_사본.xlsx', '2026-10'],
+  ['수불부_2026년 4월.xlsx', '2026-04'],
+  ['2026.04.xlsx', '2026-04'],
+  ['2026_04.xlsx', '2026-04'],
+  ['2026 04.xlsx', '2026-04'],
+  ['2026-04_2026년 4월.xlsx', '2026-04'],
+  ['1202604.xlsx', undefined],
+  ['2026041.xlsx', undefined],
+  ['2026-13.xlsx', undefined],
+  ['1999-04.xlsx', undefined],
+])('서버와 같은 규칙: %s', (name, period) => {
+  expect(validateUploadFile(new File(['x'], name)).periodKey).toBe(period)
 })

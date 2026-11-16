@@ -79,9 +79,21 @@ export function UploadPage() {
     // 고를 때마다 서버 목록을 새로 받아 비교한다. 저장해 둔 목록(30초)은 방금 올린 기간이나
     // 다른 창에서 올린 기간을 모를 수 있다(11/2: 올린 직후 같은 파일을 다시 골라도 팝업이 안 떴음).
     const uploaded = (await periods.refetch()).data ?? periods.data
-    const nextFiles = picked.map((file) =>
-      markDuplicate(validateUploadFile(file), uploaded),
+    const selectedPeriods = new Set(
+      files.map((item) => item.periodKey).filter(Boolean),
     )
+    const nextFiles = picked.map((file) => {
+      const item = validateUploadFile(file)
+      if (item.periodKey && selectedPeriods.has(item.periodKey)) {
+        return {
+          ...item,
+          status: 'error' as const,
+          reason: `${item.period} 파일을 이미 골랐어요. 같은 달은 한 개씩 골라 주세요.`,
+        }
+      }
+      if (item.periodKey) selectedPeriods.add(item.periodKey)
+      return markDuplicate(item, uploaded)
+    })
     const ids = new Set(files.map((item) => item.id))
     const added = nextFiles.filter((item) => !ids.has(item.id))
     setFiles((current) => [
@@ -281,6 +293,25 @@ export function UploadPage() {
         />
       </div>
 
+      {periods.data && periods.data.items.length > 0 && (
+        <section aria-label="업로드 내역" className={styles.fileSection}>
+          <h2>업로드 내역</h2>
+          <ul className={styles.fileList}>
+            {periods.data.items.map((item) => (
+              <li key={item.uploadId} className={styles.fileRow}>
+                <div className={styles.fileName}>
+                  <strong>
+                    {Number(item.period.split('-')[0])}년{' '}
+                    {Number(item.period.split('-')[1])}월
+                  </strong>
+                  <span>{item.fileName}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {files.length > 0 && (
         <section className={styles.fileSection}>
           <div className={styles.sectionHeader}>
@@ -293,7 +324,7 @@ export function UploadPage() {
                 <div className={styles.fileName}>
                   <strong>{item.file.name}</strong>
                   <span>
-                    {item.period ?? '입고일자로 기간을 정해요'} ·{' '}
+                    {item.period ?? '올리면 입고일자로 달을 찾아요'} ·{' '}
                     {formatFileSize(item.file.size)}
                   </span>
                 </div>
