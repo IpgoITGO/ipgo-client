@@ -803,3 +803,14 @@
 .resetRow:disabled {
   visibility: hidden;
 }
+
+.cycleControl {
+  display: grid;
+  gap: var(--space-1);
+}
+.cycleControl > button {
+  justify-self: start;
+}
+.cycleSuggestion {
+  display: block;
+}
