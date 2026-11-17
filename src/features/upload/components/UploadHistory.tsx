@@ -57,16 +57,11 @@ export function UploadHistory() {
   const byPeriod = new Map<string, UploadedPeriod>()
   for (const item of items)
     if (!byPeriod.has(item.period)) byPeriod.set(item.period, item)
-  const yearsWithData = [...byPeriod.keys()].map((period) =>
-    Number(period.slice(0, 4)),
-  )
-  const years: number[] = []
-  for (
-    let year = Math.max(...yearsWithData);
-    year >= Math.min(...yearsWithData);
-    year -= 1
-  )
-    years.push(year)
+  const years = [
+    ...new Set(
+      [...byPeriod.keys()].map((period) => Number(period.slice(0, 4))),
+    ),
+  ].sort((a, b) => b - a)
   const peeked = peek ? byPeriod.get(peek) : undefined
 
   return (

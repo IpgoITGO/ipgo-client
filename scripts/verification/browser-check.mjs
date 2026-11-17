@@ -131,6 +131,67 @@ try {
       ),
       'FAILURE_OVERFLOW',
     )
+    phase = name + '_sparse_upload_history'
+    await context.route(`${origin}/api/uploads/periods`, (route) => {
+      if (route.request().method() !== 'GET') {
+        blocked.push('UNEXPECTED_UPLOAD_PERIODS_WRITE')
+        return route.abort()
+      }
+      return route.fulfill({
+        json: {
+          items: ['2024-03', '8744-10', '1024-01', '2024-12'].map(
+            (period, index) => ({
+              period,
+              uploadId: index + 21,
+              status: index === 1 ? 'FAILED' : 'DONE',
+              fileName: `${period}.xlsx`,
+              periodStart: `${period}-01`,
+              periodEnd: `${period}-28`,
+              uploadedAt: '2026-11-17T09:00:00Z',
+              ...(index === 1
+                ? {
+                    error: {
+                      code: 'INVALID_SOURCE',
+                      message: '자료의 기간을 확인해 주세요.',
+                    },
+                  }
+                : {}),
+            }),
+          ),
+          latestUploadId: 24,
+        },
+      })
+    })
+    await page.goto(`${origin}/upload`)
+    const history = page.getByRole('region', { name: '업로드 내역' })
+    await history.getByRole('group', { name: '8744년' }).waitFor()
+    const years = history.getByRole('group')
+    assert.deepEqual(
+      await years.evaluateAll((groups) =>
+        groups.map((group) => group.getAttribute('aria-label')),
+      ),
+      ['8744년', '2024년', '1024년'],
+    )
+    assert.equal(await years.locator('li').count(), 36)
+    assert.equal(
+      await years
+        .getByRole('link', { name: /8744년 10월 확인 실패/ })
+        .getAttribute('href'),
+      '/upload/22/result',
+    )
+    await history.scrollIntoViewIfNeeded()
+    await page.screenshot({
+      path: path.join(out, `${name}-upload-history.png`),
+      fullPage: true,
+    })
+    assert.ok(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.innerWidth,
+      ),
+      'UPLOAD_HISTORY_OVERFLOW',
+    )
     assert.deepEqual(blocked, [])
     assert.deepEqual(errors, [])
     reports.push({
@@ -144,6 +205,7 @@ try {
         'zero_and_missing',
         'gap',
         'tooltip',
+        'sparse_upload_history',
         'no_overflow',
         'no_browser_errors',
       ],
