@@ -121,7 +121,7 @@ export function UploadPage() {
 
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
-  const uploadStartedAt = useRef<number | null>(null)
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null)
   const [acceptedIds, setAcceptedIds] = useState<number[]>([])
   const [failedUploads, setFailedUploads] = useState<FailedUpload[]>([])
   const [pendingOutcome, setPendingOutcome] = useState<BatchOutcome | null>(
@@ -210,7 +210,8 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0 || calculationBusy) return
     dismiss()
-    uploadStartedAt.current ??= Date.now()
+    const startedAt = uploadStartedAt ?? Date.now()
+    setUploadStartedAt(startedAt)
 
     setPendingOutcome(null)
     setError(null)
@@ -309,7 +310,7 @@ export function UploadPage() {
       uploadIds,
       replaced,
       failedUploads: failureList,
-      uploadStartedAt: uploadStartedAt.current,
+      uploadStartedAt: startedAt,
     }
     if (modalIds.length > 0) {
       setModalQueue(modalIds)
@@ -397,7 +398,7 @@ export function UploadPage() {
         <p role="status">
           {acceptedIds.length}개 파일을 올렸어요.{' '}
           <Link
-            state={{ failedUploads, uploadStartedAt: uploadStartedAt.current }}
+            state={{ failedUploads, uploadStartedAt }}
             to={`/upload/${acceptedIds.at(-1)}/result?uploads=${acceptedIds.join(',')}`}
           >
             올린 파일 결과 보기
