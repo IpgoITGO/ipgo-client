@@ -595,7 +595,7 @@ describe('ScenarioInsight', () => {
     renderInsight('ai-stale')
 
     expect(
-      await screen.findByText(/입고 조건이 바뀌었어요/),
+      await screen.findByText(/지난 계산 기준 설명이에요/),
     ).toBeInTheDocument()
     expect(screen.getByText('지난 계산 기준 문장이에요')).toBeInTheDocument()
   })

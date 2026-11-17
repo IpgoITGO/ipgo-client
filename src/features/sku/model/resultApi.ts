@@ -128,7 +128,9 @@ export function addCustomScenario(resultId: number | string, qty: number) {
 
 // 공개 K4는 AI·FIXED·TABLE_ONLY와 text 문자열/null을 사용한다(Server #25).
 // 기존 LLM·TEMPLATE·NONE / sentences·draft 응답도 화면 모양으로 변환해 호환한다.
-export type InsightRaw = Omit<InsightResponse, 'mode' | 'sentences'> & {
+export type InsightRaw = Partial<
+  Omit<InsightResponse, 'mode' | 'sentences'>
+> & {
   mode: string
   isFallback?: boolean
   text?: string | null
@@ -151,6 +153,10 @@ export function toInsight(raw: InsightRaw): InsightResponse {
     ...rest,
     // 모르는 이름이면 기본 문장으로 본다(AI 문장이라고 잘못 말하지 않게)
     mode: MODE[raw.mode] ?? 'TEMPLATE',
+    state: raw.state ?? 'NORMAL',
+    stateReason: raw.stateReason ?? null,
+    failReason: raw.failReason ?? null,
+    stale: raw.stale === true,
     explanationDisabled:
       raw.failReason === 'LLM_DISABLED' ||
       (raw.mode === 'TABLE_ONLY' &&
@@ -169,6 +175,10 @@ const FAIL_TEXT: Record<string, string> = {
   LLM_ERROR: 'AI 응답에 문제가 있었어요',
   LLM_TIMEOUT: 'AI 응답이 늦었어요',
   VALIDATION_FAILED: 'AI 문장이 검사를 통과하지 못했어요',
+  VALUE_MISMATCH: 'AI 문장이 계산값과 맞지 않았어요',
+  LLM_NOT_CONFIGURED: 'AI 설명 연결이 아직 준비되지 않았어요',
+  INVALID_INPUT: 'AI 설명에 필요한 입력을 확인하지 못했어요',
+  INPUT_UNAVAILABLE: '설명에 필요한 계산 근거를 확인하지 못했어요',
 }
 
 // 화면에 붙일 실패 사유 문구. 모르는 사유는 한 문구로 묶는다(전엔 "undefined"가 찍혔음)
