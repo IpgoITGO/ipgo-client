@@ -15,6 +15,7 @@ import {
   withCommas,
 } from '../model/storageCost'
 import styles from '../pages/SettingsPage.module.css'
+import { Pager } from '../../../shared/ui/Pager/Pager'
 import {
   keepSummaryInPlace,
   rememberSummary,
@@ -63,6 +64,9 @@ function StorageCostForm({
   const [rev, setRev] = useState<Record<string, number>>({})
   // 규격이 같은 상품은 골라서 한 번에(11/11 — 289개를 줄마다 넣을 수는 없음)
   const [search, setSearch] = useState('')
+  // 상자 크기 표도 위의 상품 목록처럼 10·20·30개씩 나눠 본다(11/17). 주소의 page·size는 위 목록이 쓰고 있어 여기는 따로 기억한다
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(10)
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
   const [bulk, setBulk] = useState<Record<keyof Box, string>>({
     width: '',
@@ -208,6 +212,10 @@ function StorageCostForm({
       .toLowerCase()
       .includes(search.trim().toLowerCase()),
   )
+  // 검색으로 줄어 지금 쪽이 없어지면 마지막 쪽을 보여 준다
+  const at = Math.min(page, Math.max(1, Math.ceil(shown.length / size)))
+  const pageRows = shown.slice((at - 1) * size, at * size)
+  // 전체 고르기는 보이는 쪽만이 아니라 검색된 상품 전부를 고른다
   const shownKeys = shown.map((product) => String(product.productId))
   const allShownPicked =
     shownKeys.length > 0 && shownKeys.every((key) => picked.has(key))
@@ -307,7 +315,12 @@ function StorageCostForm({
               defaultValue={settings.ratePerCbm?.toLocaleString('ko-KR') ?? ''}
               id="storage-rate"
               inputMode="numeric"
-              onBlur={(event) => onRate(event.target.value)}
+              onBlur={(event) => {
+                // 0은 "요율 없음"으로 본다: 칸을 비우고 저장된 요율을 지운다(11/17: 넣은 값을 0으로 되돌리려 하면 오류만 났다)
+                if (Number(event.target.value.replace(/,/g, '')) === 0)
+                  event.target.value = ''
+                onRate(event.target.value)
+              }}
               onChange={(event) => {
                 event.target.value = withCommas(event.target.value)
               }}
@@ -427,7 +440,7 @@ function StorageCostForm({
             </tr>
           </thead>
           <tbody>
-            {shown.map((product) => {
+            {pageRows.map((product) => {
               const key = String(product.productId)
               const box = settings.boxes[key]
               const hasAny =
@@ -502,6 +515,19 @@ function StorageCostForm({
           <p className={styles.empty}>검색 결과가 없어요.</p>
         )}
       </div>
+      {shown.length > 0 && (
+        <Pager
+          label="상자 크기"
+          onPage={setPage}
+          onSize={(next) => {
+            setSize(next)
+            setPage(1)
+          }}
+          page={at}
+          size={size}
+          total={shown.length}
+        />
+      )}
     </details>
   )
 }

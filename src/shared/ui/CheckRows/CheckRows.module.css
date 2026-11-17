@@ -1,0 +1,146 @@
+/* 줄 목록: 표시 | 이름 | 설명 | 상태. 줄 높이·칸 폭이 고정이라 상태가 바뀌어도 안 밀린다 */
+.rows {
+  --row: 44px;
+
+  width: min(100%, 460px);
+  margin-top: var(--space-2);
+  overflow: hidden;
+  text-align: left;
+  background: #fffdf9;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+
+/* 네 개부터는 세 줄만 보이고 위아래가 흐려진다 */
+.rows[data-many] {
+  height: calc(var(--row) * 3);
+  mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+
+.rows ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateY(calc(var(--skip) * var(--row) * -1));
+}
+
+.rows li {
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  height: var(--row);
+  padding: 0 14px;
+  color: var(--color-text-3);
+  font-size: 14px;
+}
+
+/* 이름 칸은 "2025년 12월"이 들어갈 폭을 기본으로 잡아 줄마다 설명 시작선이 같다 */
+.rows li b {
+  min-width: 88px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 설명: 길면 …, 이름이 없으면 이름 칸까지 쓴다 */
+.rows li span {
+  grid-column: 2 / 4;
+  overflow: hidden;
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rows li b + span {
+  grid-column: 3;
+}
+
+.rows li em {
+  min-width: 64px;
+  font-size: var(--text-caption);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 표시: 기다림은 점, 하는 중은 도는 고리, 끝나면 초록 체크, 못 하면 빨간 점 */
+.rows li i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.rows li i::before {
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: var(--color-chart-muted);
+  border-radius: 50%;
+}
+
+.rows li[data-state='now'] {
+  background: var(--color-accent-soft);
+}
+
+.rows li[data-state='now'] em {
+  color: var(--color-accent-text);
+  font-weight: 700;
+}
+
+.rows li[data-state='now'] i {
+  border: 2px solid #f0dfae;
+  border-top-color: var(--color-accent-press);
+}
+
+.rows li[data-state='now'] i::before {
+  display: none;
+}
+
+.rows li[data-state='done'] em {
+  color: var(--color-success);
+}
+
+.rows li[data-state='done'] i {
+  background: var(--color-done);
+}
+
+.rows li[data-state='done'] i::before {
+  width: 4px;
+  height: 7px;
+  margin-top: -2px;
+  background: none;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.rows li[data-state='failed'] i::before {
+  background: var(--color-danger);
+}
+
+.rows li[data-state='wait'] b {
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rows ol {
+    transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+
+  .rows li[data-state='now'] i {
+    animation: rowSpin 0.8s linear infinite;
+  }
+}
+
+@keyframes rowSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

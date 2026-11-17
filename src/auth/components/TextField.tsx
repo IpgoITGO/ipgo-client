@@ -10,6 +10,7 @@ type TextFieldProps = Omit<ComponentProps<'input'>, 'id'> & {
   inputClassName?: string // 입력칸 글자 모양처럼 이 칸에만 필요한 스타일
   suffix?: ReactNode // 입력칸 안 오른쪽 (남은 시간 등)
   action?: ReactNode // 입력칸 옆 버튼
+  hintEnd?: ReactNode // 안내 줄 오른쪽 끝(다시 보내기 등). 안내 글과 한 줄에 양 끝으로 놓인다
   boxes?: number // 자릿수만큼 칸으로 보여 주기(인증 코드 6자리). value를 꼭 같이 준다
 }
 
@@ -22,6 +23,7 @@ export function TextField({
   suffix,
   action,
   boxes,
+  hintEnd,
   required,
   ...input
 }: TextFieldProps) {
@@ -86,8 +88,19 @@ export function TextField({
         </p>
       )}
       {hint && (
-        <div className={styles.hint} id={hintId}>
-          {hint}
+        <div
+          className={styles.hint}
+          data-split={hintEnd ? '' : undefined}
+          id={hintId}
+        >
+          {hintEnd ? (
+            <>
+              <span>{hint}</span>
+              {hintEnd}
+            </>
+          ) : (
+            hint
+          )}
         </div>
       )}
     </div>

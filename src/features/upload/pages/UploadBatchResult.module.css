@@ -1,11 +1,250 @@
-.summary {
-  margin-block: 20px;
-  font-size: clamp(22px, 4vw, 32px);
-  font-weight: 800;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
+/* 여러 파일을 올린 뒤 결과 화면. 모양은 이 파일에만 둔다(11/17: 업로드 내역 모양을 빌려 쓰다가 그쪽을 고치면서 맨 글씨가 됐다) */
+.page {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  margin-block: var(--space-6);
+  padding: 28px var(--space-8);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
 }
+
+.page h1,
+.page p {
+  margin: 0;
+}
+
+.page h1 {
+  font-size: 26px;
+}
+
+/* 제목 아래 요약 한 줄 */
+.sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  color: var(--color-text-2);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+}
+
 .success {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.note {
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+/* 파일 줄: 표시 | 달 | 파일 이름 | 상태 | 할 일. 칸 폭이 고정이라 줄마다 시작선이 같다 */
+.list {
+  justify-self: stretch;
+  margin: var(--space-2) 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  background: #fffdf9;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+}
+
+.list li {
+  display: grid;
+  grid-template-columns: 16px 96px minmax(0, 1fr) auto auto;
+  gap: 2px 12px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 16px;
+  color: var(--color-text-3);
+  font-size: 14px;
+}
+
+.list li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.list li strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 파일 이름: 길면 …, 달을 모르면 달 칸까지 쓴다 */
+.name {
+  grid-column: 2 / 4;
+  overflow: hidden;
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list li strong + .name {
+  grid-column: 3;
+}
+
+.list li em {
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.list li[data-state='done'] em {
+  color: var(--color-success);
+}
+
+.list li[data-state='failed'] em,
+.list li[data-state='unknown'] em {
+  color: var(--color-danger);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: flex-end;
+  /* 폭을 고정해 "다시 올리기"가 붙은 줄에서도 상태 글의 오른쪽 끝이 다른 줄과 맞는다 */
+  width: 156px;
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+.actions a {
+  color: var(--color-text-2);
+  text-underline-offset: 3px;
+}
+
+.actions a.retry {
   color: var(--color-text);
   font-weight: 700;
+  text-decoration-color: var(--color-accent);
+}
+
+/* 이유가 붙어 두 줄이 된 줄에서는 상태·할 일을 두 줄의 가운데 높이에 둔다(11/17: 윗줄에만 붙어 보였다) */
+@media (width >= 640px) {
+  .list li:has(.reason) em,
+  .list li:has(.reason) .actions {
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  /* 줄을 걸치면 자리를 직접 정해 줘야 앞 칸으로 밀려 들어가지 않는다 */
+  .list li:has(.reason) em {
+    grid-column: 4;
+  }
+
+  .list li:has(.reason) .actions {
+    grid-column: 5;
+  }
+
+  .list li:has(.reason) .reason {
+    grid-column: 2 / 4;
+  }
+}
+
+/* 못 한 이유는 그 줄 아래, 달 칸 시작선에 맞춘다 */
+.reason {
+  grid-column: 2 / -1;
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+/* 표시: 끝나면 초록 체크, 못 하면 빨간 점 */
+.list li i {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.list li i::before {
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: var(--color-danger);
+  border-radius: 50%;
+}
+
+.list li[data-state='wait'] i::before {
+  background: var(--color-chart-muted);
+}
+
+.list li[data-state='done'] i {
+  background: var(--color-done);
+}
+
+.list li[data-state='done'] i::before {
+  width: 4px;
+  height: 7px;
+  margin-top: -2px;
+  background: none;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+/* 다음에 할 일 하나: 대시보드로 */
+.go {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--h-button);
+  padding: 0 var(--space-5);
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--color-accent);
+  border-radius: var(--radius-button);
+}
+
+.go:hover {
+  background: var(--color-accent-hover);
+}
+
+.go:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+/* 좁은 화면: 파일 이름과 할 일은 아랫줄로 */
+@media (width < 640px) {
+  .page {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .list li {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+  }
+
+  /* 첫 줄: 달(없으면 파일 이름) + 상태, 둘째 줄: 파일 이름, 셋째 줄: 할 일 */
+  .name {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .list li strong + .name {
+    grid-row: 2;
+    grid-column: 2 / -1;
+  }
+
+  .list li em {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .actions {
+    grid-row: 3;
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    width: auto;
+  }
+
+  .reason {
+    grid-row: 4;
+  }
 }

@@ -915,6 +915,10 @@ tr[data-soon] .weeks i[data-on] {
 .unified td {
   vertical-align: top;
 }
+/* 상태 딱지는 줄 가운데(11/17: 두 줄짜리 칸들 사이에서 혼자 위에 붙어 보였다) */
+.unified td[data-label='상태'] {
+  vertical-align: middle;
+}
 .unified input:disabled {
   opacity: 0.35;
 }
@@ -1110,6 +1114,38 @@ tr[data-soon] .weeks i[data-on] {
 }
 .listBar .sort {
   margin-bottom: 0;
+}
+/* 표 바로 아래 한 줄: 왼쪽 안내, 오른쪽 합계. 바탕·테두리 없이 글만 둔다 */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  padding-inline: var(--space-3);
+}
+/* 합계: 글과 숫자 사이는 간격으로 띄워 숫자가 길어져도 안 붙는다 */
+.sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  align-items: baseline;
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.sum > span {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  white-space: nowrap;
+}
+.sum b {
+  color: var(--color-text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
 }
 .totals {
   display: flex;

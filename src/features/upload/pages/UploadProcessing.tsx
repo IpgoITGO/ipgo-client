@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useBlocker } from 'react-router-dom'
 
 import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
 import { Button } from '../../../shared/ui/Button/Button'
+import { CheckRows } from '../../../shared/ui/CheckRows/CheckRows'
 import { Modal } from '../../../shared/ui/Modal/Modal'
 import styles from './UploadProcessing.module.css'
 
@@ -12,23 +13,34 @@ export const LONG_WAIT_SECONDS = 120
 // 끝난 순간 연출 길이. CSS 애니메이션(1.4s)이 끝난 뒤 다 그려진 초록 고리를 0.35초 더 보여 준다.
 export const FINISH_MS = 1750
 
+// 확인하는 파일 한 줄. 이름은 올린 그대로 보여 주고, 달은 서버가 알아냈을 때만 붙인다(이름에 달이 없는 파일도 같은 줄 모양).
+export type CheckFile = {
+  id: string
+  name: string
+  month?: string
+  state: 'done' | 'failed' | 'now' | 'wait'
+}
+
+const FILE_STATE_TEXT = {
+  done: '확인 끝',
+  failed: '확인 못 함',
+  now: '확인 중',
+  wait: '기다림',
+} as const
+
 // 한 장면으로 이어진다.
 // 확인 중: 수불부 조각이 상자로 떨어지고 문서의 줄이 하나씩 채워진다.
 // 끝나면(done): 같은 자리에서 문서가 상자로 들어가고, 상자가 가운데로 오고, 초록 고리와 체크가 그려진다.
 export function UploadProcessing({
   done = false,
-  onGoDashboard,
-  progress,
+  files = [],
 }: {
   done?: boolean
-  onGoDashboard: () => void
-  progress?: { completed: number; total: number }
+  files?: CheckFile[]
 }) {
   const [seconds, setSeconds] = useState(0)
-  // 안내 띠의 "대시보드로" 버튼은 스스로 나가는 거라 확인 없이 보낸다.
-  const leavingOnPurpose = useRef(false)
   // 처리 중에 뒤로 가기·다른 메뉴로 나가려 하면 한 번 묻는다.
-  const blocker = useBlocker(() => !done && !leavingOnPurpose.current)
+  const blocker = useBlocker(() => !done)
 
   useEffect(() => {
     if (done) return
@@ -42,6 +54,10 @@ export function UploadProcessing({
   }, [blocker, done])
 
   const isLong = !done && seconds >= LONG_WAIT_SECONDS
+  const total = files.length
+  const completed = files.filter(
+    (file) => file.state === 'done' || file.state === 'failed',
+  ).length
 
   return (
     <section aria-live="polite" className={styles.container} role="status">
@@ -56,41 +72,40 @@ export function UploadProcessing({
         {done
           ? '결과를 정리했어요.'
           : '수불부 형식과 재고 숫자를 확인하고 있어요.'}
-        {/* 여러 달을 올렸을 때도 화면은 한 장 그대로, 몇 개째인지만 같은 줄에 잇는다(11/17: 제목·막대·버튼이 겹겹이 쌓였다) */}
-        {!done && progress && progress.total > 1 && (
-          <>
-            {' '}
-            <b>
-              {progress.total}개 중 {progress.completed}개 확인
-            </b>
-          </>
-        )}
       </p>
-      {progress && (
+      {/* 몇 개째인지: 여러 개면 큰 숫자, 그 아래 파일 줄(11/17 시안 1가 — 이름 없는 칸 줄은 한 개 올리면 휑했다). 한 개여도 그 파일 한 줄이 보인다 */}
+      {!done && total > 1 && (
+        <p className={styles.count}>
+          <b key={completed}>{completed}</b>
+          <span>/ {total}개 확인</span>
+        </p>
+      )}
+      {total > 0 && (
+        <CheckRows
+          rows={files.map((file) => ({
+            id: file.id,
+            state: file.state,
+            title: file.month,
+            text: file.name,
+            status: FILE_STATE_TEXT[file.state],
+          }))}
+        />
+      )}
+      {total > 1 && (
         <progress
           aria-label="수불부 확인 진행률"
           className={styles.srOnly}
-          max={progress.total}
-          value={progress.completed}
+          max={total}
+          value={completed}
         />
       )}
+      {/* 오래 걸릴 때: 한 줄 안내만(11/17: 큰 상자에 작은 글씨, 회색 "대시보드로" 버튼이 어색했다). 나가려면 위 메뉴를 쓴다 */}
       {isLong && (
-        <div className={styles.band}>
+        <p className={styles.band}>
           <span aria-hidden="true" className={styles.bandDot} />
           <strong>생각보다 오래 걸려요</strong>
-          <div className={styles.bandRow}>
-            <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
-            <Button
-              onClick={() => {
-                leavingOnPurpose.current = true
-                onGoDashboard()
-              }}
-              variant="secondary"
-            >
-              대시보드로
-            </Button>
-          </div>
-        </div>
+          창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요
+        </p>
       )}
       {blocker.state === 'blocked' && (
         <Modal labelledBy="leave-title" onClose={() => blocker.reset()}>

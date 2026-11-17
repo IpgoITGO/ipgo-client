@@ -158,6 +158,8 @@ export function UploadPage() {
     const uploadIds: number[] = [...acceptedIds]
     // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
     const replaced: string[] = []
+    // 확인 화면의 파일 줄에 올린 이름 그대로 보여 주려고 넘긴다(이름 형식이 제각각이어도 그대로).
+    const names: Record<string, string> = {}
 
     // 서버가 거절한 파일이 어느 것인지 알아야 그 파일에 이유를 붙일 수 있다.
     let current: UploadFileState | undefined
@@ -169,6 +171,7 @@ export function UploadPage() {
         uploaded.add(item.id)
         lastUploadId = result.uploadId
         uploadIds.push(result.uploadId)
+        names[result.uploadId] = item.file.name
         setAcceptedIds([...uploadIds])
         if (item.overwrite && item.period) replaced.push(item.period)
         setFiles((current) => current.filter((file) => file.id !== item.id))
@@ -179,7 +182,7 @@ export function UploadPage() {
       const search =
         uploadIds.length > 1 ? `?uploads=${uploadIds.join(',')}` : ''
       navigate(`/upload/${lastUploadId}/result${search}`, {
-        state: { replaced },
+        state: { replaced, names },
       })
     } catch (cause) {
       void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })

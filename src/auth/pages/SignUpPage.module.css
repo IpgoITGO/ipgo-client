@@ -55,10 +55,15 @@
   color: var(--color-text-3);
 }
 
+/* 남은 시간: 평소엔 글자색, 1분 아래로 내려가면 빨강 */
 .timer {
-  color: var(--color-danger);
+  color: var(--color-text);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.timer[data-low] {
+  color: var(--color-danger);
 }
 
 .linkButton {

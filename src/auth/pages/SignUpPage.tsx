@@ -303,34 +303,43 @@ export function SignUpPage() {
                     ? '시간이 지났어요. 코드를 다시 받아 주세요.'
                     : verification.codeError
                 }
+                // 남은 시간은 그 뜻을 말하는 글 옆에, 다시 보내기는 같은 줄 오른쪽 끝에(11/17: 칸 위에 뜬 빨간 시간과 아래 줄의 또 다른 시간이 따로 놀았다)
                 hint={
                   <>
-                    메일로 6자리 코드를 보냈어요 · 10분 안에 입력 ·{' '}
-                    <button
-                      className={styles.linkButton}
-                      disabled={!canResend || sendCode.isPending}
-                      onClick={() => void sendCode.run()}
-                      type="button"
-                    >
-                      다시 보내기
-                      {!canResend && resendAt !== undefined
-                        ? ` ${formatTime(resendAt - now)}`
-                        : ''}
-                    </button>
+                    메일로 보낸 6자리 코드
+                    {expiresAt !== undefined && !isExpired && (
+                      <>
+                        {' · '}
+                        <span
+                          aria-label="남은 시간"
+                          className={styles.timer}
+                          data-low={expiresAt - now <= 60_000 || undefined}
+                        >
+                          {formatTime(expiresAt - now)}
+                        </span>{' '}
+                        남음
+                      </>
+                    )}
                   </>
+                }
+                hintEnd={
+                  <button
+                    className={styles.linkButton}
+                    disabled={!canResend || sendCode.isPending}
+                    onClick={() => void sendCode.run()}
+                    type="button"
+                  >
+                    다시 보내기
+                    {!canResend && resendAt !== undefined
+                      ? ` ${formatTime(resendAt - now)}`
+                      : ''}
+                  </button>
                 }
                 boxes={6}
                 inputMode="numeric"
                 label="인증 코드"
                 maxLength={6}
                 onChange={(event) => setCode(event.target.value)}
-                suffix={
-                  expiresAt !== undefined && (
-                    <span aria-label="남은 시간" className={styles.timer}>
-                      {formatTime(expiresAt - now)}
-                    </span>
-                  )
-                }
                 value={code}
               />
             )}

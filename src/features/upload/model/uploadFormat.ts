@@ -34,7 +34,12 @@ export function describeExclusion(reason: string, date: string) {
   }
 }
 
+// 달을 알 때만 "2025년 9월", 모르면 undefined(확인 화면 파일 줄처럼 그 자리를 비워 둘 때 쓴다)
+export function monthOrNone(period: string | null | undefined) {
+  const match = /^(\d{4})-(\d{2})/.exec(period ?? '')
+  return match ? `${match[1]}년 ${Number(match[2])}월` : undefined
+}
+
 export function monthLabel(period: string) {
-  const match = /^(\d{4})-(\d{2})/.exec(period)
-  return match ? `${match[1]}년 ${Number(match[2])}월` : '기간 확인 중'
+  return monthOrNone(period) ?? '기간 확인 중'
 }

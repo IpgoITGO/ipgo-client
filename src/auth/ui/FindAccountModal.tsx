@@ -349,18 +349,16 @@ function ResetPassword({ onDone }: Pick<Props, 'onDone'>) {
             autoComplete="one-time-code"
             autoFocus
             error={error}
-            hint={
-              <>
-                메일로 보낸 6자리 코드를 넣어 주세요 ·{' '}
-                <button
-                  className={styles.linkButton}
-                  disabled={!canResend || sendCode.isPending}
-                  onClick={() => void sendCode.run()}
-                  type="button"
-                >
-                  다시 보내기{canResend ? '' : ` ${secondsLeft}초`}
-                </button>
-              </>
+            hint="메일로 보낸 6자리 코드를 넣어 주세요"
+            hintEnd={
+              <button
+                className={styles.linkButton}
+                disabled={!canResend || sendCode.isPending}
+                onClick={() => void sendCode.run()}
+                type="button"
+              >
+                다시 보내기{canResend ? '' : ` ${secondsLeft}초`}
+              </button>
             }
             boxes={6}
             inputMode="numeric"

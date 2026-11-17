@@ -75,6 +75,19 @@
   color: var(--color-text-3);
 }
 
+/* 안내 글은 왼쪽, 다시 보내기 같은 단추는 오른쪽 끝. 한 줄에 양 끝으로(11/17) */
+.hint[data-split] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hint[data-split] > :last-child {
+  white-space: nowrap;
+}
+
 .field[data-success] .hint {
   color: var(--color-success);
 }
@@ -199,10 +212,4 @@
     grid-template-columns: repeat(6, minmax(0, 40px));
     gap: 6px;
   }
-}
-
-/* 칸으로 보여 줄 때 남은 시간은 칸 위(이름 줄 오른쪽)에 둔다. 칸 안에 두면 마지막 칸과 겹친다 */
-.inputWrap[data-boxes] .suffix {
-  inset: auto 0 calc(100% + var(--space-2)) auto;
-  font-size: 14px;
 }

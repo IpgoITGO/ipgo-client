@@ -93,6 +93,9 @@ function Retry() {
 }
 
 // 카드 등록창에서 성공하고 돌아온 화면: 등록 마무리(complete) → 결제 확인(2초마다 조회) → 결과
+// 결제 확인 뒤 초록 체크를 보여 주는 시간. 그다음 상자가 열린다
+const PAID_CHECK_MS = 700
+
 export function BillingAuthSuccessPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -168,23 +171,42 @@ export function BillingAuthSuccessPage() {
     }
   }, [read, queryClient])
 
+  // 결제가 확인된 순간: 돌던 고리가 초록 체크로 바뀐 뒤 상자가 열린다(11/17 시안 4나 — 기다림과 성공이 한 흐름으로 이어지게)
+  const paid = phase.kind === 'paid'
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    if (!paid) return
+    const timer = setTimeout(() => setSettled(true), PAID_CHECK_MS)
+    return () => clearTimeout(timer)
+  }, [paid])
+
   const failed = phase.kind === 'failed' ? phase : null
   return (
     <div className={styles.column}>
-      <Steps at={phase.kind === 'paid' ? 2 : 1} />
-      {(phase.kind === 'registering' || phase.kind === 'checking') && (
+      <Steps at={paid ? 2 : 1} />
+      {(phase.kind === 'registering' ||
+        phase.kind === 'checking' ||
+        (paid && !settled)) && (
         // 기다리는 동안 글만 두지 않고 흔한 도는 고리로(11/13 "그냥 돌아가는 일반적인 로딩")
         <div className={styles.waiting} role="status">
-          <span aria-hidden="true" className={styles.waitSpinner} />
+          <span
+            aria-hidden="true"
+            className={styles.waitSpinner}
+            data-done={paid || undefined}
+          />
           <p className={styles.waitTitle}>
-            {phase.kind === 'registering'
-              ? '카드를 등록하고 있어요'
-              : '카드 등록과 결제 결과를 확인하고 있어요'}
+            {paid
+              ? '결제를 확인했어요'
+              : phase.kind === 'registering'
+                ? '카드를 등록하고 있어요'
+                : '카드 등록과 결제 결과를 확인하고 있어요'}
           </p>
-          <small>창을 닫지 말고 잠시만 기다려 주세요</small>
+          <small data-hide={paid || undefined}>
+            창을 닫지 말고 잠시만 기다려 주세요
+          </small>
         </div>
       )}
-      {(phase.kind === 'paid' || phase.kind === 'replaced') && (
+      {((paid && settled) || phase.kind === 'replaced') && (
         <>
           <div className={styles.done} role="status">
             {/* 결제 완료(11/11): 우리 상자가 흔들리다 열리고 색종이가 터진다 */}
