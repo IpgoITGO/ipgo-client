@@ -49,11 +49,15 @@ function useTabTitle(phase: CalculationState['phase']) {
 export function CalculationProvider({
   children,
   pollInterval = 2000,
-  timeout = 300_000,
+  // 서버는 답이 없으면 5분마다 다시 보내고 15분에 실패로 정한다(ipgo-client#413). 화면은 그보다 1분 더 기다린다
+  timeout = 960_000,
+  slowAfter = 300_000,
   storageScope,
 }: PropsWithChildren<{
   pollInterval?: number
   timeout?: number
+  /** 이 시간이 지나도 계산 중이면 "오래 걸려요 · 다시 시도 중"으로 안내를 바꾼다 */
+  slowAfter?: number
   storageScope?: string
 }>) {
   const client = useQueryClient()
@@ -83,6 +87,8 @@ export function CalculationProvider({
   const uploadStatus = uploadQuery.data?.status
   const uploadRunId = uploadQuery.data?.runId
   const [timedOut, setTimedOut] = useState(false)
+  // 오래 걸린다고 알린 계산(번호·다시 확인 횟수). 계산이 바뀌면 저절로 처음으로 돌아간다
+  const [slowFor, setSlowFor] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [refresh, setRefresh] = useState<{ id: number | null; error: boolean }>(
     {
@@ -112,6 +118,13 @@ export function CalculationProvider({
     const timer = setTimeout(() => setTimedOut(true), timeout)
     return () => clearTimeout(timer)
   }, [runId, pending, query.isError, attempt, timeout])
+  // 5분이 넘으면 실패가 아니라 "오래 걸려요"로 알린다. 계산이 바뀌거나 끝나면 처음부터 다시 잰다
+  useEffect(() => {
+    if (!pending || query.isError) return
+    const timer = setTimeout(() => setSlowFor(`${runId}:${attempt}`), slowAfter)
+    return () => clearTimeout(timer)
+  }, [runId, pending, query.isError, attempt, slowAfter])
+  const slow = pending && slowFor === `${runId}:${attempt}`
 
   const refreshResults = useCallback(
     () =>
@@ -213,6 +226,7 @@ export function CalculationProvider({
         runId,
         phase,
         busy,
+        slow: phase === 'pending' && slow,
         run: query.data,
         message,
         checkingSince: phase === 'checking' ? upload?.startedAt : undefined,
