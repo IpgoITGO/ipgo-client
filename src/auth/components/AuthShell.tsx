@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import cornerArt from '../../shared/assets/shop-shelf.webp'
 import welcomeArt from '../assets/signup-welcome.webp'
 import styles from './AuthShell.module.css'
+import { PolicyLinks } from '../../features/legal/pages/PolicyPages'
 
 type AuthShellProps = {
   tab: 'login' | 'signup'
@@ -41,6 +42,7 @@ export function AuthShell({ tab, children, welcome = false }: AuthShellProps) {
             ))}
           </nav>
           {children}
+          <PolicyLinks />
         </section>
         <aside
           aria-hidden="true"

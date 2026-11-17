@@ -30,6 +30,7 @@ export type SignUpRequest = {
   email: string
   password: string
   verificationToken: string
+  agreements?: { terms: true; privacy: true; version: string }
 }
 
 function postJson(body: unknown): RequestInit {
