@@ -14,7 +14,7 @@ import {
   useSearchParams,
 } from 'react-router-dom'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -50,6 +50,50 @@ function markDuplicate(
   }
 }
 
+// 409 기간은 파일명 추측보다 서버가 실제 읽은 입고일자를 우선한다.
+function serverDuplicate(
+  item: UploadFileState,
+  cause: ApiError,
+): UploadFileState | null {
+  const existing = cause.details?.existing
+  if (!existing || typeof existing !== 'object') return null
+  const record = existing as Record<string, unknown>
+  const start = record.periodStart ?? record.period
+  if (
+    typeof start !== 'string' ||
+    !/^20\d{2}-(0[1-9]|1[0-2])(?:-\d{2})?$/.test(start)
+  )
+    return null
+  const periodKey = start.slice(0, 7)
+  return {
+    ...item,
+    periodKey,
+    period: monthLabel(periodKey),
+    inferredPeriod: !item.periodKey,
+    overwrite: false,
+    status: 'duplicate',
+    existingUpload: {
+      originalName:
+        typeof record.originalName === 'string'
+          ? record.originalName
+          : undefined,
+      uploadedAt:
+        typeof record.uploadedAt === 'string' &&
+        Number.isFinite(Date.parse(record.uploadedAt))
+          ? formatUploadedAt(record.uploadedAt)
+          : '',
+    },
+  }
+}
+
+type FailedUpload = { id: string; name: string; reason: string }
+type BatchOutcome = {
+  uploadStartedAt: number
+  uploadIds: number[]
+  replaced: string[]
+  failedUploads: FailedUpload[]
+}
+
 // ipgo-server UploadException 중 "이 파일 때문"인 것: 형식이 틀림(400)·너무 큼(413)
 const SERVER_REJECTED = new Set(['UPLOAD_INVALID_FORMAT', 'FILE_TOO_LARGE'])
 
@@ -77,12 +121,27 @@ export function UploadPage() {
 
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null)
   const [acceptedIds, setAcceptedIds] = useState<number[]>([])
+  const [failedUploads, setFailedUploads] = useState<FailedUpload[]>([])
+  const [pendingOutcome, setPendingOutcome] = useState<BatchOutcome | null>(
+    null,
+  )
 
   const readyFiles = useMemo(
     () => files.filter((item) => item.status === 'ready'),
     [files],
   )
+
+  // 확인창에서 취소하거나 제외한 파일도 결과 요약에 남긴다. 덮어쓰기를 고르면 준비 파일로 남아 전송을 기다린다.
+  useEffect(() => {
+    if (!pendingOutcome || modalQueue.length > 0 || readyFiles.length > 0)
+      return
+    const ids = pendingOutcome.uploadIds
+    navigate(`/upload/${ids.at(-1)}/result?uploads=${ids.join(',')}`, {
+      state: pendingOutcome,
+    })
+  }, [pendingOutcome, modalQueue.length, readyFiles.length, navigate])
 
   async function addFiles(selectedFiles: FileList | File[]) {
     // 파일 칸을 비우면 브라우저가 같은 FileList를 비워 버리니, 기다리기 전에 배열로 옮겨 둔다.
@@ -151,112 +210,123 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0 || calculationBusy) return
     dismiss()
+    const startedAt = uploadStartedAt ?? Date.now()
+    setUploadStartedAt(startedAt)
 
-    // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
-    const uploaded = new Set<string>()
-    let lastUploadId: number | null = null
-    const uploadIds: number[] = [...acceptedIds]
-    // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
+    setPendingOutcome(null)
+    setError(null)
+    const uploadIds = [...acceptedIds]
     const replaced: string[] = []
     // 확인 화면의 파일 줄에 올린 이름 그대로 보여 주려고 넘긴다(이름 형식이 제각각이어도 그대로).
     const names: Record<string, string> = {}
-
-    // 서버가 거절한 파일이 어느 것인지 알아야 그 파일에 이유를 붙일 수 있다.
-    let current: UploadFileState | undefined
-
-    try {
-      for (const item of readyFiles) {
-        current = item
+    const failures = new Map(failedUploads.map((item) => [item.id, item]))
+    const modalIds: string[] = []
+    let retryRequired = false
+    for (const item of files) {
+      if (item.status === 'duplicate' || item.status === 'sameFile')
+        failures.set(item.id, {
+          id: item.id,
+          name: item.file.name,
+          reason:
+            item.status === 'duplicate'
+              ? '이미 올린 달이에요. 덮어쓰기를 확인해 주세요.'
+              : '같은 내용의 파일을 이미 올렸어요.',
+        })
+    }
+    for (const item of readyFiles) {
+      try {
         const result = await uploadFile(item.file, Boolean(item.overwrite))
-        uploaded.add(item.id)
-        lastUploadId = result.uploadId
         uploadIds.push(result.uploadId)
         names[result.uploadId] = item.file.name
+        failures.delete(item.id)
         setAcceptedIds([...uploadIds])
         if (item.overwrite && item.period) replaced.push(item.period)
         setFiles((current) => current.filter((file) => file.id !== item.id))
-      }
-      // 올린 기간과 대시보드가 바뀌었으니 저장해 둔 목록을 버린다
-      void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      const search =
-        uploadIds.length > 1 ? `?uploads=${uploadIds.join(',')}` : ''
-      navigate(`/upload/${lastUploadId}/result${search}`, {
-        state: { replaced, names },
-      })
-    } catch (cause) {
-      void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      const remaining = files.filter((item) => !uploaded.has(item.id))
-      const duplicate =
-        cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE'
-
-      // 같은 내용의 파일을 다른 기간 이름으로 올렸으면 덮어써도 안 되므로 따로 알린다.
-      if (duplicate && cause.details?.reason === 'SAME_FILE' && current) {
-        const existing = cause.details.existing as
-          { originalName?: string; uploadedAt?: string } | undefined
-        const failedId = current.id
-        setFiles(
-          remaining.map((item) =>
-            item.id === failedId
-              ? {
-                  ...item,
-                  overwrite: false,
-                  status: 'sameFile',
-                  existingUpload: {
-                    originalName: existing?.originalName,
-                    uploadedAt: existing?.uploadedAt
-                      ? formatUploadedAt(existing.uploadedAt)
-                      : '',
-                  },
-                }
-              : item,
-          ),
-        )
-        setModalQueue([failedId])
-        return
-      }
-
-      // 서버가 이 파일만 거절했으면(형식 400·크기 413) 그 파일에 서버 이유를 붙여 팝업으로 보여 준다.
-      // 나머지 파일은 목록에 남아 바로 다시 올릴 수 있다.
-      if (
-        cause instanceof ApiError &&
-        SERVER_REJECTED.has(cause.code) &&
-        current
-      ) {
-        const failed = current
-        setFiles(remaining.filter((item) => item.id !== failed.id))
-        setRejected([{ ...failed, reason: cause.message, status: 'error' }])
-        setModalQueue([failed.id])
-        if (uploaded.size > 0) setError(`${uploaded.size}개는 올렸어요.`)
-        return
-      }
-
-      // 목록을 받은 뒤 다른 곳에서 먼저 올린 기간이면 서버가 409(SAME_PERIOD)로 알려 준다.
-      if (duplicate) {
-        const latest = await periods.refetch()
-        const updated = remaining.map((item) =>
-          markDuplicate(item, latest.data),
-        )
-        const duplicateIds = updated
-          .filter((item) => item.status === 'duplicate')
-          .map((item) => item.id)
-        setFiles(updated)
-        if (duplicateIds.length > 0) {
-          setModalQueue(duplicateIds)
-          return
+      } catch (cause) {
+        const duplicate =
+          cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE'
+        let updated: UploadFileState | null = null
+        let reason: string
+        if (duplicate && cause.details?.reason === 'SAME_FILE') {
+          const existing = cause.details.existing as
+            { originalName?: string; uploadedAt?: string } | undefined
+          updated = {
+            ...item,
+            overwrite: false,
+            status: 'sameFile',
+            existingUpload: {
+              originalName: existing?.originalName,
+              uploadedAt: existing?.uploadedAt
+                ? formatUploadedAt(existing.uploadedAt)
+                : '',
+            },
+          }
+          reason = '같은 내용의 파일을 이미 올렸어요.'
+        } else if (duplicate) {
+          updated = serverDuplicate(item, cause)
+          if (!updated) {
+            const latest = await periods.refetch()
+            const marked = markDuplicate(
+              { ...item, overwrite: false },
+              latest.data,
+            )
+            if (marked.status === 'duplicate') updated = marked
+          }
+          reason = updated
+            ? '이미 올린 달이에요. 덮어쓰기를 확인해 주세요.'
+            : '기간을 확인하지 못했어요. 업로드 내역을 확인한 뒤 다시 골라 주세요.'
+        } else reason = errorText(cause)
+        failures.set(item.id, { id: item.id, name: item.file.name, reason })
+        if (updated) {
+          const replacement = updated
+          setFiles((current) =>
+            current.map((file) => (file.id === item.id ? replacement : file)),
+          )
+          modalIds.push(item.id)
+        } else if (
+          cause instanceof ApiError &&
+          SERVER_REJECTED.has(cause.code)
+        ) {
+          setFiles((current) => current.filter((file) => file.id !== item.id))
+          setRejected((current) => [
+            ...current,
+            { ...item, reason, status: 'error' },
+          ])
+          modalIds.push(item.id)
+        } else {
+          // 접속·인증 오류는 같은 요청을 무작정 이어 보내지 않고 남은 파일의 수동 재시도를 기다린다.
+          retryRequired = true
+          setError(
+            uploadIds.length > 0
+              ? `${uploadIds.length}개는 올렸어요. 남은 파일: ${reason}`
+              : reason,
+          )
+          break
         }
       }
-
-      const message =
-        cause instanceof Error
-          ? cause.message
-          : '파일을 올리지 못했어요. 다시 시도해 주세요.'
-      setError(
-        uploaded.size > 0
-          ? `${uploaded.size}개는 올렸어요. 남은 파일: ${message}`
-          : message,
-      )
+    }
+    void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    const failureList = [...failures.values()]
+    setFailedUploads(failureList)
+    const outcome = {
+      uploadIds,
+      replaced,
+      failedUploads: failureList,
+      uploadStartedAt: startedAt,
+      names,
+    }
+    if (modalIds.length > 0) {
+      setModalQueue(modalIds)
+      if (uploadIds.length > 0 && !retryRequired) setPendingOutcome(outcome)
+    } else if (uploadIds.length > 0 && !retryRequired) {
+      const search =
+        uploadIds.length > 1 || failureList.length > 0
+          ? `?uploads=${uploadIds.join(',')}`
+          : ''
+      navigate(`/upload/${uploadIds.at(-1)}/result${search}`, {
+        state: outcome,
+      })
     }
   })
 
@@ -332,6 +402,7 @@ export function UploadPage() {
         <p role="status">
           {acceptedIds.length}개 파일을 올렸어요.{' '}
           <Link
+            state={{ failedUploads, uploadStartedAt }}
             to={`/upload/${acceptedIds.at(-1)}/result?uploads=${acceptedIds.join(',')}`}
           >
             올린 파일 결과 보기
@@ -431,14 +502,20 @@ export function UploadPage() {
               </span>
               <h2 id="upload-modal-title">이미 올린 기간이에요</h2>
               <p>
+                {modalFile.inferredPeriod && (
+                  <>입고일자로 보면 {modalFile.period}이에요. </>
+                )}
                 덮어쓰면 이 기간 자료를 새 파일로 바꾸고 다시 계산해요. 이전
                 결과는 이력으로 남아요.
               </p>
               <div className={styles.modalFile}>
                 <strong>{modalFile.file.name}</strong>
                 <span>
-                  {modalFile.period} · {modalFile.existingUpload?.uploadedAt}에
-                  올림
+                  {modalFile.period}
+                  {modalFile.existingUpload?.originalName &&
+                    ` · ${modalFile.existingUpload.originalName}`}
+                  {modalFile.existingUpload?.uploadedAt &&
+                    ` · ${modalFile.existingUpload.uploadedAt}에 올림`}
                 </span>
               </div>
               <div className={styles.modalActions}>

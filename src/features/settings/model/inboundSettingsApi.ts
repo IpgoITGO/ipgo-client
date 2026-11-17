@@ -8,6 +8,11 @@ export type DefaultSettings = {
   reviewCycleDays: number | null
   orderUnitQty: number
   reviewCycleSource: 'ESTIMATED' | 'DEFAULT'
+  suggestion?: {
+    leadTimeDays: number
+    reviewCycleDays: number | null
+    orderUnitQty: number
+  } | null
   reviewCycleSuggestion?: {
     reviewCycleDays: number
     from: string

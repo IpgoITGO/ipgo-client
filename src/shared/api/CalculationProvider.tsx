@@ -1,7 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { type PropsWithChildren, useCallback, useEffect, useState } from 'react'
 
-import { CalculationContext, type CalculationState } from './calculationContext'
+import {
+  CalculationContext,
+  type CalculationState,
+  type UploadBatchProgress,
+} from './calculationContext'
 import { cancelCalculationRun, getCalculationRun } from './calculationRunApi'
 import {
   readTrackedRun,
@@ -166,6 +170,39 @@ export function CalculationProvider({
     setTimedOut(false)
   }, [])
 
+  const trackUpload = useCallback(
+    (id: string | null | undefined, batch?: UploadBatchProgress) => {
+      if (!id) return
+      setUpload((current) => {
+        const sameBatch = batch && current?.batch?.id === batch.id
+        if (
+          current?.uploadId === id &&
+          current.batch?.id === batch?.id &&
+          current.batch?.completed === batch?.completed &&
+          current.batch?.total === batch?.total
+        )
+          return current
+        return {
+          uploadId: id,
+          startedAt:
+            sameBatch || (!batch && current?.uploadId === id)
+              ? current!.startedAt
+              : (batch?.startedAt ?? Date.now()),
+          ...(batch
+            ? {
+                batch: {
+                  id: batch.id,
+                  completed: batch.completed,
+                  total: batch.total,
+                },
+              }
+            : {}),
+        }
+      })
+    },
+    [],
+  )
+
   // 정제가 끝나 계산이 시작됐으면 계산 추적으로 넘기고, 확인 추적은 거둔다.
   if (upload !== null && uploadStatus === 'DONE') {
     trackRun(uploadRunId)
@@ -230,14 +267,8 @@ export function CalculationProvider({
         run: query.data,
         message,
         checkingSince: phase === 'checking' ? upload?.startedAt : undefined,
-        trackUpload: (id) => {
-          if (!id) return
-          setUpload((current) =>
-            current?.uploadId === id
-              ? current
-              : { uploadId: id, startedAt: Date.now() },
-          )
-        },
+        checkingProgress: phase === 'checking' ? upload?.batch : undefined,
+        trackUpload,
         trackRun,
         retry,
         dismiss: () => {

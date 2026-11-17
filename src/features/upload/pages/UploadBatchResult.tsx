@@ -1,5 +1,5 @@
 import { queryOptions, useQueries, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -10,14 +10,30 @@ import { useUploadPeriods } from '../model/useUploadPeriods'
 import { type CheckFile, UploadProcessing } from './UploadProcessing'
 import batchStyles from './UploadBatchResult.module.css'
 
-export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
+export function UploadBatchResult({
+  uploadIds,
+  failedUploads = [],
+}: {
+  uploadIds: string[]
+  failedUploads?: Array<{ name: string; reason: string }>
+}) {
   const { trackUpload, trackRun } = useCalculation()
+  const location = useLocation()
+  const [startedAt] = useState(() => {
+    const value: unknown = location.state?.uploadStartedAt
+    return typeof value === 'number' &&
+      Number.isFinite(value) &&
+      value > 0 &&
+      value <= Date.now()
+      ? value
+      : Date.now()
+  })
+  const batchId = uploadIds.join(',')
+  // 업로드 화면이 넘겨 준 올린 이름(없으면 서버 목록의 이름)
+  const names = (location.state as { names?: Record<string, string> } | null)
+    ?.names
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
-  // 업로드 화면이 넘겨 준 올린 이름(없으면 서버 목록의 이름)
-  const names = (
-    useLocation().state as { names?: Record<string, string> } | null
-  )?.names
   const results = useQueries({
     queries: uploadIds.map((id) =>
       queryOptions({
@@ -46,8 +62,22 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
     : null
 
   useEffect(() => {
-    if (activeId) trackUpload(activeId)
-  }, [activeId, trackUpload])
+    if (activeId)
+      trackUpload(activeId, {
+        id: batchId,
+        startedAt,
+        completed: done + failed,
+        total: uploadIds.length,
+      })
+  }, [
+    activeId,
+    batchId,
+    startedAt,
+    done,
+    failed,
+    uploadIds.length,
+    trackUpload,
+  ])
   useEffect(() => {
     if (latestRun) trackRun(latestRun)
   }, [latestRun, trackRun])
@@ -113,7 +143,7 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
           {pending > 0 && ` · ${pending}개 확인 중`}
           {unavailable > 0 && ` · ${unavailable}개 조회 실패`}
         </p>
-        {finished && failed === 0 && (
+        {finished && failed === 0 && failedUploads.length === 0 && (
           <p className={batchStyles.success}>모두 확인했어요</p>
         )}
       </div>
@@ -214,6 +244,19 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
             )
           })}
         </ul>
+      )}
+      {pending === 0 && failedUploads.length > 0 && (
+        <section aria-label="업로드 못 한 파일" className={batchStyles.missed}>
+          <h2>업로드 못 한 파일 {failedUploads.length}개</h2>
+          <ul>
+            {failedUploads.map((file, index) => (
+              <li key={`${file.name}-${index}`}>
+                <strong>{file.name}</strong> · {file.reason}
+              </li>
+            ))}
+          </ul>
+          <Link to="/upload">못 올린 파일 다시 고르기</Link>
+        </section>
       )}
       {pending === 0 && (
         <Link className={batchStyles.go} to="/dashboard">

@@ -315,6 +315,12 @@ function StorageCostForm({
               defaultValue={settings.ratePerCbm?.toLocaleString('ko-KR') ?? ''}
               id="storage-rate"
               inputMode="numeric"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                }
+              }}
               onBlur={(event) => {
                 // 0은 "요율 없음"으로 본다: 칸을 비우고 저장된 요율을 지운다(11/17: 넣은 값을 0으로 되돌리려 하면 오류만 났다)
                 if (Number(event.target.value.replace(/,/g, '')) === 0)
@@ -470,6 +476,12 @@ function StorageCostForm({
                           aria-label={`${product.name} 상자 ${label}`}
                           defaultValue={box?.[side] ?? ''}
                           inputMode="decimal"
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              event.currentTarget.blur()
+                            }
+                          }}
                           onBlur={(event) =>
                             saveSide(product, side, event.target.value)
                           }

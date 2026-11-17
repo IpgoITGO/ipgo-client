@@ -28,9 +28,13 @@ export function CalculationStatus({
     dismiss,
     stop,
     checkingSince,
+    checkingProgress,
     slow,
   } = useCalculation()
   const minutes = useMinutes(checkingSince)
+  const batchDetail = checkingProgress
+    ? `${minutes}분째 · ${checkingProgress.total}개 중 ${checkingProgress.completed}개 확인`
+    : undefined
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const hold = hovered || focused
@@ -65,7 +69,7 @@ export function CalculationStatus({
         : 'running'
   if (compact) {
     const short = {
-      checking: '수불부 확인 중',
+      checking: batchDetail ?? '수불부 확인 중',
       pending: run?.status === 'QUEUED' ? '계산 기다리는 중' : '계산 중',
       updating: '결과 불러오는 중',
       done:
@@ -120,7 +124,7 @@ export function CalculationStatus({
         ? `입고가 필요한 상품 ${run.summary.needCount}개 · 지금은 괜찮은 상품 ${run.summary.notNeededCount}개`
         : `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
       : phase === 'checking'
-        ? `${minutes}분째 · 끝나면 화면이 저절로 바뀌어요`
+        ? (batchDetail ?? `${minutes}분째 · 끝나면 화면이 저절로 바뀌어요`)
         : phase === 'pending' && slow
           ? '다시 시도하고 있어요. 끝나면 화면이 저절로 바뀌어요.'
           : phase === 'pending' || phase === 'updating'

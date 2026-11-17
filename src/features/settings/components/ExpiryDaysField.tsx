@@ -54,6 +54,12 @@ export function ExpiryDaysField() {
           aria-invalid={note?.tone === 'error'}
           aria-label="유통기한 임박 기준"
           inputMode="numeric"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
           onBlur={() => void save()}
           onChange={(event) => {
             setNote(null)

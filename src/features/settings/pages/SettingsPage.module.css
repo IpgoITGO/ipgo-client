@@ -827,50 +827,6 @@
   margin-top: var(--space-2);
 }
 
-/* 입고 주기 설명 줄: 설명과 "추천 N일로 바꾸기"를 한 줄에 띄워 둔다(11/17). 칸 높이는 다른 칸과 같다 */
-.defaultGrid .cell > small {
-  display: flex;
-  gap: var(--space-3);
-  align-items: baseline;
-  white-space: nowrap;
-}
-/* 좁은 폭: 설명과 추천 버튼이 숫자 칸 밑으로 겹치지 않게 줄을 나누고, 두 줄 자리를 미리 잡아 둔다(누를 때 높이 안 변함) */
-@media (max-width: 480px) {
-  .defaultGrid .cell > small {
-    display: block;
-    min-height: calc(2 * 1.7em);
-    white-space: normal;
-  }
-  .cycleSuggestion {
-    display: block;
-    white-space: nowrap;
-  }
-}
-.cycleSuggestion {
-  padding: 0;
-  color: var(--color-text);
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  background: none;
-  border: 0;
-}
-.cycleSuggestion:hover:not(:disabled) {
-  text-decoration-color: var(--color-accent-press);
-}
-.cycleSuggestion:focus-visible {
-  outline: 3px solid var(--color-primary-soft);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-.cycleSuggestion:disabled {
-  color: var(--color-text-3);
-  cursor: default;
-}
 /* 추천값을 넣은 순간 숫자 칸이 한 번 반짝인다(크기는 그대로, 바깥선만) */
 @media (prefers-reduced-motion: no-preference) {
   .defaultGrid .cell > div[data-flash] {

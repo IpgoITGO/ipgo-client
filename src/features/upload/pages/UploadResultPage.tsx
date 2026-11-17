@@ -334,6 +334,15 @@ function SingleUploadResultPage() {
 }
 
 export function UploadResultPage() {
+  const state = useLocation().state as { failedUploads?: unknown } | null
+  const failedUploads = Array.isArray(state?.failedUploads)
+    ? state.failedUploads.filter(
+        (item): item is { name: string; reason: string } =>
+          item != null &&
+          typeof item.name === 'string' &&
+          typeof item.reason === 'string',
+      )
+    : []
   const [params] = useSearchParams()
   const { uploadId } = useParams()
   const uploadIds = [
@@ -343,8 +352,13 @@ export function UploadResultPage() {
         .filter((id) => /^[1-9]\d*$/.test(id)),
     ),
   ]
-  return uploadIds.length > 1 && uploadIds.includes(uploadId ?? '') ? (
-    <UploadBatchResult key={uploadIds.join(',')} uploadIds={uploadIds} />
+  return (uploadIds.length > 1 || failedUploads.length > 0) &&
+    uploadIds.includes(uploadId ?? '') ? (
+    <UploadBatchResult
+      key={uploadIds.join(',')}
+      uploadIds={uploadIds}
+      failedUploads={failedUploads}
+    />
   ) : (
     <SingleUploadResultPage key={uploadId} />
   )

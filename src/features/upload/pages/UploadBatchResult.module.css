@@ -189,6 +189,40 @@
   transform: rotate(45deg);
 }
 
+/* 서버까지 못 간 파일 묶음(이미 올린 달·같은 파일 등) */
+.missed {
+  display: grid;
+  gap: var(--space-2);
+  justify-self: stretch;
+  font-size: 14px;
+}
+
+.missed h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.missed ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-2);
+  list-style: none;
+}
+
+.missed strong {
+  color: var(--color-text);
+}
+
+.missed a {
+  justify-self: start;
+  color: var(--color-text);
+  font-weight: 700;
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 3px;
+}
+
 /* 다음에 할 일 하나: 대시보드로 */
 .go {
   display: inline-flex;
