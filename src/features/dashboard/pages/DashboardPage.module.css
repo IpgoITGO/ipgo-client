@@ -423,7 +423,8 @@
 }
 /* 줄 전체에 한 장으로 칠한다(칸마다 칠하면 줄무늬가 된다) */
 .tableWrap tr[data-picked] {
-  background: linear-gradient(90deg, var(--color-accent-soft), #fffdf3 70%);
+  /* 번지는 색 없이 한 가지 연노랑(11/17 "그라데이션 밤티") */
+  background: color-mix(in srgb, var(--color-accent-soft) 55%, #fff);
 }
 .tableWrap tr[data-picked] td {
   background: transparent;
@@ -509,11 +510,39 @@ tr[data-soon] .weeks i[data-on] {
   opacity: 0.75;
   font-size: var(--text-caption);
 }
-.orderBar > :nth-child(3) {
+/* 남색 줄 글자 단추(전체 고르기·선택 해제): 흰 글자 + 밑줄이라 남색 위에서도 또렷하다(11/17 "회색이라 안 보인다") */
+.orderBar .barLinks {
+  display: flex;
+  gap: var(--space-2);
   margin-left: auto;
+}
+.orderBar .barLink {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 45%);
+  text-underline-offset: 4px;
+}
+.orderBar .registerButton {
   color: #fff;
 }
-.orderBar > :nth-child(3):hover:not(:disabled) {
+.orderBar .registerButton:disabled {
+  opacity: 0.5;
+}
+.orderBar .registerButton:hover:not(:disabled) {
+  color: #fff;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+}
+/* 쪽 넘기기 줄 오른쪽: 고르기 전 안내 */
+.pickHint {
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.pickHint b {
+  color: var(--color-text-2);
+  font-weight: 700;
+}
+.orderBar .barLink:hover:not(:disabled) {
   color: #fff;
   text-decoration-color: var(--color-accent);
   text-decoration-thickness: 2px;
@@ -534,6 +563,17 @@ tr[data-soon] .weeks i[data-on] {
   }
   .reasons > li {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .sort {
+    flex-wrap: nowrap;
+    width: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .sort button {
+    flex: none;
   }
 }
 /* 휴대폰: 표 대신 상품마다 카드(가로 막대 없음). 권장 입고량은 오른쪽 위에 크게 */
@@ -833,6 +873,10 @@ tr[data-soon] .weeks i[data-on] {
 .kind[data-kind='need'] {
   color: var(--color-danger);
   background: var(--color-danger-bg);
+}
+.kind[data-kind='check'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 .kind[data-kind='safe'] {
   color: var(--color-success);

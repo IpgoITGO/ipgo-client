@@ -3,19 +3,26 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type ClipboardEvent,
   type FormEvent,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  UNSAFE_DataRouterContext,
+  useBlocker,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 import { z } from 'zod'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
+import { Modal } from '../../../shared/ui/Modal/Modal'
 import { LockedButton } from '../../billing/components/LockedButton'
 import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
@@ -230,9 +237,16 @@ export function SettingsPage() {
     if (query.data) reset(query.data.values, { keepDirtyValues: true })
   }, [query.data, reset])
 
+  // 고친 값이 있는데 저장(확인하고 계산하기) 없이 나가려 하면 한 번 묻는다(11/16) → 아래 UnsavedGuard
+  const hasEdits = Object.keys(dirtyFields).length > 0
+  // 나가기를 막는 장치는 앱의 라우터(data router)에서만 돈다. 화면만 따로 띄우는 곳(테스트의 MemoryRouter)에서는 건너뛴다
+  const canGuard = useContext(UNSAFE_DataRouterContext) != null
+
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
   const cycleSuggestion = query.data?.cycleSuggestion
+  // 추천값을 넣은 순간 숫자 칸을 한 번 반짝여 어디가 바뀌었는지 알린다
+  const [cycleFlash, setCycleFlash] = useState(false)
   useEffect(() => {
     getValues('products').forEach((product, index) => {
       PRODUCT_FIELDS.forEach(({ field }) => {
@@ -456,7 +470,7 @@ export function SettingsPage() {
   if (query.isError) {
     return (
       <AsyncState
-        description={query.error.message}
+        description={errorText(query.error)}
         onRetry={() => void query.refetch()}
         status="error"
         title="입고 조건을 불러오지 못했어요"
@@ -512,59 +526,55 @@ export function SettingsPage() {
                 {errors.defaults?.leadTime?.message ?? '발주부터 입고 도착까지'}
               </small>
             </label>
-            <div className={styles.cycleControl}>
-              <label>
-                <span>입고 주기</span>
-                <div>
-                  <input
-                    inputMode="numeric"
-                    onInput={digitsOnly}
-                    type="text"
-                    aria-label="기본 입고 주기"
-                    {...register('defaults.orderCycle', {
-                      valueAsNumber: true,
-                    })}
-                  />
-                  <b>일</b>
-                </div>
-                <small>
-                  {errors.defaults?.orderCycle?.message ??
-                    (query.data?.cycleIsFallback
+            {/* 추천값 바꾸기는 칸 안 설명 줄에 둔다(11/17). 칸 밖 버튼은 나오고 사라질 때 아래 칸을 밀었다 */}
+            <div className={styles.cell}>
+              <span>입고 주기</span>
+              <div
+                data-flash={cycleFlash || undefined}
+                onAnimationEnd={() => setCycleFlash(false)}
+              >
+                <input
+                  inputMode="numeric"
+                  onInput={digitsOnly}
+                  type="text"
+                  aria-label="기본 입고 주기"
+                  {...register('defaults.orderCycle', {
+                    valueAsNumber: true,
+                  })}
+                />
+                <b>일</b>
+              </div>
+              <small>
+                {errors.defaults?.orderCycle?.message ??
+                  (cycleSuggestion &&
+                  defaults?.orderCycle === cycleSuggestion.reviewCycleDays
+                    ? `수불부 입고 간격으로 추천한 값이에요 · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 상품 ${cycleSuggestion.productCount}개 기준`
+                    : query.data?.cycleIsFallback
                       ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
                       : query.data.sourceIsEstimated
                         ? '수불부 입고 간격으로 추정했어요'
-                        : '직접 정해 저장한 값이에요')}
-                  {cycleSuggestion && (
-                    <span className={styles.cycleSuggestion}>
-                      추천 {cycleSuggestion.reviewCycleDays}일 ·{' '}
-                      {cycleSuggestion.from.slice(0, 7)} ~{' '}
-                      {cycleSuggestion.to.slice(0, 7)} · 상품{' '}
-                      {cycleSuggestion.productCount}개 기준
-                    </span>
+                        : '직접 정한 값이에요')}
+                {cycleSuggestion &&
+                  defaults?.orderCycle !== cycleSuggestion.reviewCycleDays && (
+                    <button
+                      className={styles.cycleSuggestion}
+                      disabled={isSubmitting || calculationBusy || shipping}
+                      onClick={() => {
+                        setValue(
+                          'defaults.orderCycle',
+                          cycleSuggestion.reviewCycleDays,
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                        setFocus('defaults.orderCycle')
+                        setCycleFlash(true)
+                      }}
+                      title={`${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 수불부 입고 간격 · 상품 ${cycleSuggestion.productCount}개 기준`}
+                      type="button"
+                    >
+                      추천 {cycleSuggestion.reviewCycleDays}일로 바꾸기
+                    </button>
                   )}
-                </small>
-              </label>
-              {cycleSuggestion &&
-                defaults?.orderCycle !== cycleSuggestion.reviewCycleDays && (
-                  <Button
-                    type="button"
-                    variant="text"
-                    disabled={isSubmitting || calculationBusy || shipping}
-                    onClick={() => {
-                      setValue(
-                        'defaults.orderCycle',
-                        cycleSuggestion.reviewCycleDays,
-                        {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        },
-                      )
-                      setFocus('defaults.orderCycle')
-                    }}
-                  >
-                    추천값으로 되돌리기
-                  </Button>
-                )}
+              </small>
             </div>
             <label>
               <span>입고 단위</span>
@@ -961,6 +971,7 @@ export function SettingsPage() {
           </Button>
         )}
       </footer>
+      {canGuard && <UnsavedGuard hasEdits={hasEdits} />}
       {shipping && (
         <div aria-live="polite" className={styles.ship} role="status">
           <img alt="" height="88" src="/logo.png" width="88" />
@@ -968,5 +979,32 @@ export function SettingsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// 업로드 확인 화면의 "나가기 전 확인"과 같은 장치·같은 모양.
+// 저장을 마치고 대시보드로 갈 때(안내 토스트를 들고 감)는 묻지 않는다.
+function UnsavedGuard({ hasEdits }: { hasEdits: boolean }) {
+  const blocker = useBlocker(
+    ({ nextLocation }) =>
+      hasEdits && !(nextLocation.state as { toast?: string } | null)?.toast,
+  )
+  if (blocker.state !== 'blocked') return null
+  return (
+    <Modal labelledBy="settings-leave-title" onClose={() => blocker.reset()}>
+      <div className={styles.leave}>
+        <h2 id="settings-leave-title">고친 입고 조건을 저장하지 않았어요</h2>
+        <p>
+          지금 나가면 고친 값이 사라져요. 남기려면 맨 아래 "확인하고 계산하기"를
+          눌러 주세요.
+        </p>
+        <div className={styles.leaveActions}>
+          <Button onClick={() => blocker.proceed()} variant="secondary">
+            나가기
+          </Button>
+          <Button onClick={() => blocker.reset()}>계속 고치기</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }

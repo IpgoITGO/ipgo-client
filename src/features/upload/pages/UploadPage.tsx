@@ -297,7 +297,13 @@ export function UploadPage() {
           className={styles.dropzone}
           data-dragging={isDragging}
           onDragEnter={() => setIsDragging(true)}
-          onDragLeave={() => setIsDragging(false)}
+          // 안쪽 그림·글자 위로 옮겨 갈 땐 끝난 게 아니다(깜빡임 방지): 상자 밖으로 나갈 때만 끈다
+          onDragLeave={(event) => {
+            if (
+              !event.currentTarget.contains(event.relatedTarget as Node | null)
+            )
+              setIsDragging(false)
+          }}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
         >

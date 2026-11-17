@@ -13,6 +13,10 @@
   border-radius: 14px;
 }
 
+.mark[data-bare] .dock {
+  background: none;
+}
+
 .dock img {
   position: absolute;
   bottom: 5px;

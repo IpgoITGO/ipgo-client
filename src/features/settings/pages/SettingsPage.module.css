@@ -35,7 +35,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
-.defaultGrid label {
+.defaultGrid :is(label, .cell) {
   display: grid;
   grid-template-areas:
     'name box'
@@ -50,23 +50,23 @@
   border-radius: var(--radius-card);
   transition: border-color 0.2s;
 }
-.defaultGrid label:hover {
+.defaultGrid :is(label, .cell):hover {
   border-color: var(--color-chart-muted);
 }
-.defaultGrid label:focus-within {
+.defaultGrid :is(label, .cell):focus-within {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent);
 }
-.defaultGrid label > span {
+.defaultGrid :is(label, .cell) > span {
   grid-area: name;
   font-weight: 700;
 }
-.defaultGrid label > small {
+.defaultGrid :is(label, .cell) > small {
   grid-area: note;
   min-height: 0;
   font-size: 12px;
 }
-.defaultGrid label > div {
+.defaultGrid :is(label, .cell) > div {
   display: flex;
   grid-area: box;
   gap: 4px;
@@ -77,15 +77,15 @@
   border: 1px solid var(--color-input-border);
   border-radius: 10px;
 }
-.defaultGrid label > div:focus-within {
+.defaultGrid :is(label, .cell) > div:focus-within {
   border-color: var(--color-accent-text);
   box-shadow: 0 0 0 3px rgb(255 197 61 / 35%);
 }
-.defaultGrid label > div:has(input[aria-invalid='true']) {
+.defaultGrid :is(label, .cell) > div:has(input[aria-invalid='true']) {
   border-color: var(--color-danger);
   background: var(--color-danger-bg);
 }
-.defaultGrid label > div input {
+.defaultGrid :is(label, .cell) > div input {
   width: 64px;
   min-height: 0;
   height: 100%;
@@ -97,10 +97,10 @@
   border: 0;
   outline: none;
 }
-.defaultGrid label > div input.rateInput {
+.defaultGrid :is(label, .cell) > div input.rateInput {
   width: 96px;
 }
-.defaultGrid label > div b {
+.defaultGrid :is(label, .cell) > div b {
   color: var(--color-text-3);
   font-size: 13px;
   font-weight: 500;
@@ -804,13 +804,87 @@
   visibility: hidden;
 }
 
-.cycleControl {
+/* 저장 없이 나가려 할 때 묻는 창(업로드 확인 화면과 같은 모양) */
+.leave {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-3);
 }
-.cycleControl > button {
-  justify-self: start;
+
+.leave h2,
+.leave p {
+  margin: 0;
+}
+
+.leave p {
+  color: var(--color-text-3);
+  line-height: 1.7;
+}
+
+.leaveActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* 입고 주기 설명 줄: 설명과 "추천 N일로 바꾸기"를 한 줄에 띄워 둔다(11/17). 칸 높이는 다른 칸과 같다 */
+.defaultGrid .cell > small {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  white-space: nowrap;
+}
+/* 좁은 폭: 설명과 추천 버튼이 숫자 칸 밑으로 겹치지 않게 줄을 나누고, 두 줄 자리를 미리 잡아 둔다(누를 때 높이 안 변함) */
+@media (max-width: 480px) {
+  .defaultGrid .cell > small {
+    display: block;
+    min-height: calc(2 * 1.7em);
+    white-space: normal;
+  }
+  .cycleSuggestion {
+    display: block;
+    white-space: nowrap;
+  }
 }
 .cycleSuggestion {
-  display: block;
+  padding: 0;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+.cycleSuggestion:hover:not(:disabled) {
+  text-decoration-color: var(--color-accent-press);
+}
+.cycleSuggestion:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.cycleSuggestion:disabled {
+  color: var(--color-text-3);
+  cursor: default;
+}
+/* 추천값을 넣은 순간 숫자 칸이 한 번 반짝인다(크기는 그대로, 바깥선만) */
+@media (prefers-reduced-motion: no-preference) {
+  .defaultGrid .cell > div[data-flash] {
+    animation: cycleFlash 0.9s ease-out;
+  }
+}
+@keyframes cycleFlash {
+  0%,
+  35% {
+    box-shadow: 0 0 0 4px rgb(255 197 61 / 60%);
+    background: var(--color-accent-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 4px transparent;
+    background: var(--color-card);
+  }
 }

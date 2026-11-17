@@ -56,28 +56,23 @@ export function UploadProcessing({
         {done
           ? '결과를 정리했어요.'
           : '수불부 형식과 재고 숫자를 확인하고 있어요.'}
+        {/* 여러 달을 올렸을 때도 화면은 한 장 그대로, 몇 개째인지만 같은 줄에 잇는다(11/17: 제목·막대·버튼이 겹겹이 쌓였다) */}
+        {!done && progress && progress.total > 1 && (
+          <>
+            {' '}
+            <b>
+              {progress.total}개 중 {progress.completed}개 확인
+            </b>
+          </>
+        )}
       </p>
       {progress && (
-        <>
-          <p>
-            {progress.total}개 중 {progress.completed}개 확인을 마쳤어요
-          </p>
-          <progress
-            aria-label="수불부 확인 진행률"
-            value={progress.completed}
-            max={progress.total}
-            className={styles.progress}
-          />
-          <Button
-            onClick={() => {
-              leavingOnPurpose.current = true
-              onGoDashboard()
-            }}
-            variant="secondary"
-          >
-            대시보드로 가기
-          </Button>
-        </>
+        <progress
+          aria-label="수불부 확인 진행률"
+          className={styles.srOnly}
+          max={progress.total}
+          value={progress.completed}
+        />
       )}
       {isLong && (
         <div className={styles.band}>
@@ -85,17 +80,15 @@ export function UploadProcessing({
           <strong>생각보다 오래 걸려요</strong>
           <div className={styles.bandRow}>
             <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
-            {!progress && (
-              <Button
-                onClick={() => {
-                  leavingOnPurpose.current = true
-                  onGoDashboard()
-                }}
-                variant="secondary"
-              >
-                대시보드로
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                leavingOnPurpose.current = true
+                onGoDashboard()
+              }}
+              variant="secondary"
+            >
+              대시보드로
+            </Button>
           </div>
         </div>
       )}

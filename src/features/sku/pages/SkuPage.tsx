@@ -14,6 +14,7 @@ import { calculationReason } from '../../../shared/lib/calculationReason'
 import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
+import { EmptyNote } from '../../../shared/ui/EmptyNote/EmptyNote'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
@@ -25,7 +26,9 @@ import {
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
+import { DecideRecommended } from '../components/DecideRecommended'
 import { ScenarioInsight } from '../components/ScenarioInsight'
+import { SkuNav } from '../components/SkuNav'
 import {
   getSkuDetail,
   type SettingSource,
@@ -60,7 +63,7 @@ function methodSentence(method: NonNullable<SkuDetail['method']>) {
       ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
       : '최근 28일 평균으로 계산했어요'
   if (method.applied === 'LGBM19')
-    return 'LightGBM 모델로 고정 19일의 수요를 예측했어요'
+    return '앞으로 19일 동안 팔릴 양을 예측해 계산했어요'
   return '이 계산 방식의 설명은 아직 제공되지 않았어요'
 }
 
@@ -361,27 +364,38 @@ function TrendChart({
     startStock != null && startStock !== stock ? (
       <span className={styles.trendChip}>
         오늘 남았을 재고 <b>{startStock.toLocaleString()}개</b>
+        {/* 소진일이 오늘 이전이면 "→ 11/14 소진"이 앞날처럼 읽혀 재고 0개와 어긋났다(11/15 dev 실데이터) */}
         {shortageOn ? (
-          <>
-            {' '}
-            → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
-          </>
+          shortageOn.slice(0, 10) < new Date().toLocaleDateString('sv') ? (
+            <>
+              {' '}
+              · <b>{slashDate(shortageOn, shortageOn)}</b>에 이미 바닥났을
+              거예요
+            </>
+          ) : (
+            <>
+              {' '}
+              → <b>{slashDate(shortageOn, shortageOn)}</b> 소진
+            </>
+          )
         ) : null}
       </span>
     ) : null
 
   function flowView(): View {
     const hasLastYear = history.some((h) => h.lastYearOutbound != null)
-    const max = Math.max(
-      ...history.map((h) =>
-        Math.max(h.inventory, h.outbound, h.lastYearOutbound ?? 0),
-      ),
+    // 재고와 출고는 한 눈금으로 그린다. 출고만 따로 키운 띠(11/15)는 눈금이 둘이 돼 헷갈려서 뺐다(11/17). 출고는 주별 출고 탭에서 본다
+    const outPeak = Math.max(
+      ...history.map((h) => Math.max(h.outbound, h.lastYearOutbound ?? 0)),
       daily,
-      1,
+      0,
     )
+    const stockPeak = Math.max(...history.map((h) => h.inventory), 1)
+    const max = Math.max(stockPeak, outPeak)
     const step = niceStep(max)
     const top = Math.ceil(max / step) * step
     const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
+    const yo = y
     const span = lastDay + future
     const perDay = span > 0 ? (box.right - box.left) / span : 0
     const xd = (d: number) => box.left + d * perDay
@@ -398,7 +412,7 @@ function TrendChart({
       .map((h, i) =>
         h.lastYearOutbound == null
           ? ''
-          : `${i === 0 || history[i - 1].lastYearOutbound == null ? 'M' : 'L'}${x(i)},${y(h.lastYearOutbound)}`,
+          : `${i === 0 || history[i - 1].lastYearOutbound == null ? 'M' : 'L'}${x(i)},${yo(h.lastYearOutbound)}`,
       )
       .join(' ')
     const stockouts = history
@@ -435,7 +449,7 @@ function TrendChart({
           h.outbound > 0 ? (
             <path
               className={`${styles.bar} ${styles.grow}`}
-              d={barPath(x(i) - bw / 2, bw, y(h.outbound), box.bottom)}
+              d={barPath(x(i) - bw / 2, bw, yo(h.outbound), box.bottom)}
               key={h.day}
               style={{ ['--i' as string]: i }}
             />
@@ -448,7 +462,7 @@ function TrendChart({
               d={barPath(
                 xd(lastDay + k + 1) - fw / 2,
                 fw,
-                y(daily),
+                yo(daily),
                 box.bottom,
               )}
               key={k}
@@ -475,11 +489,12 @@ function TrendChart({
               strokeDasharray="4 3"
               strokeWidth="2"
             />
+            {/* 날마다 점을 찍으면 기록이 촘촘할 때 점이 줄처럼 뭉친다: 간격이 넉넉할 때만 찍는다 */}
             {history.map((h, i) =>
-              h.lastYearOutbound == null ? null : (
+              h.lastYearOutbound == null || gap < 10 ? null : (
                 <circle
                   cx={x(i)}
-                  cy={y(h.lastYearOutbound)}
+                  cy={yo(h.lastYearOutbound)}
                   fill={LAST_YEAR}
                   key={h.day}
                   r="3"
@@ -595,7 +610,7 @@ function TrendChart({
           nx - 12,
           box.top + 36 + small.length * 14 + 8,
           outX,
-          Math.min(y(daily) - 7, y(0) - 9),
+          Math.min(yo(daily) - 7, y(0) - 9),
         ],
       }
     }
@@ -729,6 +744,8 @@ function TrendChart({
         ...w,
         label: Number.isNaN(startMs) ? `${b + 1}주` : mdOf(startMs),
         end: Number.isNaN(endMs) ? '' : mdOf(endMs),
+        // 마지막 주가 7일이 안 되면 며칠치인지(11/15 "덜 찬 주가 뭐야" → "3일치")
+        days: Math.round(lastDay - b * 7 + 1),
         part: b === keys[keys.length - 1] && lastDay - b * 7 + 1 < 7,
       }
     })
@@ -742,11 +759,12 @@ function TrendChart({
     const step = niceStep(peak * 1.45)
     const top = Math.ceil((peak * 1.45) / step) * step
     const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
-    const slot = (box.right - box.left) / weeks.length
+    // 점선 오른쪽 끝에 "평균 N개"를 붙일 자리만큼 막대를 비켜 그린다(11/15 "점선이 뭔지 모름")
+    const plotRight = avg != null ? box.right - 62 : box.right
+    const slot = (plotRight - box.left) / weeks.length
     const bw = Math.min(24, slot * 0.5)
     const cx = (i: number) => box.left + slot * (i + 0.5)
     const every = Math.max(1, Math.ceil(46 / slot))
-    const tipX = box.left + slot * (weeks.length - 1)
 
     const g = (
       <>
@@ -775,7 +793,7 @@ function TrendChart({
                     x={cx(i)}
                     y={box.bottom + 48}
                   >
-                    {w.out ? `품절 ${w.out}일` : '덜 찬 주'}
+                    {w.out ? `품절 ${w.out}일` : `${w.days}일치`}
                   </text>
                 )}
               </>
@@ -787,11 +805,17 @@ function TrendChart({
             <line
               className={`${styles.avgLine} ${styles.later}`}
               x1={box.left}
-              x2={box.right}
+              x2={plotRight + 4}
               y1={y(avg)}
               y2={y(avg)}
             />
-            {ripple(tipX, y(avg), 'ink')}
+            <text
+              className={`${styles.avgLabel} ${styles.later}`}
+              x={plotRight + 8}
+              y={y(avg) + 4}
+            >
+              평균 {avg.toLocaleString()}개
+            </text>
           </>
         )}
       </>
@@ -828,30 +852,22 @@ function TrendChart({
         ) : (
           <>아직 한 주를 다 채운 기록이 없어요</>
         ),
-      sub: '재고가 없던 날이 있는 주와 덜 찬 주는 옅게 그리고 평균에서 빼요.',
+      // 재고가 다 있던 주가 하나도 없으면 품절 있던 주까지 평균에 넣는다. 그때는 글도 그렇게 말한다
+      sub:
+        full.length > 0
+          ? '재고가 없던 날이 있는 주와 7일이 안 된 주는 옅게 그리고 평균에서 빼요.'
+          : '재고가 다 있던 주가 없어서, 재고 없던 날이 있는 주도 평균에 넣었어요. 7일이 안 된 주만 빼요.',
       legend: [
         { kind: 'bar', color: BAR, text: '주별 출고' },
         {
           kind: 'bar',
           color: 'var(--chart-part)',
-          text: '재고 없던 날이 있는 주·덜 찬 주',
+          text: '재고 없던 날이 있는 주·7일이 안 된 주',
         },
         { kind: 'dash', color: INK, text: '평균' },
       ],
-      note:
-        avg != null
-          ? {
-              tone: 'ink',
-              x: box.right - 2,
-              y: box.top + 6,
-              main: `한 주 평균 ${avg.toLocaleString()}개`,
-              small: ['다 판 주만 셌어요'],
-              arrow:
-                weeks.length > 1
-                  ? [tipX + 14, box.top + 40, tipX, y(avg) - 7]
-                  : null,
-            }
-          : null,
+      // 평균 메모와 화살표는 뺐다: 막대 사이 빈 곳을 가리켜 무엇을 짚는지 안 보였다(11/15). 숫자는 제목·범례에
+      note: null,
     }
   }
 
@@ -1611,6 +1627,7 @@ export function SkuPage() {
 
   return (
     <div className={styles.page}>
+      <SkuNav productId={skuId} />
       <header className={styles.header}>
         <div>
           {/* 출고지는 없으면 줄째 뺀다 */}
@@ -1635,12 +1652,24 @@ export function SkuPage() {
           </div>
           <p>바코드 {data.barcode}</p>
         </div>
-        {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
-        {data.status !== 'reference' && (
-          <span className={styles.status} data-status={data.status}>
-            {statusLabel}
-          </span>
-        )}
+        <div className={styles.headerSide}>
+          {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
+          {data.status !== 'reference' && (
+            <span className={styles.status} data-status={data.status}>
+              {statusLabel}
+            </span>
+          )}
+          {/* 권장량이 나온 상품만: 권장량으로 정하기(11/16, 전엔 화면 중간 비교 카드 안에만 있었다) */}
+          {data.status !== 'pending' &&
+            data.status !== 'unavailable' &&
+            data.resultId != null && (
+              <DecideRecommended
+                productId={skuId}
+                quantity={data.recommendation.quantity}
+                resultId={data.resultId}
+              />
+            )}
+        </div>
       </header>
 
       {data.status === 'pending' ? (
@@ -1841,18 +1870,19 @@ export function SkuPage() {
                 <p className={styles.methodSentence}>
                   {methodSentence(data.method)}
                   {data.method.applied === 'LGBM19' && (
-                    <small>배송 5일 + 입고 주기 14일 기준이에요</small>
+                    <>
+                      <small>
+                        19일은 배송 5일에 입고 주기 14일을 더한 기간이에요
+                      </small>
+                      <small>
+                        그동안 모자라지 않을 만큼을 권장 입고량으로 잡았어요
+                      </small>
+                    </>
                   )}
                   {['A', 'B'].includes(data.method.applied) &&
                     !data.method.fallback && (
                       <small>기본 계산 방식을 적용했어요</small>
                     )}
-                </p>
-              )}
-              {data.method?.applied === 'LGBM19' && (
-                <p>
-                  보정한 목표 재고를 기준으로 권장 입고량을 계산해요. 정확도는
-                  아직 평가하지 않았어요.
                 </p>
               )}
               {(!data.method || ['A', 'B'].includes(data.method.applied)) && (
@@ -2017,6 +2047,8 @@ export function AccuracyCard({
   const outDays = history.filter((item) => !item.covered)
   const first = history[0]
   const last = history.at(-1)
+  // 맞춰 볼 기록이 하나도 없으면 칸 두 개에 "미평가"를 되풀이하지 않고 안내 하나만 둔다(11/17)
+  const empty = history.length === 0 && coverRate == null && errorRate == null
 
   return (
     <section className={styles.card}>
@@ -2025,6 +2057,7 @@ export function AccuracyCard({
         <span
           className={styles.accuracyGrade}
           data-grade={accuracy.grade ?? 'none'}
+          hidden={empty}
         >
           {evaluated && accuracy.grade
             ? `정확도 ${accuracyLabels[accuracy.grade]}`
@@ -2039,89 +2072,103 @@ export function AccuracyCard({
           봤어요
         </p>
       )}
-      <div className={styles.accuracyBoxes}>
-        <div>
-          <span>권장량으로 버틴 비율</span>
-          <strong>
-            {coverRate == null ? (
-              <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
-            ) : (
-              `${coverRate}%`
+      {empty ? (
+        <EmptyNote
+          title={
+            unevaluated || evaluation?.status === 'UNAVAILABLE'
+              ? '이 계산은 아직 정확도를 재지 않아요'
+              : '맞춰 볼 지난 예측이 아직 없어요'
+          }
+        >
+          {unevaluated || evaluation?.status === 'UNAVAILABLE'
+            ? '지난 예측과 실제 판매를 맞춰 본 기록이 없어요. 권장 입고량은 위 계산 근거대로 정했어요.'
+            : '수불부가 더 쌓이면 예측한 양과 실제 나간 양을 비교해 보여 드려요.'}
+        </EmptyNote>
+      ) : (
+        <div className={styles.accuracyBoxes}>
+          <div>
+            <span>권장량으로 버틴 비율</span>
+            <strong>
+              {coverRate == null ? (
+                <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+              ) : (
+                `${coverRate}%`
+              )}
+            </strong>
+            <p>
+              {coverRate == null
+                ? unevaluated
+                  ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                  : '비교할 지난 예측이 아직 없어요.'
+                : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
+                    outDays.length > 0
+                      ? ` · ${outDays
+                          .slice(0, 2)
+                          .map((item) => slashDate(item.date, item.date))
+                          .join('·')}${outDays.length > 2 ? ' 등' : ''} 품절`
+                      : ''
+                  }`}
+            </p>
+            {history.length > 0 && (
+              <>
+                <CoverChart history={history} horizon={horizon} />
+                <div
+                  aria-label="버틴 비율 그래프 범례"
+                  className={styles.accLegend}
+                  role="group"
+                >
+                  <span data-series="forecast">예측한 양</span>
+                  <span data-series="actual">실제 나간 양</span>
+                  <span data-series="out">품절</span>
+                </div>
+              </>
             )}
-          </strong>
-          <p>
-            {coverRate == null
-              ? unevaluated
-                ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
-                : '비교할 지난 예측이 아직 없어요.'
-              : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
-                  outDays.length > 0
-                    ? ` · ${outDays
-                        .slice(0, 2)
-                        .map((item) => slashDate(item.date, item.date))
-                        .join('·')}${outDays.length > 2 ? ' 등' : ''} 품절`
-                    : ''
-                }`}
-          </p>
-          {history.length > 0 && (
-            <>
-              <CoverChart history={history} horizon={horizon} />
-              <div
-                aria-label="버틴 비율 그래프 범례"
-                className={styles.accLegend}
-                role="group"
-              >
-                <span data-series="forecast">예측한 양</span>
-                <span data-series="actual">실제 나간 양</span>
-                <span data-series="out">품절</span>
-              </div>
-            </>
-          )}
-        </div>
-        <div>
-          <span>예측이 빗나간 정도</span>
-          <strong>
-            {errorRate == null ? (
-              <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
-            ) : (
-              `±${errorRate}%`
+          </div>
+          <div>
+            <span>예측이 빗나간 정도</span>
+            <strong>
+              {errorRate == null ? (
+                <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+              ) : (
+                `±${errorRate}%`
+              )}
+            </strong>
+            <p>
+              {errorRate == null
+                ? unevaluated
+                  ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                  : history.length > 0 &&
+                      history.every((item) => item.outbound === 0)
+                    ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
+                    : '비교할 지난 예측이 쌓이면 보여요.'
+                : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
+            </p>
+            {history.length > 0 && (
+              <>
+                <MissChart errorRate={errorRate} history={history} />
+                <div
+                  aria-label="빗나간 정도 그래프 범례"
+                  className={styles.accLegend}
+                  role="group"
+                >
+                  <span data-series="over">예측보다 더 팔림</span>
+                  <span data-series="under">덜 팔림</span>
+                  {errorRate != null && errorRate > 0 && (
+                    <span data-series="band">평균 범위 ±{errorRate}%</span>
+                  )}
+                </div>
+              </>
             )}
-          </strong>
-          <p>
-            {errorRate == null
-              ? unevaluated
-                ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
-                : history.length > 0 &&
-                    history.every((item) => item.outbound === 0)
-                  ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
-                  : '비교할 지난 예측이 쌓이면 보여요.'
-              : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
-          </p>
-          {history.length > 0 && (
-            <>
-              <MissChart errorRate={errorRate} history={history} />
-              <div
-                aria-label="빗나간 정도 그래프 범례"
-                className={styles.accLegend}
-                role="group"
-              >
-                <span data-series="over">예측보다 더 팔림</span>
-                <span data-series="under">덜 팔림</span>
-                {errorRate != null && errorRate > 0 && (
-                  <span data-series="band">평균 범위 ±{errorRate}%</span>
-                )}
-              </div>
-            </>
-          )}
+          </div>
         </div>
-      </div>
+      )}
       {accuracy.range && (
         <p className={styles.range}>
           예측 범위 {accuracy.range.low.toLocaleString()}~
           {accuracy.range.high.toLocaleString()}개 · 참고용
         </p>
       )}
-      {history.length === 0 && (
+      {history.length === 0 && !empty && (
         <p className={styles.accNote}>
           {evaluation?.status === 'UNAVAILABLE'
             ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'

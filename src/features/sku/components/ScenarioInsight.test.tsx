@@ -551,7 +551,7 @@ describe('ScenarioInsight', () => {
     renderInsight('ai-none')
 
     expect(
-      await screen.findByText('설명 문장을 만들지 못했어요.'),
+      await screen.findByText('설명 문장을 만들지 못했어요'),
     ).toBeInTheDocument()
     expect(screen.getByText('숫자는 위 표에 그대로 있어요')).toBeInTheDocument()
   })

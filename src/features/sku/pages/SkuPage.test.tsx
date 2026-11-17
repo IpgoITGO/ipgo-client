@@ -96,10 +96,10 @@ describe('SkuPage', () => {
     )
     renderSku('/sku/27')
     expect(
-      await screen.findByText('LightGBM 모델로 고정 19일의 수요를 예측했어요'),
+      await screen.findByText('앞으로 19일 동안 팔릴 양을 예측해 계산했어요'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('배송 5일 + 입고 주기 14일 기준이에요'),
+      screen.getByText(/19일은 배송 5일에 입고 주기 14일을 더한 기간이에요/),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('권장 입고량 72개')).toBeInTheDocument()
     expect(
@@ -109,7 +109,7 @@ describe('SkuPage', () => {
       await screen.findByText('이 모델의 품절 위험은 아직 산출하지 않아요.'),
     ).toBeInTheDocument()
     expect(
-      await screen.findByText('이 모델의 AI 설명은 아직 제공되지 않아요.'),
+      await screen.findByText('이 계산 방식은 아직 AI 설명이 없어요'),
     ).toBeInTheDocument()
     expect(
       screen.queryByText(
@@ -154,6 +154,30 @@ describe('SkuPage', () => {
       '4 3',
     )
     expect(screen.getByText('5,000')).toBeInTheDocument()
+  })
+
+  it('주별 출고: 7일이 안 된 마지막 주는 며칠치인지 쓰고 평균은 범례에 숫자로', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...detailFixture,
+          // 11/1~11/10: 다 찬 한 주(하루 1개씩 7개) + 3일치
+          trend: Array.from({ length: 10 }, (_, i) => ({
+            date: `2026-11-${String(i + 1).padStart(2, '0')}`,
+            closingQty: 10,
+            outboundQty: 1,
+            isValidObservation: true,
+          })),
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    await screen.findByRole('img', { name: '재고·출고 그래프' })
+    await user.click(screen.getByRole('tab', { name: '주별 출고' }))
+    expect(await screen.findByText('3일치')).toBeInTheDocument()
+    expect(screen.getByText('평균 7개')).toBeInTheDocument()
+    expect(screen.queryByText('덜 찬 주')).toBeNull()
   })
 
   it('작년 필드가 없는 기존 응답은 비교 출고를 만들어 표시하지 않는다', async () => {
@@ -221,6 +245,23 @@ describe('SkuPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('소진일이 이미 지났으면 "→ 소진" 대신 이미 바닥났다고 쓴다', async () => {
+    // 고정 자료: 시작 재고 5개(기록 8개와 다름) · 소진일 2026-11-07(지난 날)
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json(detailFixture),
+      ),
+    )
+    renderSku('/sku/27')
+    const chip = await screen.findByText(
+      (_, el) =>
+        el?.tagName === 'SPAN' &&
+        /^오늘 남았을 재고 5개/.test(el.textContent ?? ''),
+    )
+    expect(chip).toHaveTextContent('11/7에 이미 바닥났을 거예요')
+    expect(chip).not.toHaveTextContent('소진')
+  })
+
   it('기본 방식을 못 쓰는 상품은 다른 방식으로 대체했다고 알린다', async () => {
     renderSku('/sku/fallback-product')
 
@@ -286,8 +327,11 @@ describe('SkuPage', () => {
     expect(screen.queryByText('0원')).toBeNull()
     // 셀러가 넣을 값: 리드타임·입고 단위 → 미입력
     expect(screen.getAllByText('미입력').length).toBeGreaterThanOrEqual(2)
-    // 자료가 모자란 값: 소진일·시작 재고·정확도 → 자료 부족
-    expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(3)
+    // 자료가 모자란 값: 소진일·시작 재고 → 자료 부족. 정확도는 칸마다 되풀이하지 않고 안내 하나로(11/17)
+    expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(2)
+    expect(
+      screen.getByText('맞춰 볼 지난 예측이 아직 없어요'),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: '단가를 넣으면 보여요 →' }),
     ).toHaveAttribute('href', '/settings')

@@ -18,6 +18,14 @@ export class ApiError extends Error {
   }
 }
 
+// 화면에 띄울 오류 문구. 서버가 준 안내(ApiError)만 그대로 쓰고, 화면 코드 오류처럼
+// 개발자용 영어 문구("Cannot read properties of undefined …")는 사용자에게 보이지 않게 바꾼다.
+export function errorText(error: unknown) {
+  return error instanceof ApiError
+    ? error.message
+    : '잠시 뒤 다시 시도해 주세요. 계속되면 알려 주세요.'
+}
+
 // 서버에 닿지 못했거나 서버가 아닌 곳(예: 가짜 서버가 안 붙어 홈페이지 HTML)이 답한 경우의 code입니다.
 export const CONNECTION_FAILED = 'CONNECTION_FAILED'
 const CONNECTION_FAILED_MESSAGE =

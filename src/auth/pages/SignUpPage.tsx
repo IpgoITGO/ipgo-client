@@ -319,7 +319,7 @@ export function SignUpPage() {
                     </button>
                   </>
                 }
-                inputClassName={styles.code}
+                boxes={6}
                 inputMode="numeric"
                 label="인증 코드"
                 maxLength={6}

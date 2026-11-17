@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, useCallback, useMemo, useState } from 'react'
 
-import { ApiError } from '../../../shared/api/client'
+import { ApiError, errorText } from '../../../shared/api/client'
 import { useActionLock } from '../../../shared/hooks/useActionLock'
 import { SurgeCardChart } from '../../dashboard/ui/DemandShift'
 import { shiftTimes } from '../../dashboard/model/dashboardApi'
@@ -34,6 +34,7 @@ import {
   toScenarios,
 } from '../model/resultApi'
 import { InsightSketch, type SketchValues } from './InsightSketch'
+import { EmptyNote } from '../../../shared/ui/EmptyNote/EmptyNote'
 import styles from './ScenarioInsight.module.css'
 
 // 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
@@ -191,7 +192,12 @@ export function ScenarioInsight({
       ? 'none'
       : insight?.stale
         ? 'template'
-        : TONE[insight?.mode ?? 'LLM']
+        : // 설명이 없는 것(꺼 둠·이 계산 방식은 아직 없음)은 실패가 아니다 → 붉은 테이프 대신 평소 색(11/17)
+          insight?.mode === 'NONE' &&
+            (insight.explanationDisabled ||
+              insight.failReason === 'INPUT_UNAVAILABLE')
+          ? 'template'
+          : TONE[insight?.mode ?? 'LLM']
   const stateChip =
     insight && insight.state !== 'NORMAL' ? STATE_CHIP[insight.state] : null
   const insightFoot = insight?.stale
@@ -438,7 +444,7 @@ export function ScenarioInsight({
           />
         ) : scenariosQuery.isError ? (
           <AsyncState
-            description={scenariosQuery.error.message}
+            description={errorText(scenariosQuery.error)}
             onRetry={() => void scenariosQuery.refetch()}
             status="error"
             title="시나리오를 불러오지 못했어요"
@@ -868,31 +874,18 @@ export function ScenarioInsight({
                 </p>
               )}
               {insight?.mode === 'NONE' ? (
-                <ol className={styles.lines} data-numberless="">
-                  <li
-                    data-tone={
-                      insight.explanationDisabled ||
-                      (model19 && insight.failReason === 'INPUT_UNAVAILABLE')
-                        ? undefined
-                        : 'danger'
-                    }
-                  >
-                    <span>
-                      {model19 && insight.failReason === 'INPUT_UNAVAILABLE'
-                        ? '이 모델의 AI 설명은 아직 제공되지 않아요.'
-                        : insight.explanationDisabled
-                          ? 'AI 설명을 사용하지 않고 있어요.'
-                          : '설명 문장을 만들지 못했어요.'}
-                    </span>
-                  </li>
-                  <li>
-                    <span>
-                      {model19
-                        ? '위 입고량 시나리오 표에서 수량별 남는 재고를 비교해 주세요.'
-                        : '위 입고량 시나리오 표에서 수량별 남는 재고와 품절 위험을 직접 비교해 주세요.'}
-                    </span>
-                  </li>
-                </ol>
+                <EmptyNote
+                  title={
+                    model19 && insight.failReason === 'INPUT_UNAVAILABLE'
+                      ? '이 계산 방식은 아직 AI 설명이 없어요'
+                      : insight.explanationDisabled
+                        ? 'AI 설명을 꺼 두었어요'
+                        : '설명 문장을 만들지 못했어요'
+                  }
+                >
+                  위 입고량 비교에서 수량별로 남는 재고
+                  {model19 ? '' : '와 품절 위험'}를 확인해 주세요.
+                </EmptyNote>
               ) : (
                 <ol
                   className={styles.lines}

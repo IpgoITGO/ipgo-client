@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { http, HttpResponse } from 'msw'
 
-import { server } from '../../mocks/server'
 import { demoSubscription } from '../../features/billing/mocks/billingHandlers'
 import { openApp } from '../../test/openApp'
 
+import { server } from '../../mocks/server'
 import { clickSignOut, signInAsSeller } from '../../test/signIn'
 import { AppProviders } from '../providers/AppProviders'
 import { routes } from '../router/router'
@@ -39,6 +39,50 @@ describe('AppLayout', () => {
     expect(
       await screen.findByRole('heading', { name: '로그인' }),
     ).toBeInTheDocument()
+  })
+
+  it('수불부를 올리기 전에는 입고 조건 메뉴를 잠그고 주소로 들어와도 대시보드로 돌려보낸다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          asOfDate: null,
+          today: '2026-11-15',
+          daysSinceAsOf: null,
+          resultStatus: null,
+          runId: null,
+          resultComputedAt: null,
+          lastFailedRunAt: null,
+          latestUploadId: null,
+          summary: {
+            needCount: 0,
+            notNeededCount: 0,
+            notCalculableCount: 0,
+            excludedCount: 0,
+          },
+          items: [],
+          notCalculable: [],
+          excluded: [],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    const router = createMemoryRouter(routes, { initialEntries: ['/login'] })
+    render(
+      <AppProviders>
+        <RouterProvider router={router} />
+      </AppProviders>,
+    )
+    await signInAsSeller(user)
+
+    const locked = await screen.findByRole('button', { name: '입고 조건' })
+    expect(locked).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('link', { name: '입고 조건' })).toBeNull()
+
+    await router.navigate('/settings')
+    expect(
+      await screen.findByText('수불부를 먼저 올려 주세요'),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/dashboard')
   })
 })
 

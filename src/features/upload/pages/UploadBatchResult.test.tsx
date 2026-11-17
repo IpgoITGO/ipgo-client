@@ -73,7 +73,8 @@ describe('묶음 업로드 결과', () => {
     },
   )
 
-  it('처리 중에도 대시보드 버튼으로 확인창 없이 이동한다', async () => {
+  // 확인 중에는 한 파일을 올렸을 때와 같은 화면 한 장만 보인다(11/17). "대시보드로" 버튼은 2분 넘게 걸릴 때 안내 띠에 나온다(UploadProcessing.test)
+  it('처리 중에는 로딩 화면 한 장만 보이고 제목·상태 줄을 따로 두지 않는다', async () => {
     server.use(
       http.get('/api/uploads/periods', () =>
         HttpResponse.json({ items: [], latestUploadId: 2 }),
@@ -82,13 +83,15 @@ describe('묶음 업로드 결과', () => {
         HttpResponse.json(resultFor(Number(params.uploadId), 'PROCESSING')),
       ),
     )
-    const router = show([1, 2])
+    show([1, 2])
     await screen.findByRole('progressbar', { name: '수불부 확인 진행률' })
-    await userEvent.click(
-      screen.getByRole('button', { name: '대시보드로 가기' }),
-    )
-    expect(router.state.location.pathname).toBe('/dashboard')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('2개 중 0개 확인')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '수불부 확인 중' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '대시보드로 가기' }),
+    ).not.toBeInTheDocument()
   })
 
   it('마지막 파일이 성공해도 23개 중 20개 확인·3개 실패와 해당 월 재업로드를 표시한다', async () => {
@@ -144,9 +147,7 @@ describe('묶음 업로드 결과', () => {
       }),
     )
     show([1, 2])
-    expect(
-      await screen.findByText('2개 중 1개 확인 · 0개 실패 · 1개 확인 중'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('2개 중 1개 확인')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: '수불부를 확인하고 있어요' }),
     ).toBeVisible()
@@ -157,9 +158,6 @@ describe('묶음 업로드 결과', () => {
       screen.getByRole('progressbar', { name: '수불부 확인 진행률' }),
     ).toHaveAttribute('max', '2')
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: '대시보드로 가기' }),
-    ).toBeVisible()
     complete = true
     await waitFor(
       () =>

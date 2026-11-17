@@ -14,22 +14,145 @@
   display: grid;
   gap: var(--space-4);
 }
-.say {
+/* 안내 상자: 가운데 정렬 한 줄기(11/17). 로고 상자 → 제목 → 시간 → 단계 선 → 안내 → 지난 결과 보기 */
+.hero {
   display: grid;
-  gap: 4px;
-  align-content: start;
+  gap: 6px;
+  justify-items: center;
+  padding-block: var(--space-4) var(--space-2);
+  text-align: center;
 }
-.say strong {
-  font-size: 17px;
+.mark {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+}
+.mark > * {
+  transform: scale(1.6);
+}
+.hero strong {
+  font-size: 20px;
   font-weight: 800;
 }
-.say span {
+.time {
+  margin: 0;
+  color: var(--color-text-2);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+.time b {
+  color: var(--color-text);
+}
+/* 다시 시도 중: 작은 도는 화살표 */
+.retry {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 2px solid var(--color-accent-text);
+  border-right-color: transparent;
+  border-radius: 50%;
+}
+.steps {
+  width: min(100%, 440px);
+  margin-bottom: var(--space-4);
+}
+/* 맨 아래 진행 막대: 상자 아래 가장자리를 따라 한 줄 */
+.wait {
+  position: relative;
+  overflow: hidden;
+}
+.bar {
+  position: absolute;
+  inset: auto 0 0;
+  height: 5px;
+  background: #f1ebe1;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 0 3px 3px 0;
+  transition: width 1s linear;
+}
+.bar[data-unknown] i {
+  width: 32%;
+}
+.wait[data-done] .bar i {
+  background: var(--color-done);
+  transition: width 0.4s ease-out;
+}
+.note {
   color: var(--color-text-3);
   font-size: 13px;
-  line-height: 1.6;
+}
+.past {
+  margin-top: var(--space-2);
+}
+.hero [data-hide] {
+  visibility: hidden;
+}
+/* 끝난 순간엔 "지난 결과 보기" 자리를 아예 뺀다. 숨기기만 하면 가운데가 휑하다(11/17) */
+.hero .past[data-hide] {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wait {
+    animation: waitIn 0.42s var(--ease-spring) both;
+  }
+  /* 제목 위로 옅은 빛이 천천히 지나간다(계산 중일 때만) */
+  .shimmer {
+    color: transparent;
+    background: linear-gradient(
+        100deg,
+        var(--color-text) 42%,
+        #8a909c 50%,
+        var(--color-text) 58%
+      )
+      0 0 / 260% 100%;
+    background-clip: text;
+    animation: sheen 2.6s linear infinite;
+  }
+  .retry {
+    animation: turn 1s linear infinite;
+  }
+  .bar[data-unknown] i {
+    animation: slide 1.5s ease-in-out infinite alternate;
+  }
+}
+@keyframes waitIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+@keyframes slide {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(232%);
+  }
+}
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .memo {
+  display: grid;
+  justify-items: center;
   padding-top: var(--space-4);
   border-top: 1px dashed #e7d9bd;
 }
@@ -42,6 +165,8 @@
   list-style: none;
 }
 .memo li {
+  /* 좁은 폭에서 "72개"만 다음 줄로 떨어지지 않게 */
+  text-wrap: balance;
   position: relative;
   padding-left: 14px;
 }

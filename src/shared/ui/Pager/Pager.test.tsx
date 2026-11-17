@@ -6,10 +6,11 @@ import { Pager } from './Pager'
 import { pageList, readPage } from './pageParams'
 
 describe('Pager', () => {
-  it('쪽 번호는 처음·끝·지금 앞뒤만 보이고 사이는 …', () => {
+  it('쪽 번호는 10개씩, 10쪽에 가면 15쪽까지 보이게 민다', () => {
     expect(pageList(1, 5)).toEqual([1, 2, 3, 4, 5])
-    expect(pageList(6, 12)).toEqual([1, null, 5, 6, 7, null, 12])
-    expect(pageList(1, 12)).toEqual([1, 2, null, 12])
+    expect(pageList(3, 18)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    expect(pageList(10, 18)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    expect(pageList(18, 18)).toEqual([9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
   })
 
   it('주소의 이상한 page·size는 1쪽·10개로, 넘친 쪽은 마지막 쪽으로', () => {

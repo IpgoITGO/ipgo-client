@@ -58,6 +58,25 @@
   color: var(--color-primary);
 }
 
+/* 수불부 올리기 전 입고 조건: 자리는 그대로 두고 흐리게 + 자물쇠 */
+.locked {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--color-text-3);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.locked:hover {
+  color: var(--color-text-3);
+  background: none;
+}
+
 .active::after {
   position: absolute;
   right: var(--space-4);
@@ -93,6 +112,11 @@
   width: min(calc(100% - (var(--space-6) * 2)), var(--w-content));
   margin: 0 auto;
   padding: 48px 0 72px;
+}
+
+/* 오른쪽 아래 계산 상태 창이 떠 있는 동안은 아래 여백을 늘려, 끝까지 내리면 맨 아래 버튼이 창 위로 올라온다(11/17: 창이 버튼을 가렸다) */
+.main:has(> section[aria-label='입고량 계산 상태']) {
+  padding-bottom: 148px;
 }
 
 /* 화면이 바뀔 때 뚝 바뀌지 않게 살짝 떠오르며 나타난다. 동작 줄이기 설정이면 켜지 않는다. */

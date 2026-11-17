@@ -362,7 +362,7 @@ function ResetPassword({ onDone }: Pick<Props, 'onDone'>) {
                 </button>
               </>
             }
-            inputClassName={styles.code}
+            boxes={6}
             inputMode="numeric"
             label="인증 코드"
             maxLength={6}

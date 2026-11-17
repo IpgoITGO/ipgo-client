@@ -122,8 +122,12 @@
   margin-top: var(--space-2);
 }
 
-.progress {
-  width: min(100%, 400px);
-  height: 12px;
-  accent-color: var(--color-accent);
+/* 진행률은 화면 읽기에만 알린다(눈에는 "N개 중 M개 확인" 글로 보인다) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -1,5 +1,4 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -40,20 +39,31 @@ describe('월별 업로드 내역', () => {
       ),
     )
     show()
-    const latest = await screen.findByText('2026년 확인한 달 2개')
-    const previous = screen.getByText('2025년 확인한 달 1개')
+    // 연도마다 한 줄에 12칸. 최신 연도가 위, 올린 달만 눌러서 결과를 열 수 있다
+    const latest = await screen.findByRole('group', { name: '2026년' })
+    const previous = screen.getByRole('group', { name: '2025년' })
     expect(
       latest.compareDocumentPosition(previous) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    expect(latest.closest('details')).not.toHaveAttribute('open')
-    expect(previous.closest('details')).not.toHaveAttribute('open')
-    await userEvent.click(latest)
-    expect(latest.closest('details')).toHaveAttribute('open')
-    expect(previous.closest('details')).not.toHaveAttribute('open')
+    expect(
+      within(latest)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual([
+      '2026년 1월 확인 완료 · 결과 보기',
+      '2026년 2월 확인 완료 · 결과 보기',
+    ])
+    expect(
+      within(previous)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('aria-label')),
+    ).toEqual(['2025년 12월 확인 완료 · 결과 보기'])
+    // 안 올린 달은 눌리지 않는 빈 칸
+    expect(within(latest).getByText('3월').closest('a')).toBeNull()
   })
 
-  it('실패와 확인 중인 달은 펼치고 확인한 달은 처음에 접어 둔다', async () => {
+  it('실패와 확인 중인 달도 달 칸에 상태로 보이고 위에 실패 이유를 띄운다', async () => {
     server.use(
       http.get('/api/uploads/periods', () =>
         HttpResponse.json({
@@ -73,17 +83,22 @@ describe('월별 업로드 내역', () => {
     expect(
       await screen.findByText('3개 중 1개 확인 · 1개 실패 · 1개 확인 중'),
     ).toBeVisible()
-    const history = screen.getByRole('region', { name: '업로드 내역' })
-    const rows = within(history).getAllByRole('listitem', { hidden: true })
-    expect(
-      rows.map((row) => within(row).getByText(/2026년/).textContent),
-    ).toEqual(['2026년 1월', '2026년 3월', '2026년 2월'])
-    const completed = screen
-      .getByText('2026년 확인한 달 1개')
-      .closest('details')!
-    expect(completed).not.toHaveAttribute('open')
-    await userEvent.click(completed.querySelector('summary')!)
-    expect(completed).toHaveAttribute('open')
+    // 달 순서대로(1월·2월·3월) 한 칸씩, 상태는 칸의 data-status로
+    const year = screen.getByRole('group', { name: '2026년' })
+    const months = within(year).getAllByRole('link')
+    expect(months.map((link) => link.getAttribute('aria-label'))).toEqual([
+      '2026년 1월 확인 실패 · 결과 보기',
+      '2026년 2월 확인 완료 · 결과 보기',
+      '2026년 3월 확인 중 · 결과 보기',
+    ])
+    expect(months.map((link) => link.getAttribute('data-status'))).toEqual([
+      'FAILED',
+      'DONE',
+      'PROCESSING',
+    ])
+    const failures = screen.getByRole('list', { name: '실패한 달' })
+    expect(within(failures).getByText('2026년 1월 확인 실패')).toBeVisible()
+    expect(within(failures).getByText('실패 원인')).toBeVisible()
   })
 
   it('새 U3 실패 문장을 바로 표시하고 실패한 월만 재업로드를 제공한다', async () => {
@@ -114,8 +129,12 @@ describe('월별 업로드 내역', () => {
     expect(
       await screen.findByText('1월 재고를 확인해 주세요.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('확인 완료')).toBeInTheDocument()
-    expect(screen.getByText('확인 중')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '2026년 2월 확인 완료 · 결과 보기' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '2026년 3월 확인 중 · 결과 보기' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: '2026년 1월 다시 올리기' }),
     ).toHaveAttribute('href', '/upload?retry=2026-01')
@@ -149,7 +168,9 @@ describe('월별 업로드 내역', () => {
     )
     show()
     expect(await screen.findByText('이전 응답의 실패 이유')).toBeInTheDocument()
-    expect(await screen.findByText('과거 기록 마감')).toBeInTheDocument()
+    expect(
+      await screen.findByText('2026년 3월 과거 기록 마감'),
+    ).toBeInTheDocument()
     expect(seen.sort()).toEqual(['1', '3'])
     expect(
       screen.queryByRole('link', { name: '2026년 3월 다시 올리기' }),

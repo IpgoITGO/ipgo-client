@@ -63,6 +63,15 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
         Number(!a.result.isError && a.result.data?.status === 'FAILED'),
     )
 
+  // 확인 중에는 한 파일을 올렸을 때와 같은 화면 한 장만 보여 준다(11/17: 제목·상태 줄·상자 안 상자가 겹쳐 로딩이 두 번 보였다)
+  if (pending > 0 && unavailable === 0)
+    return (
+      <UploadProcessing
+        onGoDashboard={() => navigate('/dashboard')}
+        progress={{ completed: done + failed, total: uploadIds.length }}
+      />
+    )
+
   return (
     <section className={styles.history}>
       <h1>

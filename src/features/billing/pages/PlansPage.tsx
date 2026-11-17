@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
@@ -222,29 +223,33 @@ export function PlanCards({
                 </span>
               )}
             </h2>
-            <p className={styles.price}>
-              {price.toLocaleString('ko-KR')}
-              <small>
-                {price > 0 ? (normal ? '원/1개월' : '원/월') : '원'}
-              </small>
-            </p>
-            {current && trial && !ended && !onTrial && (
-              <div className={styles.days}>
-                <span
-                  aria-hidden="true"
-                  className={styles.dayCells}
-                  data-soon={soon || undefined}
-                >
-                  {Array.from({ length: TRIAL_DAYS }, (_, i) => (
-                    <i
-                      data-used={i < TRIAL_DAYS - daysLeft || undefined}
-                      key={i}
-                    />
-                  ))}
-                </span>
-                <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
-              </div>
-            )}
+            {/* 체험 막대는 가격 줄 오른쪽에 둔다(11/17). 따로 한 줄을 차지하면 체험 카드만 아래 줄이 밀려 세 카드의 같은 항목이 어긋났다 */}
+            <div className={styles.priceRow}>
+              <p className={styles.price}>
+                {price.toLocaleString('ko-KR')}
+                <small>
+                  {price > 0 ? (normal ? '원/1개월' : '원/월') : '원'}
+                </small>
+              </p>
+              {current && trial && !ended && !onTrial && (
+                <div className={styles.days}>
+                  <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
+                  <span
+                    aria-hidden="true"
+                    className={styles.dayCells}
+                    data-soon={soon || undefined}
+                  >
+                    {Array.from({ length: TRIAL_DAYS }, (_, i) => (
+                      <i
+                        data-used={i < TRIAL_DAYS - daysLeft || undefined}
+                        key={i}
+                        style={{ '--i': i } as CSSProperties}
+                      />
+                    ))}
+                  </span>
+                </div>
+              )}
+            </div>
             <p className={styles.planNote}>
               {normal && plan.id !== 'trial'
                 ? '1개월 이용권 · 자동 청구 없음'

@@ -78,3 +78,131 @@
 .field[data-success] .hint {
   color: var(--color-success);
 }
+
+/* ── 자릿수 칸(인증 코드): 칸은 그림이고, 입력은 그 위의 투명한 입력칸 하나가 받는다 ── */
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(6, 44px);
+  gap: var(--space-2);
+  height: var(--h-input);
+}
+
+.boxes i {
+  display: grid;
+  place-items: center;
+  color: var(--color-text);
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: 12px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.inputWrap[data-boxes] .input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  padding: 0;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  border-color: transparent;
+}
+
+.inputWrap[data-boxes] .input::selection {
+  background: transparent;
+}
+
+.inputWrap[data-boxes] .input:focus-visible {
+  border-color: transparent;
+  outline: none;
+}
+
+/* 지금 넣을 칸: 다른 입력칸의 포커스와 같은 노란 바깥선 */
+.inputWrap[data-boxes]:focus-within .boxes i[data-at] {
+  border-color: var(--color-accent-text);
+  box-shadow: 0 0 0 3px rgb(255 197 61 / 35%);
+}
+
+.inputWrap[data-boxes]:focus-within
+  .boxes
+  i[data-at]:not([data-filled])::after {
+  width: 2px;
+  height: 20px;
+  content: '';
+  background: var(--color-text);
+  border-radius: 1px;
+}
+
+.inputWrap[data-boxes]:has(.input[aria-invalid='true']) .boxes i {
+  border-color: var(--color-danger);
+}
+
+.field[data-success] .boxes i {
+  color: var(--color-success);
+  background: var(--color-done-bg);
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 숫자가 칸에 톡 들어온다 */
+  .boxes i[data-filled] {
+    animation: digitIn 0.22s var(--ease-spring);
+  }
+
+  .inputWrap[data-boxes]:focus-within
+    .boxes
+    i[data-at]:not([data-filled])::after {
+    animation: caret 1s steps(2, jump-none) infinite;
+  }
+
+  /* 틀린 코드: 칸 줄이 한 번 좌우로 떤다 */
+  .inputWrap[data-boxes]:has(.input[aria-invalid='true']) .boxes {
+    animation: shake 0.32s ease-in-out;
+  }
+}
+
+@keyframes digitIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+}
+
+@keyframes caret {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-5px);
+  }
+
+  50% {
+    transform: translateX(4px);
+  }
+
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+@media (max-width: 420px) {
+  .boxes {
+    grid-template-columns: repeat(6, minmax(0, 40px));
+    gap: 6px;
+  }
+}
+
+/* 칸으로 보여 줄 때 남은 시간은 칸 위(이름 줄 오른쪽)에 둔다. 칸 안에 두면 마지막 칸과 겹친다 */
+.inputWrap[data-boxes] .suffix {
+  inset: auto 0 calc(100% + var(--space-2)) auto;
+  font-size: 14px;
+}

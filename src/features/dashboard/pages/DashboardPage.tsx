@@ -1,3 +1,4 @@
+import { errorText } from '../../../shared/api/client'
 import { FailedUploadsNotice } from '../../upload/components/UploadHistory'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -49,6 +50,10 @@ import {
   getDashboard,
   shiftTimes,
 } from '../model/dashboardApi'
+import { checkFirst } from '../model/checkFirst'
+import { RememberDashboardList } from '../../sku/components/SkuNav'
+import { CheckFirst } from '../ui/CheckFirst'
+import { type OrderLine, RegisterOrders } from '../ui/RegisterOrders'
 import { ShiftSummary } from '../ui/DemandShift'
 import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
@@ -386,6 +391,24 @@ export function DashboardPage() {
     const timer = setTimeout(() => setExported(false), 1600)
     return () => clearTimeout(timer)
   }, [exported])
+  // 계산이 막 끝난 순간: 기다리던 그 상자에서 "새 결과로 바꿨어요"를 잠깐 보여 준 뒤 결과로 넘어간다(11/17)
+  const [wasBusy, setWasBusy] = useState(busy)
+  const [justDone, setJustDone] = useState(false)
+  // 장면이 끝나고 결과로 넘어올 때만 결과가 아래에서 한 번 올라온다(뚝 바뀌지 않게)
+  const [arrived, setArrived] = useState(false)
+  if (busy !== wasBusy) {
+    setWasBusy(busy)
+    if (busy) setArrived(false)
+    if (!busy && calculation.phase === 'done' && !showPast) setJustDone(true)
+  }
+  useEffect(() => {
+    if (!justDone) return
+    const timer = setTimeout(() => {
+      setJustDone(false)
+      setArrived(true)
+    }, 2600)
+    return () => clearTimeout(timer)
+  }, [justDone])
   if (!busy && showPast) setShowPast(false)
   const routeRun = Number(params.get('run'))
   const routeRunId =
@@ -428,6 +451,8 @@ export function DashboardPage() {
   const setSearch = (value: string) =>
     updateParams({ q: value === '' ? null : value, page: null })
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  // 고른 상품을 "이미 발주한 물량"으로 등록하는 창
+  const [registering, setRegistering] = useState(false)
   // 전체 탭에서 고른 "괜찮아요" 상품의 수량(친 글자 그대로). 안 쳤으면 내 입고량, 그것도 없으면 빈칸
   const [safeQty, setSafeQty] = useState<Record<string, string>>({})
   const tabParam = params.get('tab')
@@ -518,7 +543,7 @@ export function DashboardPage() {
   if (query.isError)
     return (
       <AsyncState
-        description={query.error.message}
+        description={errorText(query.error)}
         onRetry={() => void query.refetch()}
         status="error"
         title="대시보드를 불러오지 못했어요"
@@ -528,6 +553,9 @@ export function DashboardPage() {
   const data = query.data
   const refreshRequired = data.freshness === 'refresh-required'
   const noResult = data.freshness === 'no-result'
+  // 권장량을 그대로 믿기 어려운 상품(판매 급변·유통기한 지난 재고): 맨 위 한 줄과 표의 "확인 필요"가 같이 쓴다
+  const checkReasons = checkFirst(data.neededItems, expiryOf)
+  const checkIds = new Set(checkReasons.map((reason) => reason.id))
   // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
   const today = dayNumber(data.today ?? localToday())
   const daysPast = (date: string) => today - dayNumber(date)
@@ -659,6 +687,21 @@ export function DashboardPage() {
     (sum, item) => sum + orderCostOf(item),
     0,
   )
+  // 발주로 등록할 줄: 수량이 있는 것만(괜찮은 상품은 수량을 넣은 것만)
+  const orderLines: OrderLine[] = [
+    ...pickedItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: orderQtyOf(item),
+      leadTime: item.leadTime,
+    })),
+    ...pickedSafe.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: safeQtyOf(item.id) ?? 0,
+      leadTime: item.leadTime,
+    })),
+  ].filter((line) => line.quantity > 0)
   function togglePick(id: string) {
     setPicked((previous) => {
       const next = new Set(previous)
@@ -765,6 +808,12 @@ export function DashboardPage() {
   const pickable = pageRows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
+  // 모든 쪽에서 고를 수 있는 줄(11/17: 전체를 받으려고 쪽마다 넘기며 체크하지 않게)
+  const allPickable = rows.filter(
+    (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
+  )
+  const allPicked =
+    allPickable.length > 0 && allPickable.every((row) => picked.has(row.id))
   function pickRows(checked: boolean) {
     setPicked((previous) => {
       const next = new Set(previous)
@@ -801,15 +850,19 @@ export function DashboardPage() {
   }
 
   // 같은 자리에 BusyStrip을 두어 끝났을 때 "바꿨어요" 한 줄이 이어진다
-  if (busy && !showPast)
+  if ((busy || justDone) && !showPast)
     return (
       <div className={styles.page}>
         <FailedUploadsNotice />
         <BusyStrip
           baseDate={noResult ? undefined : data.baseDate}
           onShowPast={() => setShowPast(true)}
+          quiet
         />
         <DashboardSkeleton
+          done={!busy}
+          lastRunId={noResult ? null : data.runId}
+          onShowPast={() => setShowPast(true)}
           note={
             noResult
               ? undefined
@@ -828,8 +881,35 @@ export function DashboardPage() {
     )
 
   return (
-    <div className={styles.page}>
-      <FailedUploadsNotice />
+    <div
+      className={styles.page}
+      data-rise-self={arrived ? '' : undefined}
+      style={arrived ? { animationDuration: '360ms' } : undefined}
+    >
+      {/* 계산 실패도 같은 한 줄에 싣는다(오른쪽 아래 작은 알약뿐이면 놓치기 쉽다) */}
+      <FailedUploadsNotice
+        calc={
+          calculation.phase === 'unknown'
+            ? {
+                title: '계산 결과를 아직 확인하지 못했어요',
+                message: noResult
+                  ? undefined
+                  : `아래는 ${shortDate(data.baseDate)} 결과예요`,
+                onDismiss: calculation.dismiss,
+                retry: calculation.retry,
+              }
+            : calculation.phase === 'failed' &&
+                calculation.run?.status !== 'CANCELED'
+              ? {
+                  title: calculation.run
+                    ? '새 계산을 마치지 못했어요'
+                    : '수불부를 확인하지 못했어요',
+                  message: `${calculation.message ?? ''}${noResult ? '' : ` · 아래는 ${shortDate(data.baseDate)} 결과예요`}`,
+                  onDismiss: calculation.dismiss,
+                }
+              : undefined
+        }
+      />
       {!noResult && (
         <ShiftSummary
           items={[...data.neededItems, ...(data.safeItems ?? [])]}
@@ -880,9 +960,10 @@ export function DashboardPage() {
                   : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
             </h1>
           </div>
-          <div className={styles.meta}>
-            <span>{noResult ? '기준일 없음' : `기준일 ${data.baseDate}`}</span>
-            {!noResult && (
+          {/* 계산 전엔 기준일이 없는 게 당연해서 칩을 띄우지 않는다(11/15) */}
+          {!noResult && (
+            <div className={styles.meta}>
+              <span>{`기준일 ${data.baseDate}`}</span>
               <b data-state={data.freshness}>
                 {refreshRequired
                   ? '재업로드 필요'
@@ -890,8 +971,8 @@ export function DashboardPage() {
                     ? '갱신 전'
                     : '오늘까지 예상 출고 반영'}
               </b>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         {/* 계산 전·재업로드 필요엔 아래 안내 카드가 버튼을 하나만 갖는다(버튼 두 번 → 한 번) */}
         {!(noResult || refreshRequired) &&
@@ -901,6 +982,10 @@ export function DashboardPage() {
             <Button onClick={() => navigate('/upload')}>수불부 업로드</Button>
           ))}
       </header>
+
+      {!(noResult || refreshRequired) && (
+        <CheckFirst reasons={checkReasons} total={data.neededItems.length} />
+      )}
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
       {!(noResult || refreshRequired) && (
@@ -1262,9 +1347,19 @@ export function DashboardPage() {
                             {row.kind === 'na' && <NaReason item={row.item} />}
                           </td>
                           <td data-label="상태">
-                            <span className={styles.kind} data-kind={row.kind}>
-                              {KIND_LABEL[row.kind]}
-                            </span>
+                            {/* 넣어야 할 상품 중 권장량을 한 번 봐야 하는 줄만 "확인 필요"(11/15: 모든 줄이 "지금 넣기"라 정보가 없었다) */}
+                            {row.kind === 'need' && checkIds.has(row.id) ? (
+                              <span className={styles.kind} data-kind="check">
+                                확인 필요
+                              </span>
+                            ) : (
+                              <span
+                                className={styles.kind}
+                                data-kind={row.kind}
+                              >
+                                {KIND_LABEL[row.kind]}
+                              </span>
+                            )}
                           </td>
                           <td data-label="예상 소진일">
                             {row.kind === 'na' ||
@@ -1415,6 +1510,14 @@ export function DashboardPage() {
                 })
                 showTableTop()
               }}
+              aside={
+                // 고르기 전에는 엑셀 버튼이 안 보여 체크 칸의 쓸모를 알 수 없었다(11/15)
+                tab !== 'na' ? (
+                  <span className={styles.pickHint}>
+                    상품을 고르면 <b>엑셀로 받기 · 발주 등록</b>을 할 수 있어요
+                  </span>
+                ) : undefined
+              }
               page={page}
               size={size}
               total={rows.length}
@@ -1434,8 +1537,39 @@ export function DashboardPage() {
                 사입비 {pickedCost.toLocaleString()}원
                 {pickedSafe.length > 0 && ' · 지금 넣기 상품만'}
               </span>
-              <Button onClick={() => setPicked(new Set())} variant="text">
-                선택 해제
+              <div className={styles.barLinks}>
+                {allPickable.length > pickable.length && !allPicked && (
+                  <Button
+                    className={styles.barLink}
+                    onClick={() =>
+                      setPicked(new Set(allPickable.map((row) => row.id)))
+                    }
+                    variant="text"
+                  >
+                    전체 {allPickable.length}개 모두 고르기
+                  </Button>
+                )}
+                <Button
+                  className={styles.barLink}
+                  onClick={() => setPicked(new Set())}
+                  variant="text"
+                >
+                  선택 해제
+                </Button>
+              </div>
+              {/* 엑셀로 주문한 뒤 입고 조건 화면에서 같은 수량을 다시 넣지 않도록(11/15) */}
+              <Button
+                className={styles.registerButton}
+                disabled={busy || orderLines.length === 0}
+                onClick={() => setRegistering(true)}
+                title={
+                  busy
+                    ? '계산이 끝나면 등록할 수 있어요'
+                    : '주문한 수량을 다음 계산에서 빼요'
+                }
+                variant="text"
+              >
+                발주로 등록
               </Button>
               <Button
                 className={styles.exportButton}
@@ -1448,6 +1582,33 @@ export function DashboardPage() {
             </div>
           )}
         </section>
+      )}
+      {/* 상품 상세의 "대시보드로 · 이전 · 다음"이 지금 보이는 순서를 따르게 */}
+      <RememberDashboardList
+        items={rows.flatMap((row) =>
+          row.id ? [[row.id, row.name] as [string, string]] : [],
+        )}
+        label={PANEL_TITLE[tab]}
+        search={params.size > 0 ? `?${params.toString()}` : ''}
+      />
+      {registering && (
+        <RegisterOrders
+          lines={orderLines}
+          onClose={() => setRegistering(false)}
+          onDone={(count) => {
+            setRegistering(false)
+            setPicked(new Set())
+            navigate(
+              { search: params.toString() },
+              {
+                replace: true,
+                state: {
+                  toast: `${count}건을 발주한 물량에 등록했어요 · 다시 계산해요`,
+                },
+              },
+            )
+          }}
+        />
       )}
     </div>
   )

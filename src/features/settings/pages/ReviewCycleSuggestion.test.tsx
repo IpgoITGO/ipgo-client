@@ -117,19 +117,31 @@ describe('입고 주기 제안과 상속', () => {
     const f = fixture(14, true, suggestion)
     const user = userEvent.setup()
     renderSettings()
-    expect(
-      await screen.findByText('추천 7일 · 2025-01 ~ 2026-11 · 상품 120개 기준'),
-    ).toBeInTheDocument()
-    const input = screen.getByLabelText('기본 입고 주기')
-    await user.click(
-      screen.getByRole('button', { name: '추천값으로 되돌리기' }),
+    // 14일(직접 정한 값)이면 근거 문장 대신 "추천 7일로 바꾸기" 버튼만 보이고, 근거는 버튼 설명에 있다
+    const apply = await screen.findByRole('button', {
+      name: '추천 7일로 바꾸기',
+    })
+    expect(apply).toHaveAttribute(
+      'title',
+      expect.stringContaining('상품 120개 기준'),
     )
+    expect(
+      screen.queryByText(/수불부 입고 간격으로 추천한 값이에요/),
+    ).toBeNull()
+    const input = screen.getByLabelText('기본 입고 주기')
+    await user.click(apply)
     expect(input).toHaveValue('7')
     expect(input).toHaveFocus()
     expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('19')
+    // 추천값과 같아지면 버튼은 사라지고 추천 근거 문장이 나온다
     expect(
-      screen.queryByRole('button', { name: '추천값으로 되돌리기' }),
+      screen.queryByRole('button', { name: '추천 7일로 바꾸기' }),
     ).toBeNull()
+    expect(
+      screen.getByText(
+        '수불부 입고 간격으로 추천한 값이에요 · 2025-01 ~ 2026-11 상품 120개 기준',
+      ),
+    ).toBeInTheDocument()
     expect(f.savedDefaults).toEqual([])
     expect(f.savedProducts).toEqual([])
     f.change(21)
@@ -155,13 +167,14 @@ describe('입고 주기 제안과 상속', () => {
     renderSettings()
     const input = await screen.findByLabelText('기본 입고 주기')
     expect(
-      screen.queryByRole('button', { name: '추천값으로 되돌리기' }),
+      screen.queryByRole('button', { name: '추천 7일로 바꾸기' }),
     ).toBeNull()
+    expect(
+      screen.getByText(/수불부 입고 간격으로 추천한 값이에요/),
+    ).toBeInTheDocument()
     await user.clear(input)
     await user.type(input, '14')
-    await user.click(
-      screen.getByRole('button', { name: '추천값으로 되돌리기' }),
-    )
+    await user.click(screen.getByRole('button', { name: '추천 7일로 바꾸기' }))
     expect(input).toHaveValue('7')
     await waitFor(() =>
       expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('7'),
@@ -176,7 +189,7 @@ describe('입고 주기 제안과 상속', () => {
       await screen.findByLabelText('기본 입고 주기')
       expect(screen.queryByText(/상품 120개 기준/)).toBeNull()
       expect(
-        screen.queryByRole('button', { name: '추천값으로 되돌리기' }),
+        screen.queryByRole('button', { name: /추천 d+일로 바꾸기/ }),
       ).toBeNull()
     },
   )
