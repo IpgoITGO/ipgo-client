@@ -75,8 +75,8 @@ export function useExpirySettings() {
   })
 }
 
-// "2026-12-01" → "12/1"
+// 유통기한은 다음 해 이후일 수 있으므로 연도를 포함한다.
 export function shortExpiry(iso: string) {
-  const [, m, d] = iso.split('-').map(Number)
-  return `${m}/${d}`
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${y}. ${m}. ${d}`
 }

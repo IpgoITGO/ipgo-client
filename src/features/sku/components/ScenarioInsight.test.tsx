@@ -49,6 +49,34 @@ afterAll(() => {
 })
 
 describe('ScenarioInsight', () => {
+  it('입고 뒤 예상 유통기한에도 연도를 표시한다', async () => {
+    const fixture = structuredClone(model19Scenarios) as ScenariosResponse
+    fixture.scenarios[0].expectedDepletionOn = '2028-01-01'
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(fixture),
+      ),
+      http.get('/api/expiry', () =>
+        HttpResponse.json({
+          asOfDate: '2026-11-06',
+          imminentDays: 30,
+          summary: {},
+          items: [
+            {
+              productId: 7,
+              receivedOn: '2026-11-06',
+              expiryDate: '2027-02-06',
+            },
+          ],
+        }),
+      ),
+    )
+    renderInsight(17, 'LGBM19')
+    expect(
+      await screen.findByText('유통기한 2027. 2. 6 뒤에도 남아요'),
+    ).toBeInTheDocument()
+  })
+
   it('모델 시나리오의 소진일이 없으면 유통기한 안에 다 판다고 단정하지 않는다', async () => {
     const fixture = structuredClone(model19Scenarios) as ScenariosResponse
     fixture.scenarios[0].expectedDepletionOn = '2026-12-20'

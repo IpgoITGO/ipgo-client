@@ -949,7 +949,7 @@ describe('유통기한 정렬', () => {
       ]),
     )
     expect(
-      within(screen.getAllByRole('row')[2]).getByText('11/20'),
+      within(screen.getAllByRole('row')[2]).getByText('2026. 11. 20'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /^전체/ }))
     expect(order()).toEqual([
@@ -967,6 +967,17 @@ describe('유통기한 정렬', () => {
     await user.click(screen.getByRole('tab', { name: /^계산 못 해요/ }))
     expect(order()).toEqual(['정렬상품-7', '정렬상품-8'])
   })
+  it('다음 해 유통기한도 목록에서 연도까지 보여준다', async () => {
+    server.use(
+      http.get('/api/expiry', () =>
+        HttpResponse.json({ ...expiry, items: [lot(1, '2027-02-06', 85)] }),
+      ),
+    )
+    renderPage()
+    expect(await screen.findByText('2027. 2. 6')).toBeInTheDocument()
+    expect(screen.queryByText('2/6')).not.toBeInTheDocument()
+  })
+
   it('유통기한이 같으면 소진일 순으로 정렬한다', async () => {
     server.use(
       http.get('/api/expiry', () =>

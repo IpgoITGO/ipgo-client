@@ -192,6 +192,115 @@ try {
       ),
       'UPLOAD_HISTORY_OVERFLOW',
     )
+    phase = name + '_expiry_year'
+    const fixtureJson = (pathname) =>
+      JSON.parse(fixtureResponse(new URL(pathname, origin), 'GET', origin).body)
+    const expiryDate = '2027-02-06'
+    const dashboard = fixtureJson('/api/dashboard/replenishment-needs')
+    const futureYear = new Date().getUTCFullYear() + 2
+    for (const [pathname, json] of [
+      [
+        '/api/expiry',
+        {
+          asOfDate: '2026-11-03',
+          imminentDays: 30,
+          summary: { expired: 0, imminent: 0, ok: 1, unknown: 0 },
+          items: [
+            {
+              productId: 27,
+              skuBarcode: 'SKU-A',
+              skuName: '연결 검증용 상품',
+              receivedOn: '2026-11-01',
+              expiryDate,
+              daysLeft: 95,
+              remainingQty: 5,
+              status: 'OK',
+            },
+          ],
+        },
+      ],
+      [
+        '/api/dashboard/replenishment-needs',
+        {
+          ...dashboard,
+          asOfDate: '2026-11-03',
+          resultStatus: 'UP_TO_DATE',
+          notNeededItems: [],
+          excluded: [],
+          summary: { ...dashboard.summary, needCount: 1 },
+          items: [
+            {
+              productId: 27,
+              resultId: 17,
+              skuName: '연결 검증용 상품',
+              skuBarcode: 'SKU-A',
+              recommendedQty: 8,
+              recommendedAmount: 80,
+              expectedShortageOn: '2026-11-07',
+              leadTimeDays: 3,
+              preArrivalRisk: null,
+            },
+          ],
+        },
+      ],
+      [
+        '/api/results/17/scenarios',
+        {
+          ...fixtureJson('/api/results/17/scenarios'),
+          scenarios: [
+            {
+              scenarioId: 1,
+              type: 'P100',
+              qty: 8,
+              isDuplicate: false,
+              expectedDepletionOn: `${futureYear}-01-01`,
+              expectedEndingStock: 1,
+              unmetDemandQty: 0,
+              postArrivalUnmetQty: 0,
+              postArrivalRisk: null,
+            },
+          ],
+        },
+      ],
+    ]) {
+      await context.route(`${origin}${pathname}`, (route) => {
+        if (route.request().method() !== 'GET') {
+          blocked.push('UNEXPECTED_EXPIRY_FIXTURE_WRITE')
+          return route.abort()
+        }
+        return route.fulfill({ json })
+      })
+    }
+    await page.goto(`${origin}/dashboard`)
+    await page.getByText('2027. 2. 6', { exact: true }).waitFor()
+    await page.screenshot({
+      path: path.join(out, `${name}-expiry-dashboard.png`),
+      fullPage: true,
+    })
+    assert.ok(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.innerWidth,
+      ),
+      'EXPIRY_DASHBOARD_OVERFLOW',
+    )
+    await page.goto(`${origin}/sku/27`)
+    await page
+      .getByText(/^유통기한 \d{4}\. \d{1,2}\. \d{1,2} 뒤에도 남아요$/)
+      .waitFor()
+    await page.screenshot({
+      path: path.join(out, `${name}-expiry-detail.png`),
+      fullPage: true,
+    })
+    assert.ok(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.innerWidth,
+      ),
+      'EXPIRY_DETAIL_OVERFLOW',
+    )
     assert.deepEqual(blocked, [])
     assert.deepEqual(errors, [])
     reports.push({
@@ -206,6 +315,7 @@ try {
         'gap',
         'tooltip',
         'sparse_upload_history',
+        'expiry_year_dashboard_and_detail',
         'no_overflow',
         'no_browser_errors',
       ],
