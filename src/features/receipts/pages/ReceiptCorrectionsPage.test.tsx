@@ -386,6 +386,8 @@ it('정정 저장 성공 뒤 계산 실패를 별도로 보여 주고 저장 성
   expect(
     await screen.findByText(/정정 내용을 저장했어요. 후속 계산/),
   ).toBeInTheDocument()
+  // 계산 실패는 작은 알약으로 뜨고, 누르면 이유가 보인다(11/17)
+  await user.click(await screen.findByRole('button', { name: /계산 못 마침/ }))
   expect(await screen.findByText(/후속 계산 실패/)).toBeInTheDocument()
   expect(decisions).toHaveLength(1)
 })

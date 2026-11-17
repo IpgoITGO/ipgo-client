@@ -16,6 +16,8 @@ import {
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { ScenarioInsight } from './ScenarioInsight'
+import model19Scenarios from '../model/fixtures/model19-k2.json'
+import type { ScenariosResponse } from '../model/resultApi'
 
 // AI 문장은 숫자가 따로 강조되어 여러 조각으로 나뉘므로, 문장 한 줄(li) 전체 글자로 찾는다.
 function sentence(pattern: RegExp) {
@@ -23,7 +25,7 @@ function sentence(pattern: RegExp) {
     element?.tagName === 'LI' && pattern.test(element.textContent ?? '')
 }
 
-function renderInsight(resultId: number | string = 101) {
+function renderInsight(resultId: number | string = 101, method?: string) {
   return render(
     <AppProviders>
       <ScenarioInsight
@@ -31,6 +33,7 @@ function renderInsight(resultId: number | string = 101) {
         inboundUnit={12}
         productId="7"
         resultId={resultId}
+        method={method}
       />
     </AppProviders>,
   )
@@ -46,6 +49,36 @@ afterAll(() => {
 })
 
 describe('ScenarioInsight', () => {
+  it('모델 시나리오의 소진일이 없으면 유통기한 안에 다 판다고 단정하지 않는다', async () => {
+    const fixture = structuredClone(model19Scenarios) as ScenariosResponse
+    fixture.scenarios[0].expectedDepletionOn = '2026-12-20'
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(fixture),
+      ),
+      http.get('/api/expiry', () =>
+        HttpResponse.json({
+          asOfDate: '2026-11-06',
+          imminentDays: 30,
+          summary: {},
+          items: [
+            {
+              productId: 7,
+              receivedOn: '2026-11-01',
+              expiryDate: '2026-11-03',
+            },
+          ],
+        }),
+      ),
+    )
+    renderInsight(17, 'LGBM19')
+    expect(
+      (await screen.findAllByText('예측 기간 안의 소진일이 없어요')).length,
+    ).toBeGreaterThan(0)
+    expect(
+      screen.queryByText('유통기한 안에 다 팔려요'),
+    ).not.toBeInTheDocument()
+  })
   it('기준일이 7일 넘게 지나면 비교 계산 버튼을 잠그고 이유를 알린다', async () => {
     vi.setSystemTime(new Date(2026, 10, 20, 10))
     const user = userEvent.setup()
@@ -518,7 +551,7 @@ describe('ScenarioInsight', () => {
     renderInsight('ai-none')
 
     expect(
-      await screen.findByText('설명 문장을 만들지 못했어요.'),
+      await screen.findByText('설명 문장을 만들지 못했어요'),
     ).toBeInTheDocument()
     expect(screen.getByText('숫자는 위 표에 그대로 있어요')).toBeInTheDocument()
   })

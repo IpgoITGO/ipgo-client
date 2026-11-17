@@ -75,11 +75,14 @@ export function AppLayout() {
     : false
   const planLabel = !subscription
     ? ''
-    : subscription.planId === 'trial'
-      ? trialEnded
-        ? '체험 끝남'
-        : `체험 ${trialDaysLeft(subscription)}일 남음`
-      : planOf(subscription.planId).name
+    : subscription.status === 'NOT_SELECTED' ||
+        subscription.entitlements.reason === 'PLAN_NOT_SELECTED'
+      ? '요금제 고르기'
+      : subscription.planId === 'trial'
+        ? trialEnded
+          ? '체험 끝남'
+          : `체험 ${trialDaysLeft(subscription)}일 남음`
+        : planOf(subscription.planId).name
 
   function leaveAnyway() {
     setLogoutFailed(false)
@@ -167,7 +170,8 @@ export function AppLayout() {
       </header>
       {subscription && <BillingStrip subscription={subscription} />}
       <main className={styles.main}>
-        <CalculationStatus quiet={pathname === '/dashboard'} />
+        {/* 계산 중에는 어느 화면에서든 작은 알약으로 시작한다(11/17: 펼친 창이 아래 버튼을 가렸다) */}
+        <CalculationStatus quiet />
         <CalcLockHint />
         {/* 주소가 바뀔 때마다 새로 그려 짧은 페이드 인이 한 번 돈다. */}
         <div className={styles.page} key={pathname}>

@@ -63,11 +63,7 @@ describe('UploadProcessing', () => {
     expect(
       screen.getByText('창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요'),
     ).toBeInTheDocument()
-    // 지난 시간은 화면에만 보이고 화면 읽기에서는 뺀다
-    expect(screen.getByText('2분 14초째')).toHaveAttribute(
-      'aria-hidden',
-      'true',
-    )
+    expect(screen.queryByText(/\d+분.*초째/)).not.toBeInTheDocument()
 
     // 버튼이 하는 일(onGoDashboard)이 실제 이동이면 확인 팝업 없이 나가야 한다
     onGoDashboard.mockImplementation(() => {

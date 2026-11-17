@@ -1,12 +1,18 @@
 import {
   type ChangeEvent,
   type DragEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { useCalculation } from '../../../shared/api/calculationContext'
@@ -20,12 +26,10 @@ import {
   type UploadFileState,
   validateUploadFile,
 } from '../model/fileValidation'
-import {
-  getUploadPeriods,
-  type UploadPeriods,
-  uploadFile,
-} from '../model/uploadApi'
-import { formatUploadedAt } from '../model/uploadFormat'
+import { type UploadPeriods, uploadFile } from '../model/uploadApi'
+import { useUploadPeriods } from '../model/useUploadPeriods'
+import { UploadHistory } from '../components/UploadHistory'
+import { formatUploadedAt, monthLabel } from '../model/uploadFormat'
 import boxOpen from '../../billing/assets/box-open.webp'
 import styles from './UploadPage.module.css'
 
@@ -53,6 +57,15 @@ export function UploadPage() {
   const { busy: calculationBusy, dismiss } = useCalculation()
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const retryPeriod = params.get('retry')
+  const location = useLocation()
+  const retryRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!retryPeriod) return
+    retryRef.current?.scrollIntoView?.({ block: 'start' })
+    retryRef.current?.querySelector('button')?.focus({ preventScroll: true })
+  }, [retryPeriod, location.key])
   const lock = useCalcLock()
   const [files, setFiles] = useState<UploadFileState[]>([])
   // 형식이 틀린 파일은 목록에 넣지 않고 이유 팝업으로만 알린다.
@@ -63,10 +76,8 @@ export function UploadPage() {
   const [modalQueue, setModalQueue] = useState<string[]>([])
 
   const queryClient = useQueryClient()
-  const periods = useQuery({
-    queryKey: ['upload-periods'],
-    queryFn: getUploadPeriods,
-  })
+  const periods = useUploadPeriods()
+  const [acceptedIds, setAcceptedIds] = useState<number[]>([])
 
   const readyFiles = useMemo(
     () => files.filter((item) => item.status === 'ready'),
@@ -79,9 +90,21 @@ export function UploadPage() {
     // 고를 때마다 서버 목록을 새로 받아 비교한다. 저장해 둔 목록(30초)은 방금 올린 기간이나
     // 다른 창에서 올린 기간을 모를 수 있다(11/2: 올린 직후 같은 파일을 다시 골라도 팝업이 안 떴음).
     const uploaded = (await periods.refetch()).data ?? periods.data
-    const nextFiles = picked.map((file) =>
-      markDuplicate(validateUploadFile(file), uploaded),
+    const selectedPeriods = new Set(
+      files.map((item) => item.periodKey).filter(Boolean),
     )
+    const nextFiles = picked.map((file) => {
+      const item = validateUploadFile(file)
+      if (item.periodKey && selectedPeriods.has(item.periodKey)) {
+        return {
+          ...item,
+          status: 'error' as const,
+          reason: `${item.period} 파일을 이미 골랐어요. 같은 달은 한 개씩 골라 주세요.`,
+        }
+      }
+      if (item.periodKey) selectedPeriods.add(item.periodKey)
+      return markDuplicate(item, uploaded)
+    })
     const ids = new Set(files.map((item) => item.id))
     const added = nextFiles.filter((item) => !ids.has(item.id))
     setFiles((current) => [
@@ -132,6 +155,7 @@ export function UploadPage() {
     // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
     const uploaded = new Set<string>()
     let lastUploadId: number | null = null
+    const uploadIds: number[] = [...acceptedIds]
     // 같은 기간을 덮어썼으면 결과 화면에서 바꿨다고 알려 준다.
     const replaced: string[] = []
 
@@ -144,15 +168,22 @@ export function UploadPage() {
         const result = await uploadFile(item.file, Boolean(item.overwrite))
         uploaded.add(item.id)
         lastUploadId = result.uploadId
+        uploadIds.push(result.uploadId)
+        setAcceptedIds([...uploadIds])
         if (item.overwrite && item.period) replaced.push(item.period)
         setFiles((current) => current.filter((file) => file.id !== item.id))
       }
       // 올린 기간과 대시보드가 바뀌었으니 저장해 둔 목록을 버린다
       void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      // ponytail: 여러 파일이면 마지막 파일의 결과만 보여 준다. 파일별 결과 목록은 U2가 여러 건을 줄 때.
-      navigate(`/upload/${lastUploadId}/result`, { state: { replaced } })
+      const search =
+        uploadIds.length > 1 ? `?uploads=${uploadIds.join(',')}` : ''
+      navigate(`/upload/${lastUploadId}/result${search}`, {
+        state: { replaced },
+      })
     } catch (cause) {
+      void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       const remaining = files.filter((item) => !uploaded.has(item.id))
       const duplicate =
         cause instanceof ApiError && cause.code === 'UPLOAD_DUPLICATE'
@@ -255,31 +286,55 @@ export function UploadPage() {
         </p>
       </header>
 
-      <div
-        className={styles.dropzone}
-        data-dragging={isDragging}
-        onDragEnter={() => setIsDragging(true)}
-        onDragLeave={() => setIsDragging(false)}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={handleDrop}
-      >
-        {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
-        <img alt="" className={styles.boxArt} src={boxOpen} />
-        <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
-        <span>XLSX · 이름 자유 · 여러 파일 가능</span>
-        <Button onClick={() => inputRef.current?.click()} variant="secondary">
-          파일 고르기
-        </Button>
-        <input
-          ref={inputRef}
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          aria-label="수불부 파일 선택"
-          className={styles.fileInput}
-          multiple
-          onChange={handleChange}
-          type="file"
-        />
+      <div ref={retryRef} className={styles.retryTarget}>
+        {retryPeriod && (
+          <p role="status">
+            {monthLabel(retryPeriod)} 파일을 골라 다시 올려 주세요. 다른 달은
+            다시 올리지 않아도 돼요.
+          </p>
+        )}
+        <div
+          className={styles.dropzone}
+          data-dragging={isDragging}
+          onDragEnter={() => setIsDragging(true)}
+          // 안쪽 그림·글자 위로 옮겨 갈 땐 끝난 게 아니다(깜빡임 방지): 상자 밖으로 나갈 때만 끈다
+          onDragLeave={(event) => {
+            if (
+              !event.currentTarget.contains(event.relatedTarget as Node | null)
+            )
+              setIsDragging(false)
+          }}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handleDrop}
+        >
+          {/* 열린 ITGO 상자(11/11): 마우스를 올리거나 파일을 끌어 오면 커진 채로 있다가 빼면 원래 크기 */}
+          <img alt="" className={styles.boxArt} src={boxOpen} />
+          <strong>파일을 끌어 놓거나 직접 골라 주세요</strong>
+          <span>XLSX · 이름 자유 · 여러 파일 가능</span>
+          <Button onClick={() => inputRef.current?.click()} variant="secondary">
+            파일 고르기
+          </Button>
+          <input
+            ref={inputRef}
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            aria-label="수불부 파일 선택"
+            className={styles.fileInput}
+            multiple
+            onChange={handleChange}
+            type="file"
+          />
+        </div>
       </div>
+      {acceptedIds.length > 0 && (
+        <p role="status">
+          {acceptedIds.length}개 파일을 올렸어요.{' '}
+          <Link
+            to={`/upload/${acceptedIds.at(-1)}/result?uploads=${acceptedIds.join(',')}`}
+          >
+            올린 파일 결과 보기
+          </Link>
+        </p>
+      )}
 
       {files.length > 0 && (
         <section className={styles.fileSection}>
@@ -293,7 +348,7 @@ export function UploadPage() {
                 <div className={styles.fileName}>
                   <strong>{item.file.name}</strong>
                   <span>
-                    {item.period ?? '입고일자로 기간을 정해요'} ·{' '}
+                    {item.period ?? '올리면 입고일자로 달을 찾아요'} ·{' '}
                     {formatFileSize(item.file.size)}
                   </span>
                 </div>
@@ -338,27 +393,31 @@ export function UploadPage() {
         </p>
       )}
 
-      <footer className={styles.actions}>
-        <div>
-          <strong>고른 파일 {files.length}개</strong>
-          <span>올릴 수 있는 파일 {readyFiles.length}개</span>
-        </div>
-        <Button onClick={() => navigate('/dashboard')} variant="secondary">
-          취소
-        </Button>
-        {lock ? (
-          <LockedButton>{`${readyFiles.length}개 올리기`}</LockedButton>
-        ) : (
-          <Button
-            disabled={readyFiles.length === 0 || calculationBusy}
-            loading={uploadAction.isPending}
-            loadingLabel="올리는 중"
-            onClick={() => void uploadAction.run()}
-          >
-            {readyFiles.length}개 올리기
+      {files.length > 0 && (
+        <footer className={styles.actions}>
+          <div>
+            <strong>고른 파일 {files.length}개</strong>
+            <span>올릴 수 있는 파일 {readyFiles.length}개</span>
+          </div>
+          <Button onClick={() => navigate('/dashboard')} variant="secondary">
+            취소
           </Button>
-        )}
-      </footer>
+          {lock ? (
+            <LockedButton>{`${readyFiles.length}개 올리기`}</LockedButton>
+          ) : (
+            <Button
+              disabled={readyFiles.length === 0 || calculationBusy}
+              loading={uploadAction.isPending}
+              loadingLabel="올리는 중"
+              onClick={() => void uploadAction.run()}
+            >
+              {readyFiles.length}개 올리기
+            </Button>
+          )}
+        </footer>
+      )}
+
+      <UploadHistory />
 
       {modalFile && (
         <Modal labelledBy="upload-modal-title" onClose={closeModal}>

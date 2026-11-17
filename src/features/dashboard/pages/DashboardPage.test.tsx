@@ -118,7 +118,7 @@ describe('아직 괜찮은 상품 목록', () => {
     const user = userEvent.setup()
     renderSafe()
     // 101개를 다 받았고(10개씩 보기라 첫 쪽엔 1–10), 검색하면 101번째도 찾는다
-    await screen.findByText('101개 중 1–10')
+    await screen.findByText('안전상품-1')
     expect(pages).toEqual([0, 1])
     await user.type(
       screen.getByLabelText('목록에서 상품 찾기'),
@@ -167,7 +167,7 @@ describe('아직 괜찮은 상품 목록', () => {
       expect(screen.queryByText('안전상품-1')).not.toBeInTheDocument()
       recovered = true
       await user.click(screen.getByRole('button', { name: '다시 시도' }))
-      await screen.findByText('101개 중 1–10')
+      await screen.findByText('안전상품-1')
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
@@ -236,13 +236,12 @@ describe('DashboardPage', () => {
         </AuthReady>
       </AppProviders>,
     )
-    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
-    expect(screen.getAllByText('계산을 마쳤어요')).toHaveLength(1)
-    expect(
-      screen.getAllByRole('region', { name: '입고량 계산 상태' }),
-    ).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: '계산 상태 닫기' }))
-    expect(screen.queryByText('계산을 마쳤어요')).not.toBeInTheDocument()
+    // 끝난 알림도 작은 알약으로 뜬다(11/17: 펼친 창이 아래 버튼을 가렸다)
+    expect(await screen.findByText(/계산 끝/)).toBeInTheDocument()
+    const status = screen.getAllByRole('region', { name: '입고량 계산 상태' })
+    expect(status).toHaveLength(1)
+    await user.click(within(status[0]).getByRole('button', { name: '확인' }))
+    expect(screen.queryByText(/계산 끝/)).not.toBeInTheDocument()
     expect(reads).toBe(1)
   })
 
@@ -271,14 +270,19 @@ describe('DashboardPage', () => {
         </AuthReady>
       </AppProviders>,
     )
+    // 맨 위 알림 한 줄과 오른쪽 아래 작은 창, 두 곳에 같은 버튼이 있다(알림 줄이 먼저)
+    const retries = await screen.findAllByRole('button', {
+      name: '상태 다시 확인',
+    })
+    expect(retries).toHaveLength(2)
     expect(
-      await screen.findByRole('button', { name: '상태 다시 확인' }),
+      screen.getByText('계산 결과를 아직 확인하지 못했어요'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
     ).toBeInTheDocument()
     available = true
-    await user.click(screen.getByRole('button', { name: '상태 다시 확인' }))
+    await user.click(retries[0])
     expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
     expect(reads).toBe(2)
   })
@@ -314,20 +318,26 @@ describe('DashboardPage', () => {
     )
     renderWithRun(41)
 
+    // 계산 중 화면은 가운데 안내 상자 하나(제목 · 걸린 시간 · 단계 선 · 지난 결과 보기)
     expect(
-      await screen.findByText(/새 수불부를 계산하고 있어요 · \d+분째/),
+      await screen.findByText('새 수불부를 계산하고 있어요'),
     ).toBeInTheDocument()
+    expect(screen.getByText(/\d+(분|초)째/)).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-skeleton')).toBeInTheDocument()
-    expect(screen.getByText('끝나면 여기에 바로 떠요')).toBeInTheDocument()
+    expect(
+      screen.getByText('창을 닫거나 다른 화면을 봐도 계산은 계속돼요.'),
+    ).toBeInTheDocument()
     await userEvent.click(
       screen.getByRole('button', { name: /지난 결과\(\d+\/\d+\) 보기/ }),
     )
     expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
     expect(screen.getByText(/아래는 \d+\/\d+ 결과예요/)).toBeInTheDocument()
     finish = true
+    // 지난 결과를 보고 있었으면 가운데 상자는 다시 안 열고 작은 창이 알린다
     expect(
       await screen.findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
     ).toBeInTheDocument()
+    expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
     await waitFor(
       () =>
         expect(
@@ -335,6 +345,38 @@ describe('DashboardPage', () => {
         ).not.toBeInTheDocument(),
       { timeout: 6000 },
     )
+  }, 15000)
+
+  it('끝나면 가운데 상자 안에 새 결과로 바꿨다고 알리고, 2.6초 뒤 결과로 넘어간다', async () => {
+    let finish = false
+    server.use(
+      http.get('/api/calculation-runs/42', () =>
+        HttpResponse.json({
+          runId: 42,
+          status: finish ? 'DONE' : 'RUNNING',
+          startedAt: '2026-10-19T09:00:01+09:00',
+        }),
+      ),
+    )
+    renderWithRun(42)
+
+    await screen.findByText('새 수불부를 계산하고 있어요')
+    finish = true
+    // 작은 창에도 같은 말이 뜨니, 가운데 상자 안에서만 찾는다
+    const box = screen.getByTestId('dashboard-skeleton')
+    expect(
+      await within(box).findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByTestId('dashboard-skeleton'),
+        ).not.toBeInTheDocument(),
+      { timeout: 6000 },
+    )
+    expect(
+      screen.getByRole('heading', { name: /지금 넣어야 할 상품이 6개/ }),
+    ).toBeInTheDocument()
   }, 15000)
 
   it('계산이 실패하면 이유를 알린다', async () => {
@@ -411,12 +453,20 @@ describe('DashboardPage', () => {
       await screen.findByRole('radio', { name: '금액 큰 순' }),
     ).toHaveAttribute('aria-checked', 'true')
     // 전체 11개 → 10개씩이면 2쪽엔 1줄
-    expect(await screen.findByText('11개 중 11–11')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '2쪽' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getAllByRole('row')).toHaveLength(2)
     await user.selectOptions(
       screen.getByLabelText('상품 한 번에 볼 개수'),
       '20',
     )
-    expect(await screen.findByText('11개 중 1–11')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(12))
+    expect(screen.getByRole('button', { name: '1쪽' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('상태별 요약과 입고 필요 상품을 정렬한다', async () => {
@@ -697,7 +747,7 @@ describe('DashboardPage', () => {
       http.get('/api/dashboard/replenishment-needs', () =>
         HttpResponse.json(noResult(15)),
       ),
-      http.get('/api/uploads/:uploadId', () =>
+      http.get('/api/uploads/15', () =>
         HttpResponse.json({ uploadId: 15, status, runId: null }),
       ),
     )
@@ -1032,4 +1082,29 @@ describe('내 입고량 칸', () => {
     expect(bar).toHaveTextContent('2개 골랐어요 · 90개')
     expect(bar).toHaveTextContent('사입비 90,000원')
   })
+})
+
+it('마지막 업로드 성공과 관계없이 이전 실패 월의 안내를 보인다', async () => {
+  server.use(
+    http.get('/api/dashboard/replenishment-needs', () =>
+      HttpResponse.json(safeDashboard),
+    ),
+    http.get('/api/uploads/periods', () =>
+      HttpResponse.json({
+        latestUploadId: 2,
+        items: [
+          {
+            uploadId: 1,
+            period: '2026-04',
+            status: 'FAILED',
+            error: { code: 'INVALID_SOURCE', message: '재고를 확인해 주세요.' },
+          },
+          { uploadId: 2, period: '2026-09', status: 'DONE', error: null },
+        ],
+      }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('확인 못 한 달이 있어요')).toBeVisible()
+  expect(screen.getByText(/2026년 4월/)).toBeVisible()
 })

@@ -1,0 +1,134 @@
+/* 단계 표시. 선은 동그라미 뒤에서 첫 가운데 → 끝 가운데까지 끊김 없이 이어지고, 지나온 만큼 초록으로 찬다 */
+.track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+  list-style: none;
+}
+
+.track::before,
+.track::after {
+  position: absolute;
+  top: 13px;
+  left: calc(50% / var(--n));
+  height: 2px;
+  content: '';
+  border-radius: 1px;
+}
+
+.track::before {
+  right: calc(50% / var(--n));
+  background: var(--color-input-border);
+}
+
+.track::after {
+  width: calc((100% - 100% / var(--n)) * var(--p));
+  background: var(--color-done);
+  transition: width 1s linear;
+}
+
+.track li {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.track b {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-card);
+  border: 1px solid var(--color-input-border);
+  border-radius: 50%;
+}
+
+.track li[data-state='now'] {
+  color: var(--color-text);
+  /* 굵기를 바꾸면 글자 폭이 달라진다 → 획만 두껍게 */
+  -webkit-text-stroke: 0.4px currentcolor;
+}
+
+.track li[data-state='now'] b {
+  color: var(--color-text);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.track li[data-state='done'] b {
+  color: #fff;
+  background: var(--color-done);
+  border-color: var(--color-done);
+}
+
+.track svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+/* 진행 중인 단계: 동그라미 둘레를 도는 고리 */
+.track li[data-busy] b::after {
+  position: absolute;
+  inset: -5px;
+  content: '';
+  border: 2px solid transparent;
+  border-top-color: var(--color-accent-press);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track::after {
+    animation: trackIn 0.5s ease-out both;
+  }
+
+  .track svg path {
+    stroke-dasharray: 1;
+    animation: check 0.3s ease-out 0.25s both;
+  }
+
+  .track li[data-state='now'] b {
+    animation: now 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both;
+  }
+
+  .track li[data-busy] b::after {
+    animation: spin 0.9s linear infinite;
+  }
+}
+
+@keyframes trackIn {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes check {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes now {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

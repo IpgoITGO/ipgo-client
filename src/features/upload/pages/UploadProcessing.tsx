@@ -12,19 +12,17 @@ export const LONG_WAIT_SECONDS = 120
 // 끝난 순간 연출 길이. CSS 애니메이션(1.4s)이 끝난 뒤 다 그려진 초록 고리를 0.35초 더 보여 준다.
 export const FINISH_MS = 1750
 
-function formatElapsed(seconds: number) {
-  return `${Math.floor(seconds / 60)}분 ${seconds % 60}초째`
-}
-
 // 한 장면으로 이어진다.
 // 확인 중: 수불부 조각이 상자로 떨어지고 문서의 줄이 하나씩 채워진다.
 // 끝나면(done): 같은 자리에서 문서가 상자로 들어가고, 상자가 가운데로 오고, 초록 고리와 체크가 그려진다.
 export function UploadProcessing({
   done = false,
   onGoDashboard,
+  progress,
 }: {
   done?: boolean
   onGoDashboard: () => void
+  progress?: { completed: number; total: number }
 }) {
   const [seconds, setSeconds] = useState(0)
   // 안내 띠의 "대시보드로" 버튼은 스스로 나가는 거라 확인 없이 보낸다.
@@ -58,13 +56,28 @@ export function UploadProcessing({
         {done
           ? '결과를 정리했어요.'
           : '수불부 형식과 재고 숫자를 확인하고 있어요.'}
+        {/* 여러 달을 올렸을 때도 화면은 한 장 그대로, 몇 개째인지만 같은 줄에 잇는다(11/17: 제목·막대·버튼이 겹겹이 쌓였다) */}
+        {!done && progress && progress.total > 1 && (
+          <>
+            {' '}
+            <b>
+              {progress.total}개 중 {progress.completed}개 확인
+            </b>
+          </>
+        )}
       </p>
+      {progress && (
+        <progress
+          aria-label="수불부 확인 진행률"
+          className={styles.srOnly}
+          max={progress.total}
+          value={progress.completed}
+        />
+      )}
       {isLong && (
         <div className={styles.band}>
           <span aria-hidden="true" className={styles.bandDot} />
           <strong>생각보다 오래 걸려요</strong>
-          {/* 1초마다 바뀌는 시간은 화면 읽기에서 뺀다. 안내는 한 번만 읽힌다. */}
-          <time aria-hidden="true">{formatElapsed(seconds)}</time>
           <div className={styles.bandRow}>
             <p>창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요</p>
             <Button

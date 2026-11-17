@@ -26,10 +26,6 @@
   border-radius: var(--radius-input);
 }
 
-.size span {
-  font-variant-numeric: tabular-nums;
-}
-
 .pages {
   grid-column: 2;
   display: flex;

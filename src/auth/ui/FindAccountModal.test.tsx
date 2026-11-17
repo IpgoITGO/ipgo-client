@@ -72,7 +72,7 @@ describe('FindAccountModal', () => {
     expect(requests).toEqual([
       { businessRegNo: '1234567891', managerName: '박 셀러' },
     ])
-    await user.click(screen.getByRole('button', { name: '이 이메일로 로그인' }))
+    await user.click(screen.getByRole('button', { name: '로그인하러 가기' }))
     expect(onDone).toHaveBeenCalledWith()
   })
 

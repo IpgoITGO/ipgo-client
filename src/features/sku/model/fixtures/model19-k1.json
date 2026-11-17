@@ -1,0 +1,80 @@
+{
+  "product": {
+    "productId": 27,
+    "skuBarcode": "SKU-A",
+    "skuName": "고정19일 모델 시험상품",
+    "fulfillment": "기본 창고"
+  },
+  "needStatus": "NEED_NOW",
+  "asOfDate": "2026-11-03",
+  "expectedShortageOn": "2026-11-09",
+  "settings": {
+    "leadTimeDays": 5,
+    "leadTimeSource": "DEFAULT",
+    "reviewCycleDays": 14,
+    "reviewCycleSource": "DEFAULT",
+    "orderUnitQty": 12,
+    "unitCost": 100
+  },
+  "result": {
+    "resultId": 17,
+    "status": "OK",
+    "reason": null,
+    "method": "LGBM19",
+    "methodReason": "고정19일 모델",
+    "multiplier": 1.0,
+    "horizonDays": 19,
+    "forecastOutboundQty": 50,
+    "startStockQty": 10,
+    "startStockEstimated": false,
+    "plannedReceiptsInHorizon": 5,
+    "preArrivalUnmetQty": 0,
+    "requiredQtyBeforeRounding": 70,
+    "recommendedQty": 72,
+    "recommendedAmount": 7200
+  },
+  "accuracy": {
+    "grade": null,
+    "isReference": false,
+    "validObservationDays": null,
+    "coverSuccessCount": null,
+    "coverTrialCount": null,
+    "forecastErrorRate": null,
+    "history": [],
+    "range": null,
+    "firstInboundOn": "2026-09-01",
+    "evaluation": {
+      "status": "UNAVAILABLE",
+      "reason": null,
+      "source": "HISTORICAL_REPLAY",
+      "period": "TUNE",
+      "periodStart": null,
+      "periodEnd": null,
+      "observedThrough": null,
+      "horizonDays": 19
+    }
+  },
+  "trend": [
+    {
+      "date": "2026-11-01",
+      "closingQty": 12,
+      "outboundQty": 3,
+      "lastYearOutboundQty": 4,
+      "isValidObservation": true
+    },
+    {
+      "date": "2026-11-02",
+      "closingQty": 11,
+      "outboundQty": 3,
+      "lastYearOutboundQty": 4,
+      "isValidObservation": true
+    },
+    {
+      "date": "2026-11-03",
+      "closingQty": 10,
+      "outboundQty": 3,
+      "lastYearOutboundQty": 4,
+      "isValidObservation": true
+    }
+  ]
+}

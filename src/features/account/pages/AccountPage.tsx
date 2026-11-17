@@ -534,7 +534,7 @@ export function AccountPage() {
               )}
               {!normal && (
                 <div className={styles.manageRow}>
-                  <div>
+                  <div className={styles.methodInfo}>
                     <b>결제 수단</b>
                     {current ? (
                       <span>

@@ -13,8 +13,11 @@ export type UploadFileState = {
   status: 'ready' | 'duplicate' | 'sameFile' | 'error'
 }
 
-const filenamePattern =
-  /^(\d{4})-(0[1-9]|1[0-2])(?:[ _-](?:\d+|\(\d+\)))?\.xlsx$/i
+// ipgo-server UploadPeriod: 숫자 표기를 먼저 모으고 한글 표기를 모은다.
+const filenamePatterns = [
+  /(?<!\d)(20\d{2})[-_. ]?(0[1-9]|1[0-2])(?!\d)/g,
+  /(?<!\d)(20\d{2})\s*년\s*(0?[1-9]|1[0-2])\s*월/g,
+]
 
 export function validateUploadFile(file: File): UploadFileState {
   const id = `${file.name}-${file.size}-${file.lastModified}`
@@ -28,18 +31,31 @@ export function validateUploadFile(file: File): UploadFileState {
     }
   }
 
-  // 파일 이름은 자유(11/13 팀 결정). 이름이 2026-09처럼 연-월이면 미리 기간을 알려 주고,
-  // 아니면 서버가 F열 입고일자의 가장 늦은 날로 기간을 정한다.
-  const match = filenamePattern.exec(file.name)
-  if (!match) {
-    return { file, id, status: 'ready' }
+  const base = file.name.replace(/\.xlsx$/i, '')
+  const periods = new Set(
+    filenamePatterns.flatMap((pattern) =>
+      Array.from(
+        base.matchAll(pattern),
+        (match) => `${match[1]}-${match[2].padStart(2, '0')}`,
+      ),
+    ),
+  )
+  if (periods.size > 1) {
+    return {
+      file,
+      id,
+      reason: '파일명에 연·월이 여러 개 있어요. 한 달씩 올려주세요.',
+      status: 'error',
+    }
   }
-
+  const periodKey = [...periods][0]
+  if (!periodKey) return { file, id, status: 'ready' }
+  const [year, month] = periodKey.split('-')
   return {
     file,
     id,
-    periodKey: `${match[1]}-${match[2]}`,
-    period: `${match[1]}년 ${Number(match[2])}월`,
+    periodKey,
+    period: `${year}년 ${Number(month)}월`,
     status: 'ready',
   }
 }

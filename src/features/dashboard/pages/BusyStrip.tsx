@@ -11,9 +11,11 @@ const FINISH_STRIP_MS = 4000
 export function BusyStrip({
   baseDate,
   onShowPast,
+  quiet,
 }: {
   baseDate?: string
   onShowPast?: () => void
+  quiet?: boolean
 }) {
   const { phase, checkingSince, run } = useCalculation()
   const busy = ['checking', 'pending', 'updating'].includes(phase)
@@ -40,6 +42,8 @@ export function BusyStrip({
         ? startedAt
         : localStart,
   )
+  // 계산 중 안내 상자가 같은 말을 하는 화면에서는 띠를 쉬고, 끝났을 때 "바꿨어요"만 띄운다(11/17)
+  if (busy && quiet) return null
   if (!busy && !finished) return null
   if (!busy)
     return (

@@ -27,7 +27,7 @@ describe('Pager', () => {
   it('개수를 고르고 쪽을 넘긴다', async () => {
     const onPage = vi.fn()
     const onSize = vi.fn()
-    render(
+    const { rerender } = render(
       <Pager
         label="상품"
         onPage={onPage}
@@ -37,7 +37,7 @@ describe('Pager', () => {
         total={25}
       />,
     )
-    expect(screen.getByText('25개 중 1–10')).toBeInTheDocument()
+    expect(screen.queryByText(/개 중/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '다음 쪽' }))
     expect(onPage).toHaveBeenCalledWith(2)
     await userEvent.selectOptions(
@@ -45,5 +45,20 @@ describe('Pager', () => {
       '30',
     )
     expect(onSize).toHaveBeenCalledWith(30)
+    for (const total of [0, 6]) {
+      rerender(
+        <Pager
+          label="상품"
+          onPage={onPage}
+          onSize={onSize}
+          page={1}
+          size={10}
+          total={total}
+        />,
+      )
+      expect(screen.queryByText(/개 중/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled()
+      expect(screen.getByLabelText('상품 한 번에 볼 개수')).toBeEnabled()
+    }
   })
 })

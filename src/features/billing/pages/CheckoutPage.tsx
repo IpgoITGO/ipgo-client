@@ -13,29 +13,15 @@ import {
   useSubscription,
 } from '../model/billingApi'
 import { useCardRegistration } from '../model/payment'
+import { StepTrack } from '../../../shared/ui/StepTrack/StepTrack'
 import styles from './Billing.module.css'
 import { NormalCheckoutPage } from './NormalCheckoutPage'
 
 const STEPS = ['요금제', '결제', '완료'] as const
 
 export function Steps({ at }: { at: 1 | 2 }) {
-  return (
-    <ol aria-label="결제 순서" className={styles.steps}>
-      {STEPS.map((label, index) => {
-        const state = index < at ? 'done' : index === at ? 'now' : 'next'
-        return (
-          <li
-            aria-current={state === 'now' ? 'step' : undefined}
-            data-state={state}
-            key={label}
-          >
-            <b aria-hidden="true">{state === 'done' ? '✓' : index + 1}</b>
-            {label}
-          </li>
-        )
-      })}
-    </ol>
-  )
+  // 결제를 마치면(2) 마지막 단계도 끝난 것으로 그린다
+  return <StepTrack at={at === 2 ? 3 : at} label="결제 순서" steps={STEPS} />
 }
 
 // 결제(#186, #294): 한 줄로 위에서 아래로 — 금액 → 결제 수단 → 버튼. 노랑은 버튼 하나와 금액 밑줄만.
@@ -171,17 +157,17 @@ export function CheckoutPage() {
       >
         {`${amount}원 결제하기`}
       </Button>
-      {!agreed && (
-        <span className={styles.hintCenter}>
-          위의 자동 결제에 동의하면 누를 수 있어요
+      {/* 버튼 아래는 한 줄: 왼쪽 되돌아가기, 오른쪽 안내. 동의 전 안내는 같은 자리에서 바뀌어 아래가 밀리지 않는다(11/17) */}
+      <p className={styles.payFoot}>
+        <Link className={styles.back} to="/plans">
+          ← 요금제 다시 고르기
+        </Link>
+        <span>
+          {agreed
+            ? '지금은 테스트라 실제로 돈이 나가지 않아요'
+            : '위의 자동 결제에 동의하면 누를 수 있어요'}
         </span>
-      )}
-      <Link className={styles.back} to="/plans">
-        ← 요금제 다시 고르기
-      </Link>
-      <span className={styles.hintCenter}>
-        지금은 테스트라 실제로 돈이 나가지 않아요
-      </span>
+      </p>
     </div>
   )
 }

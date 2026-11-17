@@ -1,0 +1,45 @@
+/* 빈 안내: 가운데 한 줄기. 글 폭을 좁혀 두세 줄로 고르게 꺾이게 한다 */
+.note {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: var(--space-6) var(--space-4) var(--space-5);
+  text-align: center;
+}
+
+.art {
+  width: 132px;
+  height: 132px;
+  margin-bottom: var(--space-2);
+  object-fit: contain;
+}
+
+.note strong {
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.note p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: 14px;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+
+/* 그림은 한 번 내려앉고 멈춘다 */
+@media (prefers-reduced-motion: no-preference) {
+  .art {
+    animation: settle 0.5s var(--ease-spring) both;
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}

@@ -34,6 +34,7 @@ export function AuthShell({ tab, children, welcome = false }: AuthShellProps) {
                 className={styles.tab}
                 key={item.id}
                 to={item.to}
+                viewTransition
               >
                 {item.label}
               </Link>

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '../../../app/providers/AppProviders'
@@ -20,13 +20,26 @@ beforeEach(() => {
   uploadFileMock.mockReset()
 })
 
-function renderPage() {
+function ResultLocation() {
+  const location = useLocation()
+  return (
+    <>
+      <p>결과 화면</p>
+      <output aria-label="결과 주소">
+        {location.pathname}
+        {location.search}
+      </output>
+    </>
+  )
+}
+
+function renderPage(entry = '/upload') {
   return render(
     <AppProviders>
-      <MemoryRouter initialEntries={['/upload']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route element={<UploadPage />} path="/upload" />
-          <Route element={<p>결과 화면</p>} path="/upload/:uploadId/result" />
+          <Route element={<ResultLocation />} path="/upload/:uploadId/result" />
         </Routes>
       </MemoryRouter>
     </AppProviders>,
@@ -34,6 +47,83 @@ function renderPage() {
 }
 
 describe('UploadPage', () => {
+  it('고른 파일과 올리기를 긴 업로드 내역보다 먼저 표시하고 선택을 비우면 숨긴다', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const history = await screen.findByRole('heading', { name: '업로드 내역' })
+    expect(
+      screen.queryByRole('heading', { name: '고른 파일' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '0개 올리기' }),
+    ).not.toBeInTheDocument()
+    await user.upload(
+      screen.getByLabelText('수불부 파일 선택'),
+      new File(['ok'], '2027-03.xlsx'),
+    )
+    const selected = await screen.findByRole('heading', { name: '고른 파일' })
+    const upload = screen.getByRole('button', { name: '1개 올리기' })
+    expect(
+      selected.compareDocumentPosition(history) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      upload.compareDocumentPosition(history) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '2027-03.xlsx 제거' }))
+    expect(
+      screen.queryByRole('heading', { name: '고른 파일' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /개 올리기/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('내역의 다시 올리기는 안내와 파일 고르기 영역으로 이동하고 같은 달을 다시 눌러도 동작한다', async () => {
+    const scroll = vi.fn()
+    const originalScroll = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    try {
+      server.use(
+        http.get('/api/uploads/periods', () =>
+          HttpResponse.json({
+            items: [
+              {
+                uploadId: 91,
+                status: 'FAILED',
+                period: '2026-01',
+                fileName: '실패.xlsx',
+                uploadedAt: '2026-11-16T00:00:00Z',
+                periodStart: '2026-01-01',
+                periodEnd: '2026-01-31',
+                error: { code: 'INVALID_SOURCE', message: '재고 확인' },
+              },
+            ],
+            latestUploadId: 91,
+          }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderPage()
+      const retry = await screen.findByRole('link', {
+        name: '2026년 1월 다시 올리기',
+      })
+      await user.click(retry)
+      expect(
+        screen.getByText(/2026년 1월 파일을 골라 다시 올려 주세요/),
+      ).toBeVisible()
+      expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+      expect(screen.getByRole('button', { name: '파일 고르기' })).toHaveFocus()
+      const calls = scroll.mock.calls.length
+      await user.click(retry)
+      expect(scroll.mock.calls.length).toBeGreaterThan(calls)
+      expect(screen.getByRole('button', { name: '파일 고르기' })).toHaveFocus()
+    } finally {
+      HTMLElement.prototype.scrollIntoView = originalScroll
+    }
+  })
+
   it('형식이 틀린 파일은 고른 파일 목록에 넣지 않고 이유만 알려준다', async () => {
     const user = userEvent.setup({ applyAccept: false })
     renderPage()
@@ -133,6 +223,9 @@ describe('UploadPage', () => {
     await user.click(await screen.findByRole('button', { name: '2개 올리기' }))
 
     expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+      '/upload/22/result?uploads=21,22',
+    )
     expect(uploadFileMock).toHaveBeenCalledTimes(2)
     expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
       '2026-10.xlsx',
@@ -310,7 +403,61 @@ describe('UploadPage', () => {
 
       await user.click(screen.getByRole('button', { name: '목록에서 빼기' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.queryByText(name)).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: `${name} 제거` }),
+      ).not.toBeInTheDocument()
     },
   )
+})
+
+it('긴 파일명의 연월도 기존 업로드와 비교한다', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.upload(
+    screen.getByLabelText('수불부 파일 선택'),
+    new File(['x'], '2026-09_수불부.xlsx'),
+  )
+  expect(
+    await screen.findByRole('dialog', { name: '이미 올린 기간이에요' }),
+  ).toHaveTextContent('2026년 9월')
+})
+it('고른 파일끼리 같은 달이면 두 번째 파일은 올리지 않는다', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+    new File(['x'], '202604_수불부.xlsx'),
+    new File(['y'], '2026년 4월.xlsx'),
+  ])
+  expect(
+    await screen.findByRole('dialog', { name: '이 파일은 올릴 수 없어요' }),
+  ).toHaveTextContent('같은 달은 한 개씩')
+  await user.click(screen.getByRole('button', { name: '확인' }))
+  expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
+})
+
+it('중간 전송 실패 후 남은 파일만 올려도 앞서 올린 파일을 묶음 결과에 포함한다', async () => {
+  const user = userEvent.setup()
+  uploadFileMock
+    .mockResolvedValueOnce({ uploadId: 21, status: 'PROCESSING' })
+    .mockRejectedValueOnce(new Error('연결 실패'))
+    .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+  renderPage()
+  await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+    new File(['a'], '2026-10.xlsx'),
+    new File(['b'], '2026-11.xlsx'),
+  ])
+  await user.click(await screen.findByRole('button', { name: '2개 올리기' }))
+  expect(
+    await screen.findByRole('link', { name: '올린 파일 결과 보기' }),
+  ).toHaveAttribute('href', '/upload/21/result?uploads=21')
+  await user.click(screen.getByRole('button', { name: '1개 올리기' }))
+  expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+  expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+    '/upload/22/result?uploads=21,22',
+  )
+  expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
+    '2026-10.xlsx',
+    '2026-11.xlsx',
+    '2026-11.xlsx',
+  ])
 })

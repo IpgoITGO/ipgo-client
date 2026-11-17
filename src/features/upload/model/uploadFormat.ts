@@ -33,3 +33,8 @@ export function describeExclusion(reason: string, date: string) {
     fix: `수불부 ${month}월 ${day}일 행의 재고·입고·출고를 확인해 고쳐 주세요.`,
   }
 }
+
+export function monthLabel(period: string) {
+  const match = /^(\d{4})-(\d{2})/.exec(period)
+  return match ? `${match[1]}년 ${Number(match[2])}월` : '기간 확인 중'
+}

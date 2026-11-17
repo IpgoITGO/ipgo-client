@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '../../../shared/ui/Button/Button'
@@ -12,7 +13,12 @@ import {
   trialAlreadyUsed,
   trialDaysLeft,
 } from '../model/billing'
-import { usePlans, useSubscription } from '../model/billingApi'
+import {
+  billingErrorText,
+  useBillingMutation,
+  usePlans,
+  useSubscription,
+} from '../model/billingApi'
 import styles from './Billing.module.css'
 
 const RING = 2 * Math.PI * 22
@@ -27,6 +33,7 @@ export function PlansPage() {
   const normal =
     usePlans().data?.some((p) => p.interval === 'ONE_TIME') ?? false
   const { data: subscription, isError } = useSubscription()
+  const startTrial = useBillingMutation('/trial/start')
   if (!subscription) {
     return (
       <p className={styles.footnote}>
@@ -38,8 +45,10 @@ export function PlansPage() {
   const reusedTrial = trialAlreadyUsed(subscription)
   const paidEnded = subscription.status === 'CANCELED'
   const trial = subscription.planId === 'trial'
-  const ended = trial && (reusedTrial || daysLeft <= 0)
-  const soon = trial && !reusedTrial && daysLeft > 0 && daysLeft <= 3
+  const awaitingChoice = subscription.planChosenAt === null && !reusedTrial
+  const ended = trial && (reusedTrial || (!awaitingChoice && daysLeft <= 0))
+  const soon =
+    trial && !awaitingChoice && !reusedTrial && daysLeft > 0 && daysLeft <= 3
   const endsOn = subscription.trialEnd ? md(dayOf(subscription.trialEnd)) : ''
   const billingOn = subscription.nextChargeAt
     ? dayOf(subscription.nextChargeAt)
@@ -58,7 +67,7 @@ export function PlansPage() {
         className={styles.status}
         data-state={ended ? 'ended' : soon ? 'soon' : undefined}
       >
-        {trial && !reusedTrial && (
+        {trial && !awaitingChoice && !reusedTrial && (
           <svg aria-hidden="true" className={styles.ring} viewBox="0 0 54 54">
             <circle className={styles.ringTrack} cx="27" cy="27" r="22" />
             {!ended && (
@@ -80,6 +89,11 @@ export function PlansPage() {
         <p>
           {reusedTrial ? (
             <b>{TRIAL_ALREADY_USED_MESSAGE}</b>
+          ) : awaitingChoice ? (
+            <>
+              <b>요금제를 골라 주세요</b>
+              <span>카드 등록 없이 14일 체험으로 시작할 수 있어요</span>
+            </>
           ) : ended ? (
             <>
               <b>체험이 끝났어요</b>
@@ -125,7 +139,16 @@ export function PlansPage() {
         )}
       </section>
 
-      <PlanCards subscription={subscription} />
+      {startTrial.isError && (
+        <p role="alert">{billingErrorText(startTrial.error)}</p>
+      )}
+      <PlanCards
+        subscription={subscription}
+        onTrial={
+          awaitingChoice ? () => startTrial.mutate(undefined) : undefined
+        }
+        trialPending={startTrial.isPending}
+      />
       <p className={styles.footnote}>
         {normal
           ? '가격은 부가세 포함이에요. 결제 완료일부터 한 달 이용하며, 만료 후 직접 다시 결제해요. 자동 청구는 없어요.'
@@ -200,29 +223,33 @@ export function PlanCards({
                 </span>
               )}
             </h2>
-            <p className={styles.price}>
-              {price.toLocaleString('ko-KR')}
-              <small>
-                {price > 0 ? (normal ? '원/1개월' : '원/월') : '원'}
-              </small>
-            </p>
-            {current && trial && !ended && !onTrial && (
-              <div className={styles.days}>
-                <span
-                  aria-hidden="true"
-                  className={styles.dayCells}
-                  data-soon={soon || undefined}
-                >
-                  {Array.from({ length: TRIAL_DAYS }, (_, i) => (
-                    <i
-                      data-used={i < TRIAL_DAYS - daysLeft || undefined}
-                      key={i}
-                    />
-                  ))}
-                </span>
-                <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
-              </div>
-            )}
+            {/* 체험 막대는 가격 줄 오른쪽에 둔다(11/17). 따로 한 줄을 차지하면 체험 카드만 아래 줄이 밀려 세 카드의 같은 항목이 어긋났다 */}
+            <div className={styles.priceRow}>
+              <p className={styles.price}>
+                {price.toLocaleString('ko-KR')}
+                <small>
+                  {price > 0 ? (normal ? '원/1개월' : '원/월') : '원'}
+                </small>
+              </p>
+              {current && trial && !ended && !onTrial && (
+                <div className={styles.days}>
+                  <small data-soon={soon || undefined}>{daysLeft}일 남음</small>
+                  <span
+                    aria-hidden="true"
+                    className={styles.dayCells}
+                    data-soon={soon || undefined}
+                  >
+                    {Array.from({ length: TRIAL_DAYS }, (_, i) => (
+                      <i
+                        data-used={i < TRIAL_DAYS - daysLeft || undefined}
+                        key={i}
+                        style={{ '--i': i } as CSSProperties}
+                      />
+                    ))}
+                  </span>
+                </div>
+              )}
+            </div>
             <p className={styles.planNote}>
               {normal && plan.id !== 'trial'
                 ? '1개월 이용권 · 자동 청구 없음'

@@ -34,6 +34,7 @@ import {
   toScenarios,
 } from '../model/resultApi'
 import { InsightSketch, type SketchValues } from './InsightSketch'
+import { EmptyNote } from '../../../shared/ui/EmptyNote/EmptyNote'
 import styles from './ScenarioInsight.module.css'
 
 // 테이프·✦ 색: AI 문장 노랑, 기본 문장·갱신 전 회색, 비교표만·오류 빨강
@@ -68,8 +69,12 @@ function dayNum(date: string) {
 }
 const HIGH_RISK = 20
 
-function formatRisk(risk: number | null) {
-  return risk === null ? '표본 부족으로 미산출' : `${risk}%`
+function formatRisk(risk: number | null, model19 = false) {
+  return risk === null
+    ? model19
+      ? '미산출'
+      : '표본 부족으로 미산출'
+    : `${risk}%`
 }
 
 // 문장 속 숫자(72개, 8%, 129,600원 등)만 형광펜으로 칠한다. 위험 20% 이상은 빨강.
@@ -116,6 +121,7 @@ export function ScenarioInsight({
   leadTime,
   productId,
   resultId,
+  method,
   surge,
   onReason,
 }: {
@@ -127,6 +133,8 @@ export function ScenarioInsight({
   productId: string
   // K1 상세의 result.resultId. 시나리오·인사이트는 계산 결과 아래에 붙는다(ERD).
   resultId: number | string
+  // K2에 방식이 없으므로 같은 resultId의 K1 식별자를 전달한다.
+  method?: string | null
   /** 판매 급변(11/12): 최근 하루 판매로 다음 입고까지 버틸 수량 카드. 서버 demandShift(#193).
    *  늘었으면 권장보다 많을 때, 다시 줄었으면 권장보다 적을 때만(계산식은 급변이 지난 뒤에야 따라온다) */
   surge?: {
@@ -141,6 +149,7 @@ export function ScenarioInsight({
   /** 카드의 "이유 보기": 판매 급변 팝업을 다시 연다 */
   onReason?: () => void
 }) {
+  const model19 = method === 'LGBM19'
   // 서버는 기준일이 7일 넘게 지난 계산에는 직접 수량 비교를 받지 않는다(SCENARIO_STALE) → 누르기 전에 알린다
   const tooOld = (daysSinceDot(baseDate) ?? 0) > SCENARIO_MAX_DAYS
   const [quantity, setQuantity] = useState('')
@@ -183,7 +192,12 @@ export function ScenarioInsight({
       ? 'none'
       : insight?.stale
         ? 'template'
-        : TONE[insight?.mode ?? 'LLM']
+        : // 설명이 없는 것(꺼 둠·이 계산 방식은 아직 없음)은 실패가 아니다 → 붉은 테이프 대신 평소 색(11/17)
+          insight?.mode === 'NONE' &&
+            (insight.explanationDisabled ||
+              insight.failReason === 'INPUT_UNAVAILABLE')
+          ? 'template'
+          : TONE[insight?.mode ?? 'LLM']
   const stateChip =
     insight && insight.state !== 'NORMAL' ? STATE_CHIP[insight.state] : null
   const insightFoot = insight?.stale
@@ -208,6 +222,7 @@ export function ScenarioInsight({
             preArrivalRisk: null,
             riskSampleSize: null,
           },
+          method,
         )
         // 직접 넣은 수량은 화면에서 여러 개 쌓아 비교한다(서버는 마지막 1개만 저장). 같은 수량이면 새 값으로 바꾼다.
         setCustomScenarios((current) => [
@@ -228,7 +243,7 @@ export function ScenarioInsight({
         )
       }
     },
-    [resultId, scenariosQuery.data],
+    [resultId, scenariosQuery.data, method],
   )
   const action = useActionLock(calculate)
 
@@ -245,7 +260,7 @@ export function ScenarioInsight({
     void action.run(parsed)
   }
 
-  const data = scenariosQuery.data && toScenarios(scenariosQuery.data)
+  const data = scenariosQuery.data && toScenarios(scenariosQuery.data, method)
   const stale = plan
     ? basisQuery.isError ||
       (basisQuery.isSuccess && isStale(plan, basisQuery.data))
@@ -355,7 +370,7 @@ export function ScenarioInsight({
   const p100 = data?.scenarios.find((item) => item.id === 'P100')
   const p80 = data?.scenarios.find((item) => item.id === 'P80')
   const sketch: SketchValues | null =
-    p100 && p100.quantity > 0
+    !model19 && p100 && p100.quantity > 0
       ? {
           recommended: p100.quantity,
           preRisk: p100.preArrivalRisk,
@@ -378,16 +393,24 @@ export function ScenarioInsight({
           <div>
             <h2>입고량을 바꾸면 이렇게 달라져요</h2>
             <p>
-              {sharedPreArrivalRisk === undefined ||
-              sharedPreArrivalRisk === null
-                ? '입고량을 바꿨을 때 남는 재고와 품절 위험을 비교해요.'
-                : `입고가 도착하기 전 품절 위험은 ${sharedPreArrivalRisk}%로 모든 경우가 같아요.`}
+              {model19
+                ? '이 모델의 품절 위험은 아직 산출하지 않아요.'
+                : sharedPreArrivalRisk === undefined ||
+                    sharedPreArrivalRisk === null
+                  ? '입고량을 바꿨을 때 남는 재고와 품절 위험을 비교해요.'
+                  : `입고가 도착하기 전 품절 위험은 ${sharedPreArrivalRisk}%로 모든 경우가 같아요.`}
             </p>
           </div>
           {scenarios[0] && (
             <span className={styles.sample}>
-              {scenarios[0].estimated ? '추정치' : '계산값'} · 이 상품 기준 ·
-              표본 {scenarios[0].sampleSize}일
+              {model19 ? (
+                '고정19일 모델 · 재고 추정치'
+              ) : (
+                <>
+                  {scenarios[0].estimated ? '추정치' : '계산값'} · 이 상품 기준
+                  · 표본 {scenarios[0].sampleSize}일
+                </>
+              )}
             </span>
           )}
         </div>
@@ -488,10 +511,9 @@ export function ScenarioInsight({
                 const source = SCENARIO_SOURCE[scenario.id] ?? 'MANUAL'
                 const decided =
                   !!plan && !stale && plan.quantity === scenario.quantity
-                const note = scenarioNote(
-                  scenario,
-                  data?.recommendedQuantity ?? 0,
-                )
+                const note = model19
+                  ? '모델 예측에 따른 재고 추정치예요.'
+                  : scenarioNote(scenario, data?.recommendedQuantity ?? 0)
                 return (
                   <div
                     aria-checked={selected?.id === scenario.id}
@@ -576,7 +598,9 @@ export function ScenarioInsight({
                       {sharedPreArrivalRisk === undefined && (
                         <div>
                           <dt>도착 전 품절 위험</dt>
-                          <dd>{formatRisk(scenario.preArrivalRisk)}</dd>
+                          <dd>
+                            {formatRisk(scenario.preArrivalRisk, model19)}
+                          </dd>
                         </div>
                       )}
                       {showFee && (
@@ -598,26 +622,31 @@ export function ScenarioInsight({
                               : undefined
                           }
                         >
-                          {formatRisk(scenario.postArrivalRisk)}
+                          {formatRisk(scenario.postArrivalRisk, model19)}
                         </dd>
                       </div>
                     </dl>
-                    <div aria-hidden="true" className={styles.riskBar}>
-                      <span
-                        style={{
-                          width: `${((scenario.postArrivalRisk ?? 0) / maxRisk) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    {!model19 && (
+                      <div aria-hidden="true" className={styles.riskBar}>
+                        <span
+                          style={{
+                            width: `${((scenario.postArrivalRisk ?? 0) / maxRisk) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                     {/* 한 카드라도 걸리면 모든 카드에 같은 자리를 잡아 줄이 나란히 맞는다 */}
                     {showExpiry && (
                       <p
                         className={styles.expiryLine}
                         data-warn={outlasts(scenario) || undefined}
                       >
-                        {outlasts(scenario)
-                          ? `유통기한 ${freshExpiry?.label} 뒤에도 남아요`
-                          : '유통기한 안에 다 팔려요'}
+                        {model19 &&
+                        !Number.isFinite(dayNum(scenario.expectedStockoutDate))
+                          ? '예측 기간 안의 소진일이 없어요'
+                          : outlasts(scenario)
+                            ? `유통기한 ${freshExpiry?.label} 뒤에도 남아요`
+                            : '유통기한 안에 다 팔려요'}
                       </p>
                     )}
                     <p className={styles.note}>{note}</p>
@@ -845,25 +874,18 @@ export function ScenarioInsight({
                 </p>
               )}
               {insight?.mode === 'NONE' ? (
-                <ol className={styles.lines} data-numberless="">
-                  <li
-                    data-tone={
-                      insight.explanationDisabled ? undefined : 'danger'
-                    }
-                  >
-                    <span>
-                      {insight.explanationDisabled
-                        ? 'AI 설명을 사용하지 않고 있어요.'
-                        : '설명 문장을 만들지 못했어요.'}
-                    </span>
-                  </li>
-                  <li>
-                    <span>
-                      위 입고량 시나리오 표에서 수량별 남는 재고와 품절 위험을
-                      직접 비교해 주세요.
-                    </span>
-                  </li>
-                </ol>
+                <EmptyNote
+                  title={
+                    model19 && insight.failReason === 'INPUT_UNAVAILABLE'
+                      ? '이 계산 방식은 아직 AI 설명이 없어요'
+                      : insight.explanationDisabled
+                        ? 'AI 설명을 꺼 두었어요'
+                        : '설명 문장을 만들지 못했어요'
+                  }
+                >
+                  위 입고량 비교에서 수량별로 남는 재고
+                  {model19 ? '' : '와 품절 위험'}를 확인해 주세요.
+                </EmptyNote>
               ) : (
                 <ol
                   className={styles.lines}

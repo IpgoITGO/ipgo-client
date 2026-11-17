@@ -1,4 +1,5 @@
 import { errorText } from '../../../shared/api/client'
+import { FailedUploadsNotice } from '../../upload/components/UploadHistory'
 import { useQuery } from '@tanstack/react-query'
 import {
   Fragment,
@@ -9,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
 
@@ -389,6 +391,24 @@ export function DashboardPage() {
     const timer = setTimeout(() => setExported(false), 1600)
     return () => clearTimeout(timer)
   }, [exported])
+  // 계산이 막 끝난 순간: 기다리던 그 상자에서 "새 결과로 바꿨어요"를 잠깐 보여 준 뒤 결과로 넘어간다(11/17)
+  const [wasBusy, setWasBusy] = useState(busy)
+  const [justDone, setJustDone] = useState(false)
+  // 장면이 끝나고 결과로 넘어올 때만 결과가 아래에서 한 번 올라온다(뚝 바뀌지 않게)
+  const [arrived, setArrived] = useState(false)
+  if (busy !== wasBusy) {
+    setWasBusy(busy)
+    if (busy) setArrived(false)
+    if (!busy && calculation.phase === 'done' && !showPast) setJustDone(true)
+  }
+  useEffect(() => {
+    if (!justDone) return
+    const timer = setTimeout(() => {
+      setJustDone(false)
+      setArrived(true)
+    }, 2600)
+    return () => clearTimeout(timer)
+  }, [justDone])
   if (!busy && showPast) setShowPast(false)
   const routeRun = Number(params.get('run'))
   const routeRunId =
@@ -788,6 +808,12 @@ export function DashboardPage() {
   const pickable = pageRows.filter(
     (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
   )
+  // 모든 쪽에서 고를 수 있는 줄(11/17: 전체를 받으려고 쪽마다 넘기며 체크하지 않게)
+  const allPickable = rows.filter(
+    (row): row is Row & { id: string } => row.kind !== 'na' && Boolean(row.id),
+  )
+  const allPicked =
+    allPickable.length > 0 && allPickable.every((row) => picked.has(row.id))
   function pickRows(checked: boolean) {
     setPicked((previous) => {
       const next = new Set(previous)
@@ -824,14 +850,19 @@ export function DashboardPage() {
   }
 
   // 같은 자리에 BusyStrip을 두어 끝났을 때 "바꿨어요" 한 줄이 이어진다
-  if (busy && !showPast)
+  if ((busy || justDone) && !showPast)
     return (
       <div className={styles.page}>
+        <FailedUploadsNotice />
         <BusyStrip
           baseDate={noResult ? undefined : data.baseDate}
           onShowPast={() => setShowPast(true)}
+          quiet
         />
         <DashboardSkeleton
+          done={!busy}
+          lastRunId={noResult ? null : data.runId}
+          onShowPast={() => setShowPast(true)}
           note={
             noResult
               ? undefined
@@ -850,7 +881,35 @@ export function DashboardPage() {
     )
 
   return (
-    <div className={styles.page}>
+    <div
+      className={styles.page}
+      data-rise-self={arrived ? '' : undefined}
+      style={arrived ? { animationDuration: '360ms' } : undefined}
+    >
+      {/* 계산 실패도 같은 한 줄에 싣는다(오른쪽 아래 작은 알약뿐이면 놓치기 쉽다) */}
+      <FailedUploadsNotice
+        calc={
+          calculation.phase === 'unknown'
+            ? {
+                title: '계산 결과를 아직 확인하지 못했어요',
+                message: noResult
+                  ? undefined
+                  : `아래는 ${shortDate(data.baseDate)} 결과예요`,
+                onDismiss: calculation.dismiss,
+                retry: calculation.retry,
+              }
+            : calculation.phase === 'failed' &&
+                calculation.run?.status !== 'CANCELED'
+              ? {
+                  title: calculation.run
+                    ? '새 계산을 마치지 못했어요'
+                    : '수불부를 확인하지 못했어요',
+                  message: `${calculation.message ?? ''}${noResult ? '' : ` · 아래는 ${shortDate(data.baseDate)} 결과예요`}`,
+                  onDismiss: calculation.dismiss,
+                }
+              : undefined
+        }
+      />
       {!noResult && (
         <ShiftSummary
           items={[...data.neededItems, ...(data.safeItems ?? [])]}
@@ -1081,11 +1140,10 @@ export function DashboardPage() {
                 <circle cx="11" cy="11" r="7" />
                 <path d="M20 20l-4-4" />
               </svg>
-              <input
+              <SearchInput
                 aria-label="목록에서 상품 찾기"
-                onChange={(event) => setSearch(event.target.value)}
+                onValueChange={setSearch}
                 placeholder="상품명·바코드"
-                type="search"
                 value={search}
               />
             </label>
@@ -1479,9 +1537,26 @@ export function DashboardPage() {
                 사입비 {pickedCost.toLocaleString()}원
                 {pickedSafe.length > 0 && ' · 지금 넣기 상품만'}
               </span>
-              <Button onClick={() => setPicked(new Set())} variant="text">
-                선택 해제
-              </Button>
+              <div className={styles.barLinks}>
+                {allPickable.length > pickable.length && !allPicked && (
+                  <Button
+                    className={styles.barLink}
+                    onClick={() =>
+                      setPicked(new Set(allPickable.map((row) => row.id)))
+                    }
+                    variant="text"
+                  >
+                    전체 {allPickable.length}개 모두 고르기
+                  </Button>
+                )}
+                <Button
+                  className={styles.barLink}
+                  onClick={() => setPicked(new Set())}
+                  variant="text"
+                >
+                  선택 해제
+                </Button>
+              </div>
               {/* 엑셀로 주문한 뒤 입고 조건 화면에서 같은 수량을 다시 넣지 않도록(11/15) */}
               <Button
                 className={styles.registerButton}

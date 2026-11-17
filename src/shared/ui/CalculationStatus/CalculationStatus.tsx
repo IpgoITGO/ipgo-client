@@ -16,19 +16,28 @@ export const DONE_MS = 5000
 export function CalculationStatus({
   quiet = false,
 }: {
-  /** 그 화면이 이미 계산 중을 크게 알리고 있으면(대시보드) 처음부터 작은 알약으로 둔다 */
+  /** 처음부터 작은 알약으로 둔다(앱 화면은 늘 이렇게 쓴다). 누르면 펼쳐진다 */
   quiet?: boolean
 }) {
-  const { phase, runId, run, message, retry, dismiss, stop, checkingSince } =
-    useCalculation()
+  const {
+    phase,
+    runId,
+    run,
+    message,
+    retry,
+    dismiss,
+    stop,
+    checkingSince,
+    slow,
+  } = useCalculation()
   const minutes = useMinutes(checkingSince)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const hold = hovered || focused
   // 같은 단계로 돌아와도 이전 계산의 접힘 상태를 재사용하지 않는다.
   const scope = `${runId}:${checkingSince}:${phase}:${run?.status}`
-  const startCompact =
-    quiet && ['checking', 'pending', 'updating'].includes(phase)
+  // quiet면 끝났을 때·실패했을 때도 알약으로 시작한다(11/17: 펼친 창이 아래 버튼을 가렸다). 눌러야 펼쳐진다
+  const startCompact = quiet
   const [view, setView] = useState({ scope, compact: startCompact })
   if (view.scope !== scope) {
     setView({ scope, compact: startCompact })
@@ -92,8 +101,9 @@ export function CalculationStatus({
   }
   const title = {
     checking: '수불부를 확인하고 있어요',
-    pending:
-      run?.status === 'QUEUED'
+    pending: slow
+      ? '생각보다 오래 걸리고 있어요'
+      : run?.status === 'QUEUED'
         ? '계산을 기다리고 있어요'
         : '입고량을 계산하고 있어요',
     updating: '새 계산 결과를 불러오고 있어요',
@@ -110,11 +120,13 @@ export function CalculationStatus({
         : `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
       : phase === 'checking'
         ? `${minutes}분째 · 끝나면 화면이 저절로 바뀌어요`
-        : phase === 'pending' || phase === 'updating'
-          ? '끝나면 화면이 저절로 바뀌어요.'
-          : phase === 'failed'
-            ? '이전 결과는 그대로예요.'
-            : undefined)
+        : phase === 'pending' && slow
+          ? '다시 시도하고 있어요. 끝나면 화면이 저절로 바뀌어요.'
+          : phase === 'pending' || phase === 'updating'
+            ? '끝나면 화면이 저절로 바뀌어요.'
+            : phase === 'failed'
+              ? '이전 결과는 그대로예요.'
+              : undefined)
   return (
     <section
       aria-label="입고량 계산 상태"

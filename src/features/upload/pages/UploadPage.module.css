@@ -287,3 +287,7 @@
   stroke-linejoin: round;
   stroke-width: 2;
 }
+
+.retryTarget {
+  scroll-margin-top: 24px;
+}

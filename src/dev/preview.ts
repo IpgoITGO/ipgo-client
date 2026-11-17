@@ -8,6 +8,8 @@ const RUN_KEY = 'ipgo:calculation-run'
 const SCENES: Record<string, string> = {
   pre: '수불부 올리기 전',
   uploaded: '올렸지만 계산 전',
+  // 수불부 확인 화면이 끝나지 않고 계속 돈다: /upload/15/result?scene=check
+  check: '수불부 확인 중',
   calc: '계산 중',
   stale: '기준일이 7일 지남',
   none: '넣을 상품 없음',
@@ -25,7 +27,7 @@ export function applyPreviewScene() {
   if (scene === 'calc')
     sessionStorage.setItem(
       RUN_KEY,
-      JSON.stringify({ scope: 'seller@a.com', runId: 31 }),
+      JSON.stringify({ scope: 'seller@a.com', runId: 32 }),
     )
   else sessionStorage.removeItem(RUN_KEY)
   params.delete('scene')

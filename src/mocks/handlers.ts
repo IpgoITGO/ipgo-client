@@ -439,6 +439,9 @@ export const handlers = [
     )
   }),
   http.get('/api/uploads/:uploadId', () => {
+    // 미리보기 "수불부 확인 중" 장면: 확인이 끝나지 않는다
+    if (previewScene() === 'check')
+      return HttpResponse.json({ uploadId: 15, status: 'PROCESSING' })
     return HttpResponse.json({
       uploadId: 15,
       status: 'DONE',
@@ -1035,7 +1038,10 @@ export const handlers = [
     const asked = (runPolls.get(runId) ?? 0) + 1
     runPolls.set(runId, asked)
     const runningPolls = import.meta.env.MODE === 'test' ? 1 : 6
-    if ((asked <= runningPolls || previewScene() === 'calc') && runId !== 999) {
+    // 미리보기 계산 중 장면: 따라가는 계산(32)은 계속 계산 중, 지난 계산(31)은 끝난 것으로 답해 걸린 시간을 알려 준다
+    const running =
+      previewScene() === 'calc' ? runId !== 31 : asked <= runningPolls
+    if (running && runId !== 999) {
       return HttpResponse.json({ runId, status: 'RUNNING' })
     }
     if (runId === 999) {
@@ -1058,7 +1064,7 @@ export const handlers = [
         excludedCount: 1,
       },
       startedAt: '2026-10-19T09:00:01+09:00',
-      completedAt: '2026-10-19T09:00:21+09:00',
+      completedAt: '2026-10-19T09:01:36+09:00',
     })
   }),
   // K4 AI 인사이트(명세 3.8 주소, ipgo-ai 0002 계약 모양). 결과 번호(= mock 상품 아이디)로 상태를 고른다:

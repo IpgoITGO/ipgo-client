@@ -15,6 +15,7 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router-dom'
+import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 import { z } from 'zod'
 
 import { ApiError, errorText } from '../../../shared/api/client'
@@ -27,6 +28,7 @@ import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
 import { StorageCostSection } from '../components/StorageCostSection'
 import {
+  type DefaultSettings,
   getDefaultSettings,
   getProductSettings,
   saveDefaultSettings,
@@ -128,6 +130,7 @@ async function loadSettings(): Promise<{
   values: SettingsValues
   sourceIsEstimated: boolean
   cycleIsFallback: boolean
+  cycleSuggestion: DefaultSettings['reviewCycleSuggestion']
 }> {
   const [defaults, products] = await Promise.all([
     getDefaultSettings(),
@@ -136,6 +139,7 @@ async function loadSettings(): Promise<{
   return {
     sourceIsEstimated: defaults.reviewCycleSource === 'ESTIMATED',
     cycleIsFallback: defaults.reviewCycleDays == null,
+    cycleSuggestion: defaults.reviewCycleSuggestion ?? null,
     values: {
       defaults: {
         leadTime: defaults.leadTimeDays,
@@ -219,6 +223,7 @@ export function SettingsPage() {
     control,
     getValues,
     setValue,
+    setFocus,
     formState: { errors, isSubmitting, dirtyFields },
   } = useForm<SettingsValues, unknown, ConfirmedSettings>({
     resolver: zodResolver(settingsSchema),
@@ -239,6 +244,9 @@ export function SettingsPage() {
 
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
+  const cycleSuggestion = query.data?.cycleSuggestion
+  // 추천값을 넣은 순간 숫자 칸을 한 번 반짝여 어디가 바뀌었는지 알린다
+  const [cycleFlash, setCycleFlash] = useState(false)
   useEffect(() => {
     getValues('products').forEach((product, index) => {
       PRODUCT_FIELDS.forEach(({ field }) => {
@@ -518,27 +526,56 @@ export function SettingsPage() {
                 {errors.defaults?.leadTime?.message ?? '발주부터 입고 도착까지'}
               </small>
             </label>
-            <label>
+            {/* 추천값 바꾸기는 칸 안 설명 줄에 둔다(11/17). 칸 밖 버튼은 나오고 사라질 때 아래 칸을 밀었다 */}
+            <div className={styles.cell}>
               <span>입고 주기</span>
-              <div>
+              <div
+                data-flash={cycleFlash || undefined}
+                onAnimationEnd={() => setCycleFlash(false)}
+              >
                 <input
                   inputMode="numeric"
                   onInput={digitsOnly}
                   type="text"
                   aria-label="기본 입고 주기"
-                  {...register('defaults.orderCycle', { valueAsNumber: true })}
+                  {...register('defaults.orderCycle', {
+                    valueAsNumber: true,
+                  })}
                 />
                 <b>일</b>
               </div>
               <small>
                 {errors.defaults?.orderCycle?.message ??
-                  (query.data?.cycleIsFallback
-                    ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
-                    : query.data.sourceIsEstimated
-                      ? '수불부 입고 간격으로 추정했어요'
-                      : '직접 정해 저장한 값이에요')}
+                  (cycleSuggestion &&
+                  defaults?.orderCycle === cycleSuggestion.reviewCycleDays
+                    ? `수불부 입고 간격으로 추천한 값이에요 · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 상품 ${cycleSuggestion.productCount}개 기준`
+                    : query.data?.cycleIsFallback
+                      ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
+                      : query.data.sourceIsEstimated
+                        ? '수불부 입고 간격으로 추정했어요'
+                        : '직접 정한 값이에요')}
+                {cycleSuggestion &&
+                  defaults?.orderCycle !== cycleSuggestion.reviewCycleDays && (
+                    <button
+                      className={styles.cycleSuggestion}
+                      disabled={isSubmitting || calculationBusy || shipping}
+                      onClick={() => {
+                        setValue(
+                          'defaults.orderCycle',
+                          cycleSuggestion.reviewCycleDays,
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                        setFocus('defaults.orderCycle')
+                        setCycleFlash(true)
+                      }}
+                      title={`${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 수불부 입고 간격 · 상품 ${cycleSuggestion.productCount}개 기준`}
+                      type="button"
+                    >
+                      추천 {cycleSuggestion.reviewCycleDays}일로 바꾸기
+                    </button>
+                  )}
               </small>
-            </label>
+            </div>
             <label>
               <span>입고 단위</span>
               <div>
@@ -595,11 +632,10 @@ export function SettingsPage() {
                 진한 칸은 기본값과 다르게 바꾼 칸이에요. 바꾸면 바로 저장돼요.
               </p>
             </div>
-            <input
+            <SearchInput
               aria-label="상품명 또는 바코드 검색"
-              onChange={(event) => setSearch(event.target.value)}
+              onValueChange={setSearch}
               placeholder="상품명 · 바코드 검색"
-              type="search"
               value={search}
             />
           </div>

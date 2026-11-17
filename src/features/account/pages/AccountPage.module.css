@@ -573,6 +573,17 @@
   color: var(--color-text-2);
   font-weight: 700;
 }
+/* 결제 수단도 결제 내역과 같은 짜임: 이름은 왼쪽 고정 폭(120px), 값은 그 오른쪽 */
+.manageRow > .methodInfo {
+  display: flex;
+  flex: 1;
+  gap: var(--space-4);
+  align-items: baseline;
+}
+.methodInfo > b {
+  flex: none;
+  width: 120px;
+}
 /* 결제 내역: 이름은 왼쪽 고정 폭, 내역은 오른쪽 나머지 */
 .historyRow {
   align-items: baseline;
@@ -627,6 +638,14 @@
   margin-top: var(--space-4);
 }
 @media (max-width: 560px) {
+  /* 좁은 화면은 이름 위·값 아래(결제 내역과 같게) */
+  .manageRow > .methodInfo {
+    display: grid;
+    gap: 2px;
+  }
+  .methodInfo > b {
+    width: auto;
+  }
   .historyRow {
     display: block;
   }

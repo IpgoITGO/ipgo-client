@@ -14,6 +14,7 @@ import { calculationReason } from '../../../shared/lib/calculationReason'
 import { ReasonDetail } from '../../../shared/ui/ReasonDetail/ReasonDetail'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { BoxLoader } from '../../../shared/ui/BoxLoader/BoxLoader'
+import { EmptyNote } from '../../../shared/ui/EmptyNote/EmptyNote'
 import { EmptyValue } from '../../../shared/ui/EmptyValue/EmptyValue'
 import { SoldOutStamp } from '../../../shared/ui/SoldOut/SoldOut'
 import { Tape } from '../../../shared/ui/Tape/Tape'
@@ -57,9 +58,13 @@ const sourceLabels: Record<SettingSource, string> = {
 // 기획서 계산식: A = 작년 같은 시기 × 올해 최근 흐름, B = 최근 28일 평균. 화면에는 A·B 글자 대신 말로 쓴다.
 function methodSentence(method: NonNullable<SkuDetail['method']>) {
   if (method.applied === 'A') return '작년 같은 시기와 최근 흐름으로 계산했어요'
-  return method.fallback
-    ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
-    : '최근 28일 평균으로 계산했어요'
+  if (method.applied === 'B')
+    return method.fallback
+      ? '작년 자료가 없어 최근 28일 평균으로 계산했어요'
+      : '최근 28일 평균으로 계산했어요'
+  if (method.applied === 'LGBM19')
+    return '앞으로 19일 동안 팔릴 양을 예측해 계산했어요'
+  return '이 계산 방식의 설명은 아직 제공되지 않았어요'
 }
 
 const count = (value: number | null) =>
@@ -379,24 +384,18 @@ function TrendChart({
 
   function flowView(): View {
     const hasLastYear = history.some((h) => h.lastYearOutbound != null)
-    // 재고가 출고보다 훨씬 크면(4배 넘게) 같은 눈금에서 출고 막대가 바닥에 붙어 안 보인다(11/15).
-    // 그때는 출고(하루 출고·예상 출고·작년 출고)를 아래 30% 띠에 따로 그리고, 띠 위 점선에 그 눈금을 적는다.
+    // 재고와 출고는 한 눈금으로 그린다. 출고만 따로 키운 띠(11/15)는 눈금이 둘이 돼 헷갈려서 뺐다(11/17). 출고는 주별 출고 탭에서 본다
     const outPeak = Math.max(
       ...history.map((h) => Math.max(h.outbound, h.lastYearOutbound ?? 0)),
       daily,
       0,
     )
     const stockPeak = Math.max(...history.map((h) => h.inventory), 1)
-    const split = outPeak > 0 && stockPeak > outPeak * 4
-    const max = split ? stockPeak : Math.max(stockPeak, outPeak)
+    const max = Math.max(stockPeak, outPeak)
     const step = niceStep(max)
     const top = Math.ceil(max / step) * step
     const y = (v: number) => box.bottom - (v / top) * (box.bottom - box.top)
-    const outStep = niceStep(outPeak || 1)
-    const outTop = Math.ceil((outPeak || 1) / outStep) * outStep
-    const yo = split
-      ? (v: number) => box.bottom - (v / outTop) * (box.bottom - box.top) * 0.3
-      : y
+    const yo = y
     const span = lastDay + future
     const perDay = span > 0 ? (box.right - box.left) / span : 0
     const xd = (d: number) => box.left + d * perDay
@@ -446,24 +445,6 @@ function TrendChart({
           />
         )}
         {axis(top, step, y)}
-        {split && (
-          <g className={styles.later}>
-            <line
-              className={styles.outGuide}
-              x1={box.left}
-              x2={box.right}
-              y1={yo(outTop)}
-              y2={yo(outTop)}
-            />
-            <text
-              className={styles.outGuideText}
-              x={box.left + 6}
-              y={yo(outTop) - 5}
-            >
-              출고 {tickText(outTop)}개
-            </text>
-          </g>
-        )}
         {history.map((h, i) =>
           h.outbound > 0 ? (
             <path
@@ -1544,6 +1525,7 @@ export function SkuPage() {
   }
 
   const data = query.data
+  const model19 = data.method?.applied === 'LGBM19'
   // 판매 급증이면 시나리오 카드 줄에 "최근 판매 속도라면" 카드(11/12)
   const surgeQty = shift
     ? surgeQuantity(
@@ -1789,12 +1771,18 @@ export function SkuPage() {
                   </span>
                   {showGap && (
                     <>
-                      <span aria-hidden="true">−</span>
-                      <span>
-                        {gapDays}일 예상 출고{' '}
-                        <b>{Math.max(0, gapOut).toLocaleString()}개</b>
-                      </span>
-                      <span aria-hidden="true">=</span>
+                      {model19 ? (
+                        <span aria-hidden="true">→</span>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">−</span>
+                          <span>
+                            {gapDays}일 예상 출고{' '}
+                            <b>{Math.max(0, gapOut).toLocaleString()}개</b>
+                          </span>
+                          <span aria-hidden="true">=</span>
+                        </>
+                      )}
                       <span>
                         오늘 <b>{startInv.toLocaleString()}개</b>{' '}
                         <em className={styles.recoEst}>추정</em>
@@ -1838,9 +1826,8 @@ export function SkuPage() {
               <div>
                 <dt>현재 예상 소진일</dt>
                 <dd>
-                  {data.recommendation.expectedStockoutDate ?? (
-                    <EmptyValue kind="short" />
-                  )}
+                  {data.recommendation.expectedStockoutDate ??
+                    (model19 ? '미제공' : <EmptyValue kind="short" />)}
                   {daysPast > 0 && (
                     <small className={styles.daysPast}>{daysPast}일 지남</small>
                   )}
@@ -1882,108 +1869,124 @@ export function SkuPage() {
               {data.method && (
                 <p className={styles.methodSentence}>
                   {methodSentence(data.method)}
-                  {!data.method.fallback && (
-                    <small>기본 계산 방식을 적용했어요</small>
+                  {data.method.applied === 'LGBM19' && (
+                    <>
+                      <small>
+                        19일은 배송 5일에 입고 주기 14일을 더한 기간이에요
+                      </small>
+                      <small>
+                        그동안 모자라지 않을 만큼을 권장 입고량으로 잡았어요
+                      </small>
+                    </>
                   )}
+                  {['A', 'B'].includes(data.method.applied) &&
+                    !data.method.fallback && (
+                      <small>기본 계산 방식을 적용했어요</small>
+                    )}
                 </p>
               )}
-              <ol className={styles.steps}>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp} />
-                  <span>앞으로 {data.calculation.coverDays}일 예상 출고</span>
-                  <strong>{count(data.calculation.forecastQty)}</strong>
-                </li>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    ×
-                  </span>
-                  <span>여유 배수</span>
-                  <strong>{data.calculation.multiplier}배</strong>
-                </li>
-                <li>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    −
-                  </span>
-                  <span>
-                    오늘 남았을 재고
-                    {showGap && lastRec && startInv != null && (
-                      <small>
-                        {slashDate(lastRec.day, lastRec.date)} 기록{' '}
-                        {lastRec.inventory.toLocaleString()}개 − 예상 출고{' '}
-                        {Math.max(0, gapOut).toLocaleString()}개
-                      </small>
-                    )}
-                  </span>
-                  <strong>
-                    {data.calculation.startingInventory == null ? (
-                      <EmptyValue kind="short" />
-                    ) : (
-                      count(data.calculation.startingInventory)
-                    )}
-                  </strong>
-                </li>
-                {Boolean(data.calculation.existingOrders) && (
+              {(!data.method || ['A', 'B'].includes(data.method.applied)) && (
+                <ol className={styles.steps}>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp} />
+                    <span>앞으로 {data.calculation.coverDays}일 예상 출고</span>
+                    <strong>{count(data.calculation.forecastQty)}</strong>
+                  </li>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      ×
+                    </span>
+                    <span>여유 배수</span>
+                    <strong>{data.calculation.multiplier}배</strong>
+                  </li>
                   <li>
                     <span aria-hidden="true" className={styles.stepOp}>
                       −
                     </span>
-                    <span>기존 발주</span>
-                    <strong>{count(data.calculation.existingOrders)}</strong>
-                  </li>
-                )}
-                {/* 셀러가 꼭 봐야 하는 줄: 입고가 오기 전에 이미 놓치는 주문. 노란 느낌표로 강조 */}
-                {Boolean(data.calculation.preArrivalUnmet) && (
-                  <li className={styles.stepWarn}>
-                    <span aria-hidden="true" className={styles.stepOp}>
-                      −
-                    </span>
                     <span>
-                      <b className={styles.warnLabel}>
-                        <span aria-hidden="true" className={styles.warnMark}>
-                          !
-                        </span>
-                        도착 전에 못 파는 양
-                      </b>
-                      <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                      오늘 남았을 재고
+                      {showGap && lastRec && startInv != null && (
+                        <small>
+                          {slashDate(lastRec.day, lastRec.date)} 기록{' '}
+                          {lastRec.inventory.toLocaleString()}개 − 예상 출고{' '}
+                          {Math.max(0, gapOut).toLocaleString()}개
+                        </small>
+                      )}
                     </span>
-                    <strong>{count(data.calculation.preArrivalUnmet)}</strong>
-                  </li>
-                )}
-                {data.calculation.rawQuantity != null && (
-                  <li className={styles.stepSum}>
-                    <span aria-hidden="true" className={styles.stepOp}>
-                      =
-                    </span>
-                    <span>필요한 양</span>
                     <strong>
-                      {data.calculation.rawQuantity.toLocaleString(undefined, {
-                        maximumFractionDigits: 1,
-                      })}
-                      개
+                      {data.calculation.startingInventory == null ? (
+                        <EmptyValue kind="short" />
+                      ) : (
+                        count(data.calculation.startingInventory)
+                      )}
                     </strong>
                   </li>
-                )}
-                <li className={styles.stepFinal}>
-                  <span aria-hidden="true" className={styles.stepOp}>
-                    ↑
-                  </span>
-                  <span>
-                    {data.calculation.inboundUnit == null
-                      ? '입고 단위로 올림'
-                      : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
-                    <small>
-                      권장 입고량
-                      {data.calculation.inboundUnit == null && (
-                        <>
-                          {' '}
-                          · 입고 단위 <EmptyValue kind="unset" />
-                        </>
-                      )}
-                    </small>
-                  </span>
-                  <strong>{count(data.recommendation.quantity)}</strong>
-                </li>
-              </ol>
+                  {Boolean(data.calculation.existingOrders) && (
+                    <li>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        −
+                      </span>
+                      <span>기존 발주</span>
+                      <strong>{count(data.calculation.existingOrders)}</strong>
+                    </li>
+                  )}
+                  {/* 셀러가 꼭 봐야 하는 줄: 입고가 오기 전에 이미 놓치는 주문. 노란 느낌표로 강조 */}
+                  {Boolean(data.calculation.preArrivalUnmet) && (
+                    <li className={styles.stepWarn}>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        −
+                      </span>
+                      <span>
+                        <b className={styles.warnLabel}>
+                          <span aria-hidden="true" className={styles.warnMark}>
+                            !
+                          </span>
+                          도착 전에 못 파는 양
+                        </b>
+                        <small>입고가 오기 전에 이미 놓친 주문이라 빼요</small>
+                      </span>
+                      <strong>{count(data.calculation.preArrivalUnmet)}</strong>
+                    </li>
+                  )}
+                  {data.calculation.rawQuantity != null && (
+                    <li className={styles.stepSum}>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        =
+                      </span>
+                      <span>필요한 양</span>
+                      <strong>
+                        {data.calculation.rawQuantity.toLocaleString(
+                          undefined,
+                          {
+                            maximumFractionDigits: 1,
+                          },
+                        )}
+                        개
+                      </strong>
+                    </li>
+                  )}
+                  <li className={styles.stepFinal}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      ↑
+                    </span>
+                    <span>
+                      {data.calculation.inboundUnit == null
+                        ? '입고 단위로 올림'
+                        : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
+                      <small>
+                        권장 입고량
+                        {data.calculation.inboundUnit == null && (
+                          <>
+                            {' '}
+                            · 입고 단위 <EmptyValue kind="unset" />
+                          </>
+                        )}
+                      </small>
+                    </span>
+                    <strong>{count(data.recommendation.quantity)}</strong>
+                  </li>
+                </ol>
+              )}
               <p className={styles.leadTime}>
                 리드타임 {setting(data.settings.leadTimeDays, '일')}
                 {data.settings.leadTimeDays != null && (
@@ -2002,6 +2005,7 @@ export function SkuPage() {
               baseDate={data.baseDate}
               inboundUnit={data.calculation.inboundUnit ?? 1}
               leadTime={data.settings.leadTimeDays}
+              method={data.method?.applied}
               key={data.resultId}
               productId={skuId}
               resultId={data.resultId}
@@ -2010,7 +2014,12 @@ export function SkuPage() {
             />
           )}
 
-          {data.accuracy && <AccuracyCard accuracy={data.accuracy} />}
+          {data.accuracy && (
+            <AccuracyCard
+              accuracy={data.accuracy}
+              method={data.method?.applied}
+            />
+          )}
         </>
       )}
     </div>
@@ -2020,10 +2029,15 @@ export function SkuPage() {
 // 기획서 말 그대로: 커버 성공률(권장량대로 넣었으면 품절을 피했는지)과 예측 오차
 export function AccuracyCard({
   accuracy,
+  method,
 }: {
   accuracy: NonNullable<SkuDetail['accuracy']>
+  method?: string | null
 }) {
   const { coverSuccess, coverTrials, errorRate, history, evaluation } = accuracy
+  const unevaluated =
+    (!!method && !['A', 'B'].includes(method)) ||
+    evaluation?.status === 'UNAVAILABLE'
   const evaluated = (coverTrials ?? 0) > 0 && coverSuccess != null
   const coverRate =
     coverSuccess != null && coverTrials
@@ -2033,6 +2047,8 @@ export function AccuracyCard({
   const outDays = history.filter((item) => !item.covered)
   const first = history[0]
   const last = history.at(-1)
+  // 맞춰 볼 기록이 하나도 없으면 칸 두 개에 "미평가"를 되풀이하지 않고 안내 하나만 둔다(11/17)
+  const empty = history.length === 0 && coverRate == null && errorRate == null
 
   return (
     <section className={styles.card}>
@@ -2041,6 +2057,7 @@ export function AccuracyCard({
         <span
           className={styles.accuracyGrade}
           data-grade={accuracy.grade ?? 'none'}
+          hidden={empty}
         >
           {evaluated && accuracy.grade
             ? `정확도 ${accuracyLabels[accuracy.grade]}`
@@ -2055,83 +2072,111 @@ export function AccuracyCard({
           봤어요
         </p>
       )}
-      <div className={styles.accuracyBoxes}>
-        <div>
-          <span>권장량으로 버틴 비율</span>
-          <strong>
-            {coverRate == null ? <EmptyValue kind="short" /> : `${coverRate}%`}
-          </strong>
-          <p>
-            {coverRate == null
-              ? '비교할 지난 예측이 아직 없어요.'
-              : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
-                  outDays.length > 0
-                    ? ` · ${outDays
-                        .slice(0, 2)
-                        .map((item) => slashDate(item.date, item.date))
-                        .join('·')}${outDays.length > 2 ? ' 등' : ''} 품절`
-                    : ''
-                }`}
-          </p>
-          {history.length > 0 && (
-            <>
-              <CoverChart history={history} horizon={horizon} />
-              <div
-                aria-label="버틴 비율 그래프 범례"
-                className={styles.accLegend}
-                role="group"
-              >
-                <span data-series="forecast">예측한 양</span>
-                <span data-series="actual">실제 나간 양</span>
-                <span data-series="out">품절</span>
-              </div>
-            </>
-          )}
+      {empty ? (
+        <EmptyNote
+          title={
+            unevaluated || evaluation?.status === 'UNAVAILABLE'
+              ? '이 계산은 아직 정확도를 재지 않아요'
+              : '맞춰 볼 지난 예측이 아직 없어요'
+          }
+        >
+          {unevaluated || evaluation?.status === 'UNAVAILABLE'
+            ? '지난 예측과 실제 판매를 맞춰 본 기록이 없어요. 권장 입고량은 위 계산 근거대로 정했어요.'
+            : '수불부가 더 쌓이면 예측한 양과 실제 나간 양을 비교해 보여 드려요.'}
+        </EmptyNote>
+      ) : (
+        <div className={styles.accuracyBoxes}>
+          <div>
+            <span>권장량으로 버틴 비율</span>
+            <strong>
+              {coverRate == null ? (
+                <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+              ) : (
+                `${coverRate}%`
+              )}
+            </strong>
+            <p>
+              {coverRate == null
+                ? unevaluated
+                  ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                  : '비교할 지난 예측이 아직 없어요.'
+                : `${coverTrials}번 중 ${coverSuccess}번 버텼어요${
+                    outDays.length > 0
+                      ? ` · ${outDays
+                          .slice(0, 2)
+                          .map((item) => slashDate(item.date, item.date))
+                          .join('·')}${outDays.length > 2 ? ' 등' : ''} 품절`
+                      : ''
+                  }`}
+            </p>
+            {history.length > 0 && (
+              <>
+                <CoverChart history={history} horizon={horizon} />
+                <div
+                  aria-label="버틴 비율 그래프 범례"
+                  className={styles.accLegend}
+                  role="group"
+                >
+                  <span data-series="forecast">예측한 양</span>
+                  <span data-series="actual">실제 나간 양</span>
+                  <span data-series="out">품절</span>
+                </div>
+              </>
+            )}
+          </div>
+          <div>
+            <span>예측이 빗나간 정도</span>
+            <strong>
+              {errorRate == null ? (
+                <EmptyValue kind={unevaluated ? 'unevaluated' : 'short'} />
+              ) : (
+                `±${errorRate}%`
+              )}
+            </strong>
+            <p>
+              {errorRate == null
+                ? unevaluated
+                  ? '이 계산의 정확도 평가는 아직 제공되지 않아요.'
+                  : history.length > 0 &&
+                      history.every((item) => item.outbound === 0)
+                    ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
+                    : '비교할 지난 예측이 쌓이면 보여요.'
+                : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
+            </p>
+            {history.length > 0 && (
+              <>
+                <MissChart errorRate={errorRate} history={history} />
+                <div
+                  aria-label="빗나간 정도 그래프 범례"
+                  className={styles.accLegend}
+                  role="group"
+                >
+                  <span data-series="over">예측보다 더 팔림</span>
+                  <span data-series="under">덜 팔림</span>
+                  {errorRate != null && errorRate > 0 && (
+                    <span data-series="band">평균 범위 ±{errorRate}%</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <div>
-          <span>예측이 빗나간 정도</span>
-          <strong>
-            {errorRate == null ? <EmptyValue kind="short" /> : `±${errorRate}%`}
-          </strong>
-          <p>
-            {errorRate == null
-              ? history.length > 0 &&
-                history.every((item) => item.outbound === 0)
-                ? '비교 기간의 실제 출고가 0이라 빗나간 정도를 계산할 수 없어요.'
-                : '비교할 지난 예측이 쌓이면 보여요.'
-              : '평균 이만큼 더 팔리거나 덜 팔렸어요.'}
-          </p>
-          {history.length > 0 && (
-            <>
-              <MissChart errorRate={errorRate} history={history} />
-              <div
-                aria-label="빗나간 정도 그래프 범례"
-                className={styles.accLegend}
-                role="group"
-              >
-                <span data-series="over">예측보다 더 팔림</span>
-                <span data-series="under">덜 팔림</span>
-                {errorRate != null && errorRate > 0 && (
-                  <span data-series="band">평균 범위 ±{errorRate}%</span>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      )}
       {accuracy.range && (
         <p className={styles.range}>
           예측 범위 {accuracy.range.low.toLocaleString()}~
           {accuracy.range.high.toLocaleString()}개 · 참고용
         </p>
       )}
-      {history.length === 0 && (
+      {history.length === 0 && !empty && (
         <p className={styles.accNote}>
-          {evaluation?.status === 'EMPTY'
-            ? '맞춰 볼 수 있는 지난 자료가 없어 그래프를 그리지 않아요.'
-            : evaluation?.status === 'UNAVAILABLE'
-              ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'
-              : '지난 예측 맞춰 보기 자료가 아직 없어요.'}
+          {evaluation?.status === 'UNAVAILABLE'
+            ? '이 계산은 지난 예측 맞춰 보기를 하지 않았어요.'
+            : unevaluated
+              ? '이 계산의 평가는 아직 제공되지 않아요.'
+              : evaluation?.status === 'EMPTY'
+                ? '맞춰 볼 수 있는 지난 자료가 없어 그래프를 그리지 않아요.'
+                : '지난 예측 맞춰 보기 자료가 아직 없어요.'}
         </p>
       )}
     </section>
