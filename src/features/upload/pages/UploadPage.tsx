@@ -88,6 +88,7 @@ function serverDuplicate(
 
 type FailedUpload = { id: string; name: string; reason: string }
 type BatchOutcome = {
+  uploadStartedAt: number
   uploadIds: number[]
   replaced: string[]
   failedUploads: FailedUpload[]
@@ -120,6 +121,7 @@ export function UploadPage() {
 
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null)
   const [acceptedIds, setAcceptedIds] = useState<number[]>([])
   const [failedUploads, setFailedUploads] = useState<FailedUpload[]>([])
   const [pendingOutcome, setPendingOutcome] = useState<BatchOutcome | null>(
@@ -208,6 +210,8 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0 || calculationBusy) return
     dismiss()
+    const startedAt = uploadStartedAt ?? Date.now()
+    setUploadStartedAt(startedAt)
 
     setPendingOutcome(null)
     setError(null)
@@ -302,7 +306,12 @@ export function UploadPage() {
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     const failureList = [...failures.values()]
     setFailedUploads(failureList)
-    const outcome = { uploadIds, replaced, failedUploads: failureList }
+    const outcome = {
+      uploadIds,
+      replaced,
+      failedUploads: failureList,
+      uploadStartedAt: startedAt,
+    }
     if (modalIds.length > 0) {
       setModalQueue(modalIds)
       if (uploadIds.length > 0 && !retryRequired) setPendingOutcome(outcome)
@@ -389,7 +398,7 @@ export function UploadPage() {
         <p role="status">
           {acceptedIds.length}개 파일을 올렸어요.{' '}
           <Link
-            state={{ failedUploads }}
+            state={{ failedUploads, uploadStartedAt }}
             to={`/upload/${acceptedIds.at(-1)}/result?uploads=${acceptedIds.join(',')}`}
           >
             올린 파일 결과 보기

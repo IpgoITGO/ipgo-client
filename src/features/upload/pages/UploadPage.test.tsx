@@ -25,6 +25,9 @@ function ResultLocation() {
   return (
     <>
       <p>결과 화면</p>
+      <output aria-label="첫 전송 시각">
+        {location.state?.uploadStartedAt ?? ''}
+      </output>
       <output aria-label="전송 실패">
         {JSON.stringify(location.state?.failedUploads ?? [])}
       </output>
@@ -334,6 +337,52 @@ describe('UploadPage', () => {
       true,
     )
     expect(screen.getByLabelText('전송 실패')).toHaveTextContent('[]')
+  })
+
+  it('중복 확인 후 그 파일만 덮어써도 최초 시작 시각과 앞서 성공한 결과를 유지한다', async () => {
+    const user = userEvent.setup()
+    let firstSentAt = 0
+    uploadFileMock
+      .mockImplementationOnce(async () => {
+        firstSentAt = Date.now()
+        return { uploadId: 21, status: 'PROCESSING' }
+      })
+      .mockRejectedValueOnce(
+        new ApiError(409, 'UPLOAD_DUPLICATE', '이미 올린 기간입니다.', {
+          reason: 'SAME_PERIOD',
+          existing: {
+            periodStart: '2026-09-01',
+            originalName: '기존.xlsx',
+            uploadedAt: '2026-10-15T10:02:00+09:00',
+          },
+        }),
+      )
+      .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+      .mockResolvedValueOnce({ uploadId: 23, status: 'PROCESSING' })
+    renderPage()
+    await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+      new File(['a'], '2026-10.xlsx'),
+      new File(['b'], '수불부.xlsx'),
+      new File(['c'], '2026-11.xlsx'),
+    ])
+    await user.click(await screen.findByRole('button', { name: '3개 올리기' }))
+    await user.click(await screen.findByRole('button', { name: '덮어쓰기' }))
+    await user.click(screen.getByRole('button', { name: '1개 올리기' }))
+    expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+      '/upload/23/result?uploads=21,22,23',
+    )
+    expect(screen.getByLabelText('전송 실패')).toHaveTextContent('[]')
+    const startedAt = Number(screen.getByLabelText('첫 전송 시각').textContent)
+    expect(startedAt).toBeGreaterThan(0)
+    expect(startedAt).toBeLessThanOrEqual(firstSentAt)
+    expect(uploadFileMock.mock.calls.map(([file]) => file.name)).toEqual([
+      '2026-10.xlsx',
+      '수불부.xlsx',
+      '2026-11.xlsx',
+      '수불부.xlsx',
+    ])
+    expect(uploadFileMock).toHaveBeenLastCalledWith(expect.any(File), true)
   })
 
   it('중간 중복 뒤 정상 파일도 보내고 취소한 파일은 완료 요약에 전달한다', async () => {

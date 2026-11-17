@@ -2,6 +2,13 @@ import { createContext, useContext } from 'react'
 
 import type { CalculationRun } from './calculationRunApi'
 
+export type UploadBatchProgress = {
+  id: string
+  startedAt: number
+  completed: number
+  total: number
+}
+
 export type CalculationState = {
   runId: number | null
   phase:
@@ -13,8 +20,12 @@ export type CalculationState = {
   message?: string
   /** 수불부 확인(정제) 중인 업로드의 시작 시각(ms). 확인 중이 아니면 없다. */
   checkingSince?: number
+  checkingProgress?: Pick<UploadBatchProgress, 'completed' | 'total'>
   /** 업로드가 처리에 들어가면 알려 준다. 끝나면 계산 추적으로 넘어간다. */
-  trackUpload: (uploadId: string | null | undefined) => void
+  trackUpload: (
+    uploadId: string | null | undefined,
+    batch?: UploadBatchProgress,
+  ) => void
   trackRun: (runId: number | null | undefined) => void
   retry: () => void
   dismiss: () => void
