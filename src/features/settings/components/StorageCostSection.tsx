@@ -307,6 +307,12 @@ function StorageCostForm({
               defaultValue={settings.ratePerCbm?.toLocaleString('ko-KR') ?? ''}
               id="storage-rate"
               inputMode="numeric"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                }
+              }}
               onBlur={(event) => onRate(event.target.value)}
               onChange={(event) => {
                 event.target.value = withCommas(event.target.value)
@@ -457,6 +463,12 @@ function StorageCostForm({
                           aria-label={`${product.name} 상자 ${label}`}
                           defaultValue={box?.[side] ?? ''}
                           inputMode="decimal"
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              event.currentTarget.blur()
+                            }
+                          }}
                           onBlur={(event) =>
                             saveSide(product, side, event.target.value)
                           }
