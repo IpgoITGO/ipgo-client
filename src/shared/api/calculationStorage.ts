@@ -34,7 +34,11 @@ export function clearTrackedRun() {
 
 // 수불부 확인(정제) 단계 추적. 시작 시각을 같이 저장해 이동·새로고침 뒤에도 N분째가 이어진다.
 const UPLOAD_KEY = 'ipgo:calculation-upload'
-export type TrackedUpload = { uploadId: string; startedAt: number }
+export type TrackedUpload = {
+  uploadId: string
+  startedAt: number
+  batch?: { id: string; completed: number; total: number }
+}
 
 export function readTrackedUpload(scope?: string): TrackedUpload | null {
   if (!scope) return null
@@ -44,7 +48,24 @@ export function readTrackedUpload(scope?: string): TrackedUpload | null {
       typeof saved.uploadId === 'string' &&
       saved.uploadId &&
       Number.isFinite(saved.startedAt)
-      ? { uploadId: saved.uploadId, startedAt: saved.startedAt }
+      ? {
+          uploadId: saved.uploadId,
+          startedAt: saved.startedAt,
+          ...(typeof saved.batch?.id === 'string' &&
+          Number.isSafeInteger(saved.batch.total) &&
+          saved.batch.total > 1 &&
+          Number.isSafeInteger(saved.batch.completed) &&
+          saved.batch.completed >= 0 &&
+          saved.batch.completed <= saved.batch.total
+            ? {
+                batch: {
+                  id: saved.batch.id,
+                  completed: saved.batch.completed,
+                  total: saved.batch.total,
+                },
+              }
+            : {}),
+        }
       : null
   } catch {
     return null

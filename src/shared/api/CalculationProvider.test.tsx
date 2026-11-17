@@ -70,6 +70,65 @@ function setup(
   return { client, user: userEvent.setup(), unmount: view.unmount }
 }
 
+function BatchHarness({ startedAt }: { startedAt: number }) {
+  const { trackUpload, checkingSince } = useCalculation()
+  return (
+    <>
+      <button
+        onClick={() =>
+          trackUpload('9', { id: '9,10', startedAt, completed: 0, total: 2 })
+        }
+      >
+        묶음 시작
+      </button>
+      <button
+        onClick={() =>
+          trackUpload('10', {
+            id: '9,10',
+            startedAt: Date.now(),
+            completed: 1,
+            total: 2,
+          })
+        }
+      >
+        다음 달
+      </button>
+      <output data-testid="batch-start">{checkingSince}</output>
+      <CalculationStatus />
+    </>
+  )
+}
+
+it('일괄 업로드는 달이 바뀌어도 첫 시작 시각과 진행률을 유지하고 복구한다', async () => {
+  server.use(
+    http.get('/api/uploads/:id', ({ params }) =>
+      HttpResponse.json({ uploadId: Number(params.id), status: 'PROCESSING' }),
+    ),
+  )
+  const startedAt = Date.now() - 4 * 60_000
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const view = () => (
+    <QueryClientProvider client={client}>
+      <CalculationProvider storageScope="batch-clock">
+        <BatchHarness startedAt={startedAt} />
+      </CalculationProvider>
+    </QueryClientProvider>
+  )
+  const first = render(view())
+  fireEvent.click(screen.getByText('묶음 시작'))
+  expect(screen.getByTestId('batch-start')).toHaveTextContent(String(startedAt))
+  expect(screen.getByText('5분째 · 2개 중 0개 확인')).toBeInTheDocument()
+  fireEvent.click(screen.getByText('다음 달'))
+  expect(screen.getByTestId('batch-start')).toHaveTextContent(String(startedAt))
+  expect(screen.getByText('5분째 · 2개 중 1개 확인')).toBeInTheDocument()
+  first.unmount()
+  render(view())
+  expect(screen.getByTestId('batch-start')).toHaveTextContent(String(startedAt))
+  expect(screen.getByText('5분째 · 2개 중 1개 확인')).toBeInTheDocument()
+})
+
 describe('수불부 확인 단계 추적', () => {
   const upload = (body: object) =>
     http.get('/api/uploads/9', () =>

@@ -77,6 +77,7 @@ export function UploadPage() {
 
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
+  const uploadStartedAt = useRef<number | null>(null)
   const [acceptedIds, setAcceptedIds] = useState<number[]>([])
 
   const readyFiles = useMemo(
@@ -151,6 +152,7 @@ export function UploadPage() {
   const uploadAction = useActionLock(async () => {
     if (readyFiles.length === 0 || calculationBusy) return
     dismiss()
+    uploadStartedAt.current ??= Date.now()
 
     // 파일을 하나씩 보낸다. 올라간 파일은 목록에서 빼서, 중간에 실패해 다시 눌러도 두 번 올라가지 않게 한다.
     const uploaded = new Set<string>()
@@ -179,7 +181,7 @@ export function UploadPage() {
       const search =
         uploadIds.length > 1 ? `?uploads=${uploadIds.join(',')}` : ''
       navigate(`/upload/${lastUploadId}/result${search}`, {
-        state: { replaced },
+        state: { replaced, uploadStartedAt: uploadStartedAt.current },
       })
     } catch (cause) {
       void queryClient.invalidateQueries({ queryKey: ['upload-periods'] })

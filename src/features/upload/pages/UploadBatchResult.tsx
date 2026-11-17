@@ -1,6 +1,6 @@
 import { queryOptions, useQueries, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -14,6 +14,17 @@ import batchStyles from './UploadBatchResult.module.css'
 export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
   const { trackUpload, trackRun } = useCalculation()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [startedAt] = useState(() => {
+    const value: unknown = location.state?.uploadStartedAt
+    return typeof value === 'number' &&
+      Number.isFinite(value) &&
+      value > 0 &&
+      value <= Date.now()
+      ? value
+      : Date.now()
+  })
+  const batchId = uploadIds.join(',')
   const queryClient = useQueryClient()
   const periods = useUploadPeriods()
   const results = useQueries({
@@ -44,8 +55,22 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
     : null
 
   useEffect(() => {
-    if (activeId) trackUpload(activeId)
-  }, [activeId, trackUpload])
+    if (activeId)
+      trackUpload(activeId, {
+        id: batchId,
+        startedAt,
+        completed: done + failed,
+        total: uploadIds.length,
+      })
+  }, [
+    activeId,
+    batchId,
+    startedAt,
+    done,
+    failed,
+    uploadIds.length,
+    trackUpload,
+  ])
   useEffect(() => {
     if (latestRun) trackRun(latestRun)
   }, [latestRun, trackRun])

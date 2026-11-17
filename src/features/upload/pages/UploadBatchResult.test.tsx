@@ -4,19 +4,34 @@ import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
+import { CalculationStatus } from '../../../shared/ui/CalculationStatus/CalculationStatus'
 import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { UploadResultPage } from './UploadResultPage'
 
-function show(ids: number[]) {
+function show(ids: number[], startedAt?: number) {
   const router = createMemoryRouter(
     [
-      { path: '/upload/:uploadId/result', element: <UploadResultPage /> },
+      {
+        path: '/upload/:uploadId/result',
+        element: (
+          <>
+            <UploadResultPage />
+            {startedAt != null && <CalculationStatus quiet />}
+          </>
+        ),
+      },
       { path: '/upload', element: <h1>다시 올릴 파일 선택</h1> },
       { path: '/dashboard', element: <h1>테스트 대시보드</h1> },
     ],
     {
-      initialEntries: [`/upload/${ids.at(-1)}/result?uploads=${ids.join(',')}`],
+      initialEntries: [
+        {
+          pathname: `/upload/${ids.at(-1)}/result`,
+          search: `?uploads=${ids.join(',')}`,
+          state: { uploadStartedAt: startedAt },
+        },
+      ],
     },
   )
   render(
@@ -42,6 +57,31 @@ const resultFor = (id: number, status: string) => ({
 })
 
 describe('묶음 업로드 결과', () => {
+  it('처리 중인 달이 바뀌어도 알림은 첫 전송부터 경과 시간과 진행률을 표시한다', async () => {
+    let firstDone = false
+    server.use(
+      http.get('/api/uploads/periods', () =>
+        HttpResponse.json({ items: [], latestUploadId: 2 }),
+      ),
+      http.get('/api/uploads/:uploadId', ({ params }) =>
+        HttpResponse.json(
+          resultFor(
+            Number(params.uploadId),
+            firstDone && params.uploadId === '1' ? 'DONE' : 'PROCESSING',
+          ),
+        ),
+      ),
+    )
+    show([1, 2], Date.now() - 4 * 60_000)
+    expect(
+      await screen.findByText('5분째 · 2개 중 0개 확인'),
+    ).toBeInTheDocument()
+    firstDone = true
+    expect(
+      await screen.findByText('5분째 · 2개 중 1개 확인', {}, { timeout: 5000 }),
+    ).toBeInTheDocument()
+  })
+
   it.each(['DONE', 'FAILED'])(
     '모두 %s여도 완료 개수와 대시보드 이동을 보여 준다',
     async (status) => {
