@@ -240,6 +240,51 @@ describe('SettingsPage', () => {
     expect(field).toHaveValue('14')
   })
 
+  it('유통기한에서 엔터는 그 값만 저장하고 입고 조건 계산은 제출하지 않는다', async () => {
+    let calculations = 0
+    server.use(
+      http.put('/api/replenishment-settings', () => {
+        calculations++
+        return HttpResponse.json({ saved: true, runId: null })
+      }),
+    )
+    const user = userEvent.setup()
+    renderSettings()
+    const field = await screen.findByLabelText('유통기한 임박 기준')
+    await waitFor(() => expect(field).toHaveValue('30'))
+    await user.clear(field)
+    await user.type(field, '7{Enter}')
+    expect(await screen.findByText('✓ 7일로 저장했어요')).toBeInTheDocument()
+    expect(calculations).toBe(0)
+    expect(field).toHaveValue('7')
+    await user.click(field)
+    await user.clear(field)
+    await user.type(field, '400{Enter}')
+    expect(await screen.findByText('1~365일로 넣어 주세요')).toBeInTheDocument()
+    expect(calculations).toBe(0)
+  })
+
+  it('보관 요율과 상자 크기도 엔터로 저장한다', async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+    const user = userEvent.setup()
+    renderSettings()
+    const width = await screen.findByLabelText('덴탈껌 S 10입 상자 가로')
+    await user.type(width, '20{Enter}')
+    await user.type(
+      screen.getByLabelText('덴탈껌 S 10입 상자 세로'),
+      '20{Enter}',
+    )
+    await user.type(
+      screen.getByLabelText('덴탈껌 S 10입 상자 높이'),
+      '30{Enter}',
+    )
+    expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('창고 보관 요율'), '45000{Enter}')
+    expect(
+      await screen.findByText('✓ 보관 요율 저장했어요'),
+    ).toBeInTheDocument()
+  })
+
   it('보관 비용: #storage-cost로 오면 접힌 칸이 펼쳐진다', async () => {
     await login({ email: 'seller@a.com', password: 'pass1234' })
     render(
