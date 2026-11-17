@@ -48,6 +48,7 @@ function setup(
   timeout = 2000,
   getResult?: () => Promise<string>,
   storageScope?: string,
+  slowAfter?: number,
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
@@ -59,6 +60,7 @@ function setup(
       <CalculationProvider
         pollInterval={20}
         timeout={timeout}
+        slowAfter={slowAfter}
         storageScope={storageScope}
       >
         <Harness getResult={getResult} />
@@ -355,6 +357,31 @@ describe('계산 완료·실패 추적', () => {
     expect(screen.getByText('이전 정상 결과')).toBeInTheDocument()
     status = 'DONE'
     await user.click(screen.getByText('상태 다시 확인'))
+    expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
+  })
+
+  // ipgo-client#413: 서버가 5분마다 다시 보내는 동안 화면이 먼저 포기하지 않는다
+  it('오래 걸려도 실패로 보이지 않고 다시 시도 중이라고 알리다가, 끝나면 새 결과로 바꾼다', async () => {
+    let done = false
+    server.use(
+      http.get('/api/calculation-runs/71', () =>
+        HttpResponse.json(
+          done
+            ? { runId: 71, status: 'DONE', summary: { needCount: 2 } }
+            : { runId: 71, status: 'RUNNING' },
+        ),
+      ),
+    )
+    const { user } = setup(5000, undefined, undefined, 60)
+    await user.click(screen.getByRole('button', { name: '계산 번호 받기' }))
+    expect(
+      await screen.findByText('생각보다 오래 걸리고 있어요'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('phase')).toHaveTextContent('pending')
+    expect(
+      screen.queryByText('계산 결과를 다시 확인해 주세요'),
+    ).not.toBeInTheDocument()
+    done = true
     expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
   })
 

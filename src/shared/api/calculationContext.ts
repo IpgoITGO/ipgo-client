@@ -7,6 +7,8 @@ export type CalculationState = {
   phase:
     'idle' | 'checking' | 'pending' | 'updating' | 'done' | 'failed' | 'unknown'
   busy: boolean
+  /** 계산이 5분을 넘겨 서버가 다시 시도하는 중(실패 아님, ipgo-client#413) */
+  slow?: boolean
   run?: CalculationRun
   message?: string
   /** 수불부 확인(정제) 중인 업로드의 시작 시각(ms). 확인 중이 아니면 없다. */

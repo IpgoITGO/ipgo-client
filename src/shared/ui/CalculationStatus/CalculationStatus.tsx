@@ -14,8 +14,17 @@ export const DONE_MS = 5000
 // 마친·실패 알약은 저절로 사라지지 않고 "확인"을 눌러야 닫힌다. 알약을 누르면 다시 펼친다.
 // 계산 중·확인 못 함에는 "계산 멈추기"(서버 취소가 없으면 화면에서만 기다리기를 그만둠).
 export function CalculationStatus() {
-  const { phase, runId, run, message, retry, dismiss, stop, checkingSince } =
-    useCalculation()
+  const {
+    phase,
+    runId,
+    run,
+    message,
+    retry,
+    dismiss,
+    stop,
+    checkingSince,
+    slow,
+  } = useCalculation()
   const minutes = useMinutes(checkingSince)
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -85,8 +94,10 @@ export function CalculationStatus() {
   }
   const title = {
     checking: '수불부를 확인하고 있어요',
-    pending:
-      run?.status === 'QUEUED'
+    // 5분이 넘으면 서버가 다시 시도하는 중이다. 실패로 보이지 않게 말을 바꾼다(#413)
+    pending: slow
+      ? '생각보다 오래 걸리고 있어요'
+      : run?.status === 'QUEUED'
         ? '계산을 기다리고 있어요'
         : '입고량을 계산하고 있어요',
     updating: '새 계산 결과를 불러오고 있어요',
@@ -103,11 +114,13 @@ export function CalculationStatus() {
         : `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
       : phase === 'checking'
         ? `${minutes}분째 · 끝나면 화면이 저절로 바뀌어요`
-        : phase === 'pending' || phase === 'updating'
-          ? '끝나면 화면이 저절로 바뀌어요.'
-          : phase === 'failed'
-            ? '이전 결과는 그대로예요.'
-            : undefined)
+        : phase === 'pending' && slow
+          ? '다시 시도하고 있어요. 끝나면 화면이 저절로 바뀌어요.'
+          : phase === 'pending' || phase === 'updating'
+            ? '끝나면 화면이 저절로 바뀌어요.'
+            : phase === 'failed'
+              ? '이전 결과는 그대로예요.'
+              : undefined)
   return (
     <section
       aria-label="입고량 계산 상태"
