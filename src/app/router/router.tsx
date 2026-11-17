@@ -2,6 +2,7 @@ import { ReceiptCorrectionsPage } from '../../features/receipts/pages/ReceiptCor
 import { createBrowserRouter, type RouteObject } from 'react-router-dom'
 
 import { authRoutes } from '../../auth/routes'
+import { PolicyPage } from '../../features/legal/pages/PolicyPages'
 import { accountRoutes } from '../../features/account/routes'
 import { billingRoutes } from '../../features/billing/routes'
 import { dashboardRoutes } from '../../features/dashboard/routes'
@@ -14,6 +15,8 @@ import { RouteErrorPage } from '../ui/RouteErrorPage'
 import { PublicOnly, RequireAuth, RootRedirect } from './routeGuards'
 
 export const routes: RouteObject[] = [
+  { path: '/terms', element: <PolicyPage kind="terms" /> },
+  { path: '/privacy', element: <PolicyPage kind="privacy" /> },
   {
     path: '/',
     element: <RootRedirect />,

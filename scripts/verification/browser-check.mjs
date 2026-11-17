@@ -5,6 +5,10 @@ import path from 'node:path'
 import { chromium } from 'playwright'
 import { createServer } from 'vite'
 import { failureReason, fixtureResponse } from './browser-fixtures.mjs'
+import {
+  publishedPolicyFixturePlugin,
+  verifySignupPolicy,
+} from './signup-policy-browser.mjs'
 
 process.umask(0o077)
 const out =
@@ -20,6 +24,7 @@ let phase = 'local_server'
 let failureDiagnostic = null
 try {
   server = await createServer({
+    plugins: [publishedPolicyFixturePlugin()],
     server: { host: '127.0.0.1', port: 0, strictPort: true, open: false },
     define: {
       'import.meta.env.VITE_ENABLE_MSW': JSON.stringify('false'),
@@ -321,6 +326,10 @@ try {
       ],
     })
     await context.close()
+    phase = name + '_signup_policy'
+    reports.push(
+      await verifySignupPolicy({ browser, origin, out, name, width, height }),
+    )
   }
   complete = true
 } catch (error) {

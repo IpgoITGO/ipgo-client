@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../auth/model/useAuth'
+import { PolicyLinks } from '../../features/legal/pages/PolicyPages'
 import { getDashboard } from '../../features/dashboard/model/dashboardApi'
 import {
   calcLock,
@@ -178,6 +179,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
+      <PolicyLinks />
       <RouteToast />
       {logoutFailed && (
         <Modal

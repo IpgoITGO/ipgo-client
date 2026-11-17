@@ -1,0 +1,22 @@
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  color: var(--color-text-1);
+}
+.content {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.links {
+  padding: var(--space-4);
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
+.links nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+}

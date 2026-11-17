@@ -8,6 +8,11 @@ import { useActionLock } from '../../shared/hooks/useActionLock'
 import { ApiError } from '../../shared/api/client'
 import { Button } from '../../shared/ui/Button/Button'
 import { signUp } from '../api/authApi'
+import { signupPolicy } from '../../features/legal/model/signupPolicy'
+import {
+  SignupAgreements,
+  type AgreementChecks,
+} from '../components/SignupAgreements'
 import { AuthShell } from '../components/AuthShell'
 import { FieldButton } from '../components/FieldButton'
 import { PasswordField } from '../components/PasswordField'
@@ -107,6 +112,10 @@ export function SignUpPage() {
   }, [])
   const [code, setCode] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [agreements, setAgreements] = useState<AgreementChecks>({
+    terms: false,
+    privacy: false,
+  })
   const {
     register,
     handleSubmit,
@@ -153,6 +162,10 @@ export function SignUpPage() {
     }
 
     setSubmitError(null)
+    if (signupPolicy && (!agreements.terms || !agreements.privacy)) {
+      setSubmitError('필수 약관에 모두 동의해 주세요.')
+      return
+    }
     try {
       await signUp({
         companyName: values.companyName,
@@ -161,9 +174,30 @@ export function SignUpPage() {
         email: values.email,
         password: values.password,
         verificationToken: verification.token,
+        ...(signupPolicy
+          ? {
+              agreements: {
+                terms: true as const,
+                privacy: true as const,
+                version: signupPolicy.version,
+              },
+            }
+          : {}),
       })
       navigate('/login', { replace: true, state: { signedUp: values.email } })
     } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.code === 'INVALID_INPUT' &&
+        error.details?.field === 'agreements'
+      ) {
+        setPage(3)
+        setAgreements({ terms: false, privacy: false })
+        setSubmitError(
+          '약관 동의를 확인하지 못했어요. 새로고침한 뒤 약관을 다시 확인해 주세요.',
+        )
+        return
+      }
       if (
         error instanceof ApiError &&
         error.code === 'INVALID_INPUT' &&
@@ -368,6 +402,13 @@ export function SignUpPage() {
           </div>
         )}
 
+        {page === 3 && signupPolicy && (
+          <SignupAgreements
+            policy={signupPolicy}
+            value={agreements}
+            onChange={setAgreements}
+          />
+        )}
         {submitError && (
           <p className={styles.banner} role="alert">
             {submitError}
@@ -392,6 +433,9 @@ export function SignUpPage() {
               className={styles.submit}
               loading={submit.isPending}
               loadingLabel="가입 중"
+              disabled={
+                !!signupPolicy && (!agreements.terms || !agreements.privacy)
+              }
               type="submit"
             >
               가입하기
