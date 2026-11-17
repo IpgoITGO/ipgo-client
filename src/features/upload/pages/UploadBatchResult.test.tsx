@@ -158,7 +158,7 @@ describe('묶음 업로드 결과', () => {
     )
     show([1, 2])
     await screen.findByRole('progressbar', { name: '수불부 확인 진행률' })
-    expect(screen.getByText('2개 중 0개 확인')).toBeInTheDocument()
+    expect(screen.getByText('/ 2개 확인')).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: '수불부 확인 중' }),
     ).not.toBeInTheDocument()
@@ -220,7 +220,13 @@ describe('묶음 업로드 결과', () => {
       }),
     )
     show([1, 2])
-    expect(await screen.findByText('2개 중 1개 확인')).toBeInTheDocument()
+    expect(await screen.findByText('/ 2개 확인')).toBeInTheDocument()
+    // 큰 숫자가 1로 바뀔 때까지 기다린다(두 파일 중 하나가 먼저 끝남)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('progressbar', { name: '수불부 확인 진행률' }),
+      ).toHaveAttribute('value', '1'),
+    )
     expect(
       screen.getByRole('heading', { name: '수불부를 확인하고 있어요' }),
     ).toBeVisible()
@@ -276,7 +282,7 @@ describe('묶음 업로드 결과', () => {
       await screen.findByText('2개 중 2개 확인 · 0개 실패'),
     ).toBeInTheDocument()
     expect(
-      within(screen.getByRole('list')).getAllByText('✅ 확인 완료'),
+      within(screen.getByRole('list')).getAllByText('확인 완료'),
     ).toHaveLength(2)
   })
 })

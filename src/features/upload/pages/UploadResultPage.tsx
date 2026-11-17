@@ -19,6 +19,7 @@ import {
   describeExclusion,
   formatDate,
   formatPeriod,
+  monthOrNone,
 } from '../model/uploadFormat'
 import { FINISH_MS, UploadProcessing } from './UploadProcessing'
 import styles from './UploadResultPage.module.css'
@@ -35,8 +36,13 @@ function SingleUploadResultPage() {
   const { uploadId } = useParams()
   const navigate = useNavigate()
   // 업로드 화면에서 같은 기간을 덮어써 올렸으면 그 기간 목록이 넘어온다.
-  const replaced = (useLocation().state as { replaced?: string[] } | null)
-    ?.replaced
+  const state = useLocation().state as {
+    replaced?: string[]
+    names?: Record<string, string>
+  } | null
+  const replaced = state?.replaced
+  // 확인 화면에 올린 파일 한 줄을 보여 준다(이름은 올린 그대로). 이름을 모르면(주소로 바로 들어온 경우) 줄 없이 그림과 제목만
+  const fileName = uploadId ? state?.names?.[uploadId] : undefined
   const result = useQuery({
     queryKey: ['upload-result', uploadId],
     queryFn: () => getUploadResult(uploadId ?? ''),
@@ -87,7 +93,18 @@ function SingleUploadResultPage() {
     return (
       <UploadProcessing
         done={finishing}
-        onGoDashboard={() => navigate(dashboardPath)}
+        files={
+          fileName
+            ? [
+                {
+                  id: uploadId ?? '',
+                  name: fileName,
+                  month: monthOrNone(result.data?.periodStart),
+                  state: finishing ? 'done' : 'now',
+                },
+              ]
+            : []
+        }
       />
     )
   }

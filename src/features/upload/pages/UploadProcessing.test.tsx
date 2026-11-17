@@ -10,19 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LONG_WAIT_SECONDS, UploadProcessing } from './UploadProcessing'
 
 // useBlocker는 데이터 라우터에서만 동작한다. 처리 화면(/wait)과 나갈 곳(/dashboard)만 둔다.
-function renderProcessing(props: {
-  done?: boolean
-  onGoDashboard?: () => void
-}) {
+function renderProcessing(props: { done?: boolean }) {
   const routes: RouteObject[] = [
     {
       path: '/wait',
-      element: (
-        <UploadProcessing
-          done={props.done}
-          onGoDashboard={props.onGoDashboard ?? vi.fn()}
-        />
-      ),
+      element: <UploadProcessing done={props.done} />,
     },
     { path: '/dashboard', element: <p>대시보드 화면</p> },
   ]
@@ -51,9 +43,8 @@ describe('UploadProcessing', () => {
     expect(screen.queryByText('생각보다 오래 걸려요')).not.toBeInTheDocument()
   })
 
-  it('2분이 넘으면 닫아도 처리가 계속된다는 안내와 대시보드 버튼을 보여주고, 그 버튼은 묻지 않고 나간다', () => {
-    const onGoDashboard = vi.fn()
-    const { router } = renderProcessing({ onGoDashboard })
+  it('2분이 넘으면 닫아도 처리가 계속된다는 안내 한 줄을 보여주고 버튼은 두지 않는다', () => {
+    renderProcessing({})
 
     act(() => {
       vi.advanceTimersByTime((LONG_WAIT_SECONDS + 14) * 1000)
@@ -61,18 +52,13 @@ describe('UploadProcessing', () => {
 
     expect(screen.getByText('생각보다 오래 걸려요')).toBeInTheDocument()
     expect(
-      screen.getByText('창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요'),
+      screen.getByText(/창을 닫아도 계속 확인해요 · 끝나면 대시보드에 떠요/),
     ).toBeInTheDocument()
     expect(screen.queryByText(/\d+분.*초째/)).not.toBeInTheDocument()
 
-    // 버튼이 하는 일(onGoDashboard)이 실제 이동이면 확인 팝업 없이 나가야 한다
-    onGoDashboard.mockImplementation(() => {
-      void router.navigate('/dashboard')
-    })
-    fireEvent.click(screen.getByRole('button', { name: '대시보드로' }))
-    expect(onGoDashboard).toHaveBeenCalledOnce()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/dashboard')
+    expect(
+      screen.queryByRole('button', { name: '대시보드로' }),
+    ).not.toBeInTheDocument()
   })
 
   it('끝나면 같은 장면에서 마침 문구로 바뀌고 안내 띠는 사라진다', () => {
@@ -80,7 +66,7 @@ describe('UploadProcessing', () => {
       const [done, setDone] = useState(false)
       return (
         <>
-          <UploadProcessing done={done} onGoDashboard={vi.fn()} />
+          <UploadProcessing done={done} />
           <button onClick={() => setDone(true)} type="button">
             처리 끝남
           </button>
@@ -141,5 +127,43 @@ describe('UploadProcessing', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/dashboard')
+  })
+
+  it('파일 줄: 이름은 올린 그대로, 달은 알 때만 붙이고 여러 개면 몇 개째인지 센다', () => {
+    const { container } = render(
+      <RouterProvider
+        router={createMemoryRouter([
+          {
+            path: '/',
+            element: (
+              <UploadProcessing
+                files={[
+                  {
+                    id: '1',
+                    name: '수불부_2025-09.xlsx',
+                    month: '2025년 9월',
+                    state: 'done',
+                  },
+                  { id: '2', name: '9월 재고(최종).xlsx', state: 'now' },
+                  { id: '3', name: 'export (3).csv', state: 'wait' },
+                ]}
+              />
+            ),
+          },
+        ])}
+      />,
+    )
+    const rows = [...container.querySelectorAll('ol li')].map(
+      (row) => row.textContent,
+    )
+    expect(rows).toEqual([
+      '2025년 9월수불부_2025-09.xlsx확인 끝',
+      '9월 재고(최종).xlsx확인 중',
+      'export (3).csv기다림',
+    ])
+    expect(screen.getByText('/ 3개 확인')).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: '수불부 확인 진행률' }),
+    ).toHaveValue(1)
   })
 })

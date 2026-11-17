@@ -51,6 +51,7 @@ import {
   shiftTimes,
 } from '../model/dashboardApi'
 import { checkFirst } from '../model/checkFirst'
+import { mostUrgent } from '../model/mostUrgent'
 import { RememberDashboardList } from '../../sku/components/SkuNav'
 import { CheckFirst } from '../ui/CheckFirst'
 import { type OrderLine, RegisterOrders } from '../ui/RegisterOrders'
@@ -59,7 +60,6 @@ import { downloadCsv, orderFileName, toOrderCsv } from '../model/orderCsv'
 import { shortDate } from '../../../shared/lib/elapsed'
 import { BusyStrip } from './BusyStrip'
 import { DashboardSkeleton } from './DashboardSkeleton'
-import { mostUrgent } from '../model/mostUrgent'
 import styles from './DashboardPage.module.css'
 import emptyShiftImage from '../../../shared/ui/PagePlaceholder/assets/box-empty.webp'
 import { Pager } from '../../../shared/ui/Pager/Pager'
@@ -212,21 +212,6 @@ function SummaryCard({
       <em>{note}</em>
     </button>
   )
-}
-
-// 탭·거르기로 줄 수가 바뀌어도 목록 판 높이는 줄이지 않는다(11/12 — 줄면 화면이 위로 끌려 올라감). 커지는 건 그대로.
-function keepTallest(node: HTMLElement | null) {
-  if (!node || typeof ResizeObserver === 'undefined') return
-  let tallest = 0
-  const observer = new ResizeObserver(() => {
-    const height = node.offsetHeight
-    if (height > tallest) {
-      tallest = height
-      node.style.minHeight = `${height}px`
-    }
-  })
-  observer.observe(node)
-  return () => observer.disconnect()
 }
 
 type SortKey = 'stockout' | 'expiry' | 'cost' | 'shift'
@@ -559,6 +544,23 @@ export function DashboardPage() {
   // 예상 소진일이 오늘보다 며칠 지났는지(0 = 오늘 소진, 음수 = 아직). 기준일~오늘을 예측으로 이어 계산해서 지난 날짜가 나올 수 있다.
   const today = dayNumber(data.today ?? localToday())
   const daysPast = (date: string) => today - dayNumber(date)
+  // 맨 위 요약 카드에서 먼저 볼 상품이 없을 때 오른쪽을 채울 값: 가장 급한 상품과 이번 주 안에 바닥나는 수
+  const urgent = mostUrgent(data.neededItems)
+  const checkFill = {
+    urgent:
+      urgent && urgent.stockoutDate !== '—'
+        ? {
+            id: urgent.id,
+            name: urgent.name,
+            date: urgent.stockoutDate,
+            quantity: urgent.quantity,
+            past: daysPast(urgent.stockoutDate) > 0,
+          }
+        : undefined,
+    soon: data.neededItems.filter(
+      (item) => dayNumber(item.stockoutDate) < today + 7,
+    ).length,
+  }
   const beforeArrivalCount = data.neededItems.filter(
     (item) =>
       item.leadTime != null &&
@@ -868,12 +870,7 @@ export function DashboardPage() {
               ? undefined
               : {
                   baseDate: data.baseDate,
-                  top: mostUrgent(data.neededItems),
                   needed: data.summary.needed,
-                  soon: data.neededItems.filter(
-                    (item) => dayNumber(item.stockoutDate) < today + 7,
-                  ).length,
-                  planned: Object.values(planned).filter(isOwnPlan).length,
                 }
           }
         />
@@ -984,7 +981,11 @@ export function DashboardPage() {
       </header>
 
       {!(noResult || refreshRequired) && (
-        <CheckFirst reasons={checkReasons} total={data.neededItems.length} />
+        <CheckFirst
+          fill={checkFill}
+          reasons={checkReasons}
+          total={data.neededItems.length}
+        />
       )}
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
@@ -1116,7 +1117,6 @@ export function DashboardPage() {
           className={styles.panel}
           data-tab={tab}
           id="dashboard-list"
-          ref={keepTallest}
           role="tabpanel"
         >
           <span aria-hidden="true" className={styles.notch} />
@@ -1148,7 +1148,7 @@ export function DashboardPage() {
               />
             </label>
           </div>
-          {/* 정렬은 왼쪽, 오른쪽 빈자리엔 이 목록의 넣을 양·금액 합계와 보관비(11/13 "오른쪽 여백 채우기") */}
+          {/* 정렬은 왼쪽, 오른쪽엔 보관비. 합계는 표 아래 오른쪽으로 옮겼다(11/17) */}
           <div className={styles.listBar}>
             <div
               aria-label="목록 정렬"
@@ -1168,28 +1168,6 @@ export function DashboardPage() {
               ))}
             </div>
             <div className={styles.totals}>
-              {needInView.length > 0 && (
-                <>
-                  <span>
-                    넣을 양
-                    <b>
-                      {needInView
-                        .reduce((sum, row) => sum + orderQtyOf(row.item), 0)
-                        .toLocaleString()}
-                      개
-                    </b>
-                  </span>
-                  <span>
-                    넣을 금액
-                    <b>
-                      {needInView
-                        .reduce((sum, row) => sum + orderCostOf(row.item), 0)
-                        .toLocaleString()}
-                      원
-                    </b>
-                  </span>
-                </>
-              )}
               {(tab === 'need' || tab === 'all') && (
                 <StorageTotal items={items} />
               )}
@@ -1495,6 +1473,42 @@ export function DashboardPage() {
               </table>
             </div>
           )}
+          {/* 표 바로 아래 한 줄: 왼쪽은 체크 칸 안내, 오른쪽은 입고량·금액 칸 밑 합계(11/17: 표 위 "넣을 양·넣을 금액"은 무엇의 합계인지 안 읽혔고, 안내와 합계가 오른쪽에 두 줄로 쌓이면 사이가 어색했다). 쪽을 넘겨도 목록 전체의 합계다 */}
+          {rows.length > 0 && (tab !== 'na' || needInView.length > 0) && (
+            <div className={styles.foot}>
+              {/* 고르기 전에는 엑셀 버튼이 안 보여 체크 칸의 쓸모를 알 수 없었다(11/15) */}
+              {tab !== 'na' && (
+                <span className={styles.pickHint}>
+                  상품을 고르면 <b>엑셀로 받기 · 발주 등록</b>을 할 수 있어요
+                </span>
+              )}
+              {needInView.length > 0 && (
+                <p className={styles.sum}>
+                  <span>
+                    지금 넣을 {needInView.length.toLocaleString()}개 합계
+                  </span>
+                  <span>
+                    입고량
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderQtyOf(row.item), 0)
+                        .toLocaleString()}
+                      개
+                    </b>
+                  </span>
+                  <span>
+                    금액
+                    <b>
+                      {needInView
+                        .reduce((sum, row) => sum + orderCostOf(row.item), 0)
+                        .toLocaleString()}
+                      원
+                    </b>
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
           {/* 쪽 넘기기는 표 아래 오른쪽(표가 옆으로 밀려도 같이 안 밀리게 표 칸 밖에) */}
           {rows.length > 0 && (
             <Pager
@@ -1510,14 +1524,6 @@ export function DashboardPage() {
                 })
                 showTableTop()
               }}
-              aside={
-                // 고르기 전에는 엑셀 버튼이 안 보여 체크 칸의 쓸모를 알 수 없었다(11/15)
-                tab !== 'na' ? (
-                  <span className={styles.pickHint}>
-                    상품을 고르면 <b>엑셀로 받기 · 발주 등록</b>을 할 수 있어요
-                  </span>
-                ) : undefined
-              }
               page={page}
               size={size}
               total={rows.length}

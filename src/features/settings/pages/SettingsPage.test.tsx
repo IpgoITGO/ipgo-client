@@ -315,12 +315,13 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('0.012 CBM')).toBeInTheDocument()
 
     const rate = screen.getByLabelText('창고 보관 요율')
+    // 요율에 0을 넣으면 오류 대신 칸을 비운다(넣은 값을 0원으로 되돌리기)
     await user.type(rate, '0')
     await user.tab()
+    expect(rate).toHaveValue('')
     expect(
-      await screen.findByText('0보다 큰 숫자로 넣어 주세요'),
-    ).toBeInTheDocument()
-    await user.clear(rate)
+      screen.queryByText('0보다 큰 숫자로 넣어 주세요'),
+    ).not.toBeInTheDocument()
     await user.type(rate, '45000')
     await user.tab()
     expect(

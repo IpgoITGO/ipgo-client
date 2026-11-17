@@ -5,9 +5,20 @@ import {
   formatPeriod,
   formatUploadedAt,
   describeExclusion,
+  monthLabel,
+  monthOrNone,
 } from './uploadFormat'
 
 describe('uploadFormat', () => {
+  it('달을 알면 "2025년 9월", 모르면 비우거나 "기간 확인 중"', () => {
+    expect(monthOrNone('2025-09-01')).toBe('2025년 9월')
+    expect(monthOrNone('2025-09')).toBe('2025년 9월')
+    expect(monthOrNone(null)).toBeUndefined()
+    expect(monthOrNone('')).toBeUndefined()
+    expect(monthLabel('2025-12')).toBe('2025년 12월')
+    expect(monthLabel('')).toBe('기간 확인 중')
+  })
+
   it('날짜와 기간을 화면 글자로 바꾼다', () => {
     expect(formatDate('2026-09-01')).toBe('2026. 9. 1')
     expect(formatPeriod('2026-09-01', '2026-10-14')).toBe(

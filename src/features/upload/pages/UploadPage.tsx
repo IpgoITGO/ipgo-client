@@ -217,6 +217,8 @@ export function UploadPage() {
     setError(null)
     const uploadIds = [...acceptedIds]
     const replaced: string[] = []
+    // 확인 화면의 파일 줄에 올린 이름 그대로 보여 주려고 넘긴다(이름 형식이 제각각이어도 그대로).
+    const names: Record<string, string> = {}
     const failures = new Map(failedUploads.map((item) => [item.id, item]))
     const modalIds: string[] = []
     let retryRequired = false
@@ -235,6 +237,7 @@ export function UploadPage() {
       try {
         const result = await uploadFile(item.file, Boolean(item.overwrite))
         uploadIds.push(result.uploadId)
+        names[result.uploadId] = item.file.name
         failures.delete(item.id)
         setAcceptedIds([...uploadIds])
         if (item.overwrite && item.period) replaced.push(item.period)
@@ -311,6 +314,7 @@ export function UploadPage() {
       replaced,
       failedUploads: failureList,
       uploadStartedAt: startedAt,
+      names,
     }
     if (modalIds.length > 0) {
       setModalQueue(modalIds)

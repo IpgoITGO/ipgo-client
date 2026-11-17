@@ -867,6 +867,42 @@ fieldset.block legend.label {
   animation: wait-spin 0.9s linear infinite;
 }
 
+/* 확인이 끝난 순간: 고리가 멈추고 초록 바탕에 체크가 그려진다 */
+.waitSpinner[data-done] {
+  display: grid;
+  place-items: center;
+  background: var(--color-done);
+  border-color: var(--color-done);
+  animation: none;
+}
+
+.waitSpinner[data-done]::after {
+  width: 10px;
+  height: 18px;
+  margin-top: -4px;
+  content: '';
+  border: solid #fff;
+  border-width: 0 4px 4px 0;
+  transform: rotate(45deg);
+}
+
+/* 안내 글은 자리만 남기고 숨긴다(높이가 안 변한다) */
+.waiting small[data-hide] {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .waitSpinner[data-done] {
+    animation: wait-done 0.3s var(--ease-spring);
+  }
+}
+
+@keyframes wait-done {
+  from {
+    transform: scale(0.7);
+  }
+}
+
 .waitTitle {
   margin: var(--space-2) 0 0;
   font-size: var(--text-section, 18px);
