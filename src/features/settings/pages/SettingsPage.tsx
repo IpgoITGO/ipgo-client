@@ -131,6 +131,7 @@ async function loadSettings(): Promise<{
   sourceIsEstimated: boolean
   cycleIsFallback: boolean
   cycleSuggestion: DefaultSettings['reviewCycleSuggestion']
+  suggestion: DefaultSettings['suggestion']
 }> {
   const [defaults, products] = await Promise.all([
     getDefaultSettings(),
@@ -140,6 +141,7 @@ async function loadSettings(): Promise<{
     sourceIsEstimated: defaults.reviewCycleSource === 'ESTIMATED',
     cycleIsFallback: defaults.reviewCycleDays == null,
     cycleSuggestion: defaults.reviewCycleSuggestion ?? null,
+    suggestion: defaults.suggestion,
     values: {
       defaults: {
         leadTime: defaults.leadTimeDays,
@@ -245,6 +247,18 @@ export function SettingsPage() {
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
   const cycleSuggestion = query.data?.cycleSuggestion
+  const suggestion = query.data?.suggestion
+  const recommended = {
+    leadTime: suggestion?.leadTimeDays ?? null,
+    orderCycle: suggestion
+      ? suggestion.reviewCycleDays
+      : (cycleSuggestion?.reviewCycleDays ?? null),
+    inboundUnit: suggestion?.orderUnitQty ?? null,
+  }
+  const canRestore = PRODUCT_FIELDS.some(
+    ({ field }) =>
+      recommended[field] != null && defaults?.[field] !== recommended[field],
+  )
   // 추천값을 넣은 순간 숫자 칸을 한 번 반짝여 어디가 바뀌었는지 알린다
   const [cycleFlash, setCycleFlash] = useState(false)
   useEffect(() => {
@@ -509,7 +523,34 @@ export function SettingsPage() {
         </header>
 
         <section className={styles.card}>
-          <h2>모든 상품 기본값</h2>
+          <div className={styles.sectionHeader}>
+            <h2>모든 상품 기본값</h2>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={
+                !canRestore || isSubmitting || calculationBusy || shipping
+              }
+              onClick={() => {
+                for (const { field } of PRODUCT_FIELDS) {
+                  const value = recommended[field]
+                  if (value != null)
+                    setValue(`defaults.${field}`, value, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                }
+                setFocus(
+                  recommended.leadTime != null
+                    ? 'defaults.leadTime'
+                    : 'defaults.orderCycle',
+                )
+                setCycleFlash(true)
+              }}
+            >
+              추천값으로 되돌리기
+            </Button>
+          </div>
           <div className={styles.defaultGrid}>
             <label>
               <span>리드타임</span>
@@ -518,15 +559,16 @@ export function SettingsPage() {
                   inputMode="numeric"
                   onInput={digitsOnly}
                   type="text"
+                  aria-label="기본 리드타임"
                   {...register('defaults.leadTime', { valueAsNumber: true })}
                 />
                 <b>일</b>
               </div>
               <small>
-                {errors.defaults?.leadTime?.message ?? '발주부터 입고 도착까지'}
+                {errors.defaults?.leadTime?.message ??
+                  `발주부터 입고 도착까지${recommended.leadTime != null ? ` · 추천 ${recommended.leadTime}일` : ''}`}
               </small>
             </label>
-            {/* 추천값 바꾸기는 칸 안 설명 줄에 둔다(11/17). 칸 밖 버튼은 나오고 사라질 때 아래 칸을 밀었다 */}
             <div className={styles.cell}>
               <span>입고 주기</span>
               <div
@@ -546,34 +588,13 @@ export function SettingsPage() {
               </div>
               <small>
                 {errors.defaults?.orderCycle?.message ??
-                  (cycleSuggestion &&
-                  defaults?.orderCycle === cycleSuggestion.reviewCycleDays
-                    ? `수불부 입고 간격으로 추천한 값이에요 · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 상품 ${cycleSuggestion.productCount}개 기준`
+                  (recommended.orderCycle != null
+                    ? `추천 ${recommended.orderCycle}일${cycleSuggestion ? ` · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} · 상품 ${cycleSuggestion.productCount}개 기준` : ''}`
                     : query.data?.cycleIsFallback
                       ? `처음 값 ${FALLBACK_ORDER_CYCLE}일이에요. 실제 입고 주기로 바꿔 주세요`
                       : query.data.sourceIsEstimated
                         ? '수불부 입고 간격으로 추정했어요'
                         : '직접 정한 값이에요')}
-                {cycleSuggestion &&
-                  defaults?.orderCycle !== cycleSuggestion.reviewCycleDays && (
-                    <button
-                      className={styles.cycleSuggestion}
-                      disabled={isSubmitting || calculationBusy || shipping}
-                      onClick={() => {
-                        setValue(
-                          'defaults.orderCycle',
-                          cycleSuggestion.reviewCycleDays,
-                          { shouldDirty: true, shouldValidate: true },
-                        )
-                        setFocus('defaults.orderCycle')
-                        setCycleFlash(true)
-                      }}
-                      title={`${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} 수불부 입고 간격 · 상품 ${cycleSuggestion.productCount}개 기준`}
-                      type="button"
-                    >
-                      추천 {cycleSuggestion.reviewCycleDays}일로 바꾸기
-                    </button>
-                  )}
               </small>
             </div>
             <label>
@@ -583,13 +604,14 @@ export function SettingsPage() {
                   inputMode="numeric"
                   onInput={digitsOnly}
                   type="text"
+                  aria-label="기본 입고 단위"
                   {...register('defaults.inboundUnit', { valueAsNumber: true })}
                 />
                 <b>개</b>
               </div>
               <small>
                 {errors.defaults?.inboundUnit?.message ??
-                  '박스 단위가 있으면 바꿔 주세요'}
+                  `박스 단위가 있으면 바꿔 주세요${recommended.inboundUnit != null ? ` · 추천 ${recommended.inboundUnit}개` : ''}`}
               </small>
             </label>
             <ExpiryDaysField />
