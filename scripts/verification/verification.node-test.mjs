@@ -65,6 +65,57 @@ test('정적 자산·배포 설정·새 파일·삭제도 검증 소스 변경�
   }
 })
 
+test('공유 의존성 디렉터리 링크도 Git ignore로 제외하고 앱 변경은 계속 감지한다', () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'ipgo-dependency-link-'),
+  )
+  const dependencies = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'ipgo-dependencies-'),
+  )
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: directory, stdio: 'pipe' })
+  try {
+    fs.copyFileSync(
+      new URL('../../.gitignore', import.meta.url),
+      path.join(directory, '.gitignore'),
+    )
+    fs.writeFileSync(path.join(directory, 'app.ts'), 'original')
+    git('init', '-q')
+    git('add', '.')
+    git(
+      '-c',
+      'user.name=Verification',
+      '-c',
+      'user.email=verification@example.invalid',
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'core.hooksPath=/dev/null',
+      'commit',
+      '-qm',
+      'fixture',
+    )
+    const baseline = sourceFingerprint(directory)
+    fs.symlinkSync(dependencies, path.join(directory, 'node_modules'), 'dir')
+    assert.equal(
+      git('check-ignore', 'node_modules').toString().trim(),
+      'node_modules',
+    )
+    assert.equal(sourceFingerprint(directory), baseline)
+    fs.writeFileSync(path.join(directory, 'app.ts'), 'changed')
+    assert.notEqual(sourceFingerprint(directory), baseline)
+    fs.writeFileSync(path.join(directory, 'new.ts'), 'untracked')
+    assert.ok(
+      git('ls-files', '--others', '--exclude-standard')
+        .toString()
+        .includes('new.ts'),
+    )
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+    fs.rmSync(dependencies, { recursive: true, force: true })
+  }
+})
+
 test('범위는 dev 공통 기준점부터 비교해 커밋된 앱 변경도 거부한다', () => {
   const base = 'a'.repeat(40)
   const impact = automationImpact()
