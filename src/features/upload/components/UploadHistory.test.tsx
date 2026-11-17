@@ -1,3 +1,8 @@
+import { QueryClientProvider } from '@tanstack/react-query'
+import userEvent from '@testing-library/user-event'
+import { createQueryClient } from '../../../shared/api/queryClient'
+import { type UploadedPeriod } from '../model/uploadApi'
+
 import { render, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -206,5 +211,98 @@ describe('월별 업로드 내역', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '월별 업로드 상태를 확인하지 못했어요',
     )
+  })
+})
+
+function period(
+  value: string,
+  uploadId: number,
+  status: UploadedPeriod['status'] = 'DONE',
+): UploadedPeriod {
+  return {
+    period: value,
+    uploadId,
+    status,
+    fileName: `${uploadId}.xlsx`,
+    periodStart: `${value}-01`,
+    periodEnd: `${value}-28`,
+    uploadedAt: '2026-11-17T09:00:00',
+    ...(status === 'FAILED'
+      ? { error: { code: 'INVALID_SOURCE', message: '자료 확인 필요' } }
+      : {}),
+  }
+}
+
+function renderHistory(items: UploadedPeriod[]) {
+  const client = createQueryClient()
+  client.setQueryData(['upload-periods'], { items, latestUploadId: null })
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <UploadHistory />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('UploadHistory', () => {
+  it('자료가 있는 두 해 사이에 빈 해를 만들지 않는다', () => {
+    renderHistory([period('2024-03', 1), period('2026-10', 2)])
+
+    const years = screen.getAllByRole('group')
+    expect(years.map((year) => year.getAttribute('aria-label'))).toEqual([
+      '2026년',
+      '2024년',
+    ])
+    for (const year of years)
+      expect(within(year).getAllByRole('listitem')).toHaveLength(12)
+  })
+
+  it('먼 미래와 과거가 섞여도 자료가 있는 해만 내림차순으로 그린다', () => {
+    renderHistory([
+      period('2024-03', 1),
+      period('8744-10', 2, 'FAILED'),
+      period('1024-01', 3),
+      period('2024-12', 4, 'PROCESSING'),
+    ])
+
+    const years = screen.getAllByRole('group')
+    expect(years.map((year) => year.getAttribute('aria-label'))).toEqual([
+      '8744년',
+      '2024년',
+      '1024년',
+    ])
+    for (const year of years)
+      expect(within(year).getAllByRole('listitem')).toHaveLength(12)
+    expect(
+      within(years[0]).getByRole('link', { name: /8744년 10월 확인 실패/ }),
+    ).toHaveAttribute('href', '/upload/2/result')
+    expect(
+      within(years[1]).getByRole('link', { name: /2024년 12월 확인 중/ }),
+    ).toHaveAttribute('href', '/upload/4/result')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '4개 중 2개 확인 · 1개 실패 · 1개 확인 중',
+    )
+  })
+
+  it('같은 달이 겹치면 연도와 달을 늘리지 않고 먼저 온 결과를 연결한다', async () => {
+    const user = userEvent.setup()
+    renderHistory([period('2024-03', 2), period('2024-03', 1)])
+
+    expect(screen.getAllByRole('group')).toHaveLength(1)
+    expect(screen.getAllByRole('listitem')).toHaveLength(12)
+    const link = screen.getByRole('link', { name: /2024년 3월 확인 완료/ })
+    expect(link).toHaveAttribute('href', '/upload/2/result')
+    await user.hover(link)
+    expect(screen.getByText(/2\.xlsx/)).toBeInTheDocument()
+    expect(screen.queryByText(/1\.xlsx/)).not.toBeInTheDocument()
+  })
+
+  it('빈 목록은 연도나 월 칸을 그리지 않는다', () => {
+    renderHistory([])
+
+    expect(screen.queryByRole('region', { name: '업로드 내역' })).toBeNull()
+    expect(screen.queryByRole('group')).toBeNull()
+    expect(screen.queryByRole('listitem')).toBeNull()
   })
 })
