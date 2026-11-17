@@ -9,7 +9,11 @@ import { AppProviders } from '../../../app/providers/AppProviders'
 import { server } from '../../../mocks/server'
 import { UploadResultPage } from './UploadResultPage'
 
-function show(ids: number[], startedAt?: number) {
+function show(
+  ids: number[],
+  failedUploads: Array<{ name: string; reason: string }> = [],
+  startedAt?: number,
+) {
   const router = createMemoryRouter(
     [
       {
@@ -29,7 +33,7 @@ function show(ids: number[], startedAt?: number) {
         {
           pathname: `/upload/${ids.at(-1)}/result`,
           search: `?uploads=${ids.join(',')}`,
-          state: { uploadStartedAt: startedAt },
+          state: { failedUploads, uploadStartedAt: startedAt },
         },
       ],
     },
@@ -72,7 +76,7 @@ describe('묶음 업로드 결과', () => {
         ),
       ),
     )
-    show([1, 2], Date.now() - 4 * 60_000)
+    show([1, 2], [], Date.now() - 4 * 60_000)
     expect(
       await screen.findByText('5분째 · 2개 중 0개 확인'),
     ).toBeInTheDocument()
@@ -80,6 +84,35 @@ describe('묶음 업로드 결과', () => {
     expect(
       await screen.findByText('5분째 · 2개 중 1개 확인', {}, { timeout: 5000 }),
     ).toBeInTheDocument()
+  })
+
+  it('한 파일만 올라가도 업로드 못 한 파일을 요약하고 모두 성공으로 표시하지 않는다', async () => {
+    server.use(
+      http.get('/api/uploads/periods', () =>
+        HttpResponse.json({ items: [], latestUploadId: 1 }),
+      ),
+      http.get('/api/uploads/:uploadId', () =>
+        HttpResponse.json(resultFor(1, 'DONE')),
+      ),
+    )
+    show(
+      [1],
+      [
+        {
+          name: '수불부.xlsx',
+          reason: '이미 올린 달이에요. 덮어쓰기를 확인해 주세요.',
+        },
+      ],
+    )
+    const failures = await screen.findByRole('region', {
+      name: '업로드 못 한 파일',
+    })
+    expect(failures).toHaveTextContent('수불부.xlsx')
+    expect(failures).toHaveTextContent('이미 올린 달이에요')
+    expect(screen.queryByText('모두 확인했어요')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '못 올린 파일 다시 고르기' }),
+    ).toHaveAttribute('href', '/upload')
   })
 
   it.each(['DONE', 'FAILED'])(

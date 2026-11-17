@@ -11,7 +11,13 @@ import styles from '../components/UploadHistory.module.css'
 import { UploadProcessing } from './UploadProcessing'
 import batchStyles from './UploadBatchResult.module.css'
 
-export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
+export function UploadBatchResult({
+  uploadIds,
+  failedUploads = [],
+}: {
+  uploadIds: string[]
+  failedUploads?: Array<{ name: string; reason: string }>
+}) {
   const { trackUpload, trackRun } = useCalculation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -117,7 +123,7 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
           onGoDashboard={() => navigate('/dashboard')}
         />
       )}
-      {finished && failed === 0 && (
+      {finished && failed === 0 && failedUploads.length === 0 && (
         <p className={batchStyles.success}>모두 확인했어요</p>
       )}
       {unavailable > 0 && (
@@ -200,6 +206,19 @@ export function UploadBatchResult({ uploadIds }: { uploadIds: string[] }) {
             )
           })}
         </ul>
+      )}
+      {pending === 0 && failedUploads.length > 0 && (
+        <section aria-label="업로드 못 한 파일">
+          <h2>업로드 못 한 파일 {failedUploads.length}개</h2>
+          <ul>
+            {failedUploads.map((file, index) => (
+              <li key={`${file.name}-${index}`}>
+                <strong>{file.name}</strong> · {file.reason}
+              </li>
+            ))}
+          </ul>
+          <Link to="/upload">못 올린 파일 다시 고르기</Link>
+        </section>
       )}
       {pending === 0 && <Link to="/dashboard">대시보드로 가기</Link>}
     </section>
