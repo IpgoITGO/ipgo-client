@@ -870,7 +870,8 @@ export function ScenarioInsight({
             <>
               {insight?.stale && (
                 <p className={styles.staleNote}>
-                  입고 조건이 바뀌었어요. 다시 계산하면 새 설명이 나와요.
+                  지난 계산 기준 설명이에요. 현재 입고 조건과 계산 결과를 다시
+                  확인해 주세요.
                 </p>
               )}
               {insight?.mode === 'NONE' ? (

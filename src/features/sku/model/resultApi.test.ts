@@ -117,6 +117,18 @@ describe('toScenarios (명세 K2 → 화면 카드)', () => {
 })
 
 describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
+  it('실제 K4처럼 화면 전용 선택 필드가 없으면 기본값을 적용하고 stale는 보존한다', () => {
+    const api = { mode: 'AI', text: '저장된 계산 문장이에요.' }
+    expect(toInsight(api)).toMatchObject({
+      mode: 'LLM',
+      state: 'NORMAL',
+      stateReason: null,
+      failReason: null,
+      stale: false,
+      sentences: ['저장된 계산 문장이에요.'],
+    })
+    expect(toInsight({ ...api, stale: true }).stale).toBe(true)
+  })
   const raw: InsightRaw = {
     mode: 'LLM',
     sentences: ['권장량 72개를 입고하면 위험이 낮아져요.'],
@@ -142,9 +154,13 @@ describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
     ).toEqual(['첫 문장이에요.', '둘째 문장이에요.'])
   })
 
-  it.each(['LLM_NOT_CONFIGURED', 'INVALID_INPUT', 'INPUT_UNAVAILABLE'])(
-    '공개 실패 코드 %s를 비활성과 구분하고 공통 안내로 표시한다',
-    (failReason) => {
+  it.each([
+    ['LLM_NOT_CONFIGURED', 'AI 설명 연결이 아직 준비되지 않았어요'],
+    ['INVALID_INPUT', 'AI 설명에 필요한 입력을 확인하지 못했어요'],
+    ['INPUT_UNAVAILABLE', '설명에 필요한 계산 근거를 확인하지 못했어요'],
+  ])(
+    '공개 실패 코드 %s를 비활성과 구분하고 맞는 안내로 표시한다',
+    (failReason, message) => {
       const insight = toInsight({
         ...raw,
         mode: 'TABLE_ONLY',
@@ -155,13 +171,14 @@ describe('toInsight (K4 서버 응답 → 화면, ai#44 U1·U2·U4)', () => {
       })
       expect(insight.explanationDisabled).toBe(false)
       expect(insight.failReason).toBe(failReason)
-      expect(failText(failReason)).toBe('AI 문장을 쓰지 못했어요')
+      expect(failText(failReason)).toBe(message)
     },
   )
 
   it('모르는 실패 사유도 문구로 보여 준다(undefined가 찍히지 않게)', () => {
     expect(failText('LLM_TIMEOUT')).toBe('AI 응답이 늦었어요')
-    expect(failText('VALUE_MISMATCH')).toBe('AI 문장을 쓰지 못했어요')
+    expect(failText('VALUE_MISMATCH')).toBe('AI 문장이 계산값과 맞지 않았어요')
+    expect(failText('UNKNOWN_INTERNAL_REASON')).toBe('AI 문장을 쓰지 못했어요')
   })
 })
 
