@@ -113,41 +113,40 @@ function fixture(
 }
 
 describe('입고 주기 제안과 상속', () => {
-  it('추천 근거를 표시하고 복원은 편집값만 바꾼 뒤 기존 저장으로 반영한다', async () => {
+  it('전체 추천값 응답으로 세 기본값을 한 번에 복원하고 저장은 나중에 한다', async () => {
     const f = fixture(14, true, suggestion)
+    server.use(
+      http.get('/api/replenishment-settings', () =>
+        HttpResponse.json({
+          confirmed: true,
+          leadTimeDays: 12,
+          reviewCycleDays: 14,
+          orderUnitQty: 8,
+          reviewCycleSource: 'DEFAULT',
+          reviewCycleSuggestion: suggestion,
+          suggestion: { leadTimeDays: 5, reviewCycleDays: 7, orderUnitQty: 1 },
+        }),
+      ),
+    )
     const user = userEvent.setup()
     renderSettings()
-    // 14일(직접 정한 값)이면 근거 문장 대신 "추천 7일로 바꾸기" 버튼만 보이고, 근거는 버튼 설명에 있다
     const apply = await screen.findByRole('button', {
-      name: '추천 7일로 바꾸기',
+      name: '추천값으로 되돌리기',
     })
-    expect(apply).toHaveAttribute(
-      'title',
-      expect.stringContaining('상품 120개 기준'),
-    )
+    expect(apply).toBeEnabled()
     expect(
-      screen.queryByText(/수불부 입고 간격으로 추천한 값이에요/),
-    ).toBeNull()
-    const input = screen.getByLabelText('기본 입고 주기')
-    await user.click(apply)
-    expect(input).toHaveValue('7')
-    expect(input).toHaveFocus()
-    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('19')
-    // 추천값과 같아지면 버튼은 사라지고 추천 근거 문장이 나온다
-    expect(
-      screen.queryByRole('button', { name: '추천 7일로 바꾸기' }),
-    ).toBeNull()
-    expect(
-      screen.getByText(
-        '수불부 입고 간격으로 추천한 값이에요 · 2025-01 ~ 2026-11 상품 120개 기준',
-      ),
+      screen.getByText('발주부터 입고 도착까지 · 추천 5일'),
     ).toBeInTheDocument()
+    expect(
+      screen.getByText(/추천 7일 · 2025-01 ~ 2026-11 · 상품 120개 기준/),
+    ).toBeInTheDocument()
+    await user.click(apply)
+    expect(screen.getByLabelText('기본 리드타임')).toHaveValue('5')
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('7')
+    expect(screen.getByLabelText('기본 입고 단위')).toHaveValue('1')
+    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('19')
+    expect(apply).toBeDisabled()
     expect(f.savedDefaults).toEqual([])
-    expect(f.savedProducts).toEqual([])
-    f.change(21)
-    await user.click(screen.getByRole('button', { name: '재조회' }))
-    await screen.findByRole('button', { name: '재조회 완료' })
-    expect(input).toHaveValue('7')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() =>
       expect(f.savedDefaults).toEqual([
@@ -159,38 +158,100 @@ describe('입고 주기 제안과 상속', () => {
         },
       ]),
     )
+  })
+
+  it('이전 서버에서는 주기만 복원하고 재조회가 편집값을 덮어쓰지 않는다', async () => {
+    const f = fixture(14, true, suggestion)
+    const user = userEvent.setup()
+    renderSettings()
+    const apply = await screen.findByRole('button', {
+      name: '추천값으로 되돌리기',
+    })
+    expect(
+      screen.getByText(/추천 7일 · 2025-01 ~ 2026-11 · 상품 120개 기준/),
+    ).toBeInTheDocument()
+    const input = screen.getByLabelText('기본 입고 주기')
+    await user.clear(screen.getByLabelText('기본 리드타임'))
+    await user.type(screen.getByLabelText('기본 리드타임'), '12')
+    await user.click(apply)
+    expect(input).toHaveValue('7')
+    expect(input).toHaveFocus()
+    expect(screen.getByLabelText('기본 리드타임')).toHaveValue('12')
+    expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('19')
+    expect(apply).toBeDisabled()
+    expect(f.savedDefaults).toEqual([])
+    f.change(21)
+    await user.click(screen.getByRole('button', { name: '재조회' }))
+    await screen.findByRole('button', { name: '재조회 완료' })
+    expect(input).toHaveValue('7')
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    await waitFor(() =>
+      expect(f.savedDefaults).toEqual([
+        {
+          leadTimeDays: 12,
+          reviewCycleDays: 7,
+          orderUnitQty: 1,
+          recalculate: true,
+        },
+      ]),
+    )
     expect(f.savedProducts).toEqual([])
   })
-  it('추천값과 같으면 버튼을 숨기고 편집 후 복원은 상속 상품에도 반영한다', async () => {
+  it('추천값과 같으면 버튼이 비활성이고 편집 뒤 복원하면 상속 상품에도 반영한다', async () => {
     const f = fixture(7, false, suggestion)
     const user = userEvent.setup()
     renderSettings()
     const input = await screen.findByLabelText('기본 입고 주기')
-    expect(
-      screen.queryByRole('button', { name: '추천 7일로 바꾸기' }),
-    ).toBeNull()
-    expect(
-      screen.getByText(/수불부 입고 간격으로 추천한 값이에요/),
-    ).toBeInTheDocument()
+    const apply = screen.getByRole('button', { name: '추천값으로 되돌리기' })
+    expect(apply).toBeDisabled()
     await user.clear(input)
     await user.type(input, '14')
-    await user.click(screen.getByRole('button', { name: '추천 7일로 바꾸기' }))
+    expect(apply).toBeEnabled()
+    await user.click(apply)
     expect(input).toHaveValue('7')
     await waitFor(() =>
       expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue('7'),
     )
     expect(f.savedDefaults).toEqual([])
   })
+  it('새 응답의 주기 추천이 null이면 그 칸을 유지하며 나머지만 복원한다', async () => {
+    fixture(14, false, suggestion)
+    server.use(
+      http.get('/api/replenishment-settings', () =>
+        HttpResponse.json({
+          confirmed: true,
+          leadTimeDays: 12,
+          reviewCycleDays: 14,
+          orderUnitQty: 8,
+          reviewCycleSource: 'DEFAULT',
+          reviewCycleSuggestion: suggestion,
+          suggestion: {
+            leadTimeDays: 5,
+            reviewCycleDays: null,
+            orderUnitQty: 1,
+          },
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSettings()
+    await user.click(
+      await screen.findByRole('button', { name: '추천값으로 되돌리기' }),
+    )
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('14')
+    expect(screen.getByLabelText('기본 리드타임')).toHaveValue('5')
+    expect(screen.getByLabelText('기본 입고 단위')).toHaveValue('1')
+  })
   it.each([null, undefined])(
-    '추천값이 %s이면 추천 표시와 복원 버튼을 숨긴다',
+    '추천값이 %s이면 복원 버튼을 끄고 입력값을 유지한다',
     async (recommended) => {
       fixture(14, false, recommended)
       renderSettings()
       await screen.findByLabelText('기본 입고 주기')
       expect(screen.queryByText(/상품 120개 기준/)).toBeNull()
       expect(
-        screen.queryByRole('button', { name: /추천 d+일로 바꾸기/ }),
-      ).toBeNull()
+        screen.getByRole('button', { name: '추천값으로 되돌리기' }),
+      ).toBeDisabled()
     },
   )
   it('실제 응답의 제안값을 표시하고 기본값 저장만 보낸다', async () => {
