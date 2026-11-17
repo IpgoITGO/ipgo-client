@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -25,6 +25,9 @@ function ResultLocation() {
   return (
     <>
       <p>결과 화면</p>
+      <output aria-label="전송 실패">
+        {JSON.stringify(location.state?.failedUploads ?? [])}
+      </output>
       <output aria-label="결과 주소">
         {location.pathname}
         {location.search}
@@ -296,6 +299,79 @@ describe('UploadPage', () => {
     expect(await screen.findByText('고른 파일 1개')).toBeInTheDocument()
   })
 
+  it('이름에 달이 없어도 서버가 정한 기간으로 확인하고 덮어쓴다', async () => {
+    const user = userEvent.setup()
+    uploadFileMock
+      .mockRejectedValueOnce(
+        new ApiError(409, 'UPLOAD_DUPLICATE', '이미 올린 기간입니다.', {
+          reason: 'SAME_PERIOD',
+          existing: {
+            originalName: '기존수불부.xlsx',
+            periodStart: '2026-09-01',
+            periodEnd: '2026-09-30',
+            uploadedAt: '2026-10-15T10:02:00+09:00',
+          },
+        }),
+      )
+      .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+    renderPage()
+    await user.upload(
+      screen.getByLabelText('수불부 파일 선택'),
+      new File(['same'], '수불부.xlsx'),
+    )
+    await user.click(await screen.findByRole('button', { name: '1개 올리기' }))
+    const modal = await screen.findByRole('dialog', {
+      name: '이미 올린 기간이에요',
+    })
+    expect(modal).toHaveTextContent('입고일자로 보면 2026년 9월이에요')
+    expect(modal).toHaveTextContent('기존수불부.xlsx')
+    expect(screen.queryByText('이미 올린 기간입니다.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '덮어쓰기' }))
+    await user.click(screen.getByRole('button', { name: '1개 올리기' }))
+    expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(uploadFileMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: '수불부.xlsx' }),
+      true,
+    )
+    expect(screen.getByLabelText('전송 실패')).toHaveTextContent('[]')
+  })
+
+  it('중간 중복 뒤 정상 파일도 보내고 취소한 파일은 완료 요약에 전달한다', async () => {
+    const user = userEvent.setup()
+    uploadFileMock
+      .mockResolvedValueOnce({ uploadId: 21, status: 'PROCESSING' })
+      .mockRejectedValueOnce(
+        new ApiError(409, 'UPLOAD_DUPLICATE', '이미 올린 기간입니다.', {
+          reason: 'SAME_PERIOD',
+          existing: {
+            periodStart: '2026-09-01',
+            originalName: '기존.xlsx',
+            uploadedAt: '2026-10-15T10:02:00+09:00',
+          },
+        }),
+      )
+      .mockResolvedValueOnce({ uploadId: 22, status: 'PROCESSING' })
+    renderPage()
+    await user.upload(screen.getByLabelText('수불부 파일 선택'), [
+      new File(['a'], '2026-10.xlsx'),
+      new File(['b'], '수불부.xlsx'),
+      new File(['c'], '2026-11.xlsx'),
+    ])
+    await user.click(await screen.findByRole('button', { name: '3개 올리기' }))
+    await screen.findByRole('dialog', { name: '이미 올린 기간이에요' })
+    expect(uploadFileMock).toHaveBeenCalledTimes(3)
+    await user.click(
+      within(
+        screen.getByRole('dialog', { name: '이미 올린 기간이에요' }),
+      ).getByRole('button', { name: '취소' }),
+    )
+    expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+    expect(screen.getByLabelText('결과 주소')).toHaveTextContent(
+      '/upload/22/result?uploads=21,22',
+    )
+    expect(screen.getByLabelText('전송 실패')).toHaveTextContent('수불부.xlsx')
+  })
+
   it('서버가 같은 기간이라고 거절하면 덮어쓰기 확인을 띄운다', async () => {
     const user = userEvent.setup()
     uploadFileMock.mockImplementation(async () => {
@@ -327,7 +403,7 @@ describe('UploadPage', () => {
     [400, 'UPLOAD_INVALID_FORMAT', '필수 열(입고)이 없습니다.'],
     [413, 'FILE_TOO_LARGE', '파일 크기 제한을 초과했습니다.'],
   ])(
-    '서버가 %s(%s)로 거절하면 그 파일에 이유를 붙여 보여 주고 나머지는 남긴다',
+    '서버가 %s(%s)로 거절해도 나머지를 보내고 실패 파일은 요약에 전달한다',
     async (status, code, message) => {
       const user = userEvent.setup()
       uploadFileMock.mockImplementation(async (file: File) => {
@@ -353,7 +429,11 @@ describe('UploadPage', () => {
       await user.click(screen.getByRole('button', { name: '확인' }))
 
       expect(screen.queryByText('2026-10.xlsx')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '1개 올리기' })).toBeEnabled()
+      expect(await screen.findByText('결과 화면')).toBeInTheDocument()
+      expect(uploadFileMock).toHaveBeenCalledTimes(2)
+      expect(screen.getByLabelText('전송 실패')).toHaveTextContent(
+        '2026-10.xlsx',
+      )
     },
   )
 

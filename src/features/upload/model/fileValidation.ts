@@ -3,6 +3,7 @@ export type UploadFileState = {
     originalName?: string
     uploadedAt: string
   }
+  inferredPeriod?: boolean
   file: File
   id: string
   overwrite?: boolean
