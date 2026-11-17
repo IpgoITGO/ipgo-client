@@ -101,6 +101,7 @@ export function CalculationStatus({
   }
   const title = {
     checking: '수불부를 확인하고 있어요',
+    // 5분이 넘으면 서버가 다시 시도하는 중이다. 실패로 보이지 않게 말을 바꾼다(#413)
     pending: slow
       ? '생각보다 오래 걸리고 있어요'
       : run?.status === 'QUEUED'
