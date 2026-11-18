@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import {
@@ -68,6 +68,18 @@ function StorageCostForm({
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  // 크기를 다 넣은 상품은 맨 위 무리로(11/18). 이번에 넣은 것일수록 위에, 막 옮긴 줄은 한 번 빛난다
+  const [recent, setRecent] = useState<string[]>([])
+  const [flash, setFlash] = useState<string | null>(null)
+  useEffect(() => {
+    if (!flash) return
+    const id = window.setTimeout(() => setFlash(null), 1400)
+    return () => window.clearTimeout(id)
+  }, [flash])
+  const moveUp = (keys: string[]) => {
+    setRecent((prev) => [...keys, ...prev.filter((k) => !keys.includes(k))])
+    if (keys.length === 1) setFlash(keys[0])
+  }
   const [bulk, setBulk] = useState<Record<keyof Box, string>>({
     width: '',
     depth: '',
@@ -155,6 +167,7 @@ function StorageCostForm({
     const complete = Boolean(draft.width && draft.depth && draft.height)
     const had = Boolean(settings.boxes[key])
     if (!complete && !had) return
+    if (complete && !had) moveUp([key])
     const boxes = { ...settings.boxes }
     if (complete) boxes[key] = draft as Box
     else delete boxes[key]
@@ -207,11 +220,21 @@ function StorageCostForm({
     setUndo(null)
   }
 
-  const shown = products.filter((product) =>
+  const matched = products.filter((product) =>
     `${product.name} ${product.barcode}`
       .toLowerCase()
       .includes(search.trim().toLowerCase()),
   )
+  // 보관비 계산됨 → 크기 비어 있음(11/18 이름). 계산됨 무리 안에서는 이번에 넣은 것이 위
+  const isDone = (product: Product) =>
+    Boolean(settings.boxes[String(product.productId)])
+  const rank = (product: Product) => {
+    const at = recent.indexOf(String(product.productId))
+    return at === -1 ? recent.length : at
+  }
+  const doneRows = matched.filter(isDone).sort((a, b) => rank(a) - rank(b))
+  const todoRows = matched.filter((product) => !isDone(product))
+  const shown = [...doneRows, ...todoRows]
   // 검색으로 줄어 지금 쪽이 없어지면 마지막 쪽을 보여 준다
   const at = Math.min(page, Math.max(1, Math.ceil(shown.length / size)))
   const pageRows = shown.slice((at - 1) * size, at * size)
@@ -267,6 +290,7 @@ function StorageCostForm({
       keys.forEach((key) => (next[key] = (next[key] ?? 0) + 1))
       return next
     })
+    moveUp(keys)
     setPicked(new Set())
   }
 
@@ -446,79 +470,99 @@ function StorageCostForm({
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((product) => {
+            {pageRows.map((product, index) => {
               const key = String(product.productId)
               const box = settings.boxes[key]
               const hasAny =
                 Boolean(box) || Object.keys(drafts[key] ?? {}).length > 0
+              // 이 쪽에서 무리가 시작되는 줄 위에 무리 이름 한 줄
+              const startsGroup =
+                index === 0 || isDone(pageRows[index - 1]) !== Boolean(box)
               return (
-                <tr
-                  data-picked={picked.has(key) || undefined}
-                  key={`${key}-${rev[key] ?? 0}`}
-                >
-                  <td>
-                    <input
-                      aria-label={`${product.name} 상자 고르기`}
-                      checked={picked.has(key)}
-                      className={styles.pickBox}
-                      onChange={() => togglePick(key)}
-                      type="checkbox"
-                    />
-                  </td>
-                  <td className={styles.nameCell}>
-                    <strong>{product.name}</strong>
-                    <span>{product.barcode}</span>
-                  </td>
-                  {SIDES.map(([side, label]) => (
-                    <td className={styles.numCell} key={side}>
-                      <span className={styles.numField}>
-                        <input
-                          aria-label={`${product.name} 상자 ${label}`}
-                          defaultValue={box?.[side] ?? ''}
-                          inputMode="decimal"
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              event.currentTarget.blur()
-                            }
-                          }}
-                          onBlur={(event) =>
-                            saveSide(product, side, event.target.value)
-                          }
-                          placeholder="—"
-                          type="text"
-                        />
-                        <b>cm</b>
-                      </span>
+                <Fragment key={`${key}-${rev[key] ?? 0}`}>
+                  {startsGroup && (
+                    <tr
+                      className={styles.groupRow}
+                      data-group={box ? 'done' : 'todo'}
+                    >
+                      <th colSpan={7} scope="rowgroup">
+                        {box ? '보관비 계산됨' : '크기 비어 있음'}
+                        <span>
+                          {box
+                            ? `${doneRows.length}개`
+                            : `${todoRows.length}개`}
+                        </span>
+                      </th>
+                    </tr>
+                  )}
+                  <tr
+                    data-flash={flash === key || undefined}
+                    data-picked={picked.has(key) || undefined}
+                  >
+                    <td>
+                      <input
+                        aria-label={`${product.name} 상자 고르기`}
+                        checked={picked.has(key)}
+                        className={styles.pickBox}
+                        onChange={() => togglePick(key)}
+                        type="checkbox"
+                      />
                     </td>
-                  ))}
-                  <td className={styles.numCell}>
-                    {errors[key] ? (
-                      <small role="alert">{errors[key]}</small>
-                    ) : box ? (
-                      <span className={styles.cbm}>
-                        {formatCbm(cbmOf(box))} CBM
-                      </span>
-                    ) : (
-                      <span className={styles.cbmEmpty}>미입력</span>
-                    )}
-                  </td>
-                  <td className={styles.clearCell}>
-                    {hasAny && (
-                      <button
-                        aria-label={`${product.name} 상자 크기 지우기`}
-                        className={styles.rowClear}
-                        onClick={() => clearRow(product)}
-                        title="이 줄 지우기"
-                        type="button"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24">
-                          <path d="M7 7l10 10M17 7L7 17" />
-                        </svg>
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                    <td className={styles.nameCell}>
+                      <strong>{product.name}</strong>
+                      <span>{product.barcode}</span>
+                    </td>
+                    {SIDES.map(([side, label]) => (
+                      <td className={styles.numCell} key={side}>
+                        <span className={styles.numField}>
+                          <input
+                            aria-label={`${product.name} 상자 ${label}`}
+                            defaultValue={box?.[side] ?? ''}
+                            inputMode="decimal"
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                event.currentTarget.blur()
+                              }
+                            }}
+                            onBlur={(event) =>
+                              saveSide(product, side, event.target.value)
+                            }
+                            placeholder="—"
+                            type="text"
+                          />
+                          <b>cm</b>
+                        </span>
+                      </td>
+                    ))}
+                    <td className={styles.numCell}>
+                      {errors[key] ? (
+                        <small role="alert">{errors[key]}</small>
+                      ) : box ? (
+                        <span className={styles.cbm}>
+                          {formatCbm(cbmOf(box))} CBM
+                        </span>
+                      ) : (
+                        <span className={styles.cbmEmpty}>미입력</span>
+                      )}
+                    </td>
+                    <td className={styles.clearCell}>
+                      {hasAny && (
+                        <button
+                          aria-label={`${product.name} 상자 크기 지우기`}
+                          className={styles.rowClear}
+                          onClick={() => clearRow(product)}
+                          title="이 줄 지우기"
+                          type="button"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="M7 7l10 10M17 7L7 17" />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                </Fragment>
               )
             })}
           </tbody>

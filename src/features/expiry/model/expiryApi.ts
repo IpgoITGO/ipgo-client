@@ -76,7 +76,7 @@ export function useExpirySettings() {
 }
 
 // 유통기한은 다음 해 이후일 수 있으므로 연도를 포함한다.
+// 2026.04.27처럼 0을 채운다(11/18: 0이 빠지면 날짜마다 글자 수가 달라 칸이 들쭉날쭉)
 export function shortExpiry(iso: string) {
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${y}. ${m}. ${d}`
+  return iso.slice(0, 10).replaceAll('-', '.')
 }

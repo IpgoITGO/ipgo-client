@@ -73,7 +73,7 @@ describe('ScenarioInsight', () => {
     )
     renderInsight(17, 'LGBM19')
     expect(
-      await screen.findByText('유통기한 2027. 2. 6 뒤에도 남아요'),
+      await screen.findByText('유통기한 2027.02.06 뒤에도 남아요'),
     ).toBeInTheDocument()
   })
 

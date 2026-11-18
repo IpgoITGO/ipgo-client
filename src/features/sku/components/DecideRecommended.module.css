@@ -1,7 +1,0 @@
-/* 글자가 "N개로 정하기" ↔ "되돌리기"로 바뀌어도 폭이 같아 옆 칸이 안 움직인다 */
-.decide {
-  flex: none;
-  width: 156px;
-  padding-right: 0;
-  padding-left: 0;
-}
