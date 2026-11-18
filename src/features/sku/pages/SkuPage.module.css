@@ -1394,3 +1394,33 @@
     transform-origin: top;
   }
 }
+
+/* 새 모델 식: 권장 0개 옆 이유 한마디(11/18) */
+.stepEnd {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.steps small.stepNote {
+  display: inline;
+}
+
+/* 예측 정확도 자료가 없을 때 한 줄(11/18) */
+.accuracyLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  padding-block: var(--space-4);
+}
+
+.accuracyLine h2 {
+  font-size: var(--text-body);
+}
+
+.accuracyLine p {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-caption);
+}
