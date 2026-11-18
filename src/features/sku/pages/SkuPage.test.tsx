@@ -101,7 +101,7 @@ describe('SkuPage', () => {
     expect(
       screen.getByText('리드타임 5일 안에 바닥나지 않아요 · 12/13쯤 다시 봐요'),
     ).toBeInTheDocument()
-    expect(screen.getByText('지금은')).toBeInTheDocument()
+    expect(screen.getByLabelText('권장 입고량 0개')).toBeInTheDocument()
     expect(screen.queryByText('0원')).not.toBeInTheDocument()
   })
 

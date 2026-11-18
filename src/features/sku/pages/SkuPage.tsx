@@ -1765,10 +1765,20 @@ export function SkuPage() {
           )}
           <section className={styles.recommendation}>
             {noNeed ? (
-              // 권장 0개 = 지금은 안 넣어도 되는 상품(11/18): "0개 · 0원" 대신 답과 이유 한 줄
+              // 권장 0개 = 지금은 안 넣어도 되는 상품(11/18): 숫자 0개가 먼저, 그 옆에 "안 넣어도 돼요", 아래 이유 한 줄
               <div>
-                <span>지금은</span>
-                <strong className={styles.noNeed}>안 넣어도 돼요</strong>
+                <span>권장 입고량</span>
+                <span className={styles.noNeedRow}>
+                  <strong
+                    aria-label="권장 입고량 0개"
+                    className={styles.recoQty}
+                  >
+                    <span aria-hidden="true" className={styles.recoNum}>
+                      0<small className={styles.recoUnit}>개</small>
+                    </span>
+                  </strong>
+                  <b className={styles.noNeed}>안 넣어도 돼요</b>
+                </span>
                 <p className={styles.recoFlow}>
                   <span>{noNeedReason}</span>
                 </p>
@@ -1969,14 +1979,14 @@ export function SkuPage() {
                         : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
                       <small>권장 입고량</small>
                     </span>
-                    {/* 0개면 숫자 옆에 이유 한마디(11/18 "수치 보여주고 옆에 글자"). 노란 밑줄은 숫자에만 */}
+                    {/* 0개면 숫자 다음에 이유 한마디(11/18 "숫자가 먼저, 그 후 멘트"). 노란 밑줄은 숫자에만 */}
                     <span className={styles.stepEnd}>
+                      <strong>{count(data.recommendation.quantity)}</strong>
                       {data.recommendation.quantity === 0 && (
                         <small className={styles.stepNote}>
                           재고가 목표보다 많아요
                         </small>
                       )}
-                      <strong>{count(data.recommendation.quantity)}</strong>
                     </span>
                   </li>
                 </ol>
