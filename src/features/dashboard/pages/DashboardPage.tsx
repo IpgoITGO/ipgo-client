@@ -1075,7 +1075,7 @@ export function DashboardPage() {
                 '아직 괜찮아요',
                 data.summary.safe,
                 'safe',
-                soonCount > 0 ? `곧 ${soonCount}개 떨어짐` : '급한 상품 없음',
+                soonCount > 0 ? `곧 ${soonCount}개 바닥` : '급한 상품 없음',
               ],
               [
                 'na',
