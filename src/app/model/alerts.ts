@@ -70,7 +70,7 @@ export function buildAlerts(input: {
         lot.status === 'EXPIRED'
           ? `유통기한이 지났어요 · ${left}`
           : `유통기한 D-${lot.daysLeft ?? '?'} · ${left}`,
-      to: `/sku/${lot.productId}`,
+      to: `/sku/${lot.productId}?expiry=${lot.expiryDate}`,
       sort: lot.status === 'EXPIRED' ? -Infinity : (lot.daysLeft ?? 0),
     })
   }
