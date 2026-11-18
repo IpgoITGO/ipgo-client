@@ -40,10 +40,10 @@ describe('Pager', () => {
     expect(screen.queryByText(/개 중/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '다음 쪽' }))
     expect(onPage).toHaveBeenCalledWith(2)
-    await userEvent.selectOptions(
-      screen.getByLabelText('상품 한 번에 볼 개수'),
-      '30',
+    await userEvent.click(
+      screen.getByRole('button', { name: /상품 한 번에 볼 개수/ }),
     )
+    await userEvent.click(screen.getByRole('option', { name: '30개씩' }))
     expect(onSize).toHaveBeenCalledWith(30)
     for (const total of [0, 6]) {
       rerender(
@@ -58,7 +58,9 @@ describe('Pager', () => {
       )
       expect(screen.queryByText(/개 중/)).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: '다음 쪽' })).toBeDisabled()
-      expect(screen.getByLabelText('상품 한 번에 볼 개수')).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: /상품 한 번에 볼 개수/ }),
+      ).toBeEnabled()
     }
   })
 })

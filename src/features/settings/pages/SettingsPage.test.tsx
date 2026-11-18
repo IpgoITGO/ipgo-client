@@ -334,6 +334,26 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('창고 보관 요율')).toHaveValue('45,000')
   })
 
+  it('보관 비용: 크기를 다 넣은 상품은 "보관비 계산됨" 무리 맨 위로 올라간다', async () => {
+    await login({ email: 'seller@a.com', password: 'pass1234' })
+    const user = userEvent.setup()
+    renderSettings()
+    await screen.findByLabelText('덴탈껌 S 10입 상자 가로')
+    const table = screen
+      .getByLabelText('덴탈껌 S 10입 상자 가로')
+      .closest('table')!
+    const rowsBefore = within(table).getAllByRole('row')
+    const last = rowsBefore[rowsBefore.length - 1]
+    const lastName = last.querySelector('strong')!.textContent!
+    await user.type(screen.getByLabelText(`${lastName} 상자 가로`), '10')
+    await user.type(screen.getByLabelText(`${lastName} 상자 세로`), '10')
+    await user.type(screen.getByLabelText(`${lastName} 상자 높이`), '10{Enter}')
+    const rows = within(table).getAllByRole('row')
+    // 머리 줄 다음이 무리 이름, 그다음이 방금 넣은 상품
+    expect(rows[1]).toHaveTextContent('보관비 계산됨')
+    expect(rows[2]).toHaveTextContent(lastName)
+    expect(within(table).getByText('크기 비어 있음')).toBeInTheDocument()
+  })
   it('보관 비용: 줄 끝 ×로 그 줄 세 칸을 한 번에 지우고, 되돌리기로 되살린다', async () => {
     await login({ email: 'seller@a.com', password: 'pass1234' })
     const user = userEvent.setup()

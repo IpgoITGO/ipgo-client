@@ -844,3 +844,38 @@
     background: var(--color-card);
   }
 }
+
+/* 보관 비용 표 무리 이름(11/18): 보관비 계산됨이 맨 위, 그 아래 크기 비어 있음 */
+.boxTable .groupRow th {
+  padding: 7px var(--space-3);
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  text-align: left;
+  background: var(--color-primary-soft);
+  border-bottom: 0;
+}
+.boxTable .groupRow[data-group='done'] th {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.boxTable .groupRow span {
+  margin-left: var(--space-2);
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+/* 크기를 다 넣어 위로 옮겨진 줄은 한 번 빛난다 */
+@media (prefers-reduced-motion: no-preference) {
+  .boxTable tr[data-flash] td {
+    animation: row-arrive 1400ms ease-out;
+  }
+}
+@keyframes row-arrive {
+  0%,
+  40% {
+    background: var(--color-accent-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}

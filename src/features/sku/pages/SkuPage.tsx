@@ -26,7 +26,6 @@ import {
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
-import { DecideRecommended } from '../components/DecideRecommended'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import { SkuNav } from '../components/SkuNav'
 import {
@@ -1659,16 +1658,6 @@ export function SkuPage() {
               {statusLabel}
             </span>
           )}
-          {/* 권장량이 나온 상품만: 권장량으로 정하기(11/16, 전엔 화면 중간 비교 카드 안에만 있었다) */}
-          {data.status !== 'pending' &&
-            data.status !== 'unavailable' &&
-            data.resultId != null && (
-              <DecideRecommended
-                productId={skuId}
-                quantity={data.recommendation.quantity}
-                resultId={data.resultId}
-              />
-            )}
         </div>
       </header>
 
