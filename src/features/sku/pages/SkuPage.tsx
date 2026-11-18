@@ -1581,6 +1581,25 @@ export function SkuPage() {
         need: Number(salesMatch[3]),
       }
     : null
+  const noNeed = data.recommendation.quantity === 0
+  // 다시 볼 날 = 예상 소진일 − 리드타임(둘 다 있고 앞날일 때만)
+  const leadDays = data.settings.leadTimeDays
+  const recheckDay =
+    data.shortageOn && leadDays != null
+      ? new Date(isoDayMs(data.shortageOn) - leadDays * 864e5)
+          .toISOString()
+          .slice(0, 10)
+      : null
+  // 이미 지난 날이면 "다시 봐요"를 붙이지 않는다
+  const recheck = recheckDay && recheckDay > todayIso ? recheckDay : null
+  const noNeedReason = [
+    leadDays != null
+      ? `리드타임 ${leadDays}일 안에 바닥나지 않아요`
+      : '지금 넣지 않아도 모자라지 않아요',
+    recheck && `${slashDate(recheck, recheck)}쯤 다시 봐요`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const settingRows = (
     <dl className={styles.evidence}>
       <div>
@@ -1724,54 +1743,67 @@ export function SkuPage() {
             )
           )}
           <section className={styles.recommendation}>
-            <div>
-              <span>권장 입고량</span>
-              {/* 가장 중요한 숫자라 테이프를 밑줄처럼 붙인다 */}
-              <strong
-                aria-label={`권장 입고량 ${data.recommendation.quantity.toLocaleString()}개`}
-                className={styles.recoQty}
-              >
-                <Tape className={styles.recoTape} />
-                <span aria-hidden="true" className={styles.recoNum}>
-                  <CountUp value={data.recommendation.quantity} />
-                  <small className={styles.recoUnit}>개</small>
-                </span>
-              </strong>
-              {/* 권장량이 어디서 시작했는지 한 줄(11/6: 재고 칸 네 개 대신) */}
-              {lastRec && (
+            {noNeed ? (
+              // 권장 0개 = 지금은 안 넣어도 되는 상품(11/18): "0개 · 0원" 대신 답과 이유 한 줄
+              <div>
+                <span>지금은</span>
+                <strong className={styles.noNeed}>안 넣어도 돼요</strong>
                 <p className={styles.recoFlow}>
-                  <span>
-                    {slashDate(lastRec.day, lastRec.date)} 기록{' '}
-                    <b>{lastRec.inventory.toLocaleString()}개</b>
-                  </span>
-                  {showGap && (
-                    <>
-                      {model19 ? (
-                        <span aria-hidden="true">→</span>
-                      ) : (
-                        <>
-                          <span aria-hidden="true">−</span>
-                          <span>
-                            {gapDays}일 예상 출고{' '}
-                            <b>{Math.max(0, gapOut).toLocaleString()}개</b>
-                          </span>
-                          <span aria-hidden="true">=</span>
-                        </>
-                      )}
-                      <span>
-                        오늘 <b>{startInv.toLocaleString()}개</b>{' '}
-                        <em className={styles.recoEst}>추정</em>
-                      </span>
-                    </>
-                  )}
+                  <span>{noNeedReason}</span>
                 </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div>
+                <span>권장 입고량</span>
+                {/* 가장 중요한 숫자라 테이프를 밑줄처럼 붙인다 */}
+                <strong
+                  aria-label={`권장 입고량 ${data.recommendation.quantity.toLocaleString()}개`}
+                  className={styles.recoQty}
+                >
+                  <Tape className={styles.recoTape} />
+                  <span aria-hidden="true" className={styles.recoNum}>
+                    <CountUp value={data.recommendation.quantity} />
+                    <small className={styles.recoUnit}>개</small>
+                  </span>
+                </strong>
+                {/* 권장량이 어디서 시작했는지 한 줄(11/6: 재고 칸 네 개 대신) */}
+                {lastRec && (
+                  <p className={styles.recoFlow}>
+                    <span>
+                      {slashDate(lastRec.day, lastRec.date)} 기록{' '}
+                      <b>{lastRec.inventory.toLocaleString()}개</b>
+                    </span>
+                    {showGap && (
+                      <>
+                        {model19 ? (
+                          <span aria-hidden="true">→</span>
+                        ) : (
+                          <>
+                            <span aria-hidden="true">−</span>
+                            <span>
+                              {gapDays}일 예상 출고{' '}
+                              <b>{Math.max(0, gapOut).toLocaleString()}개</b>
+                            </span>
+                            <span aria-hidden="true">=</span>
+                          </>
+                        )}
+                        <span>
+                          오늘 <b>{startInv.toLocaleString()}개</b>{' '}
+                          <em className={styles.recoEst}>추정</em>
+                        </span>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
             <dl>
               <div>
                 <dt>예상 사입비</dt>
                 <dd>
-                  {data.recommendation.cost == null ? (
+                  {noNeed ? (
+                    '—'
+                  ) : data.recommendation.cost == null ? (
                     <Link className={styles.fixLink} to="/settings">
                       단가를 넣으면 보여요 →
                     </Link>
