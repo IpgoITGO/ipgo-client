@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { shortExpiry, useExpiry } from '../../expiry/model/expiryApi'
 import type { ExpiryLot } from '../../expiry/model/expiryApi'
@@ -16,7 +17,18 @@ export function ExpiryLots({
   openOn?: string | null
 }) {
   const expiry = useExpiry()
-  const [open, setOpen] = useState(Boolean(openOn))
+  // 열림은 "이번 이동"마다 따로 기억한다(#437 리뷰): 같은 상품에서 알림 "보기"를 다시 눌러도,
+  // 닫은 뒤 다른 묶음 알림으로 와도 새 이동(location.key)이면 openOn대로 다시 연다.
+  const location = useLocation()
+  const [toggled, setToggled] = useState<{ key: string; open: boolean } | null>(
+    null,
+  )
+  const open = toggled?.key === location.key ? toggled.open : Boolean(openOn)
+  const setOpen = (next: boolean | ((value: boolean) => boolean)) =>
+    setToggled({
+      key: location.key,
+      open: typeof next === 'function' ? next(open) : next,
+    })
   const box = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -34,6 +46,7 @@ export function ExpiryLots({
       document.removeEventListener('pointerdown', close)
       document.removeEventListener('keydown', close)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setOpen은 이 이동의 열림만 바꾼다
   }, [open])
 
   const lots = (expiry.data?.items ?? [])
@@ -67,7 +80,12 @@ export function ExpiryLots({
         {label}
       </button>
       {open && (
-        <div aria-label="유통기한 묶음" className={styles.panel} role="dialog">
+        <div
+          aria-label="유통기한 묶음"
+          className={styles.panel}
+          key={location.key}
+          role="dialog"
+        >
           <button
             aria-label="닫기"
             className={styles.close}
