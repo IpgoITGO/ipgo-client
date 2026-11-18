@@ -8,6 +8,8 @@
 }
 
 .size {
+  position: relative;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -15,15 +17,98 @@
   font-size: var(--text-caption);
 }
 
-.size select {
+.sizeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   min-height: 36px;
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-3) 0 14px;
   color: var(--color-text);
   font: inherit;
+  font-size: var(--text-body);
   font-weight: 700;
   background: var(--color-card);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-input);
+  cursor: pointer;
+}
+
+.sizeButton svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: transform 160ms ease;
+}
+
+.size[data-open] .sizeButton svg {
+  transform: rotate(180deg);
+}
+
+/* 표 바로 아래 칸이라 위로 펼친다 */
+.sizeList {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  display: grid;
+  gap: 2px;
+  min-width: 100%;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  box-shadow: 0 12px 28px -8px rgb(25 31 40 / 14%);
+}
+
+.sizeList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--color-text-2);
+  font-size: var(--text-body);
+  white-space: nowrap;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.sizeList li:hover {
+  background: var(--color-bg);
+}
+
+.sizeList li[aria-selected='true'] {
+  color: var(--color-text);
+  font-weight: 700;
+  background: var(--color-accent-soft);
+}
+
+.sizeList li[aria-selected='true']::after {
+  content: '✓';
+  color: var(--color-accent-text);
+}
+
+.sizeList li:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sizeList {
+    animation: size-drop 140ms ease-out;
+  }
+}
+
+@keyframes size-drop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .pages {
@@ -88,6 +173,6 @@
 }
 
 .pages button:focus-visible,
-.size select:focus-visible {
+.sizeButton:focus-visible {
   outline: 3px solid var(--color-primary-soft);
 }

@@ -181,6 +181,29 @@ const HIGH_RISK = 20
 
 // 숫자 상자. 누르면 아래 판이 그 상자의 상품으로 바뀐다. 고른 상자에는 노란 테두리와
 // 테이프가 날아와 붙는다(테이프는 고를 때 새로 그려져 붙는 연출이 매번 다시 돈다).
+// 상태 상자 이름 앞 작은 선 아이콘(11/18, 재고 대시보드 StockFlow 방식): 목록 · 울리는 시계 · 체크 · 금지
+const SUMMARY_ICON: Record<string, ReactNode> = {
+  all: <path d="M4 7h16M4 12h16M4 17h10" />,
+  needed: (
+    <>
+      <circle cx="12" cy="13" r="7" />
+      <path d="M12 10v3l2 1.5M5 4 2.5 6.5M19 4l2.5 2.5" />
+    </>
+  ),
+  safe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8 12.3 2.7 2.7L16 9.6" />
+    </>
+  ),
+  unavailable: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m6 6 12 12" />
+    </>
+  ),
+}
+
 function SummaryCard({
   label,
   note,
@@ -191,7 +214,7 @@ function SummaryCard({
   value,
 }: {
   label: string
-  note: ReactNode
+  note?: ReactNode
   onSelect: () => void
   selected: boolean
   state: string
@@ -205,6 +228,8 @@ function SummaryCard({
       aria-controls="dashboard-list"
       aria-selected={selected}
       className={styles.box}
+      // 네 자리 숫자(1,000개~)는 조금 작게 해서 이름이 두 줄로 밀리지 않게
+      data-long={value >= 1000 || undefined}
       data-state={state}
       id={`dashboard-tab-${tab}`}
       onClick={onSelect}
@@ -213,12 +238,15 @@ function SummaryCard({
       type="button"
     >
       {selected && <Tape className={styles.tape} />}
+      <span aria-hidden="true" className={styles.boxIcon}>
+        <svg viewBox="0 0 24 24">{SUMMARY_ICON[state]}</svg>
+      </span>
       <span className={styles.boxLabel}>{label}</span>
       <strong>
         {shown}
         <small>개</small>
       </strong>
-      <em>{note}</em>
+      {note && <em>{note}</em>}
     </button>
   )
 }
@@ -576,6 +604,10 @@ export function DashboardPage() {
   const data = query.data
   const refreshRequired = data.freshness === 'refresh-required'
   const noResult = data.freshness === 'no-result'
+  // 7일 지나도 지난 결과가 오면 대시보드를 그대로 보여 주고 위 알림만 띄운다(11/18).
+  // 서버가 목록을 비워 보내면(지금 dev) 예전처럼 업로드 안내만.
+  const blank =
+    refreshRequired && data.neededItems.length === 0 && !data.safeItems?.length
   // 권장량을 그대로 믿기 어려운 상품(판매 급변·유통기한 지난 재고): 맨 위 한 줄과 표의 "확인 필요"가 같이 쓴다
   const checkReasons = checkFirst(data.neededItems, expiryOf)
   const checkIds = new Set(checkReasons.map((reason) => reason.id))
@@ -672,13 +704,23 @@ export function DashboardPage() {
       data.summary.unavailable +
       data.summary.excluded,
   }
+  // 두 줄로 넘어가도 "·"가 줄 끝에 남지 않게 덩어리째 끊는다
+  const naParts = [
+    data.summary.unavailable > 0 && `계산 불가 ${data.summary.unavailable}`,
+    data.summary.excluded > 0 && `재고 불일치 ${data.summary.excluded}`,
+  ].filter(Boolean) as string[]
   const naNote =
-    [
-      data.summary.unavailable > 0 && `계산 불가 ${data.summary.unavailable}`,
-      data.summary.excluded > 0 && `재고 숫자 안 맞음 ${data.summary.excluded}`,
-    ]
-      .filter(Boolean)
-      .join(' · ') || '계산 못 한 상품이 없어요'
+    naParts.length === 0
+      ? '계산 못 한 상품 없음'
+      : naParts.map((part, index) => (
+          <Fragment key={part}>
+            {index > 0 && ' '}
+            <span className={styles.notePart}>
+              {index > 0 && '· '}
+              {part}
+            </span>
+          </Fragment>
+        ))
 
   // 발주 목록: 고른 상품의 수량·사입비 합계와 엑셀(CSV) 받기
   const pickedItems = items.filter((item) => picked.has(item.id))
@@ -691,9 +733,18 @@ export function DashboardPage() {
     item.quantity > 0
       ? Math.round((item.cost / item.quantity) * orderQtyOf(item))
       : item.cost
-  const struck = (item: { id: string }) => {
+  const struck = (item: { id: string; quantity: number }) => {
     const plan = planOf(item)
-    return !!plan && !isStale(plan, data.runId)
+    return (
+      !!plan && !isStale(plan, data.runId) && plan.quantity !== item.quantity
+    )
+  }
+  // 권장량 그대로 정했으면 같은 숫자를 지우고 또 쓰지 않는다(11/18)
+  const showPlan = (item: { id: string; quantity: number }) => {
+    const plan = planOf(item)
+    return (
+      !!plan && (isStale(plan, data.runId) || plan.quantity !== item.quantity)
+    )
   }
   const planCell = (item: { id: string }) => {
     const plan = planOf(item)
@@ -970,9 +1021,11 @@ export function DashboardPage() {
               {refreshRequired ? '새 수불부가 필요해요' : '갱신 전 결과예요'}
             </strong>
             <span>
-              {refreshRequired
+              {blank
                 ? '마지막 자료가 오늘보다 7일 넘게 오래되어 계산하지 않았어요.'
-                : `마지막 계산이 실패해 ${data.lastCalculatedAt} 계산 결과를 보여주고 있어요.`}
+                : refreshRequired
+                  ? `${shortDate(data.baseDate)} 수불부로 계산한 결과예요. 지금 재고와 다를 수 있어요.`
+                  : `마지막 계산이 실패해 ${data.lastCalculatedAt} 계산 결과를 보여주고 있어요.`}
             </span>
           </div>
           <Button
@@ -989,7 +1042,7 @@ export function DashboardPage() {
             <h1>
               {noResult
                 ? '아직 계산한 결과가 없어요'
-                : refreshRequired
+                : blank
                   ? '수불부를 올리면 다시 계산해요'
                   : `지금 넣어야 할 상품이 ${data.summary.needed}개 있어요`}
             </h1>
@@ -1000,7 +1053,7 @@ export function DashboardPage() {
               <span>{`기준일 ${data.baseDate}`}</span>
               <b data-state={data.freshness}>
                 {refreshRequired
-                  ? '재업로드 필요'
+                  ? `${today - dayNumber(data.baseDate)}일 지남`
                   : data.freshness === 'stale-result'
                     ? '갱신 전'
                     : '오늘까지 예상 출고 반영'}
@@ -1017,7 +1070,7 @@ export function DashboardPage() {
           ))}
       </header>
 
-      {!(noResult || refreshRequired) && (
+      {!(noResult || blank) && (
         <CheckFirst
           fill={checkFill}
           reasons={checkReasons}
@@ -1026,7 +1079,7 @@ export function DashboardPage() {
       )}
 
       {/* 보여 줄 숫자가 없을 땐 "—" 카드 네 장 대신 안내 카드 하나만(11/2 결정) */}
-      {!(noResult || refreshRequired) && (
+      {!(noResult || blank) && (
         <div
           aria-label="상품 나눠 보기"
           className={styles.summary}
@@ -1035,7 +1088,8 @@ export function DashboardPage() {
         >
           {(
             [
-              ['all', '전체', tabCount.all, 'all', '올린 상품 모두'],
+              // 상자 설명은 짧게 한 줄(11/18, 길면 두 줄까지): 아이콘·이름·숫자가 한 줄로 서도록
+              ['all', '전체', tabCount.all, 'all', undefined],
               [
                 'need',
                 '지금 넣어야 해요',
@@ -1045,13 +1099,13 @@ export function DashboardPage() {
                   <span className={styles.soldNote}>
                     <i aria-hidden="true" className={styles.soldDot} />
                     <span>
-                      <b>{passedCount}개</b>는 이미 소진됐을 수 있어요
+                      <b>{passedCount}개</b> 이미 소진 가능
                     </span>
                   </span>
                 ) : beforeArrivalCount > 0 ? (
-                  `오늘 주문해도 ${beforeArrivalCount}개 상품은 배송 전 품절이 예상돼요`
+                  `${beforeArrivalCount}개 배송 전 품절 예상`
                 ) : (
-                  '배송 기간과 예상 소진일을 확인해 주세요'
+                  '소진일·배송 기간 확인'
                 ),
               ],
               [
@@ -1060,8 +1114,9 @@ export function DashboardPage() {
                 data.summary.safe,
                 'safe',
                 soonCount > 0
-                  ? `그중 ${soonCount}개는 곧 넣어야 해요`
-                  : '지금 발주가 급한 상품은 아니에요',
+                  ? // 네 자리면 짧게 끝내 한 줄로(11/18)
+                    `곧 ${soonCount.toLocaleString()}개 ${soonCount >= 1000 ? '바닥' : '바닥나요'}`
+                  : '급한 상품 없음',
               ],
               [
                 'na',
@@ -1142,7 +1197,7 @@ export function DashboardPage() {
             )}
           </ol>
         </AsyncState>
-      ) : refreshRequired ? (
+      ) : blank ? (
         <AsyncState
           description="오래된 자료로 계산한 숫자를 보여주지 않아요. 풀필먼트에서 최근 수불부를 받아 올려 주세요."
           status="empty"
@@ -1465,7 +1520,7 @@ export function DashboardPage() {
                                 >
                                   {row.item.quantity.toLocaleString()}개
                                 </span>
-                                {planOf(row.item) && (
+                                {showPlan(row.item) && (
                                   <span className={styles.planBelow}>
                                     {planCell(row.item)}
                                   </span>

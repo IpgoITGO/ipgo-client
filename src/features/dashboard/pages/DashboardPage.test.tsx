@@ -209,6 +209,55 @@ describe('아직 괜찮은 상품 목록', () => {
   })
 })
 
+// 11/18: 기준일이 7일 넘게 지나도 지난 결과가 오면 대시보드를 보여 주고 알림만 띄운다
+describe('기준일 7일 지남', () => {
+  const old = {
+    ...safeDashboard,
+    today: '2026-11-14',
+    asOfDate: '2026-11-05',
+    daysSinceAsOf: 9,
+  }
+
+  it('지난 결과가 오면 목록을 그대로 보여 주고 위에 며칠 지났는지 알린다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({
+          ...old,
+          summary: { ...old.summary, notNeededCount: 1 },
+          notNeededItems: [
+            {
+              productId: 7,
+              skuName: '지난결과-상품',
+              skuBarcode: '8800000000007',
+              expectedShortageOn: '2026-12-01',
+              leadTimeDays: 5,
+            },
+          ],
+        }),
+      ),
+    )
+    renderSafe()
+    expect(await screen.findByText('지난결과-상품')).toBeInTheDocument()
+    expect(screen.getByText('9일 지남')).toBeInTheDocument()
+    expect(screen.getByText(/수불부로 계산한 결과예요/)).toBeInTheDocument()
+    expect(screen.queryByText('입고 필요 목록이 비어 있어요')).toBeNull()
+  })
+
+  it('서버가 목록을 비워 보내면 업로드 안내만 보인다', async () => {
+    server.use(
+      http.get('/api/dashboard/replenishment-needs', () =>
+        HttpResponse.json({ ...old, notNeededItems: [] }),
+      ),
+    )
+    renderSafe()
+    expect(
+      await screen.findByText('입고 필요 목록이 비어 있어요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('수불부를 올리면 다시 계산해요'),
+    ).toBeInTheDocument()
+  })
+})
 describe('DashboardPage', () => {
   it('run 주소로 와도 계산 상태는 공통 작은 창 하나로만 보이고 한 번만 조회한다', async () => {
     let reads = 0
@@ -458,10 +507,10 @@ describe('DashboardPage', () => {
       'page',
     )
     expect(screen.getAllByRole('row')).toHaveLength(2)
-    await user.selectOptions(
-      screen.getByLabelText('상품 한 번에 볼 개수'),
-      '20',
+    await user.click(
+      screen.getByRole('button', { name: /상품 한 번에 볼 개수/ }),
     )
+    await user.click(screen.getByRole('option', { name: '20개씩' }))
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(12))
     expect(screen.getByRole('button', { name: '1쪽' })).toHaveAttribute(
       'aria-current',
@@ -536,7 +585,7 @@ describe('DashboardPage', () => {
     expect(firstRow).toHaveTextContent('케어트릿 120g')
     expect(
       screen.getByRole('tab', { name: /지금 넣어야 해요/ }),
-    ).toHaveTextContent('2개는 이미 소진됐을 수 있어요')
+    ).toHaveTextContent('2개 이미 소진 가능')
   })
 
   it('계산 결과가 없으면 기준일 대신 계산 전 안내와 입고 조건 버튼을 보여준다', async () => {
@@ -949,7 +998,7 @@ describe('유통기한 정렬', () => {
       ]),
     )
     expect(
-      within(screen.getAllByRole('row')[2]).getByText('2026. 11. 20'),
+      within(screen.getAllByRole('row')[2]).getByText('2026.11.20'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /^전체/ }))
     expect(order()).toEqual([
@@ -974,7 +1023,7 @@ describe('유통기한 정렬', () => {
       ),
     )
     renderPage()
-    expect(await screen.findByText('2027. 2. 6')).toBeInTheDocument()
+    expect(await screen.findByText('2027.02.06')).toBeInTheDocument()
     expect(screen.queryByText('2/6')).not.toBeInTheDocument()
   })
 

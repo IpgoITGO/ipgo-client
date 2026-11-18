@@ -277,7 +277,7 @@ try {
       })
     }
     await page.goto(`${origin}/dashboard`)
-    await page.getByText('2027. 2. 6', { exact: true }).waitFor()
+    await page.getByText('2027.02.06', { exact: true }).waitFor()
     await page.screenshot({
       path: path.join(out, `${name}-expiry-dashboard.png`),
       fullPage: true,
@@ -292,7 +292,7 @@ try {
     )
     await page.goto(`${origin}/sku/27`)
     await page
-      .getByText(/^유통기한 \d{4}\. \d{1,2}\. \d{1,2} 뒤에도 남아요$/)
+      .getByText(/^유통기한 \d{4}\.\d{2}\.\d{2} 뒤에도 남아요$/)
       .waitFor()
     await page.screenshot({
       path: path.join(out, `${name}-expiry-detail.png`),
