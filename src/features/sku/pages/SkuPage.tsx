@@ -7,7 +7,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
 import { calculationReason } from '../../../shared/lib/calculationReason'
@@ -26,6 +26,7 @@ import {
   monthlyStorageCost,
   STORAGE_LINK,
 } from '../../settings/model/storageCost'
+import { ExpiryLots } from '../components/ExpiryLots'
 import { ScenarioInsight } from '../components/ScenarioInsight'
 import { SkuNav } from '../components/SkuNav'
 import {
@@ -1478,6 +1479,8 @@ function CountUp({ value }: { value: number }) {
 
 export function SkuPage() {
   const { skuId = '' } = useParams()
+  // 유통기한 알림 "보기"로 오면 ?expiry=그 묶음의 유통기한
+  const [search] = useSearchParams()
   const navigate = useNavigate()
   const storage = useStorageSettings()
   const query = useQuery({
@@ -1635,6 +1638,11 @@ export function SkuPage() {
           )}
           <div className={styles.title}>
             <h1>{data.name}</h1>
+            <ExpiryLots
+              key={skuId}
+              openOn={search.get('expiry')}
+              productId={skuId}
+            />
             {stockoutPassed && <SoldOutStamp />}
             <ShiftPopup
               history={data.history}

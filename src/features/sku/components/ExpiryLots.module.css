@@ -1,0 +1,158 @@
+/* #434 상품 이름 옆 유통기한 표시 + 이름 아래로 펼치는 작은 창 */
+.wrap {
+  position: relative;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 10px;
+  color: var(--color-danger);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  background: var(--color-danger-bg);
+  border: 1px solid #f3c1b8;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.badge[data-tone='imminent'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: #f2d49b;
+}
+
+.badge svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.badge:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -12px rgb(25 31 40 / 22%);
+}
+
+.panel h2 {
+  margin: 0 0 2px;
+  font-size: var(--text-body);
+}
+
+.summary {
+  margin: 0 0 var(--space-2);
+  color: var(--color-danger);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: 4px 8px;
+  color: var(--color-text-3);
+  font-size: 18px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel th {
+  padding: 6px 4px;
+  color: var(--color-text-3);
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panel td {
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panel tr:last-child td {
+  border-bottom: 0;
+}
+
+.panel .num {
+  text-align: right;
+}
+
+.state {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.state[data-status='EXPIRED'] {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.state[data-status='IMMINENT'] {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.state[data-status='OK'] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.state[data-status='UNKNOWN'] {
+  color: var(--color-text-3);
+  background: var(--color-primary-soft);
+}
+
+/* 알림이 가리킨 묶음은 들어올 때 한 번 노랗게 짚고 옅어진다 */
+.panel tr[data-hit] td {
+  background: var(--color-accent-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel tr[data-hit] td {
+    animation: lot-hit 3.2s ease-out 300ms both;
+  }
+}
+
+@keyframes lot-hit {
+  0%,
+  60% {
+    background: var(--color-accent-soft);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
