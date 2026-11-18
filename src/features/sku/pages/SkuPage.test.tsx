@@ -26,6 +26,59 @@ function renderSku(path: string) {
 }
 
 describe('SkuPage', () => {
+  it('새 모델(LGBM19)은 목표 재고 식으로 계산 근거를 보여 주고, 0개면 숫자 옆에 이유를 붙인다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          result: {
+            ...model19Detail.result,
+            method: 'LGBM19',
+            horizonDays: 19,
+            forecastOutboundQty: 5,
+            startStockQty: 0,
+            plannedReceiptsInHorizon: 0,
+            requiredQtyBeforeRounding: 6,
+            recommendedQty: 6,
+          },
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(await screen.findByText('19일 예상 판매')).toBeInTheDocument()
+    // 목표 재고 = 필요한 양 6 + 가진 재고 0
+    expect(
+      screen.getByText('여유를 더한 목표 재고').closest('li'),
+    ).toHaveTextContent('6개')
+    expect(screen.getByText('필요한 양').closest('li')).toHaveTextContent('6개')
+  })
+
+  it('새 모델에서 권장 0개면 목표 재고는 "가진 재고 이하"로, 권장 칸은 0개와 이유', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          needStatus: 'NOT_NEEDED',
+          result: {
+            ...model19Detail.result,
+            method: 'LGBM19',
+            status: 'NOT_NEEDED',
+            horizonDays: 19,
+            forecastOutboundQty: 4,
+            startStockQty: 20,
+            plannedReceiptsInHorizon: 0,
+            requiredQtyBeforeRounding: 0,
+            recommendedQty: 0,
+            recommendedAmount: 0,
+          },
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(await screen.findByText('20개 이하')).toBeInTheDocument()
+    expect(screen.getByText('재고가 목표보다 많아요')).toBeInTheDocument()
+  })
+
   it('권장 0개 상품은 "지금은 안 넣어도 돼요"와 다시 볼 날을 보여 준다', async () => {
     server.use(
       http.get('/api/products/:productId/detail', () =>
@@ -48,7 +101,7 @@ describe('SkuPage', () => {
     expect(
       screen.getByText('리드타임 5일 안에 바닥나지 않아요 · 12/13쯤 다시 봐요'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('권장 입고량')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('권장 입고량 0개')).toBeInTheDocument()
     expect(screen.queryByText('0원')).not.toBeInTheDocument()
   })
 
@@ -142,7 +195,9 @@ describe('SkuPage', () => {
         /표본 0일|표본 부족으로 미산출|설명 문장을 만들지 못했어요/,
       ),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('실제 정확도 미평가')).toBeInTheDocument()
+    expect(
+      screen.getByText('지난 예측과 실제 판매를 맞춰 본 기록이 쌓이면 보여요'),
+    ).toBeInTheDocument()
     expect(screen.getByText('권장량의 80%')).toBeInTheDocument()
     expect(screen.getByText('권장량 100%')).toBeInTheDocument()
     expect(screen.getByText('권장량의 120%')).toBeInTheDocument()
@@ -357,7 +412,9 @@ describe('SkuPage', () => {
     // 자료가 모자란 값: 소진일·시작 재고 → 자료 부족. 정확도는 칸마다 되풀이하지 않고 안내 하나로(11/17)
     expect(screen.getAllByText('자료 부족').length).toBeGreaterThanOrEqual(2)
     expect(
-      screen.getByText('맞춰 볼 지난 예측이 아직 없어요'),
+      screen.getByText(
+        '수불부가 더 쌓이면 예측한 양과 실제 나간 양을 비교해 보여 드려요',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: '단가를 넣으면 보여요 →' }),
@@ -462,7 +519,9 @@ it('미확정 방식은 B 설명·계산식·성과·내부 정보를 노출하�
       /UNAGREED_METHOD_FIXTURE|private\/model-path|product-code/,
     ),
   ).not.toBeInTheDocument()
-  expect(screen.getByText('실제 정확도 미평가')).toBeInTheDocument()
+  expect(
+    screen.getByText('지난 예측과 실제 판매를 맞춰 본 기록이 쌓이면 보여요'),
+  ).toBeInTheDocument()
   expect(screen.queryByText('정확도 높음')).not.toBeInTheDocument()
   expect(screen.queryByText(/예측 범위/)).not.toBeInTheDocument()
   expect(

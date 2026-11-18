@@ -49,6 +49,8 @@ export type ProductDetail = {
     plannedReceiptsInHorizon: number | null
     preArrivalUnmetQty: number | null
     requiredQtyBeforeRounding: number | null
+    /** 새 모델(LGBM19)의 목표 재고(19일 판매 예측 + 여유). 서버가 아직 안 줄 수 있다 */
+    targetStockQty?: number | null
     recommendedQty: number | null
     recommendedAmount: number | null
   } | null
@@ -123,6 +125,7 @@ export type SkuDetail = {
     preArrivalUnmet: number | null
     inboundUnit: number | null
     rawQuantity: number | null
+    targetStock: number | null
   }
   settings: ProductDetail['settings']
   accuracy: {
@@ -207,6 +210,7 @@ export function toSkuDetail(raw: ProductDetail): SkuDetail {
       preArrivalUnmet: result?.preArrivalUnmetQty ?? null,
       inboundUnit: raw.settings.orderUnitQty,
       rawQuantity: result?.requiredQtyBeforeRounding ?? null,
+      targetStock: result?.targetStockQty ?? null,
     },
     settings: raw.settings,
     accuracy: accuracy && {

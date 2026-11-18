@@ -353,7 +353,7 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('계산 중에는 스켈레톤, 지난 결과 보기로 열 수 있고, 끝나면 바꿨다고 알린 뒤 사라진다', async () => {
+  it('계산 중에는 스켈레톤, 지난 결과 보기로 열 수 있고, 끝나면 위에 노란 띠 없이 결과로 바뀐다', async () => {
     // 지난 결과 보기를 누를 때까지는 계산 중으로 둔다(누르기 전에 끝나면 시험이 흔들린다)
     let finish = false
     server.use(
@@ -382,18 +382,16 @@ describe('DashboardPage', () => {
     expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
     expect(screen.getByText(/아래는 \d+\/\d+ 결과예요/)).toBeInTheDocument()
     finish = true
-    // 지난 결과를 보고 있었으면 가운데 상자는 다시 안 열고 작은 창이 알린다
-    expect(
-      await screen.findByText('새 결과로 바꿨어요', {}, { timeout: 4000 }),
-    ).toBeInTheDocument()
-    expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
+    // 지난 결과를 보고 있었으면 가운데 상자는 다시 안 열고, 끝났다는 말은 오른쪽 아래 작은 창만 한다(위 노란 띠 없음, 11/18)
     await waitFor(
       () =>
         expect(
-          screen.queryByText('새 결과로 바꿨어요'),
+          screen.queryByText(/아래는 \d+\/\d+ 결과예요/),
         ).not.toBeInTheDocument(),
-      { timeout: 6000 },
+      { timeout: 4000 },
     )
+    expect(screen.queryByTestId('dashboard-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByText('새 결과로 바꿨어요')).not.toBeInTheDocument()
   }, 15000)
 
   it('끝나면 가운데 상자 안에 새 결과로 바꿨다고 알리고, 2.6초 뒤 결과로 넘어간다', async () => {

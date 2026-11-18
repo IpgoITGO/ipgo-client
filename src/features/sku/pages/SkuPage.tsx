@@ -67,6 +67,10 @@ function methodSentence(method: NonNullable<SkuDetail['method']>) {
   return '이 계산 방식의 설명은 아직 제공되지 않았어요'
 }
 
+// 소수 한 자리까지(필요한 양·목표 재고는 반올림 전 값이라 소수가 올 수 있다)
+const qtyText = (value: number) =>
+  value.toLocaleString(undefined, { maximumFractionDigits: 1 })
+
 const count = (value: number | null) =>
   value == null ? '—' : `${value.toLocaleString()}개`
 
@@ -1584,6 +1588,15 @@ export function SkuPage() {
         need: Number(salesMatch[3]),
       }
     : null
+  // 새 모델 목표 재고: 서버 값이 있으면 그대로, 없으면 필요한 양 + 가진 재고(필요한 양이 0이면 "가진 재고 이하"로만 안다)
+  const model19Have =
+    (data.calculation.startingInventory ?? 0) +
+    (data.calculation.existingOrders ?? 0)
+  const model19Target =
+    data.calculation.targetStock ??
+    ((data.calculation.rawQuantity ?? 0) > 0
+      ? (data.calculation.rawQuantity ?? 0) + model19Have
+      : null)
   const noNeed = data.recommendation.quantity === 0
   // 다시 볼 날 = 예상 소진일 − 리드타임(둘 다 있고 앞날일 때만)
   const leadDays = data.settings.leadTimeDays
@@ -1752,10 +1765,20 @@ export function SkuPage() {
           )}
           <section className={styles.recommendation}>
             {noNeed ? (
-              // 권장 0개 = 지금은 안 넣어도 되는 상품(11/18): "0개 · 0원" 대신 답과 이유 한 줄
+              // 권장 0개 = 지금은 안 넣어도 되는 상품(11/18): 숫자 0개가 먼저, 그 옆에 "안 넣어도 돼요", 아래 이유 한 줄
               <div>
-                <span>지금은</span>
-                <strong className={styles.noNeed}>안 넣어도 돼요</strong>
+                <span>권장 입고량</span>
+                <span className={styles.noNeedRow}>
+                  <strong
+                    aria-label="권장 입고량 0개"
+                    className={styles.recoQty}
+                  >
+                    <span aria-hidden="true" className={styles.recoNum}>
+                      0<small className={styles.recoUnit}>개</small>
+                    </span>
+                  </strong>
+                  <b className={styles.noNeed}>안 넣어도 돼요</b>
+                </span>
                 <p className={styles.recoFlow}>
                   <span>{noNeedReason}</span>
                 </p>
@@ -1889,9 +1912,6 @@ export function SkuPage() {
                       <small>
                         19일은 배송 5일에 입고 주기 14일을 더한 기간이에요
                       </small>
-                      <small>
-                        그동안 모자라지 않을 만큼을 권장 입고량으로 잡았어요
-                      </small>
                     </>
                   )}
                   {['A', 'B'].includes(data.method.applied) &&
@@ -1899,6 +1919,77 @@ export function SkuPage() {
                       <small>기본 계산 방식을 적용했어요</small>
                     )}
                 </p>
+              )}
+              {/* 새 모델(LGBM19) 식(11/18): 19일 판매 예측 + 여유 = 목표 재고 − 오늘 재고 − 도착 예정 = 필요한 양 → 입고 단위로 올림.
+                  AI engine/calculate.py와 같은 순서. 목표 재고는 서버가 주면 그 값, 아니면 필요한 양 + 가진 재고로 구한다 */}
+              {data.method?.applied === 'LGBM19' && (
+                <ol className={styles.steps}>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp} />
+                    <span>
+                      {data.calculation.coverDays}일 예상 판매
+                      <small>가장 그럴듯한 값</small>
+                    </span>
+                    <strong>{count(data.calculation.forecastQty)}</strong>
+                  </li>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp} />
+                    <span>
+                      여유를 더한 목표 재고
+                      <small>예측이 빗나가도 모자라지 않게</small>
+                    </span>
+                    <strong>
+                      {model19Target == null
+                        ? `${model19Have.toLocaleString()}개 이하`
+                        : `${qtyText(model19Target)}개`}
+                    </strong>
+                  </li>
+                  <li>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      −
+                    </span>
+                    <span>오늘 남았을 재고</span>
+                    <strong>{count(data.calculation.startingInventory)}</strong>
+                  </li>
+                  {Boolean(data.calculation.existingOrders) && (
+                    <li>
+                      <span aria-hidden="true" className={styles.stepOp}>
+                        −
+                      </span>
+                      <span>도착 예정</span>
+                      <strong>{count(data.calculation.existingOrders)}</strong>
+                    </li>
+                  )}
+                  <li className={styles.stepSum}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      =
+                    </span>
+                    <span>필요한 양</span>
+                    <strong>
+                      {qtyText(data.calculation.rawQuantity ?? 0)}개
+                    </strong>
+                  </li>
+                  <li className={styles.stepFinal}>
+                    <span aria-hidden="true" className={styles.stepOp}>
+                      ↑
+                    </span>
+                    <span>
+                      {data.calculation.inboundUnit == null
+                        ? '입고 단위로 올림'
+                        : `입고 단위 ${data.calculation.inboundUnit}개로 올림`}
+                      <small>권장 입고량</small>
+                    </span>
+                    {/* 0개면 숫자 다음에 이유 한마디(11/18 "숫자가 먼저, 그 후 멘트"). 노란 밑줄은 숫자에만 */}
+                    <span className={styles.stepEnd}>
+                      <strong>{count(data.recommendation.quantity)}</strong>
+                      {data.recommendation.quantity === 0 && (
+                        <small className={styles.stepNote}>
+                          재고가 목표보다 많아요
+                        </small>
+                      )}
+                    </span>
+                  </li>
+                </ol>
               )}
               {(!data.method || ['A', 'B'].includes(data.method.applied)) && (
                 <ol className={styles.steps}>
@@ -2064,6 +2155,19 @@ export function AccuracyCard({
   const last = history.at(-1)
   // 맞춰 볼 기록이 하나도 없으면 칸 두 개에 "미평가"를 되풀이하지 않고 안내 하나만 둔다(11/17)
   const empty = history.length === 0 && coverRate == null && errorRate == null
+
+  // 맞춰 볼 기록이 없으면 큰 카드 대신 한 줄로 접는다(11/18). 자료가 오면 아래 그래프 카드로 돌아간다
+  if (empty)
+    return (
+      <section className={`${styles.card} ${styles.accuracyLine}`}>
+        <h2>예측 정확도</h2>
+        <p>
+          {unevaluated || evaluation?.status === 'UNAVAILABLE'
+            ? '지난 예측과 실제 판매를 맞춰 본 기록이 쌓이면 보여요'
+            : '수불부가 더 쌓이면 예측한 양과 실제 나간 양을 비교해 보여 드려요'}
+        </p>
+      </section>
+    )
 
   return (
     <section className={styles.card}>
