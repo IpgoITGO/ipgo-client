@@ -26,6 +26,32 @@ function renderSku(path: string) {
 }
 
 describe('SkuPage', () => {
+  it('권장 0개 상품은 "지금은 안 넣어도 돼요"와 다시 볼 날을 보여 준다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          needStatus: 'NOT_NEEDED',
+          expectedShortageOn: '2099-12-18',
+          settings: { ...model19Detail.settings, leadTimeDays: 5 },
+          result: {
+            ...model19Detail.result,
+            status: 'NOT_NEEDED',
+            recommendedQty: 0,
+            recommendedAmount: 0,
+          },
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+    expect(await screen.findByText('안 넣어도 돼요')).toBeInTheDocument()
+    expect(
+      screen.getByText('리드타임 5일 안에 바닥나지 않아요 · 12/13쯤 다시 봐요'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('권장 입고량')).not.toBeInTheDocument()
+    expect(screen.queryByText('0원')).not.toBeInTheDocument()
+  })
+
   it('모델의 소진일 없음과 입고를 포함한 재고 변동을 자료 부족·예상 출고로 단정하지 않는다', async () => {
     server.use(
       http.get('/api/products/:productId/detail', () =>
@@ -308,7 +334,8 @@ describe('SkuPage', () => {
     renderSku('/sku/no-result')
 
     expect(await screen.findByText('아직 계산 전이에요')).toBeInTheDocument()
-    expect(screen.getByText('계산 전')).toBeInTheDocument()
+    // 오른쪽 위 상태 칩은 뺐다(11/18). 계산 전 안내는 본문 카드가 한다
+    expect(screen.queryByText('계산 전')).not.toBeInTheDocument()
     screen.getByRole('button', { name: '입고 조건 확인하기' }).click()
     expect(
       await screen.findByRole('heading', { name: '입고 조건 화면' }),
