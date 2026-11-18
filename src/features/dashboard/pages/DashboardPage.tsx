@@ -1075,7 +1075,10 @@ export function DashboardPage() {
                 '아직 괜찮아요',
                 data.summary.safe,
                 'safe',
-                soonCount > 0 ? `곧 ${soonCount}개 바닥` : '급한 상품 없음',
+                soonCount > 0
+                  ? // 네 자리면 짧게 끝내 한 줄로(11/18)
+                    `곧 ${soonCount.toLocaleString()}개 ${soonCount >= 1000 ? '바닥' : '바닥나요'}`
+                  : '급한 상품 없음',
               ],
               [
                 'na',
