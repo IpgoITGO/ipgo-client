@@ -36,33 +36,6 @@
   font-weight: 700;
 }
 
-.headerSide {
-  display: flex;
-  flex: none;
-  gap: var(--space-3);
-  align-items: center;
-}
-
-.status {
-  padding: 8px 12px;
-  color: var(--color-success);
-  font-size: var(--text-caption);
-  font-weight: 700;
-  background: var(--color-success-bg);
-  border-radius: var(--radius-chip);
-}
-
-.status[data-status='unavailable'] {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-
-.status[data-status='reference'],
-.status[data-status='pending'] {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-
 .notice {
   padding: var(--space-4) var(--space-5);
   color: var(--color-warning);

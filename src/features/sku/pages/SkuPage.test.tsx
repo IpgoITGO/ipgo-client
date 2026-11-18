@@ -308,7 +308,8 @@ describe('SkuPage', () => {
     renderSku('/sku/no-result')
 
     expect(await screen.findByText('아직 계산 전이에요')).toBeInTheDocument()
-    expect(screen.getByText('계산 전')).toBeInTheDocument()
+    // 오른쪽 위 상태 칩은 뺐다(11/18). 계산 전 안내는 본문 카드가 한다
+    expect(screen.queryByText('계산 전')).not.toBeInTheDocument()
     screen.getByRole('button', { name: '입고 조건 확인하기' }).click()
     expect(
       await screen.findByRole('heading', { name: '입고 조건 화면' }),

@@ -118,7 +118,7 @@ export function DashboardSkeleton({
             text: index === stepAt ? hint : undefined,
             status:
               index < stepAt
-                ? '끝'
+                ? '' // 끝난 줄은 왼쪽 초록 체크로 충분하다(11/18)
                 : index === stepAt
                   ? `${durationText(seconds)}째`
                   : '기다림',
