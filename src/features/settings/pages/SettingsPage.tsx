@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -19,6 +20,7 @@ import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 import { z } from 'zod'
 
 import { ApiError, errorText } from '../../../shared/api/client'
+import { unsupportedModelPeriod } from '../../../shared/lib/modelSupport'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
@@ -132,6 +134,7 @@ async function loadSettings(): Promise<{
   cycleIsFallback: boolean
   cycleSuggestion: DefaultSettings['reviewCycleSuggestion']
   suggestion: DefaultSettings['suggestion']
+  calculationSupport: DefaultSettings['calculationSupport']
 }> {
   const [defaults, products] = await Promise.all([
     getDefaultSettings(),
@@ -142,6 +145,7 @@ async function loadSettings(): Promise<{
     cycleIsFallback: defaults.reviewCycleDays == null,
     cycleSuggestion: defaults.reviewCycleSuggestion ?? null,
     suggestion: defaults.suggestion,
+    calculationSupport: defaults.calculationSupport,
     values: {
       defaults: {
         leadTime: defaults.leadTimeDays,
@@ -185,6 +189,7 @@ export function SettingsPage() {
       { replace: true },
     )
   const search = params.get('q') ?? ''
+  const productSettingsRef = useRef<HTMLDetailsElement>(null)
   const setSearch = (value: string) =>
     updateParams({ q: value === '' ? null : value, page: null })
   // 상품이 수백 개라(실데이터 289개) 거르기 + 골라서 같은 조건 한 번에 넣기(11/11)
@@ -239,6 +244,12 @@ export function SettingsPage() {
     if (query.data) reset(query.data.values, { keepDirtyValues: true })
   }, [query.data, reset])
 
+  // 설정 링크나 검색으로 찾은 상품을 보여 준다. 검색 해제 시 오류 안내가 연 표를 다시 닫지 않는다.
+  useEffect(() => {
+    if (search.trim() && productSettingsRef.current)
+      productSettingsRef.current.open = true
+  }, [search, query.data])
+
   // 고친 값이 있는데 저장(확인하고 계산하기) 없이 나가려 하면 한 번 묻는다(11/16) → 아래 UnsavedGuard
   const hasEdits = Object.keys(dirtyFields).length > 0
   // 나가기를 막는 장치는 앱의 라우터(data router)에서만 돈다. 화면만 따로 띄우는 곳(테스트의 MemoryRouter)에서는 건너뛴다
@@ -246,6 +257,16 @@ export function SettingsPage() {
 
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
+  const calculationSupport = query.data?.calculationSupport
+  const unsupportedCount = products.filter(
+    (product) =>
+      product.isActive &&
+      unsupportedModelPeriod(
+        calculationSupport,
+        product.leadTime,
+        product.orderCycle,
+      ),
+  ).length
   const cycleSuggestion = query.data?.cycleSuggestion
   const suggestion = query.data?.suggestion
   const recommended = {
@@ -403,6 +424,18 @@ export function SettingsPage() {
 
   async function save(values: ConfirmedSettings) {
     if (calculationBusy || values.defaults.orderCycle == null) return
+    if (
+      unsupportedModelPeriod(
+        calculationSupport,
+        values.defaults.leadTime,
+        values.defaults.orderCycle,
+      )
+    ) {
+      setFormError(
+        '기본값이 모델 지원 조건과 달라 저장하지 않았어요. 실제 입고 조건을 확인해 주세요.',
+      )
+      return
+    }
     setFormError(null)
     // 상품이 없으면 계산할 게 없다. 계산 시작·완료 안내를 띄우지 않는다.
     if (values.products.length === 0) return
@@ -522,6 +555,39 @@ export function SettingsPage() {
           </p>
         </header>
 
+        {calculationSupport?.method === 'LGBM19' && (
+          <aside
+            className={styles.supportNotice}
+            aria-label="예측 모델 지원 조건"
+          >
+            <strong>
+              현재 예측 모델은 리드타임 {calculationSupport.leadTimeDays}일 ·
+              입고 주기 {calculationSupport.reviewCycleDays}일일 때 계산해요.
+            </strong>
+            <p>
+              다른 조건인 상품은 저장해도 권장량이 나오지 않아요. 계산을 위해
+              실제 배송·입고 조건을 바꾸지는 마세요. 입고 단위는 상품에 맞게
+              입력할 수 있어요.
+            </p>
+            {unsupportedCount > 0 && (
+              <p role="status">
+                현재 사용 중인 상품 {unsupportedCount}개의 입고 조건을 이 모델이
+                지원하지 않아요.
+              </p>
+            )}
+            {unsupportedModelPeriod(
+              calculationSupport,
+              defaults?.leadTime,
+              defaults?.orderCycle,
+            ) && (
+              <p role="alert">
+                기본값이 모델 지원 조건과 달라 저장할 수 없어요. 실제 입고
+                조건을 확인해 주세요.
+              </p>
+            )}
+          </aside>
+        )}
+
         <section className={styles.card}>
           <div className={styles.sectionHeader}>
             <h2>모든 상품 기본값</h2>
@@ -622,6 +688,7 @@ export function SettingsPage() {
         <details
           className={`${styles.card} ${styles.fold}`}
           id="product-settings"
+          ref={productSettingsRef}
           onToggle={keepSummaryInPlace}
         >
           <summary
@@ -815,6 +882,18 @@ export function SettingsPage() {
                     <td className={styles.nameCell}>
                       <strong>{product.name}</strong>
                       <span>{product.barcode}</span>
+                      {product.isActive &&
+                        unsupportedModelPeriod(
+                          calculationSupport,
+                          product.leadTime,
+                          product.orderCycle,
+                        ) && (
+                          <small className={styles.supportWarning}>
+                            모델 미지원 · 리드타임 {product.leadTime}일 · 입고
+                            주기 {product.orderCycle ?? '미입력'}
+                            {product.orderCycle == null ? '' : '일'}
+                          </small>
+                        )}
                     </td>
                     {PRODUCT_FIELDS.map(({ field, unit }) => (
                       <td className={styles.numCell} key={field}>

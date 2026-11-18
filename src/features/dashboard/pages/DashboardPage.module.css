@@ -1169,3 +1169,7 @@ tr[data-soon] .weeks i[data-on] {
 .totals .storageLine {
   margin-top: 0;
 }
+.currentSettings {
+  display: block;
+  margin-top: 4px;
+}

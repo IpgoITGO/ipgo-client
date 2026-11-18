@@ -306,6 +306,119 @@ try {
       ),
       'EXPIRY_DETAIL_OVERFLOW',
     )
+    phase = name + '_model_support'
+    const modelProduct = {
+      productId: 142,
+      skuName: '기간이 다른 상품',
+      skuBarcode: 'model-period-fixture',
+      unitCost: 10,
+      isActive: true,
+      settings: { leadTimeDays: 6, reviewCycleDays: 13, orderUnitQty: 3 },
+      overridden: ['leadTimeDays', 'reviewCycleDays', 'orderUnitQty'],
+    }
+    for (const [endpoint, json] of [
+      [
+        '/api/dashboard/replenishment-needs',
+        {
+          asOfDate: '2026-11-18',
+          today: '2026-11-18',
+          daysSinceAsOf: 0,
+          resultStatus: 'UP_TO_DATE',
+          runId: 142,
+          resultComputedAt: '2026-11-18T03:00:00Z',
+          lastFailedRunAt: null,
+          latestUploadId: 1,
+          summary: {
+            needCount: 0,
+            notNeededCount: 0,
+            notCalculableCount: 1,
+            excludedCount: 0,
+          },
+          items: [],
+          notNeededItems: [],
+          excluded: [],
+          notCalculable: [
+            {
+              productId: 142,
+              skuName: modelProduct.skuName,
+              reason:
+                '이 모델은 배송 5일·발주 주기 14일·배수 1 조건에서만 계산해요',
+              currentSettings: modelProduct.settings,
+            },
+          ],
+        },
+      ],
+      [
+        '/api/replenishment-settings',
+        {
+          confirmed: true,
+          leadTimeDays: 5,
+          reviewCycleDays: 14,
+          orderUnitQty: 1,
+          reviewCycleSource: 'DEFAULT',
+          calculationSupport: {
+            method: 'LGBM19',
+            leadTimeDays: 5,
+            reviewCycleDays: 14,
+          },
+        },
+      ],
+      ['/api/products?**', { items: [modelProduct], total: 1 }],
+      ['/api/settings/expiry', { imminentDays: 30 }],
+    ]) {
+      await context.route(`${origin}${endpoint}`, (route) => {
+        if (route.request().method() !== 'GET') {
+          blocked.push('UNEXPECTED_MODEL_SUPPORT_WRITE')
+          return route.abort()
+        }
+        return route.fulfill({ json })
+      })
+    }
+    await page.goto(`${origin}/dashboard?tab=na`)
+    await page
+      .getByText('현재 입고 조건: 리드타임 6일 · 입고 주기 13일', {
+        exact: true,
+      })
+      .waitFor()
+    await page.screenshot({
+      path: path.join(out, `${name}-model-support-dashboard.png`),
+      fullPage: true,
+    })
+    await page
+      .getByRole('link', { name: '기간이 다른 상품 입고 조건 확인' })
+      .click()
+    await page
+      .getByRole('complementary', { name: '예측 모델 지원 조건' })
+      .waitFor()
+    const modelLead = page.getByLabel('기간이 다른 상품 leadTime', {
+      exact: true,
+    })
+    await modelLead.waitFor({ state: 'visible' })
+    assert.equal(await modelLead.inputValue(), '6')
+    assert.equal(
+      await page
+        .getByLabel('기간이 다른 상품 orderCycle', { exact: true })
+        .inputValue(),
+      '13',
+    )
+    assert.equal(
+      await page
+        .getByLabel('기간이 다른 상품 inboundUnit', { exact: true })
+        .inputValue(),
+      '3',
+    )
+    await page.screenshot({
+      path: path.join(out, `${name}-model-support-settings.png`),
+      fullPage: true,
+    })
+    assert.ok(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.innerWidth,
+      ),
+      'MODEL_SUPPORT_OVERFLOW',
+    )
     assert.deepEqual(blocked, [])
     assert.deepEqual(errors, [])
     reports.push({
@@ -321,6 +434,7 @@ try {
         'tooltip',
         'sparse_upload_history',
         'expiry_year_dashboard_and_detail',
+        'model_support_and_settings_navigation',
         'no_overflow',
         'no_browser_errors',
       ],

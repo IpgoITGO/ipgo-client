@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
+import type { CurrentSettings } from '../../../shared/lib/modelSupport'
 import { apiRequest } from '../../../shared/api/client'
 import { getUploadResult } from '../../upload/model/uploadApi'
 import type { DashboardData } from '../pages/DashboardPage'
@@ -55,7 +56,12 @@ export type ReplenishmentNeeds = {
     leadTimeDays: number | null
     demandShift?: DemandShift | null
   }>
-  notCalculable: Array<{ productId: number; skuName: string; reason: string }>
+  notCalculable: Array<{
+    productId: number
+    skuName: string
+    reason: string
+    currentSettings?: CurrentSettings | null
+  }>
   excluded: Array<{
     productId: number
     skuName: string
@@ -141,6 +147,7 @@ export function toDashboardData(
       id: String(item.productId),
       name: item.skuName,
       reason: item.reason,
+      currentSettings: item.currentSettings,
     })),
     excludedItems: raw.excluded.map((item) => ({
       id: String(item.productId),

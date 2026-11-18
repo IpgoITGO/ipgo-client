@@ -1,8 +1,10 @@
 import { apiRequest } from '../../../shared/api/client'
+import type { ModelSupport } from '../../../shared/lib/modelSupport'
 
 // ipgo-server README "입고 조건 (S1~S3)"과 "상품"(P1·P2). 기본 경로 `/api`는 apiRequest가 붙입니다.
 
 export type DefaultSettings = {
+  calculationSupport?: ModelSupport | null
   confirmed: boolean
   leadTimeDays: number
   reviewCycleDays: number | null
