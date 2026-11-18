@@ -1581,12 +1581,6 @@ export function SkuPage() {
         need: Number(salesMatch[3]),
       }
     : null
-  const statusLabel = {
-    ready: '계산 완료',
-    reference: '참고용',
-    unavailable: data.reuploadRequired ? '최신 자료 필요' : '계산 불가',
-    pending: '계산 전',
-  }[data.status]
   const settingRows = (
     <dl className={styles.evidence}>
       <div>
@@ -1650,14 +1644,6 @@ export function SkuPage() {
             />
           </div>
           <p>바코드 {data.barcode}</p>
-        </div>
-        <div className={styles.headerSide}>
-          {/* 참고용은 아래 안내 하나로 말하니 칩은 뺀다 */}
-          {data.status !== 'reference' && (
-            <span className={styles.status} data-status={data.status}>
-              {statusLabel}
-            </span>
-          )}
         </div>
       </header>
 
