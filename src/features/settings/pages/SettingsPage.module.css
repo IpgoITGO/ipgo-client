@@ -4,6 +4,26 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
 }
+
+.supportNotice {
+  padding: 16px 20px;
+  border: 1px solid #e7c97d;
+  border-radius: 12px;
+  background: #fff9e8;
+  color: #654b15;
+  line-height: 1.6;
+}
+
+.supportNotice p {
+  margin: 6px 0 0;
+}
+
+.supportWarning {
+  display: block;
+  margin-top: 6px;
+  color: #8a5c12;
+  white-space: normal;
+}
 .intro {
   display: grid;
   gap: var(--space-2);

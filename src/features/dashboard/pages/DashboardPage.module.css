@@ -1250,3 +1250,8 @@ tr[data-soon] .weeks i[data-on] {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.currentSettings {
+  display: block;
+  margin-top: 4px;
+}

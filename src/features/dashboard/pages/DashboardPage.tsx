@@ -1,4 +1,8 @@
 import { errorText } from '../../../shared/api/client'
+import {
+  type CurrentSettings,
+  isUnsupportedModelPeriod,
+} from '../../../shared/lib/modelSupport'
 import { FailedUploadsNotice } from '../../upload/components/UploadHistory'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -151,7 +155,12 @@ export type DashboardData = {
     leadTime: number | null
     shift?: DemandShift | null
   }>
-  unavailableItems: Array<{ id?: string; name: string; reason: string }>
+  unavailableItems: Array<{
+    id?: string
+    name: string
+    reason: string
+    currentSettings?: CurrentSettings | null
+  }>
   excludedItems: Array<{
     id?: string
     name: string
@@ -355,7 +364,13 @@ function slashDay(date: string) {
 function NaReason({
   item,
 }: {
-  item: { kind: 'na' | 'ex'; reason: string; date?: string }
+  item: {
+    kind: 'na' | 'ex'
+    name: string
+    reason: string
+    date?: string
+    currentSettings?: CurrentSettings | null
+  }
 }) {
   const mismatch = item.kind === 'ex' ? inventoryMismatch(item.reason) : null
   const date = item.date ? `${slashDay(item.date)} ` : ''
@@ -364,12 +379,35 @@ function NaReason({
     : item.kind === 'ex'
       ? `${date}재고 숫자가 안 맞아요`
       : calculationReason(item.reason)
+  const unsupported =
+    item.kind === 'na' && isUnsupportedModelPeriod(item.reason)
   return (
     <small
       className={styles.naReason}
       title={mismatch ? `${mismatch.explain} ${mismatch.todo}` : undefined}
     >
       {text}
+      {unsupported && (
+        <>
+          {item.currentSettings && (
+            <span className={styles.currentSettings}>
+              현재 입고 조건: 리드타임{' '}
+              {item.currentSettings.leadTimeDays ?? '미입력'}
+              {item.currentSettings.leadTimeDays == null ? '' : '일'} · 입고
+              주기 {item.currentSettings.reviewCycleDays ?? '미입력'}
+              {item.currentSettings.reviewCycleDays == null ? '' : '일'}
+            </span>
+          )}
+          <Link
+            className={styles.naLink}
+            onClick={(event) => event.stopPropagation()}
+            to={`/settings?q=${encodeURIComponent(item.name)}`}
+            aria-label={`${item.name} 입고 조건 확인`}
+          >
+            입고 조건 확인 →
+          </Link>
+        </>
+      )}
       {item.kind === 'ex' && (
         <Link
           className={styles.naLink}
@@ -668,7 +706,7 @@ export function DashboardPage() {
   }
   // 두 줄로 넘어가도 "·"가 줄 끝에 남지 않게 덩어리째 끊는다
   const naParts = [
-    data.summary.unavailable > 0 && `기록 부족 ${data.summary.unavailable}`,
+    data.summary.unavailable > 0 && `계산 불가 ${data.summary.unavailable}`,
     data.summary.excluded > 0 && `재고 불일치 ${data.summary.excluded}`,
   ].filter(Boolean) as string[]
   const naNote =
