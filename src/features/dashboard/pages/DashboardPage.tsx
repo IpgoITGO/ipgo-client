@@ -219,6 +219,8 @@ function SummaryCard({
       aria-controls="dashboard-list"
       aria-selected={selected}
       className={styles.box}
+      // 네 자리 숫자(1,000개~)는 조금 작게 해서 이름이 두 줄로 밀리지 않게
+      data-long={value >= 1000 || undefined}
       data-state={state}
       id={`dashboard-tab-${tab}`}
       onClick={onSelect}
@@ -664,13 +666,23 @@ export function DashboardPage() {
       data.summary.unavailable +
       data.summary.excluded,
   }
+  // 두 줄로 넘어가도 "·"가 줄 끝에 남지 않게 덩어리째 끊는다
+  const naParts = [
+    data.summary.unavailable > 0 && `기록 부족 ${data.summary.unavailable}`,
+    data.summary.excluded > 0 && `재고 불일치 ${data.summary.excluded}`,
+  ].filter(Boolean) as string[]
   const naNote =
-    [
-      data.summary.unavailable > 0 && `기록 부족 ${data.summary.unavailable}`,
-      data.summary.excluded > 0 && `재고 불일치 ${data.summary.excluded}`,
-    ]
-      .filter(Boolean)
-      .join(' · ') || '계산 못 한 상품 없음'
+    naParts.length === 0
+      ? '계산 못 한 상품 없음'
+      : naParts.map((part, index) => (
+          <Fragment key={part}>
+            {index > 0 && ' '}
+            <span className={styles.notePart}>
+              {index > 0 && '· '}
+              {part}
+            </span>
+          </Fragment>
+        ))
 
   // 발주 목록: 고른 상품의 수량·사입비 합계와 엑셀(CSV) 받기
   const pickedItems = items.filter((item) => picked.has(item.id))
