@@ -68,7 +68,8 @@ describe('상품 상세 유통기한 표시(#434)', () => {
       await screen.findByRole('button', { name: /유통기한 지남 · 6개/ }),
     ).toHaveAttribute('aria-expanded', 'true')
     const panel = screen.getByRole('dialog', { name: '유통기한 묶음' })
-    expect(panel).toHaveTextContent('지남 1묶음 · 6개, 임박 1묶음 · 3개')
+    // 요약 한 줄은 이름 옆 표시와 겹쳐서 없다
+    expect(panel).not.toHaveTextContent('묶음 ·')
     const rows = within(panel).getAllByRole('row').slice(1)
     // 남은 개수 0인 묶음은 빼고, 지남 → 임박 → 정상
     expect(rows.map((row) => row.textContent)).toEqual([

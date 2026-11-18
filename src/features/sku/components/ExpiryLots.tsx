@@ -5,6 +5,7 @@ import type { ExpiryLot } from '../../expiry/model/expiryApi'
 import styles from './ExpiryLots.module.css'
 
 // #434 상품 이름 옆 유통기한 표시(지났거나 임박한 묶음이 있을 때만). 누르면 묶음별 유통기한·입고일·남은 개수·상태를 급한 순서로.
+// 요약 한 줄은 이름 옆 표시와 같은 말이라 넣지 않는다(11/18).
 // 알림 "보기"로 오면(?expiry=날짜) 처음부터 열고 그 묶음 줄을 한 번 짚는다.
 export function ExpiryLots({
   productId,
@@ -47,12 +48,6 @@ export function ExpiryLots({
 
   const urgent = expired.length > 0 ? expired : imminent
   const label = `유통기한 ${expired.length > 0 ? '지남' : '임박'} · ${qty(urgent)}개`
-  const summary = [
-    expired.length > 0 && `지남 ${expired.length}묶음 · ${qty(expired)}개`,
-    imminent.length > 0 && `임박 ${imminent.length}묶음 · ${qty(imminent)}개`,
-  ]
-    .filter(Boolean)
-    .join(', ')
 
   return (
     <div className={styles.wrap} ref={box}>
@@ -85,7 +80,6 @@ export function ExpiryLots({
             ×
           </button>
           <h2>유통기한 묶음</h2>
-          <p className={styles.summary}>{summary} · 급한 순서</p>
           <table>
             <thead>
               <tr>
