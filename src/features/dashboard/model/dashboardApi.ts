@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import type { CurrentSettings } from '../../../shared/lib/modelSupport'
 import { apiRequest } from '../../../shared/api/client'
-import { getUploadResult } from '../../upload/model/uploadApi'
+import { getUploadPeriods, getUploadResult } from '../../upload/model/uploadApi'
 import type { DashboardData } from '../pages/DashboardPage'
 
 /** 판매 급변(ipgo-server #193 요청 중). 최근 7일 하루 평균이 그 전 28일보다 크게 늘면 UP, 급증이 끝나 권장량이 크게 줄면 DOWN. 오기 전엔 없다 */
@@ -90,6 +90,7 @@ export function monthDay(iso: string | null) {
 export function toDashboardData(
   raw: ReplenishmentNeeds,
   uploadStatus?: DashboardData['uploadStatus'],
+  hasCompletedPeriod = false,
 ): DashboardData {
   return {
     runId: raw.runId,
@@ -109,7 +110,9 @@ export function toDashboardData(
     // 실패했거나 아직 처리 중인 업로드로 입고 조건 화면에 보내면 상품이 없어 막힌다.
     hasUpload:
       raw.latestUploadId !== null &&
-      (uploadStatus === undefined || uploadStatus === 'DONE'),
+      (hasCompletedPeriod ||
+        uploadStatus === undefined ||
+        uploadStatus === 'DONE'),
     latestUploadId: raw.latestUploadId,
     uploadStatus,
     summary: {
@@ -173,7 +176,19 @@ export async function getDashboard() {
       uploadStatus = undefined
     }
   }
-  return toDashboardData(raw, uploadStatus)
+  let hasCompletedPeriod = false
+  if (uploadStatus === 'FAILED' || uploadStatus === 'PROCESSING') {
+    // 최근 파일만 실패하거나 진행 중이어도 다른 기간의 검산은 끝났을 수 있다.
+    try {
+      const { items, latestUploadId } = await getUploadPeriods()
+      hasCompletedPeriod =
+        latestUploadId === raw.latestUploadId &&
+        items.some((item) => item.status === 'DONE')
+    } catch {
+      // 다른 완료 자료를 확인하지 못하면 최근 파일의 상태를 유지한다.
+    }
+  }
+  return toDashboardData(raw, uploadStatus, hasCompletedPeriod)
 }
 
 // 이 상품의 판매 급변(대시보드와 같은 계산 결과). 상품 상세 팝업·시나리오 카드가 쓴다

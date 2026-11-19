@@ -44,6 +44,8 @@ type Conditions = {
   orderUnitQty: number
 }
 
+type ProductOverride = Partial<Conditions> & { unitCost?: number }
+
 function sendJson(method: string, body: unknown): RequestInit {
   return {
     method,
@@ -74,9 +76,12 @@ export async function getProductSettings() {
   }
 }
 
-// S2 기본값 저장. recalculate면 값이 같아도 계산을 시작한다.
+// S2 기본값과 바뀐 상품 조건을 함께 저장한다. recalculate면 값이 같아도 계산을 시작한다.
 export function saveDefaultSettings(
-  request: Conditions & { recalculate: boolean },
+  request: Conditions & {
+    recalculate: boolean
+    productOverrides?: (ProductOverride & { productId: number })[]
+  },
 ) {
   return apiRequest<{ saved: boolean; runId: number | null }>(
     '/replenishment-settings',
@@ -87,7 +92,7 @@ export function saveDefaultSettings(
 // S3 상품별 입고 조건. 세 칸은 보낸 값으로 모두 바뀌고, unitCost는 보낸 경우에만 바뀐다.
 export function saveProductSettings(
   productId: number,
-  request: Partial<Conditions> & { unitCost?: number },
+  request: ProductOverride,
 ) {
   return apiRequest<{ saved: boolean; runId: number | null }>(
     `/products/${productId}/replenishment-settings`,

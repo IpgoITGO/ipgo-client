@@ -1,6 +1,9 @@
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
+import { server } from '../../../mocks/server'
 import {
+  getDashboard,
   type ReplenishmentNeeds,
   shiftTimes,
   toDashboardData,
@@ -39,6 +42,44 @@ const base: ReplenishmentNeeds = {
   ],
   excluded: [],
 }
+
+describe('getDashboard 업로드 상태', () => {
+  it.each([
+    ['DONE', true],
+    ['FAILED', false],
+  ] as const)(
+    '최근 파일이 실패했을 때 다른 기간의 %s 상태를 확인한다',
+    async (status, hasUpload) => {
+      server.use(
+        http.get('/api/dashboard/replenishment-needs', () =>
+          HttpResponse.json({
+            ...base,
+            asOfDate: null,
+            resultStatus: null,
+            runId: null,
+          }),
+        ),
+        http.get('/api/uploads/12', () =>
+          HttpResponse.json({ status: 'FAILED' }),
+        ),
+        http.get('/api/uploads/periods', () =>
+          HttpResponse.json({
+            latestUploadId: 12,
+            items: [
+              { uploadId: 11, status },
+              { uploadId: 12, status: 'FAILED' },
+            ],
+          }),
+        ),
+      )
+      expect(await getDashboard()).toMatchObject({
+        hasUpload,
+        latestUploadId: 12,
+        uploadStatus: 'FAILED',
+      })
+    },
+  )
+})
 
 describe('toDashboardData (서버 D1 → 화면 값)', () => {
   it('날짜·개수·상품 줄을 화면 모양으로 옮긴다', () => {

@@ -1153,30 +1153,30 @@ export function DashboardPage() {
       {noResult ? (
         <AsyncState
           description={
-            data.uploadStatus === 'FAILED'
-              ? '마지막으로 올린 수불부를 처리하지 못했어요. 파일을 확인하고 다시 올려 주세요.'
-              : data.uploadStatus === 'PROCESSING'
-                ? '올린 수불부를 확인하고 있어요. 끝나면 입고 조건을 확인할 수 있어요.'
-                : data.hasUpload
-                  ? '입고 조건을 확인하고 계산하면 권장 입고량이 나와요.'
+            data.hasUpload
+              ? '입고 조건을 확인하고 계산하면 권장 입고량이 나와요.'
+              : data.uploadStatus === 'FAILED'
+                ? '마지막으로 올린 수불부를 처리하지 못했어요. 파일을 확인하고 다시 올려 주세요.'
+                : data.uploadStatus === 'PROCESSING'
+                  ? '올린 수불부를 확인하고 있어요. 끝나면 입고 조건을 확인할 수 있어요.'
                   : '수불부를 올리고 입고 조건을 확인하면 권장 입고량이 나와요.'
           }
           onRetry={() =>
             navigate(
-              data.uploadStatus === 'PROCESSING'
-                ? `/upload/${data.latestUploadId}/result`
-                : data.hasUpload
-                  ? '/settings'
+              data.hasUpload
+                ? '/settings'
+                : data.uploadStatus === 'PROCESSING'
+                  ? `/upload/${data.latestUploadId}/result`
                   : '/upload',
             )
           }
           retryLabel={
-            data.uploadStatus === 'FAILED'
-              ? '수불부 다시 올리기'
-              : data.uploadStatus === 'PROCESSING'
-                ? '확인 중인 업로드 보기'
-                : data.hasUpload
-                  ? '입고 조건 확인하기'
+            data.hasUpload
+              ? '입고 조건 확인하기'
+              : data.uploadStatus === 'FAILED'
+                ? '수불부 다시 올리기'
+                : data.uploadStatus === 'PROCESSING'
+                  ? '확인 중인 업로드 보기'
                   : '수불부 업로드'
           }
           primaryAction

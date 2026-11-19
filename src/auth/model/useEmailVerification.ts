@@ -98,6 +98,13 @@ export function useEmailVerification(email: string) {
     check,
     send: () => sendCode(email),
     confirm,
+    invalidateToken: (token: string) => {
+      setState((previous) =>
+        previous?.email === email && previous.token === token
+          ? { email, step: 'available' }
+          : previous,
+      )
+    },
   }
 }
 

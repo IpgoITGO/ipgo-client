@@ -150,6 +150,7 @@ export function SignUpPage() {
   // 처음 받기와 다시 보내기가 같은 일을 한다
   const sendCode = useActionLock(async () => {
     setCode('')
+    setSubmitError(null)
     await verification.send()
   })
   const confirmCode = useActionLock(async () => {
@@ -186,6 +187,16 @@ export function SignUpPage() {
       })
       navigate('/login', { replace: true, state: { signedUp: values.email } })
     } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.code === 'INVALID_VERIFICATION_TOKEN'
+      ) {
+        verification.invalidateToken(verification.token)
+        setCode('')
+        setPage(2)
+        setSubmitError(messageOf(error))
+        return
+      }
       if (
         error instanceof ApiError &&
         error.code === 'INVALID_INPUT' &&

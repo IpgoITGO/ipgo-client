@@ -72,6 +72,29 @@ afterEach(() => {
 })
 
 describe('SignUpPage', () => {
+  it('가입 인증 토큰이 거절되면 입력을 유지하고 같은 이메일로 재인증할 수 있다', async () => {
+    server.use(
+      http.post('/api/auth/signup', () =>
+        HttpResponse.json(
+          { code: 'INVALID_VERIFICATION_TOKEN' },
+          { status: 400 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSignUp()
+    await goToPassword(user)
+    await fillPassword(user)
+    await user.click(screen.getByRole('button', { name: '가입하기' }))
+    expect(await screen.findByLabelText('이메일')).toHaveValue(newEmail)
+    expect(screen.getByText(/이메일 인증이 만료되었거나/)).toBeInTheDocument()
+    expect(screen.queryByText('인증을 마쳤어요.')).not.toBeInTheDocument()
+    const send = screen.getByRole('button', { name: '인증 코드 받기' })
+    expect(send).toBeEnabled()
+    await user.click(send)
+    expect(await screen.findByLabelText('인증 코드')).toBeInTheDocument()
+  })
+
   it('틀린 코드나 시간 초과 뒤에도 다시 보내기를 눌러 새 타이머를 시작할 수 있다', async () => {
     const user = userEvent.setup()
     renderSignUp()

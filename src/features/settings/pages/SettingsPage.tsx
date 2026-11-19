@@ -38,7 +38,6 @@ import {
   getDefaultSettings,
   getProductSettings,
   saveDefaultSettings,
-  saveProductSettings,
   setProductActive,
 } from '../model/inboundSettingsApi'
 import { ExpiryDaysField } from '../components/ExpiryDaysField'
@@ -461,8 +460,8 @@ export function SettingsPage() {
     )
     let runId: number | null = null
     try {
-      // 바꾼 상품만 먼저 저장하고, 마지막에 기본값을 저장하면서 계산을 시작한다.
-      for (const item of values.products) {
+      // 바꾼 상품과 기본값을 함께 보내 최종 적용 값으로 한 번만 저장하고 계산한다.
+      const productOverrides = values.products.flatMap((item) => {
         const old = before.get(item.productId)
         const changedFields = PRODUCT_FIELDS.filter(
           ({ field }) =>
@@ -476,26 +475,33 @@ export function SettingsPage() {
         const reverted = (old?.overridden ?? []).some(
           (field) => !item.overridden.includes(field),
         )
-        if (changedFields.length === 0 && !costChanged && !reverted) continue
-        // S3는 보낸 칸으로 교체한다. 지금 바꾼 칸만 보내고, 빠진 칸은 기본값을 따른다.
+        if (changedFields.length === 0 && !costChanged && !reverted) return []
+        // 보낸 상품의 모든 명시 값을 유지하고, 빠진 칸은 기본값을 따른다.
         const explicit = new Set(item.overridden)
-        const saved = await saveProductSettings(item.productId, {
-          ...(explicit.has('leadTime') ? { leadTimeDays: item.leadTime } : {}),
-          ...(explicit.has('orderCycle') && item.orderCycle != null
-            ? { reviewCycleDays: item.orderCycle }
-            : {}),
-          ...(explicit.has('inboundUnit')
-            ? { orderUnitQty: item.inboundUnit }
-            : {}),
-          ...(costChanged && item.cost !== null ? { unitCost: item.cost } : {}),
-        })
-        trackRun(saved.runId)
-      }
+        return [
+          {
+            productId: item.productId,
+            ...(explicit.has('leadTime')
+              ? { leadTimeDays: item.leadTime }
+              : {}),
+            ...(explicit.has('orderCycle') && item.orderCycle != null
+              ? { reviewCycleDays: item.orderCycle }
+              : {}),
+            ...(explicit.has('inboundUnit')
+              ? { orderUnitQty: item.inboundUnit }
+              : {}),
+            ...(costChanged && item.cost !== null
+              ? { unitCost: item.cost }
+              : {}),
+          },
+        ]
+      })
       const saved = await saveDefaultSettings({
         leadTimeDays: values.defaults.leadTime,
         reviewCycleDays: values.defaults.orderCycle,
         orderUnitQty: values.defaults.inboundUnit,
         recalculate: true,
+        ...(productOverrides.length > 0 ? { productOverrides } : {}),
       })
       runId = saved.runId
       trackRun(saved.runId)
