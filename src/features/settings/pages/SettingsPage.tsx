@@ -535,16 +535,10 @@ export function SettingsPage() {
         새 모델은 {target}일만 저장돼요 ·{' '}
         <button
           className={styles.modelFix}
-          onClick={() => {
-            setValue(`defaults.${field}`, target, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-            setFocus(`defaults.${field}`)
-          }}
+          onClick={() => setFocus(`defaults.${field}`)}
           type="button"
         >
-          {target}일로 바꾸기
+          입력란으로 이동
         </button>
       </>
     )
@@ -615,7 +609,7 @@ export function SettingsPage() {
             </strong>
             <span>
               상품별 조건이 다르면 그 상품 권장량만 비고, 기본값이 다르면
-              저장되지 않아요.
+              저장되지 않아요. 계산을 위해 실제 입고 조건을 바꾸지는 마세요.
             </span>
           </aside>
         )}
@@ -650,7 +644,7 @@ export function SettingsPage() {
             </Button>
           </div>
           <div className={styles.defaultGrid}>
-            {/* 오류 줄에 "N일로 바꾸기" 버튼이 들어가 label 대신 칸(div)으로 둔다 */}
+            {/* 오류 줄에 입력란 이동 버튼이 들어가 label 대신 div를 쓴다. */}
             <div className={styles.cell}>
               <span>리드타임</span>
               <div>

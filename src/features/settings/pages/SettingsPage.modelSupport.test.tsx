@@ -132,16 +132,19 @@ describe('모델 지원 조건 안내', () => {
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
     expect(lead).toHaveAttribute('aria-invalid', 'true')
     expect(lead).toHaveAccessibleDescription(
-      '새 모델은 5일만 저장돼요 · 5일로 바꾸기',
+      '새 모델은 5일만 저장돼요 · 입력란으로 이동',
     )
     // 다른 틀린 값으로 바꿔도 남는다
     await user.clear(lead)
     await user.type(lead, '7')
     expect(lead).toHaveAttribute('aria-invalid', 'true')
-    // "5일로 바꾸기"를 누르면 값이 맞춰지고 원래 설명으로 돌아간다
-    await user.click(screen.getByRole('button', { name: '5일로 바꾸기' }))
-    expect(lead).toHaveDisplayValue('5')
+    // 복구 동작은 포커스만 옮기고 실제 입고값을 바꾸지 않는다.
+    await user.click(screen.getByRole('button', { name: '입력란으로 이동' }))
     expect(lead).toHaveFocus()
+    expect(lead).toHaveDisplayValue('7')
+    expect(lead).toHaveAttribute('aria-invalid', 'true')
+    await user.clear(lead)
+    await user.type(lead, '5')
     expect(lead).not.toHaveAttribute('aria-invalid')
     expect(lead).toHaveAccessibleDescription(/발주부터 입고 도착까지/)
   })

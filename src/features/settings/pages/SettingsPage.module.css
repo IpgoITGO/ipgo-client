@@ -189,7 +189,7 @@
   color: var(--color-danger);
 }
 
-/* 저장 막힘 오류 줄의 "N일로 바꾸기" — 글자 버튼이라 줄 높이를 늘리지 않는다 */
+/* 저장 막힘 오류 줄의 "입력란으로 이동" 버튼 */
 .modelFix {
   padding: 0;
   color: inherit;
@@ -959,7 +959,7 @@
 }
 
 /* 새 모델 안내가 있으면 좁은 화면에서 리드타임·입고 주기 설명 줄을 두 줄 자리로 잡아 둔다.
-   저장이 막혀 오류 줄("새 모델은 N일만 저장돼요 · N일로 바꾸기")로 바뀌어도 칸 높이가 그대로다(PR #445). */
+   저장이 막혀 오류 줄로 바뀌어도 칸 높이가 그대로다(PR #445). */
 @media (max-width: 900px) {
   .defaultGrid .cell > small.modelNote {
     min-height: 34px;
