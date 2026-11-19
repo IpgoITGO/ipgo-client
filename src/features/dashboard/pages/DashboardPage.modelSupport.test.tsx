@@ -21,9 +21,13 @@ beforeEach(async () => {
 })
 
 describe('모델 미지원 상품의 다음 행동', () => {
-  it.each([true, false])(
-    '현재 설정 제공 여부(%s)와 관계없이 사유와 설정 이동을 보여 준다',
-    async (includeSettings) => {
+  it.each([
+    { includeSettings: true, mixed: false },
+    { includeSettings: true, mixed: true },
+    { includeSettings: false, mixed: true },
+  ])(
+    '설정 제공($includeSettings)·사유 혼합($mixed)에 맞게 요약과 설정 이동을 보여 준다',
+    async ({ includeSettings, mixed }) => {
       server.use(
         http.get('/api/dashboard/replenishment-needs', () =>
           HttpResponse.json({
@@ -38,7 +42,7 @@ describe('모델 미지원 상품의 다음 행동', () => {
             summary: {
               needCount: 0,
               notNeededCount: 1,
-              notCalculableCount: 2,
+              notCalculableCount: mixed ? 2 : 1,
               excludedCount: 0,
             },
             items: [],
@@ -67,11 +71,15 @@ describe('모델 미지원 상품의 다음 행동', () => {
                     }
                   : {}),
               },
-              {
-                productId: 3,
-                skuName: '기록 부족 상품',
-                reason: '최근 28일 중 판매한 날이 3일로 7일보다 적어요',
-              },
+              ...(mixed
+                ? [
+                    {
+                      productId: 3,
+                      skuName: '기록 부족 상품',
+                      reason: '최근 28일 중 판매한 날이 3일로 7일보다 적어요',
+                    },
+                  ]
+                : []),
             ],
             excluded: [],
           }),
@@ -142,7 +150,18 @@ describe('모델 미지원 상품의 다음 행동', () => {
       expect(
         screen.queryByRole('link', { name: '기록 부족 상품 입고 조건 확인' }),
       ).toBeNull()
-      expect(screen.getByText(/판매 기록이 3일 쌓였어요/)).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          mixed
+            ? '모델 지원 조건 등으로 계산하지 못했어요. 상품별 사유를 확인해 주세요.'
+            : '현재 입고 조건이 모델 지원 범위 밖이라 계산하지 못했어요.',
+        ),
+      ).toBeVisible()
+      expect(
+        screen.queryByText(/재고 숫자가 맞지 않아/),
+      ).not.toBeInTheDocument()
+      if (mixed)
+        expect(screen.getByText(/판매 기록이 3일 쌓였어요/)).toBeInTheDocument()
       await userEvent.setup().click(link)
       const lead = await screen.findByLabelText('기간이 다른 상품 leadTime')
       expect(lead).toBeVisible()
