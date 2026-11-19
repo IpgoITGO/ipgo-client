@@ -61,30 +61,30 @@ describe('모델 지원 조건 안내', () => {
     expect(
       await screen.findByRole('complementary', { name: '예측 모델 지원 조건' }),
     ).toHaveTextContent('리드타임 5일 · 입고 주기 14일')
-    expect(
-      screen.getByText(/현재 사용 중인 상품 1개의 입고 조건/),
-    ).toHaveTextContent('상품 1개')
+    // 맞지 않는 상품 수는 표 위 "모델 밖" 칩으로
+    expect(screen.getByRole('button', { name: /모델 밖/ })).toHaveTextContent(
+      '모델 밖1',
+    )
     const supported = screen.getByLabelText('지원 상품 leadTime').closest('tr')!
-    expect(supported).not.toHaveTextContent('모델 미지원')
+    expect(supported).not.toHaveTextContent('모델 밖')
     const input = screen.getByLabelText('미지원 상품 leadTime')
     expect(input).toHaveDisplayValue('6')
     expect(screen.getByLabelText('미지원 상품 orderCycle')).toHaveDisplayValue(
       '13',
     )
     const row = input.closest('tr')!
-    expect(within(row).getByText(/모델 미지원/)).toHaveTextContent(
-      '리드타임 6일 · 입고 주기 13일',
-    )
+    // 행에는 숫자를 되풀이하지 않는 딱지 하나
+    expect(within(row).getByText('모델 밖')).toBeInTheDocument()
     const user = userEvent.setup()
     await user.clear(input)
     await user.type(input, '5')
     const cycle = screen.getByLabelText('미지원 상품 orderCycle')
     await user.clear(cycle)
     await user.type(cycle, '14')
-    expect(within(row).queryByText(/모델 미지원/)).toBeNull()
-    expect(
-      screen.queryByText(/현재 사용 중인 상품 .*개의 입고 조건/),
-    ).toBeNull()
+    expect(within(row).queryByText('모델 밖')).toBeNull()
+    expect(screen.getByRole('button', { name: /모델 밖/ })).toHaveTextContent(
+      '모델 밖0',
+    )
   })
 
   it.each([null, undefined])(
@@ -95,17 +95,23 @@ describe('모델 지원 조건 안내', () => {
       expect(
         screen.queryByRole('complementary', { name: '예측 모델 지원 조건' }),
       ).toBeNull()
-      expect(screen.queryByText(/모델 미지원/)).toBeNull()
+      expect(screen.queryByText(/모델 밖/)).toBeNull()
       expect(screen.getByLabelText('기본 리드타임')).toHaveDisplayValue('6')
     },
   )
 
-  it('저장할 수 없는 기본값을 사전에 알리고 기존 실제 값은 바꾸지 않는다', async () => {
+  it('저장할 수 없는 기본값은 미리 경고하지 않고, 누를 때 토스트로 알리고 그 칸으로 보낸다', async () => {
     setup(support, 6)
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '기본값이 모델 지원 조건과 달라 저장할 수 없어요',
-    )
+    await screen.findByLabelText('미지원 상품 leadTime')
+    expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByLabelText('기본 리드타임')).toHaveDisplayValue('6')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '기본값이 새 모델 조건과 달라 저장하지 않았어요',
+    )
+    await user.click(screen.getByRole('button', { name: '고치러 가기' }))
+    expect(screen.getByLabelText('기본 리드타임')).toHaveFocus()
   })
   it('미지원 기본값이면 상품별 PUT도 시작하지 않는다', async () => {
     let writes = 0
@@ -126,9 +132,7 @@ describe('모델 지원 조건 안내', () => {
     await user.type(input, '7')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     expect(
-      await screen.findByText(
-        '기본값이 모델 지원 조건과 달라 저장하지 않았어요. 실제 입고 조건을 확인해 주세요.',
-      ),
+      await screen.findByText('기본값이 새 모델 조건과 달라 저장하지 않았어요'),
     ).toBeInTheDocument()
     expect(writes).toBe(0)
     expect(input).toHaveDisplayValue('7')

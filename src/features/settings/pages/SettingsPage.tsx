@@ -20,11 +20,15 @@ import { SearchInput } from '../../../shared/ui/SearchInput/SearchInput'
 import { z } from 'zod'
 
 import { ApiError, errorText } from '../../../shared/api/client'
-import { unsupportedModelPeriod } from '../../../shared/lib/modelSupport'
+import {
+  type ModelSupport,
+  unsupportedModelPeriod,
+} from '../../../shared/lib/modelSupport'
 import { useCalculation } from '../../../shared/api/calculationContext'
 import { AsyncState } from '../../../shared/ui/AsyncState/AsyncState'
 import { Button } from '../../../shared/ui/Button/Button'
 import { Modal } from '../../../shared/ui/Modal/Modal'
+import { Toast } from '../../../shared/ui/Toast/Toast'
 import { LockedButton } from '../../billing/components/LockedButton'
 import { useCalcLock } from '../../billing/model/useCalcLock'
 import { PurchaseOrdersSection } from '../components/PurchaseOrdersSection'
@@ -109,11 +113,11 @@ const BULK_HINT: Record<ProductField, string> = {
   orderCycle: '주기',
   inboundUnit: '단위',
 }
-type RowFilter = 'all' | 'changed' | 'noCost' | 'off'
+type RowFilter = 'all' | 'changed' | 'noCost' | 'off' | 'model'
 type Row = SettingsValues['products'][number]
 const ROW_FILTERS: Record<
   RowFilter,
-  { label: string; test: (row: Row) => boolean }
+  { label: string; test: (row: Row, support?: ModelSupport | null) => boolean }
 > = {
   all: { label: '전체', test: () => true },
   changed: { label: '바꾼 상품', test: (row) => row.overridden.length > 0 },
@@ -122,6 +126,13 @@ const ROW_FILTERS: Record<
     test: (row) => row.cost == null || !Number.isFinite(row.cost),
   },
   off: { label: '꺼진 상품', test: (row) => !row.isActive },
+  // 새 모델(LGBM19)이 계산하지 않는 리드타임·입고 주기. 모델 정보가 없는 응답이면 칩도 안 보인다.
+  model: {
+    label: '모델 밖',
+    test: (row, support) =>
+      row.isActive &&
+      unsupportedModelPeriod(support, row.leadTime, row.orderCycle),
+  },
 }
 
 // 사용 스위치를 누른 뒤 "저장됨" 안내를 보여 주는 시간
@@ -211,7 +222,12 @@ export function SettingsPage() {
   const [shipping, setShipping] = useState(false)
   // 사용 스위치를 누르는 중인 상품, 저장·스위치 실패 안내
   const [activeBusy, setActiveBusy] = useState<number | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  // 저장·스위치 실패는 누른 그때 토스트로 알린다(11/18 "확인하고 계산하기 누르면 그때 떠야지").
+  // fix가 있으면 "고치러 가기"로 그 기본값 칸에 커서를 옮긴다.
+  const [formError, setFormError] = useState<{
+    text: string
+    fix?: 'leadTime' | 'orderCycle'
+  } | null>(null)
   // 표 위 한 줄 안내. 줄마다 글자를 바꾸지 않아 스위치 자리가 움직이지 않는다.
   const [savedNotice, setSavedNotice] = useState('')
   useEffect(() => {
@@ -258,15 +274,6 @@ export function SettingsPage() {
   const products = useWatch({ control, name: 'products' })
   const defaults = useWatch({ control, name: 'defaults' })
   const calculationSupport = query.data?.calculationSupport
-  const unsupportedCount = products.filter(
-    (product) =>
-      product.isActive &&
-      unsupportedModelPeriod(
-        calculationSupport,
-        product.leadTime,
-        product.orderCycle,
-      ),
-  ).length
   const cycleSuggestion = query.data?.cycleSuggestion
   const suggestion = query.data?.suggestion
   const recommended = {
@@ -300,12 +307,12 @@ export function SettingsPage() {
         .map((product, index) => ({ index, product }))
         .filter(
           ({ product }) =>
-            ROW_FILTERS[filter].test(product) &&
+            ROW_FILTERS[filter].test(product, calculationSupport) &&
             `${product.name} ${product.barcode}`
               .toLowerCase()
               .includes(search.toLowerCase()),
         ),
-    [products, search, filter],
+    [products, search, filter, calculationSupport],
   )
   // 한 쪽에 보이는 줄(10·20·30개씩, 11/13). 고르기·붙여 넣기도 보이는 줄 기준
   const { page, size } = readPage(params, filteredProducts.length)
@@ -412,11 +419,12 @@ export function SettingsPage() {
       ])
     } catch (error) {
       setValue(field, !next)
-      setFormError(
-        error instanceof ApiError
-          ? error.message
-          : '사용 여부를 바꾸지 못했어요. 다시 시도해 주세요.',
-      )
+      setFormError({
+        text:
+          error instanceof ApiError
+            ? error.message
+            : '사용 여부를 바꾸지 못했어요. 다시 시도해 주세요.',
+      })
     } finally {
       setActiveBusy(null)
     }
@@ -425,15 +433,20 @@ export function SettingsPage() {
   async function save(values: ConfirmedSettings) {
     if (calculationBusy || values.defaults.orderCycle == null) return
     if (
+      calculationSupport &&
       unsupportedModelPeriod(
         calculationSupport,
         values.defaults.leadTime,
         values.defaults.orderCycle,
       )
     ) {
-      setFormError(
-        '기본값이 모델 지원 조건과 달라 저장하지 않았어요. 실제 입고 조건을 확인해 주세요.',
-      )
+      setFormError({
+        text: '기본값이 새 모델 조건과 달라 저장하지 않았어요',
+        fix:
+          values.defaults.leadTime !== calculationSupport.leadTimeDays
+            ? 'leadTime'
+            : 'orderCycle',
+      })
       return
     }
     setFormError(null)
@@ -484,11 +497,12 @@ export function SettingsPage() {
       trackRun(saved.runId)
       await queryClient.invalidateQueries({ queryKey: ['inbound-settings'] })
     } catch (error) {
-      setFormError(
-        error instanceof ApiError
-          ? error.message
-          : '저장하지 못했어요. 다시 시도해 주세요.',
-      )
+      setFormError({
+        text:
+          error instanceof ApiError
+            ? error.message
+            : '저장하지 못했어요. 다시 시도해 주세요.',
+      })
       return
     }
     // 저장이 끝나면 대시보드로 보내고, 안내는 그 화면에서 토스트로 보여준다.
@@ -560,31 +574,12 @@ export function SettingsPage() {
             className={styles.supportNotice}
             aria-label="예측 모델 지원 조건"
           >
+            {/* 안내는 한 줄(제목 · 설명). 맞지 않는 상품 수는 표 위 "모델 밖" 칩, 저장 막힘은 누를 때 토스트(11/18) */}
             <strong>
-              현재 예측 모델은 리드타임 {calculationSupport.leadTimeDays}일 ·
-              입고 주기 {calculationSupport.reviewCycleDays}일일 때 계산해요.
+              새 예측 모델은 리드타임 {calculationSupport.leadTimeDays}일 · 입고
+              주기 {calculationSupport.reviewCycleDays}일인 상품만 계산해요
             </strong>
-            <p>
-              다른 조건인 상품은 저장해도 권장량이 나오지 않아요. 계산을 위해
-              실제 배송·입고 조건을 바꾸지는 마세요. 입고 단위는 상품에 맞게
-              입력할 수 있어요.
-            </p>
-            {unsupportedCount > 0 && (
-              <p role="status">
-                현재 사용 중인 상품 {unsupportedCount}개의 입고 조건을 이 모델이
-                지원하지 않아요.
-              </p>
-            )}
-            {unsupportedModelPeriod(
-              calculationSupport,
-              defaults?.leadTime,
-              defaults?.orderCycle,
-            ) && (
-              <p role="alert">
-                기본값이 모델 지원 조건과 달라 저장할 수 없어요. 실제 입고
-                조건을 확인해 주세요.
-              </p>
-            )}
+            <span>실제 조건이 다르면 그대로 두세요. 권장량만 비어요.</span>
           </aside>
         )}
 
@@ -701,10 +696,12 @@ export function SettingsPage() {
             <span className={styles.foldSummary} id="product-settings-summary">
               상품 {products.length.toLocaleString()}개 · 바꾼 상품{' '}
               {products
-                .filter(ROW_FILTERS.changed.test)
+                .filter((row) => ROW_FILTERS.changed.test(row))
                 .length.toLocaleString()}
               개 · 원가 빈 상품{' '}
-              {products.filter(ROW_FILTERS.noCost.test).length.toLocaleString()}
+              {products
+                .filter((row) => ROW_FILTERS.noCost.test(row))
+                .length.toLocaleString()}
               개
             </span>
             <svg
@@ -735,21 +732,29 @@ export function SettingsPage() {
               className={styles.filterChips}
               role="group"
             >
-              {(Object.keys(ROW_FILTERS) as RowFilter[]).map((key) => (
-                <button
-                  aria-pressed={filter === key}
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  type="button"
-                >
-                  {ROW_FILTERS[key].label}
-                  <b>
-                    {products
-                      .filter(ROW_FILTERS[key].test)
-                      .length.toLocaleString()}
-                  </b>
-                </button>
-              ))}
+              {(Object.keys(ROW_FILTERS) as RowFilter[])
+                .filter(
+                  (key) =>
+                    key !== 'model' || calculationSupport?.method === 'LGBM19',
+                )
+                .map((key) => (
+                  <button
+                    aria-pressed={filter === key}
+                    data-tone={key === 'model' ? 'warn' : undefined}
+                    key={key}
+                    onClick={() => setFilter(key)}
+                    type="button"
+                  >
+                    {ROW_FILTERS[key].label}
+                    <b>
+                      {products
+                        .filter((row) =>
+                          ROW_FILTERS[key].test(row, calculationSupport),
+                        )
+                        .length.toLocaleString()}
+                    </b>
+                  </button>
+                ))}
             </div>
             <div
               aria-label="고른 상품에 같은 조건 넣기"
@@ -880,26 +885,32 @@ export function SettingsPage() {
                       />
                     </td>
                     <td className={styles.nameCell}>
-                      <strong>{product.name}</strong>
-                      <span>{product.barcode}</span>
-                      {product.isActive &&
-                        unsupportedModelPeriod(
+                      {/* 새 모델이 계산하지 않는 조건이면 이름 옆 딱지 하나. 숫자는 옆 칸 글자색으로(11/18) */}
+                      <span className={styles.nameLine}>
+                        <strong>{product.name}</strong>
+                        {ROW_FILTERS.model.test(
+                          product,
                           calculationSupport,
-                          product.leadTime,
-                          product.orderCycle,
-                        ) && (
-                          <small className={styles.supportWarning}>
-                            모델 미지원 · 리드타임 {product.leadTime}일 · 입고
-                            주기 {product.orderCycle ?? '미입력'}
-                            {product.orderCycle == null ? '' : '일'}
-                          </small>
-                        )}
+                        ) && <em className={styles.modelTag}>모델 밖</em>}
+                      </span>
+                      <span>{product.barcode}</span>
                     </td>
                     {PRODUCT_FIELDS.map(({ field, unit }) => (
                       <td className={styles.numCell} key={field}>
                         <span
                           className={styles.numField}
                           data-changed={product.overridden.includes(field)}
+                          data-model-off={
+                            (product.isActive &&
+                              calculationSupport?.method === 'LGBM19' &&
+                              ((field === 'leadTime' &&
+                                product.leadTime !==
+                                  calculationSupport.leadTimeDays) ||
+                                (field === 'orderCycle' &&
+                                  product.orderCycle !==
+                                    calculationSupport.reviewCycleDays))) ||
+                            undefined
+                          }
                         >
                           <input
                             aria-label={`${product.name} ${field}`}
@@ -1004,11 +1015,6 @@ export function SettingsPage() {
               total={filteredProducts.length}
             />
           )}
-          {formError && (
-            <p className={styles.formError} role="alert">
-              {formError}
-            </p>
-          )}
           {filteredProducts.length === 0 && (
             <p className={styles.empty}>
               {products.length === 0
@@ -1027,6 +1033,22 @@ export function SettingsPage() {
           )}
         </details>
       </form>
+
+      {formError && (
+        <Toast
+          action={
+            formError.fix
+              ? {
+                  label: '고치러 가기',
+                  onClick: () => setFocus(`defaults.${formError.fix!}`),
+                }
+              : undefined
+          }
+          duration={4000}
+          message={formError.text}
+          onClose={() => setFormError(null)}
+        />
+      )}
 
       {/* 발주 팝업에도 form이 있어서, 입고 조건 form 밖에 둔다. form 안에 form이 있으면 저장이 페이지 새로고침이 된다. */}
       <PurchaseOrdersSection />

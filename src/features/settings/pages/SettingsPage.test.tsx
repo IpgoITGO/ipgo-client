@@ -465,9 +465,10 @@ describe('SettingsPage', () => {
     const sw = await screen.findByRole('switch', { name: '덴탈껌 S 10입 사용' })
     await user.click(sw)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '다른 회원의 상품입니다.',
-    )
+    // 실패는 누른 그때 토스트로 알린다(11/18)
+    expect(
+      await screen.findByText('다른 회원의 상품입니다.'),
+    ).toBeInTheDocument()
     expect(sw).toBeChecked()
   })
 
@@ -756,9 +757,10 @@ describe('SettingsPage 단종 상품', () => {
     const sw = screen.getByRole('switch', { name: '케어트릿 120g 사용' })
     await user.click(sw)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '다른 회원의 상품입니다.',
-    )
+    // 실패는 누른 그때 토스트로 알린다(11/18)
+    expect(
+      await screen.findByText('다른 회원의 상품입니다.'),
+    ).toBeInTheDocument()
     expect(sw).toBeChecked()
   })
 

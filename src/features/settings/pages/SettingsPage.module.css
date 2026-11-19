@@ -5,24 +5,63 @@
   gap: var(--space-6);
 }
 
+/* 새 모델 안내: 한 줄 띠(제목 · 설명). 좁으면 설명만 아랫줄로(11/18) */
 .supportNotice {
-  padding: 16px 20px;
-  border: 1px solid #e7c97d;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  font-size: var(--text-body);
+  background: var(--color-accent-soft);
   border-radius: 12px;
-  background: #fff9e8;
-  color: #654b15;
-  line-height: 1.6;
 }
 
-.supportNotice p {
-  margin: 6px 0 0;
+.supportNotice strong::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: var(--space-2);
+  vertical-align: 2px;
+  background: var(--color-accent-press);
+  border-radius: 50%;
 }
 
-.supportWarning {
-  display: block;
-  margin-top: 6px;
-  color: #8a5c12;
-  white-space: normal;
+.supportNotice span {
+  color: var(--color-text-2);
+  font-size: var(--text-caption);
+}
+
+/* 상품 이름 옆 "모델 밖" 딱지. 긴 이름이면 이름이 줄을 바꾸고 딱지는 끝에 붙는다(딱지 안은 안 끊김) */
+.tableWrap td.nameCell span.nameLine {
+  color: inherit;
+  font-size: inherit;
+}
+
+.tableWrap td.nameCell .nameLine strong {
+  display: inline;
+}
+
+.modelTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  color: #b5462c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: 1px;
+  background: #fdf0ea;
+  border-radius: 999px;
+}
+
+/* 새 모델 조건과 다른 칸은 숫자만 흙빨강 */
+.numField[data-model-off] input {
+  color: #b5462c;
 }
 .intro {
   display: grid;
@@ -401,10 +440,6 @@
 .tableWrap td.numCell small {
   margin-left: auto;
 }
-.formError {
-  margin-top: var(--space-4);
-  color: var(--color-danger);
-}
 @media (prefers-reduced-motion: reduce) {
   .tableWrap td input.switch,
   .tableWrap td input.switch::after {
@@ -772,6 +807,10 @@
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.filterChips button[data-tone='warn'] b {
+  color: #b5462c;
 }
 
 .filterChips button:focus-visible {
