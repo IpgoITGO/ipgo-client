@@ -6,8 +6,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  /* left 50%면 줄 너비가 화면 반쪽에 갇혀 폰에서 한 단어씩 꺾였다 → 글 길이만큼, 화면 안에서 */
+  width: max-content;
+  max-width: calc(100vw - 32px);
   padding: var(--space-5) var(--space-6);
   color: #fff;
+  word-break: keep-all;
   font-size: 1.25rem;
   font-weight: 700;
   background: var(--color-primary);

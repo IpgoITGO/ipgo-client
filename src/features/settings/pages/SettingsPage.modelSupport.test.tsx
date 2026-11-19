@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -104,14 +104,46 @@ describe('모델 지원 조건 안내', () => {
     setup(support, 6)
     await screen.findByLabelText('미지원 상품 leadTime')
     expect(screen.queryByRole('alert')).toBeNull()
+    // 안내 띠는 상품별 조건(권장량만 빔)과 기본값(저장 안 됨)을 나눠 말한다(PR #445 리뷰)
+    expect(
+      screen.getByRole('complementary', { name: '예측 모델 지원 조건' }),
+    ).toHaveTextContent(
+      '상품별 조건이 다르면 그 상품 권장량만 비고, 기본값이 다르면 저장되지 않아요.',
+    )
     expect(screen.getByLabelText('기본 리드타임')).toHaveDisplayValue('6')
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     expect(await screen.findByRole('status')).toHaveTextContent(
-      '기본값이 새 모델 조건과 달라 저장하지 않았어요',
+      '기본값을 저장하지 않았어요',
     )
     await user.click(screen.getByRole('button', { name: '고치러 가기' }))
     expect(screen.getByLabelText('기본 리드타임')).toHaveFocus()
+  })
+
+  it('저장이 막히면 그 기본값 칸에 오류가 남고, 고치면 사라진다(PR #445 리뷰)', async () => {
+    setup(support, 6)
+    await screen.findByLabelText('미지원 상품 leadTime')
+    const lead = screen.getByLabelText('기본 리드타임')
+    expect(lead).not.toHaveAttribute('aria-invalid')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
+    // 토스트가 닫혀도("고치러 가기"를 누르면 닫힘) 칸의 오류는 남는다
+    await user.click(await screen.findByRole('button', { name: '고치러 가기' }))
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    expect(lead).toHaveAttribute('aria-invalid', 'true')
+    expect(lead).toHaveAccessibleDescription(
+      '새 모델은 5일만 저장돼요 · 5일로 바꾸기',
+    )
+    // 다른 틀린 값으로 바꿔도 남는다
+    await user.clear(lead)
+    await user.type(lead, '7')
+    expect(lead).toHaveAttribute('aria-invalid', 'true')
+    // "5일로 바꾸기"를 누르면 값이 맞춰지고 원래 설명으로 돌아간다
+    await user.click(screen.getByRole('button', { name: '5일로 바꾸기' }))
+    expect(lead).toHaveDisplayValue('5')
+    expect(lead).toHaveFocus()
+    expect(lead).not.toHaveAttribute('aria-invalid')
+    expect(lead).toHaveAccessibleDescription(/발주부터 입고 도착까지/)
   })
   it('미지원 기본값이면 상품별 PUT도 시작하지 않는다', async () => {
     let writes = 0
@@ -132,7 +164,7 @@ describe('모델 지원 조건 안내', () => {
     await user.type(input, '7')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     expect(
-      await screen.findByText('기본값이 새 모델 조건과 달라 저장하지 않았어요'),
+      await screen.findByText('기본값을 저장하지 않았어요'),
     ).toBeInTheDocument()
     expect(writes).toBe(0)
     expect(input).toHaveDisplayValue('7')

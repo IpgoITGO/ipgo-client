@@ -228,6 +228,9 @@ export function SettingsPage() {
     text: string
     fix?: 'leadTime' | 'orderCycle'
   } | null>(null)
+  // 기본값이 모델 조건과 달라 저장이 막힌 뒤에만 켠다. 켜진 동안 맞지 않는 기본값 칸은
+  // 설명 줄이 오류로 바뀌어 고칠 때까지 남는다(PR #445 리뷰: 토스트는 4초 뒤 사라져 놓칠 수 있음).
+  const [modelBlocked, setModelBlocked] = useState(false)
   // 표 위 한 줄 안내. 줄마다 글자를 바꾸지 않아 스위치 자리가 움직이지 않는다.
   const [savedNotice, setSavedNotice] = useState('')
   useEffect(() => {
@@ -440,8 +443,9 @@ export function SettingsPage() {
         values.defaults.orderCycle,
       )
     ) {
+      setModelBlocked(true)
       setFormError({
-        text: '기본값이 새 모델 조건과 달라 저장하지 않았어요',
+        text: '기본값을 저장하지 않았어요',
         fix:
           values.defaults.leadTime !== calculationSupport.leadTimeDays
             ? 'leadTime'
@@ -518,6 +522,36 @@ export function SettingsPage() {
     window.setTimeout(goDashboard, SHIP_MS)
   }
 
+  // 저장이 막힌 뒤 아직 모델 조건과 다른 기본값 칸의 오류. 설명 줄 자리에 들어가 칸 크기는 그대로다.
+  function modelError(field: 'leadTime' | 'orderCycle') {
+    const target =
+      field === 'leadTime'
+        ? calculationSupport?.leadTimeDays
+        : calculationSupport?.reviewCycleDays
+    if (!modelBlocked || target == null || defaults?.[field] === target)
+      return null
+    return (
+      <>
+        새 모델은 {target}일만 저장돼요 ·{' '}
+        <button
+          className={styles.modelFix}
+          onClick={() => {
+            setValue(`defaults.${field}`, target, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+            setFocus(`defaults.${field}`)
+          }}
+          type="button"
+        >
+          {target}일로 바꾸기
+        </button>
+      </>
+    )
+  }
+  const leadTimeModelError = modelError('leadTime')
+  const orderCycleModelError = modelError('orderCycle')
+
   if (query.isPending) {
     return (
       <AsyncState
@@ -579,7 +613,10 @@ export function SettingsPage() {
               새 예측 모델은 리드타임 {calculationSupport.leadTimeDays}일 · 입고
               주기 {calculationSupport.reviewCycleDays}일인 상품만 계산해요
             </strong>
-            <span>실제 조건이 다르면 그대로 두세요. 권장량만 비어요.</span>
+            <span>
+              상품별 조건이 다르면 그 상품 권장량만 비고, 기본값이 다르면
+              저장되지 않아요.
+            </span>
           </aside>
         )}
 
@@ -613,10 +650,13 @@ export function SettingsPage() {
             </Button>
           </div>
           <div className={styles.defaultGrid}>
-            <label>
+            {/* 오류 줄에 "N일로 바꾸기" 버튼이 들어가 label 대신 칸(div)으로 둔다 */}
+            <div className={styles.cell}>
               <span>리드타임</span>
               <div>
                 <input
+                  aria-describedby="default-leadtime-note"
+                  aria-invalid={leadTimeModelError ? true : undefined}
                   inputMode="numeric"
                   onInput={digitsOnly}
                   type="text"
@@ -625,11 +665,16 @@ export function SettingsPage() {
                 />
                 <b>일</b>
               </div>
-              <small>
+              <small
+                className={calculationSupport ? styles.modelNote : undefined}
+                id="default-leadtime-note"
+                role={leadTimeModelError ? 'alert' : undefined}
+              >
                 {errors.defaults?.leadTime?.message ??
+                  leadTimeModelError ??
                   `발주부터 입고 도착까지${recommended.leadTime != null ? ` · 추천 ${recommended.leadTime}일` : ''}`}
               </small>
-            </label>
+            </div>
             <div className={styles.cell}>
               <span>입고 주기</span>
               <div
@@ -637,6 +682,8 @@ export function SettingsPage() {
                 onAnimationEnd={() => setCycleFlash(false)}
               >
                 <input
+                  aria-describedby="default-cycle-note"
+                  aria-invalid={orderCycleModelError ? true : undefined}
                   inputMode="numeric"
                   onInput={digitsOnly}
                   type="text"
@@ -647,8 +694,13 @@ export function SettingsPage() {
                 />
                 <b>일</b>
               </div>
-              <small>
+              <small
+                className={calculationSupport ? styles.modelNote : undefined}
+                id="default-cycle-note"
+                role={orderCycleModelError ? 'alert' : undefined}
+              >
                 {errors.defaults?.orderCycle?.message ??
+                  orderCycleModelError ??
                   (recommended.orderCycle != null
                     ? `추천 ${recommended.orderCycle}일${cycleSuggestion ? ` · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} · 상품 ${cycleSuggestion.productCount}개 기준` : ''}`
                     : query.data?.cycleIsFallback
