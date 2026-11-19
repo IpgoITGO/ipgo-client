@@ -688,12 +688,20 @@ export function DashboardPage() {
   }).length
   const shownNeed = items.filter(matches)
   const shownSafe = safeItems.filter(matches)
-  // 계산 못 한 상품: 판매 기록 부족(na) 먼저, 재고 숫자 안 맞음(ex) 다음
+  // 계산 불가(na) 먼저, 계산 제외(ex) 다음
   const reasonItems = [
     ...data.unavailableItems.map((item) => ({ ...item, kind: 'na' as const })),
     ...data.excludedItems.map((item) => ({ ...item, kind: 'ex' as const })),
   ]
   const shownReasons = reasonItems.filter(matches)
+  const isModelPeriodReason = (item: (typeof shownReasons)[number]) =>
+    item.kind === 'na' && isUnsupportedModelPeriod(item.reason)
+  let panelDescription = PANEL_DESCRIPTION[tab]
+  if (tab === 'na' && shownReasons.some(isModelPeriodReason)) {
+    panelDescription = shownReasons.every(isModelPeriodReason)
+      ? '현재 입고 조건이 모델 지원 범위 밖이라 계산하지 못했어요.'
+      : '모델 지원 조건 등으로 계산하지 못했어요. 상품별 사유를 확인해 주세요.'
+  }
   const tabCount: Record<Tab, number> = {
     need: data.summary.needed,
     safe: data.safeItems ? safeItems.length : data.summary.safe,
@@ -1224,7 +1232,7 @@ export function DashboardPage() {
               <p>
                 {sort === 'shift'
                   ? '판매가 갑자기 늘거나 줄어든 상품만 보고 있어요.'
-                  : PANEL_DESCRIPTION[tab]}
+                  : panelDescription}
               </p>
             </div>
             <label className={styles.search}>

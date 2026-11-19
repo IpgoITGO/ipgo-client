@@ -376,6 +376,11 @@ try {
     }
     await page.goto(`${origin}/dashboard?tab=na`)
     await page
+      .getByText('현재 입고 조건이 모델 지원 범위 밖이라 계산하지 못했어요.', {
+        exact: true,
+      })
+      .waitFor()
+    await page
       .getByText('현재 입고 조건: 리드타임 6일 · 입고 주기 13일', {
         exact: true,
       })
