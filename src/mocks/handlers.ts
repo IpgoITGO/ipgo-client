@@ -504,30 +504,89 @@ export const handlers = [
   http.get('/api/replenishment-settings', () => HttpResponse.json(defaults)),
   // S2 기본값 저장: 세 칸 모두 필수, 1 이상 정수. recalculate면 계산을 시작한다
   http.put('/api/replenishment-settings', async ({ request }) => {
-    const body = (await request.json()) as Record<string, number | boolean>
-    for (const field of ['leadTimeDays', 'reviewCycleDays', 'orderUnitQty']) {
+    const body = (await request.json()) as {
+      leadTimeDays: number
+      reviewCycleDays: number
+      orderUnitQty: number
+      recalculate?: boolean
+      productOverrides?: {
+        productId: number
+        leadTimeDays?: number
+        reviewCycleDays?: number
+        orderUnitQty?: number
+        unitCost?: number
+      }[]
+    }
+    const fields = ['leadTimeDays', 'reviewCycleDays', 'orderUnitQty'] as const
+    for (const field of fields) {
       const value = body[field]
       if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
         return invalidField(field)
       }
     }
-    defaults = {
-      confirmed: true,
-      leadTimeDays: body.leadTimeDays as number,
-      reviewCycleDays: body.reviewCycleDays as number,
-      orderUnitQty: body.orderUnitQty as number,
-      reviewCycleSource: 'DEFAULT',
+    const overrides = body.productOverrides ?? []
+    const byId = new Map(overrides.map((item) => [item.productId, item]))
+    if (byId.size !== overrides.length) return invalidField('productOverrides')
+    for (const item of overrides) {
+      if (
+        !mockProducts.some((product) => product.productId === item.productId)
+      ) {
+        return HttpResponse.json(
+          { code: 'NOT_FOUND', message: '상품을 찾을 수 없습니다.' },
+          { status: 404 },
+        )
+      }
+      for (const field of fields) {
+        const value = item[field]
+        if (value != null && (!Number.isInteger(value) || value < 1))
+          return invalidField(field)
+      }
+      if (
+        item.unitCost != null &&
+        (!Number.isInteger(item.unitCost) || item.unitCost < 0)
+      ) {
+        return invalidField('unitCost')
+      }
     }
-    mockProducts.forEach((product) => {
-      for (const field of [
-        'leadTimeDays',
-        'reviewCycleDays',
-        'orderUnitQty',
-      ] as const) {
-        if (!product.overridden.includes(field))
-          product.settings[field] = defaults[field]
+    const nextProducts = mockProducts.map((product) => {
+      const update = byId.get(product.productId)
+      const overridden = update
+        ? fields.filter((field) => update[field] != null)
+        : product.overridden
+      const nextValue = (field: (typeof fields)[number]) => {
+        if (update) return update[field] ?? body[field]
+        return overridden.includes(field)
+          ? product.settings[field]
+          : body[field]
+      }
+      return {
+        ...product,
+        overridden,
+        unitCost: update?.unitCost ?? product.unitCost,
+        settings: {
+          leadTimeDays: nextValue('leadTimeDays'),
+          reviewCycleDays: nextValue('reviewCycleDays'),
+          orderUnitQty: nextValue('orderUnitQty'),
+        },
       }
     })
+    if (
+      body.leadTimeDays + body.reviewCycleDays > 366 ||
+      nextProducts.some(
+        ({ settings }) =>
+          settings.leadTimeDays + settings.reviewCycleDays > 366,
+      )
+    )
+      return invalidField('reviewCycleDays')
+
+    defaults = {
+      confirmed: true,
+      leadTimeDays: body.leadTimeDays,
+      reviewCycleDays: body.reviewCycleDays,
+      orderUnitQty: body.orderUnitQty,
+      reviewCycleSource: 'DEFAULT',
+    }
+    mockProducts = nextProducts
     return HttpResponse.json({
       saved: true,
       runId: body.recalculate ? 31 : null,

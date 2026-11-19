@@ -91,16 +91,13 @@ function fixture(
       }),
     ),
     http.put('/api/replenishment-settings', async ({ request }) => {
-      savedDefaults.push(await request.json())
+      const { productOverrides, ...defaults } = (await request.json()) as {
+        productOverrides?: unknown[]
+      }
+      savedDefaults.push(defaults)
+      savedProducts.push(...(productOverrides ?? []))
       return HttpResponse.json({ saved: true, runId: null })
     }),
-    http.put(
-      '/api/products/321/replenishment-settings',
-      async ({ request }) => {
-        savedProducts.push(await request.json())
-        return HttpResponse.json({ saved: true, runId: null })
-      },
-    ),
   )
   return {
     savedDefaults,
@@ -306,7 +303,7 @@ describe('입고 주기 제안과 상속', () => {
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))
     expect(f.savedProducts).toEqual([])
   })
-  it('상품별 직접 수정과 기존 override만 S3에 저장한다', async () => {
+  it('상품별 직접 수정과 기존 override를 기본값과 함께 저장한다', async () => {
     const f = fixture(7, true)
     const user = userEvent.setup()
     renderSettings()
@@ -316,7 +313,7 @@ describe('입고 주기 제안과 상속', () => {
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() =>
       expect(f.savedProducts).toEqual([
-        { leadTimeDays: 3, reviewCycleDays: 19 },
+        { productId: 321, leadTimeDays: 3, reviewCycleDays: 19 },
       ]),
     )
     expect(f.savedDefaults).toHaveLength(1)
@@ -351,7 +348,7 @@ describe('입고 주기 제안과 상속', () => {
     await user.type(screen.getByLabelText('시험상품 orderCycle'), '7')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))
-    expect(f.savedProducts).toEqual([{ reviewCycleDays: 7 }])
+    expect(f.savedProducts).toEqual([{ productId: 321, reviewCycleDays: 7 }])
   })
   it('상속값 편집을 원래대로 되돌린 뒤 원가만 저장하면 새 override를 만들지 않는다', async () => {
     const f = fixture(7)
@@ -366,6 +363,6 @@ describe('입고 주기 제안과 상속', () => {
     await user.type(screen.getByLabelText('시험상품 원가'), '200')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(f.savedDefaults).toHaveLength(1))
-    expect(f.savedProducts).toEqual([{ unitCost: 200 }])
+    expect(f.savedProducts).toEqual([{ productId: 321, unitCost: 200 }])
   })
 })

@@ -472,25 +472,49 @@ describe('SettingsPage', () => {
     expect(sw).toBeChecked()
   })
 
-  it('바꾼 상품만 저장하고, 마지막에 기본값 저장과 함께 계산을 시작한다', async () => {
+  it('saves changed defaults and an inheriting SKU in one request', async () => {
     const user = userEvent.setup()
-    const calls: string[] = []
-    server.events.on('request:start', ({ request }) => {
-      if (request.method === 'PUT') calls.push(new URL(request.url).pathname)
-    })
+    const combined: unknown[] = []
+    const separate: string[] = []
+    server.use(
+      http.get('/api/replenishment-settings', () =>
+        HttpResponse.json({
+          confirmed: true,
+          leadTimeDays: 5,
+          reviewCycleDays: 200,
+          orderUnitQty: 1,
+          reviewCycleSource: 'DEFAULT',
+        }),
+      ),
+      http.put('/api/products/:id/replenishment-settings', ({ request }) => {
+        separate.push(request.url)
+        return HttpResponse.json({ saved: true, runId: null })
+      }),
+      http.put('/api/replenishment-settings', async ({ request }) => {
+        combined.push(await request.json())
+        return HttpResponse.json({ saved: true, runId: null })
+      }),
+    )
     renderSettings()
-    const field = await screen.findByLabelText('덴탈껌 S 10입 inboundUnit')
-    await user.clear(field)
-    await user.type(field, '6')
-    expect(field).toHaveValue('6')
+    const cycle = await screen.findByLabelText('기본 입고 주기')
+    await user.clear(cycle)
+    await user.type(cycle, '14')
+    const lead = screen.getByLabelText('덴탈껌 S 10입 leadTime')
+    await user.clear(lead)
+    await user.type(lead, '200')
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
 
-    await waitFor(() => expect(calls).toHaveLength(2))
-    expect(calls).toEqual([
-      '/api/products/3/replenishment-settings',
-      '/api/replenishment-settings',
+    await waitFor(() => expect(combined).toHaveLength(1))
+    expect(combined).toEqual([
+      {
+        leadTimeDays: 5,
+        reviewCycleDays: 14,
+        orderUnitQty: 1,
+        recalculate: true,
+        productOverrides: [{ productId: 3, leadTimeDays: 200 }],
+      },
     ])
-    server.events.removeAllListeners()
+    expect(separate).toEqual([])
   })
 })
 
@@ -499,7 +523,10 @@ describe('SettingsPage 표 모양', () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
     server.events.on('request:start', async ({ request }) => {
-      if (request.method === 'PUT' && request.url.includes('/products/')) {
+      if (
+        request.method === 'PUT' &&
+        request.url.endsWith('/api/replenishment-settings')
+      ) {
         sent.push(await request.clone().json())
       }
     })
@@ -519,7 +546,9 @@ describe('SettingsPage 표 모양', () => {
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
 
     await waitFor(() => expect(sent).toHaveLength(1))
-    expect(sent[0]).toMatchObject({ unitCost: 25000 })
+    expect(sent[0]).toMatchObject({
+      productOverrides: [{ productId: 3, unitCost: 25000 }],
+    })
     server.events.removeAllListeners()
   })
 
@@ -662,7 +691,10 @@ describe('SettingsPage 표 모양', () => {
     const user = userEvent.setup()
     const bodies: Record<string, unknown>[] = []
     server.events.on('request:start', async ({ request }) => {
-      if (request.url.endsWith('/api/products/1/replenishment-settings'))
+      if (
+        request.method === 'PUT' &&
+        request.url.endsWith('/api/replenishment-settings')
+      )
         bodies.push(await request.clone().json())
     })
     render(
@@ -684,7 +716,7 @@ describe('SettingsPage 표 모양', () => {
 
     await user.click(screen.getByRole('button', { name: '확인하고 계산하기' }))
     await waitFor(() => expect(bodies).toHaveLength(1))
-    expect(bodies[0]).not.toHaveProperty('orderUnitQty')
+    expect(bodies[0]?.productOverrides).toEqual([{ productId: 1 }])
     server.events.removeAllListeners()
   })
 })
