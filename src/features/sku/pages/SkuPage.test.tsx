@@ -26,6 +26,36 @@ function renderSku(path: string) {
 }
 
 describe('SkuPage', () => {
+  it('모델 소진일과 마지막 기록으로 그린 그래프의 단순 추정을 구분한다', async () => {
+    server.use(
+      http.get('/api/products/:productId/detail', () =>
+        HttpResponse.json({
+          ...model19Detail,
+          asOfDate: '2026-11-20',
+          expectedShortageOn: '2026-12-02',
+          result: {
+            ...model19Detail.result,
+            forecastOutboundQty: 1.9,
+            startStockQty: 1,
+          },
+          trend: [{ date: '2026-11-20', closingQty: 1, outboundQty: 3 }],
+        }),
+      ),
+    )
+    renderSku('/sku/27')
+
+    expect(
+      (await screen.findByText('계산 기준 예상 소진일')).parentElement,
+    ).toHaveTextContent('2026. 12. 2')
+    const chartNote =
+      /그래프는 마지막 기록의 재고에서 매일 같은 양이 나간다고 가정한 단순 추정이에요/
+    expect(screen.getByText(chartNote)).toBeInTheDocument()
+    expect(screen.getByText('11/30쯤 바닥나요')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: '앞으로 재고' }))
+    expect(screen.getByText(chartNote)).toBeInTheDocument()
+  })
+
   it('새 모델(LGBM19)은 목표 재고 식으로 계산 근거를 보여 주고, 0개면 숫자 옆에 이유를 붙인다', async () => {
     server.use(
       http.get('/api/products/:productId/detail', () =>
