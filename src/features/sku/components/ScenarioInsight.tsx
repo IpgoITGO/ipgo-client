@@ -210,7 +210,7 @@ export function ScenarioInsight({
           (insight?.failReason ? ` · ${failText(insight.failReason)}` : '')
 
   const calculate = useCallback(
-    async (inputQuantity: number) => {
+    async (inputQuantity: number, reusePreset = false) => {
       setActionError('')
       try {
         const item = await addCustomScenario(resultId, inputQuantity)
@@ -224,13 +224,35 @@ export function ScenarioInsight({
           },
           method,
         )
-        // 직접 넣은 수량은 화면에서 여러 개 쌓아 비교한다(서버는 마지막 1개만 저장). 같은 수량이면 새 값으로 바꾼다.
-        setCustomScenarios((current) => [
-          ...current.filter(
+        const presets =
+          reusePreset && scenariosQuery.data
+            ? toScenarios(scenariosQuery.data, method)
+            : null
+        // 입력값이 아닌 서버가 입고 단위에 맞춘 수량과 비교 결과를 사용한다.
+        const matchingPreset =
+          presets && presets.recommendedQuantity > 0
+            ? presets.scenarios.find(
+                (preset) =>
+                  !preset.id.startsWith('custom') &&
+                  preset.quantity === scenario.quantity &&
+                  preset.expectedStockoutDate ===
+                    scenario.expectedStockoutDate &&
+                  preset.remainingAtNextInbound ===
+                    scenario.remainingAtNextInbound &&
+                  preset.postArrivalUnmet === scenario.postArrivalUnmet &&
+                  preset.postArrivalRisk === scenario.postArrivalRisk,
+              )
+            : undefined
+        // 같은 수량의 이전 직접 입력 결과는 기본 카드 재사용 여부와 관계없이 정리한다.
+        setCustomScenarios((current) => {
+          const otherQuantities = current.filter(
             (existing) => existing.quantity !== scenario.quantity,
-          ),
-          scenario,
-        ])
+          )
+          return matchingPreset
+            ? otherQuantities
+            : [...otherQuantities, scenario]
+        })
+        if (matchingPreset) setSelectedId(matchingPreset.id)
         setQuantity('')
         setAdding(false)
       } catch (error) {
@@ -257,7 +279,7 @@ export function ScenarioInsight({
     }
 
     setInputError('')
-    void action.run(parsed)
+    void action.run(parsed, true)
   }
 
   const data = scenariosQuery.data && toScenarios(scenariosQuery.data, method)
