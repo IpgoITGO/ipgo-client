@@ -323,9 +323,7 @@ describe('계산 완료·실패 추적', () => {
     expect(await screen.findByText('계산을 마쳤어요')).toBeInTheDocument()
     expect(await screen.findByText('새 계산 결과')).toBeInTheDocument()
     expect(client.getQueryState(['sku', '3'])?.isInvalidated).toBe(true)
-    expect(
-      screen.getByText('입고가 필요한 상품은 3개예요.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('지금 발주할 상품 3종이에요.')).toBeInTheDocument()
     expect(screen.getByText('다시 계산')).toBeEnabled()
     const stopped = reads
     await new Promise((resolve) => setTimeout(resolve, 80))
