@@ -285,10 +285,45 @@ export function SettingsPage() {
       : (cycleSuggestion?.reviewCycleDays ?? null),
     inboundUnit: suggestion?.orderUnitQty ?? null,
   }
-  const canRestore = PRODUCT_FIELDS.some(
+  const supportedCycle =
+    calculationSupport?.method === 'LGBM19'
+      ? calculationSupport.reviewCycleDays
+      : null
+  const cycleCannotRestore =
+    supportedCycle != null &&
+    recommended.orderCycle != null &&
+    recommended.orderCycle !== supportedCycle
+  const restorable = {
+    ...recommended,
+    orderCycle: cycleCannotRestore ? null : recommended.orderCycle,
+  }
+  const restoreFields = PRODUCT_FIELDS.filter(
     ({ field }) =>
-      recommended[field] != null && defaults?.[field] !== recommended[field],
+      restorable[field] != null && defaults?.[field] !== restorable[field],
   )
+  const cycleEstimate = cycleSuggestion?.reviewCycleDays
+  const cycleEvidence = cycleSuggestion
+    ? ` · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} · 상품 ${cycleSuggestion.productCount}개 기준`
+    : ''
+  const supportedCycleNote =
+    supportedCycle != null &&
+    (cycleEstimate != null || recommended.orderCycle != null)
+      ? [
+          cycleEstimate != null
+            ? `수불부 기준 추정: ${cycleEstimate}일${cycleEvidence}`
+            : null,
+          recommended.orderCycle != null &&
+          recommended.orderCycle !== cycleEstimate
+            ? `추천: ${recommended.orderCycle}일`
+            : null,
+          `모델 지원 주기: ${supportedCycle}일`,
+          cycleCannotRestore
+            ? '지원하지 않는 주기는 자동 적용하지 않아요'
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null
   // 추천값을 넣은 순간 숫자 칸을 한 번 반짝여 어디가 바뀌었는지 알린다
   const [cycleFlash, setCycleFlash] = useState(false)
   useEffect(() => {
@@ -627,23 +662,25 @@ export function SettingsPage() {
               type="button"
               variant="secondary"
               disabled={
-                !canRestore || isSubmitting || calculationBusy || shipping
+                !restoreFields.length ||
+                isSubmitting ||
+                calculationBusy ||
+                shipping
               }
               onClick={() => {
-                for (const { field } of PRODUCT_FIELDS) {
-                  const value = recommended[field]
+                for (const { field } of restoreFields) {
+                  const value = restorable[field]
                   if (value != null)
                     setValue(`defaults.${field}`, value, {
                       shouldDirty: true,
                       shouldValidate: true,
                     })
                 }
-                setFocus(
-                  recommended.leadTime != null
-                    ? 'defaults.leadTime'
-                    : 'defaults.orderCycle',
+                if (restoreFields[0])
+                  setFocus(`defaults.${restoreFields[0].field}`)
+                setCycleFlash(
+                  restoreFields.some(({ field }) => field === 'orderCycle'),
                 )
-                setCycleFlash(true)
               }}
             >
               추천값으로 되돌리기
@@ -701,6 +738,7 @@ export function SettingsPage() {
               >
                 {errors.defaults?.orderCycle?.message ??
                   orderCycleModelError ??
+                  supportedCycleNote ??
                   (recommended.orderCycle != null
                     ? `추천 ${recommended.orderCycle}일${cycleSuggestion ? ` · ${cycleSuggestion.from.slice(0, 7)} ~ ${cycleSuggestion.to.slice(0, 7)} · 상품 ${cycleSuggestion.productCount}개 기준` : ''}`
                     : query.data?.cycleIsFallback

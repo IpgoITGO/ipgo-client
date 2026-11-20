@@ -110,6 +110,75 @@ function fixture(
 }
 
 describe('입고 주기 제안과 상속', () => {
+  it('수불부 추정 주기가 모델 조건과 다르면 참고용으로 표시하고 복원하지 않는다', async () => {
+    fixture(14)
+    server.use(
+      http.get('/api/replenishment-settings', () =>
+        HttpResponse.json({
+          confirmed: true,
+          leadTimeDays: 5,
+          reviewCycleDays: 14,
+          orderUnitQty: 1,
+          reviewCycleSource: 'DEFAULT',
+          reviewCycleSuggestion: { ...suggestion, reviewCycleDays: 1 },
+          calculationSupport: {
+            method: 'LGBM19',
+            leadTimeDays: 5,
+            reviewCycleDays: 14,
+          },
+        }),
+      ),
+    )
+    renderSettings()
+    const apply = await screen.findByRole('button', {
+      name: '추천값으로 되돌리기',
+    })
+    expect(apply).toBeDisabled()
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveValue('14')
+    expect(screen.getByLabelText('기본 입고 주기')).toHaveAccessibleDescription(
+      /수불부 기준 추정: 1일.*모델 지원 주기: 14일.*자동 적용하지 않아요/,
+    )
+  })
+
+  it.each([1, 14])(
+    '전체 추천에 %i일이 오면 지원되는 주기만 복원한다',
+    async (cycle) => {
+      const f = fixture(21)
+      server.use(
+        http.get('/api/replenishment-settings', () =>
+          HttpResponse.json({
+            confirmed: true,
+            leadTimeDays: 5,
+            reviewCycleDays: 21,
+            orderUnitQty: 8,
+            reviewCycleSource: 'DEFAULT',
+            reviewCycleSuggestion: { ...suggestion, reviewCycleDays: 1 },
+            suggestion: {
+              leadTimeDays: 5,
+              reviewCycleDays: cycle,
+              orderUnitQty: 1,
+            },
+            calculationSupport: {
+              method: 'LGBM19',
+              leadTimeDays: 5,
+              reviewCycleDays: 14,
+            },
+          }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderSettings()
+      await user.click(
+        await screen.findByRole('button', { name: '추천값으로 되돌리기' }),
+      )
+      const expected = cycle === 14 ? '14' : '21'
+      expect(screen.getByLabelText('기본 입고 주기')).toHaveValue(expected)
+      expect(screen.getByLabelText('시험상품 orderCycle')).toHaveValue(expected)
+      expect(screen.getByLabelText('기본 입고 단위')).toHaveValue('1')
+      expect(f.savedDefaults).toEqual([])
+    },
+  )
+
   it('전체 추천값 응답으로 세 기본값을 한 번에 복원하고 저장은 나중에 한다', async () => {
     const f = fixture(14, true, suggestion)
     server.use(
