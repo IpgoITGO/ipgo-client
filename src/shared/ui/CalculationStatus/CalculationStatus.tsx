@@ -60,6 +60,8 @@ export function CalculationStatus({
     return () => window.clearTimeout(fold)
   }, [phase, scope, hold, compact])
   if (phase === 'idle') return null
+  const needCount = run?.summary?.needCount
+  const orderNow = needCount == null ? null : `지금 발주할 상품 ${needCount}종`
   const closable = phase === 'done' || phase === 'failed'
   const markState =
     phase === 'done'
@@ -72,10 +74,7 @@ export function CalculationStatus({
       checking: batchDetail ?? '수불부 확인 중',
       pending: run?.status === 'QUEUED' ? '계산 기다리는 중' : '계산 중',
       updating: '결과 불러오는 중',
-      done:
-        run?.summary?.needCount != null
-          ? `계산 끝 · 넣을 상품 ${run.summary.needCount}개`
-          : '계산 끝',
+      done: orderNow ? `계산 끝 · ${orderNow}` : '계산 끝',
       failed: run?.status === 'CANCELED' ? '계산 멈춤' : '계산 못 마침',
       unknown: '계산 확인 필요',
     }[phase]
@@ -119,10 +118,10 @@ export function CalculationStatus({
   }[phase]
   const detail =
     message ??
-    (phase === 'done' && run?.summary
-      ? run.summary.notNeededCount != null
-        ? `입고가 필요한 상품 ${run.summary.needCount}개 · 지금은 괜찮은 상품 ${run.summary.notNeededCount}개`
-        : `입고가 필요한 상품은 ${run.summary.needCount}개예요.`
+    (phase === 'done' && orderNow
+      ? run?.summary?.notNeededCount != null
+        ? `${orderNow} · 지금은 괜찮은 상품 ${run.summary.notNeededCount}종`
+        : `${orderNow}이에요.`
       : phase === 'checking'
         ? (batchDetail ?? `${minutes}분째 · 끝나면 화면이 저절로 바뀌어요`)
         : phase === 'pending' && slow

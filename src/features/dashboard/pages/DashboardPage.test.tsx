@@ -349,7 +349,7 @@ describe('DashboardPage', () => {
       await screen.findByText('계산을 마쳤어요', {}, { timeout: 4000 }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('입고가 필요한 상품 6개 · 지금은 괜찮은 상품 3개'),
+      screen.getByText('지금 발주할 상품 6종 · 지금은 괜찮은 상품 3종'),
     ).toBeInTheDocument()
   })
 

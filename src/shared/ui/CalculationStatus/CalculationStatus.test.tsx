@@ -7,12 +7,17 @@ import {
 } from '../../api/calculationContext'
 import { CalculationStatus, DONE_MS } from './CalculationStatus'
 
-function view(phase: CalculationState['phase'], runId = 1) {
+function view(
+  phase: CalculationState['phase'],
+  runId = 1,
+  run?: CalculationState['run'],
+) {
   return (
     <CalculationContext.Provider
       value={{
         phase,
         runId,
+        run,
         busy: phase === 'pending',
         trackUpload: vi.fn(),
         trackRun: vi.fn(),
@@ -29,6 +34,35 @@ function view(phase: CalculationState['phase'], runId = 1) {
 describe('계산 상태 접힘 초기화', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
+
+  it.each([0, 3])(
+    '발주 대상 %i종을 펼친 상태와 접힌 상태에서 구분한다',
+    (needCount) => {
+      render(
+        view('done', 1, {
+          runId: 1,
+          status: 'DONE',
+          summary: {
+            needCount,
+            notNeededCount: 2,
+            notCalculableCount: 0,
+            excludedCount: 0,
+          },
+        }),
+      )
+      expect(
+        screen.getByText(
+          `지금 발주할 상품 ${needCount}종 · 지금은 괜찮은 상품 2종`,
+        ),
+      ).toBeInTheDocument()
+      act(() => vi.advanceTimersByTime(DONE_MS))
+      expect(
+        screen.getByRole('button', {
+          name: `계산 끝 · 지금 발주할 상품 ${needCount}종`,
+        }),
+      ).toBeInTheDocument()
+    },
+  )
 
   it('완료 알림을 닫고 빠르게 다시 계산해도 새 완료 창을 펼친다', () => {
     const { rerender } = render(view('done'))
