@@ -516,6 +516,87 @@ describe('ScenarioInsight', () => {
     expect(grid.lastElementChild).toHaveTextContent('수량 넣어 비교')
   })
 
+  it.each([61, 62])(
+    '직접 입력 결과의 잔여 재고가 %i개일 때 같은 결과만 기존 카드로 보여준다',
+    async (stock) => {
+      const user = userEvent.setup()
+      server.use(
+        http.get('/api/results/:resultId/scenarios', () =>
+          HttpResponse.json(model19Scenarios),
+        ),
+        http.post('/api/results/:resultId/scenarios', () =>
+          HttpResponse.json(
+            {
+              ...model19Scenarios.scenarios[2],
+              scenarioId: 4,
+              type: 'CUSTOM',
+              expectedEndingStock: stock,
+            },
+            { status: 201 },
+          ),
+        ),
+      )
+      renderInsight(17, 'LGBM19')
+      await screen.findByText('권장량의 120%')
+      await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+      await user.type(screen.getByLabelText('직접 입력'), '95')
+      await user.click(screen.getByRole('button', { name: '비교에 추가' }))
+      await waitFor(() =>
+        expect(screen.queryByLabelText('직접 입력')).not.toBeInTheDocument(),
+      )
+      expect(screen.getAllByRole('radio', { name: /96개/ })).toHaveLength(
+        stock === 61 ? 1 : 2,
+      )
+      if (stock === 61) {
+        expect(
+          screen.getByRole('radio', { name: /권장량의 120%/, checked: true }),
+        ).toBeInTheDocument()
+      }
+    },
+  )
+
+  it('다시 비교한 결과가 기본 카드와 같아지면 같은 수량의 이전 카드만 지운다', async () => {
+    const user = userEvent.setup()
+    let stock = 62
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(model19Scenarios),
+      ),
+      http.post('/api/results/:resultId/scenarios', async ({ request }) => {
+        const { qty } = (await request.json()) as { qty: number }
+        return HttpResponse.json(
+          {
+            ...model19Scenarios.scenarios[2],
+            type: 'CUSTOM',
+            qty: qty === 95 ? 96 : 108,
+            expectedEndingStock: stock,
+          },
+          { status: 201 },
+        )
+      }),
+    )
+    renderInsight(17, 'LGBM19')
+    await screen.findByText('권장량의 120%')
+    async function compare(quantity: string) {
+      await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+      await user.type(screen.getByLabelText('직접 입력'), quantity)
+      await user.click(screen.getByRole('button', { name: '비교에 추가' }))
+      await waitFor(() =>
+        expect(screen.queryByLabelText('직접 입력')).not.toBeInTheDocument(),
+      )
+    }
+    await compare('95')
+    await compare('108')
+    expect(screen.getAllByRole('radio', { name: /96개/ })).toHaveLength(2)
+    stock = 61
+    await compare('95')
+    expect(screen.getAllByRole('radio', { name: /96개/ })).toHaveLength(1)
+    expect(
+      screen.getByRole('radio', { name: /권장량의 120%/, checked: true }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /108개/ })).toBeInTheDocument()
+  })
+
   it('AI 실패 응답은 기본 문장으로 구분하고 이유를 알린다', async () => {
     renderInsight('ai-fallback')
 
