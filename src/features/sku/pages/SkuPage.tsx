@@ -1119,6 +1119,12 @@ function TrendChart({
           </div>
         )}
         {view.sub && <p className={styles.trendSub}>{view.sub}</p>}
+        {daily > 0 && active !== 'week' && (
+          <p className={styles.trendSub}>
+            그래프는 마지막 기록의 재고에서 매일 같은 양이 나간다고 가정한 단순
+            추정이에요. 계산 기준 예상 소진일과 다를 수 있어요.
+          </p>
+        )}
         <div className={styles.stage}>
           <svg
             aria-label={`${tabLabels[active]} 그래프`}
@@ -1862,7 +1868,7 @@ export function SkuPage() {
                 </dd>
               </div>
               <div>
-                <dt>현재 예상 소진일</dt>
+                <dt>계산 기준 예상 소진일</dt>
                 <dd>
                   {data.recommendation.expectedStockoutDate ??
                     (model19 ? '미제공' : <EmptyValue kind="short" />)}
