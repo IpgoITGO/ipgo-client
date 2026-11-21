@@ -189,6 +189,15 @@ export function ScenarioInsight({
   })
 
   const insight = insightQuery.data
+  // 저장된 AI·기본 설명의 문구는 확률을 뜻한다. 부족량 등급과 구분해 표시한다.
+  const insightSentences = insight?.sentences.map((line) =>
+    model19
+      ? line.replace(
+          '이 예측 방식에서는 품절 위험을 산출하지 않았습니다',
+          '이 예측 방식에서는 품절 확률을 산출하지 않았습니다',
+        )
+      : line,
+  )
   const insightPending =
     insightQuery.isPending || (insight?.generating && !insightQuery.isError)
   const insightTone = insightPending
@@ -957,7 +966,7 @@ export function ScenarioInsight({
                   className={styles.lines}
                   data-plain={insightTone === 'ai' ? undefined : ''}
                 >
-                  {insight?.sentences.map((line, index) => (
+                  {insightSentences?.map((line, index) => (
                     <li
                       key={line}
                       style={{ animationDelay: `${250 + index * 450}ms` }}

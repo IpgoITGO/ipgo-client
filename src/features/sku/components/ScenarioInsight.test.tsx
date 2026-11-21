@@ -49,6 +49,38 @@ afterAll(() => {
 })
 
 describe('ScenarioInsight', () => {
+  it.each(['AI', 'FIXED'])(
+    '%s 설명의 기존 위험 문구에서 확률과 등급을 구분한다',
+    async (mode) => {
+      server.use(
+        http.get('/api/results/:resultId/scenarios', () =>
+          HttpResponse.json(model19Scenarios),
+        ),
+        http.get('/api/results/:resultId/insight', () =>
+          HttpResponse.json({
+            mode,
+            text: '다음 입고 때 37개가 남습니다. 이 예측 방식에서는 품절 위험을 산출하지 않았습니다.',
+            stale: false,
+          }),
+        ),
+      )
+      renderInsight(17, 'LGBM19')
+      expect(
+        await screen.findByText(
+          sentence(
+            /다음 입고 때 37개가 남습니다\. 이 예측 방식에서는 품절 확률을 산출하지 않았습니다\./,
+          ),
+        ),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(sentence(/품절 위험을 산출하지 않았습니다/)),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('도착 후 품절 위험: 60개 낮음 → 권장 72개 낮음'),
+      ).toBeInTheDocument()
+    },
+  )
+
   it('지난 계산의 품절 위험 요약을 현재 AI 인사이트로 표시하지 않는다', async () => {
     server.use(
       http.get('/api/results/:resultId/scenarios', () =>
