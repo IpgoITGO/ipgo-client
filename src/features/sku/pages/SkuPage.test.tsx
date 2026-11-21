@@ -215,7 +215,9 @@ describe('SkuPage', () => {
       screen.queryByText(/최근 28일 평균|여유 배수|기본 계산 방식을 적용/),
     ).not.toBeInTheDocument()
     expect(
-      await screen.findByText('이 모델의 품절 위험은 아직 산출하지 않아요.'),
+      await screen.findByText(
+        '입고 후 예상 주문 부족량 기준이에요. 품절 확률은 아니에요.',
+      ),
     ).toBeInTheDocument()
     expect(
       await screen.findByText('이 계산 방식은 아직 AI 설명이 없어요'),

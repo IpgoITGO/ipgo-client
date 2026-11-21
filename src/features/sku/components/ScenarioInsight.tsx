@@ -69,6 +69,11 @@ function dayNum(date: string) {
 }
 const HIGH_RISK = 20
 
+function shortageRisk(unmet: number | null) {
+  if (unmet === null || !Number.isFinite(unmet) || unmet < 0) return '미산출'
+  return unmet > 0 ? '주의' : '낮음'
+}
+
 function formatRisk(risk: number | null, model19 = false) {
   return risk === null
     ? model19
@@ -391,6 +396,32 @@ export function ScenarioInsight({
   // AI 인사이트 옆 손그림: 권장량(P100)과 80%(P80) 시나리오 값으로 그린다. 권장량이 0이면 그림 없이 문장만.
   const p100 = data?.scenarios.find((item) => item.id === 'P100')
   const p80 = data?.scenarios.find((item) => item.id === 'P80')
+  const riskSummary =
+    model19 &&
+    scenariosQuery.isSuccess &&
+    insightQuery.isSuccess &&
+    !insight?.stale &&
+    p100 &&
+    p100.quantity > 0
+      ? (() => {
+          const rawP80 = scenariosQuery.data.scenarios.find(
+            (item) => item.type === 'P80',
+          )
+          const recommendedGrade = shortageRisk(p100.postArrivalUnmet)
+          const lowerGrade = shortageRisk(rawP80?.postArrivalUnmetQty ?? null)
+          const quantity = p100.quantity.toLocaleString()
+          if (
+            rawP80?.qty === p100.quantity &&
+            lowerGrade === recommendedGrade
+          ) {
+            return `권장량의 80%와 권장량이 모두 ${quantity}개 · ${recommendedGrade}`
+          }
+          const lower = rawP80
+            ? `${rawP80.qty.toLocaleString()}개 ${lowerGrade} → `
+            : ''
+          return `${lower}권장 ${quantity}개 ${recommendedGrade}`
+        })()
+      : null
   const sketch: SketchValues | null =
     !model19 && p100 && p100.quantity > 0
       ? {
@@ -416,7 +447,7 @@ export function ScenarioInsight({
             <h2>입고량을 바꾸면 이렇게 달라져요</h2>
             <p>
               {model19
-                ? '이 모델의 품절 위험은 아직 산출하지 않아요.'
+                ? '입고 후 예상 주문 부족량 기준이에요. 품절 확률은 아니에요.'
                 : sharedPreArrivalRisk === undefined ||
                     sharedPreArrivalRisk === null
                   ? '입고량을 바꿨을 때 남는 재고와 품절 위험을 비교해요.'
@@ -613,7 +644,9 @@ export function ScenarioInsight({
                                 : undefined
                             }
                           >
-                            {scenario.postArrivalUnmet ?? 0}개
+                            {model19 && scenario.postArrivalUnmet == null
+                              ? '—'
+                              : `${scenario.postArrivalUnmet ?? 0}개`}
                           </dd>
                         </div>
                       )}
@@ -639,12 +672,19 @@ export function ScenarioInsight({
                         <dt>도착 후 품절 위험</dt>
                         <dd
                           data-tone={
-                            (scenario.postArrivalRisk ?? 0) >= HIGH_RISK
+                            (
+                              model19
+                                ? shortageRisk(scenario.postArrivalUnmet) ===
+                                  '주의'
+                                : (scenario.postArrivalRisk ?? 0) >= HIGH_RISK
+                            )
                               ? 'danger'
                               : undefined
                           }
                         >
-                          {formatRisk(scenario.postArrivalRisk, model19)}
+                          {model19
+                            ? shortageRisk(scenario.postArrivalUnmet)
+                            : formatRisk(scenario.postArrivalRisk)}
                         </dd>
                       </div>
                     </dl>
@@ -867,6 +907,9 @@ export function ScenarioInsight({
           </div>
           {insight?.stateReason && (
             <p className={styles.stateReason}>{insight.stateReason}</p>
+          )}
+          {riskSummary && (
+            <p className={styles.basis}>도착 후 품절 위험: {riskSummary}</p>
           )}
           {insightPending ? (
             <div className={styles.writing} role="status">
