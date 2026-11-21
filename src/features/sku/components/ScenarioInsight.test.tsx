@@ -49,6 +49,100 @@ afterAll(() => {
 })
 
 describe('ScenarioInsight', () => {
+  it('지난 계산의 품절 위험 요약을 현재 AI 인사이트로 표시하지 않는다', async () => {
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(model19Scenarios),
+      ),
+      http.get('/api/results/:resultId/insight', () =>
+        HttpResponse.json({
+          mode: 'LLM',
+          sentences: ['지난 설명'],
+          state: 'NORMAL',
+          stateReason: null,
+          failReason: null,
+          stale: true,
+        }),
+      ),
+    )
+    renderInsight(17, 'LGBM19')
+    await screen.findByText(/지난 계산 기준 설명이에요/)
+    await screen.findByRole('radio', { name: /72개/ })
+    expect(screen.queryByText(/^도착 후 품절 위험:/)).not.toBeInTheDocument()
+  })
+
+  it('같은 수량으로 반올림한 80% 카드는 숨기되 위험 요약에 두 기준을 남긴다', async () => {
+    const fixture = structuredClone(model19Scenarios) as ScenariosResponse
+    fixture.scenarios[0] = {
+      ...fixture.scenarios[1],
+      scenarioId: 1,
+      type: 'P80',
+      isDuplicate: true,
+    }
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(fixture),
+      ),
+    )
+    renderInsight(17, 'LGBM19')
+    expect(
+      await screen.findByText(
+        '도착 후 품절 위험: 권장량의 80%와 권장량이 모두 72개 · 낮음',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('radio', { name: /72개/ })).toHaveLength(1)
+  })
+
+  it('고정19일의 입고 후 부족량으로 기본·직접 비교와 AI 인사이트에 같은 위험 등급을 표시한다', async () => {
+    const user = userEvent.setup()
+    const fixture = structuredClone(model19Scenarios) as ScenariosResponse
+    fixture.scenarios[0].postArrivalUnmetQty = 6
+    fixture.scenarios[2].postArrivalUnmetQty = null
+    fixture.preArrivalUnmetQty = 8
+    server.use(
+      http.get('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(fixture),
+      ),
+      http.post('/api/results/:resultId/scenarios', () =>
+        HttpResponse.json(
+          {
+            ...fixture.scenarios[2],
+            scenarioId: 4,
+            type: 'CUSTOM',
+            qty: 108,
+            postArrivalUnmetQty: 2,
+          },
+          { status: 201 },
+        ),
+      ),
+    )
+    renderInsight(17, 'LGBM19')
+    expect(
+      await screen.findByRole('radio', { name: /60개/ }),
+    ).toHaveTextContent('도착 후 품절 위험주의')
+    expect(screen.getByRole('radio', { name: /72개/ })).toHaveTextContent(
+      '도착 후 품절 위험낮음',
+    )
+    expect(screen.getByRole('radio', { name: /96개/ })).toHaveTextContent(
+      '도착 후 품절 위험미산출',
+    )
+    expect(
+      screen.getByText(
+        '입고 후 예상 주문 부족량 기준이에요. 품절 확률은 아니에요.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('도착 후 품절 위험: 60개 주의 → 권장 72개 낮음'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '수량 넣어 비교' }))
+    await user.type(screen.getByLabelText('직접 입력'), '108')
+    await user.click(screen.getByRole('button', { name: '비교에 추가' }))
+    expect(
+      await screen.findByRole('radio', { name: /108개/ }),
+    ).toHaveTextContent('도착 후 품절 위험주의')
+  })
+
   it('입고 뒤 예상 유통기한에도 연도를 표시한다', async () => {
     const fixture = structuredClone(model19Scenarios) as ScenariosResponse
     fixture.scenarios[0].expectedDepletionOn = '2028-01-01'
